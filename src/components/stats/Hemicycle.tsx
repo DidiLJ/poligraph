@@ -31,7 +31,9 @@ export function Hemicycle({ groups }: HemicycleProps) {
 
   // Build flat deputy list matching seat order
   const { seats, deputyMap, totalWithAffairs, totalDeputies } = useMemo(() => {
-    const groupInputs = groups.map((g) => ({
+    // Filter out empty groups (no current deputies)
+    const activeGroups = groups.filter((g) => g.deputies.length > 0);
+    const groupInputs = activeGroups.map((g) => ({
       code: g.code,
       color: g.color,
       seats: g.deputies.length,
@@ -48,7 +50,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
       { deputy: HemicycleDeputy; groupName: string; groupCode: string }
     >();
     let globalIdx = 0;
-    for (const group of groups) {
+    for (const group of activeGroups) {
       // Sort deputies: those with affairs first (visually interesting), then alphabetical
       const sorted = [...group.deputies].sort((a, b) => {
         if (b.affairCount !== a.affairCount) return b.affairCount - a.affairCount;
@@ -151,10 +153,10 @@ export function Hemicycle({ groups }: HemicycleProps) {
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-10 rounded-lg border bg-popover px-3 py-2 text-sm shadow-md"
+          className="pointer-events-none absolute z-10 rounded-lg border bg-popover px-3 py-2 text-sm shadow-md max-w-[200px]"
           style={{
-            left: tooltip.x,
-            top: tooltip.y - 10,
+            left: `clamp(100px, ${tooltip.x}px, calc(100% - 100px))`,
+            top: Math.max(0, tooltip.y - 10),
             transform: "translate(-50%, -100%)",
           }}
         >

@@ -8,6 +8,8 @@ import type { AffairCategory, AffairStatus } from "@/types";
 import { DonutChart } from "./DonutChart";
 import { HorizontalBars } from "./HorizontalBars";
 import { MethodologyDisclaimer } from "./MethodologyDisclaimer";
+import { Hemicycle } from "./Hemicycle";
+import type { HemicycleGroup } from "@/lib/data/hemicycle";
 
 const SUPER_CATEGORY_HEX: Record<AffairSuperCategory, string> = {
   PROBITE: "#7c3aed",
@@ -42,6 +44,7 @@ interface JudicialSectionProps {
   byStatus: StatusCount[];
   byCategory: CategoryCount[];
   critiqueByCategory: CritiqueCategoryData[];
+  hemicycleGroups: HemicycleGroup[];
 }
 
 const ONGOING_STATUSES = new Set<AffairStatus>([
@@ -61,6 +64,7 @@ export function JudicialSection({
   byStatus,
   byCategory,
   critiqueByCategory,
+  hemicycleGroups,
 }: JudicialSectionProps) {
   const totalCritique = bySeverity["CRITIQUE"] || 0;
   const ongoing = byStatus
@@ -72,6 +76,22 @@ export function JudicialSection({
 
   return (
     <section aria-labelledby="judicial-heading" className="py-8">
+      {/* Hemicycle visualization */}
+      {hemicycleGroups.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-lg">Hémicycle et affaires judiciaires</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Chaque siège représente un député. La taille du cercle est proportionnelle au nombre
+              d&apos;affaires judiciaires. Cliquez sur un siège pour accéder à la fiche du député.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Hemicycle groups={hemicycleGroups} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Contextual KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <Card>

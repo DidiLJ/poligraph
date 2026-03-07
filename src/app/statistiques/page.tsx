@@ -17,6 +17,7 @@ import { LegislativeSection } from "@/components/stats/LegislativeSection";
 import { JudicialSection } from "@/components/stats/JudicialSection";
 import { FactCheckSection } from "@/components/stats/FactCheckSection";
 import { ParticipationSection } from "@/components/stats/ParticipationSection";
+import { getHemicycleData } from "@/lib/data/hemicycle";
 
 export const revalidate = 300;
 
@@ -239,12 +240,14 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
   const pPage = Math.max(1, Math.min(100, parseInt(String(params.pPage ?? "1"), 10) || 1));
   const pSort = params.pSort === "desc" ? ("DESC" as const) : ("ASC" as const);
 
-  const [legislativeData, judicialData, factCheckData, participationData] = await Promise.all([
-    getLegislativeData(),
-    getJudicialData(),
-    getFactCheckData(),
-    getParticipationData(pChamber, pPage, pSort),
-  ]);
+  const [legislativeData, judicialData, factCheckData, participationData, hemicycleData] =
+    await Promise.all([
+      getLegislativeData(),
+      getJudicialData(),
+      getFactCheckData(),
+      getParticipationData(pChamber, pPage, pSort),
+      getHemicycleData(),
+    ]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -263,6 +266,7 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
             byStatus={judicialData.byStatus}
             byCategory={judicialData.byCategory}
             critiqueByCategory={judicialData.critiqueByCategory}
+            hemicycleGroups={hemicycleData}
           />
         }
         factCheckContent={

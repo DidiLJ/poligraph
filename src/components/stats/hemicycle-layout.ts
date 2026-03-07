@@ -55,7 +55,7 @@ export function computeHemicycleLayout(
   // Adjust rounding errors: add/remove from largest row
   const diff = totalSeats - seatsPerRow.reduce((sum, n) => sum + n, 0);
   const largestRowIdx = seatsPerRow.indexOf(Math.max(...seatsPerRow));
-  seatsPerRow[largestRowIdx] += diff;
+  seatsPerRow[largestRowIdx] = seatsPerRow[largestRowIdx]! + diff;
 
   // Per-group per-row seat count
   const groupRowSeats: number[][] = groups.map((group) =>
@@ -64,49 +64,53 @@ export function computeHemicycleLayout(
 
   // Fix rounding errors per row (ensure each row sums to seatsPerRow[r])
   for (let r = 0; r < rows; r++) {
-    const rowSum = groupRowSeats.reduce((sum, g) => sum + g[r], 0);
-    let rowDiff = seatsPerRow[r] - rowSum;
+    const rowSum = groupRowSeats.reduce((sum, g) => sum + (g[r] ?? 0), 0);
+    let rowDiff = seatsPerRow[r]! - rowSum;
     while (rowDiff !== 0) {
       const adjust = rowDiff > 0 ? 1 : -1;
       let bestIdx = 0;
       let bestCount = -1;
       for (let g = 0; g < groups.length; g++) {
-        if (groupRowSeats[g][r] + adjust >= 0 && groups[g].seats > bestCount) {
-          bestCount = groups[g].seats;
+        if (groupRowSeats[g]![r]! + adjust >= 0 && groups[g]!.seats > bestCount) {
+          bestCount = groups[g]!.seats;
           bestIdx = g;
         }
       }
-      groupRowSeats[bestIdx][r] += adjust;
+      groupRowSeats[bestIdx]![r]! += adjust;
       rowDiff -= adjust;
     }
   }
 
   // Fix per-group totals: ensure sum across rows matches requested group.seats
   for (let g = 0; g < groups.length; g++) {
-    const groupTotal = groupRowSeats[g].reduce((sum, n) => sum + n, 0);
-    let groupDiff = groups[g].seats - groupTotal;
+    const groupRows = groupRowSeats[g]!;
+    const group = groups[g]!;
+    const groupTotal = groupRows.reduce((sum, n) => sum + n, 0);
+    let groupDiff = group.seats - groupTotal;
     // Pick a partner group to swap seats with (largest other group)
     const partnerIdx = groups
       .map((gr, i) => ({ i, seats: gr.seats }))
       .filter(({ i }) => i !== g)
       .sort((a, b) => b.seats - a.seats)[0]?.i;
     while (groupDiff !== 0 && partnerIdx !== undefined) {
+      const partnerRows = groupRowSeats[partnerIdx]!;
       const adjust = groupDiff > 0 ? 1 : -1;
       // Find best row to adjust (prefer rows where partner has surplus)
       let bestRow = -1;
       let bestRowSize = -1;
       for (let r = 0; r < rows; r++) {
-        if (adjust > 0 && groupRowSeats[partnerIdx][r] > 0 && seatsPerRow[r] > bestRowSize) {
+        const rowSize = seatsPerRow[r]!;
+        if (adjust > 0 && partnerRows[r]! > 0 && rowSize > bestRowSize) {
           bestRow = r;
-          bestRowSize = seatsPerRow[r];
-        } else if (adjust < 0 && groupRowSeats[g][r] > 0 && seatsPerRow[r] > bestRowSize) {
+          bestRowSize = rowSize;
+        } else if (adjust < 0 && groupRows[r]! > 0 && rowSize > bestRowSize) {
           bestRow = r;
-          bestRowSize = seatsPerRow[r];
+          bestRowSize = rowSize;
         }
       }
       if (bestRow === -1) break;
-      groupRowSeats[g][bestRow] += adjust;
-      groupRowSeats[partnerIdx][bestRow] -= adjust;
+      groupRows[bestRow]! += adjust;
+      partnerRows[bestRow]! -= adjust;
       groupDiff -= adjust;
     }
   }
@@ -116,24 +120,25 @@ export function computeHemicycleLayout(
   let globalIndex = 0;
 
   for (let r = 0; r < rows; r++) {
-    const radius = rowRadii[r];
+    const radius = rowRadii[r]!;
     const padding = 0.03;
     const arcStart = Math.PI - padding;
     const arcEnd = padding;
 
     let seatCursor = 0;
-    const rowTotal = seatsPerRow[r];
+    const rowTotal = seatsPerRow[r]!;
 
     for (let g = 0; g < groups.length; g++) {
-      const count = groupRowSeats[g][r];
+      const group = groups[g]!;
+      const count = groupRowSeats[g]![r]!;
       for (let s = 0; s < count; s++) {
         const seatPosition = seatCursor + 0.5;
         const angle = arcStart - (seatPosition / rowTotal) * (arcStart - arcEnd);
         seats.push({
           x: cx + radius * Math.cos(angle),
           y: cy - radius * Math.sin(angle),
-          groupCode: groups[g].code,
-          groupColor: groups[g].color,
+          groupCode: group.code,
+          groupColor: group.color,
           seatIndex: globalIndex++,
         });
         seatCursor++;

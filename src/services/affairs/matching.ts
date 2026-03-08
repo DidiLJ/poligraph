@@ -30,13 +30,34 @@ export interface MatchCandidate {
 
 /**
  * Normalize affair title for deduplication.
- * Strips common prefixes like "[À VÉRIFIER]" and normalizes whitespace.
+ * Strips "[À VÉRIFIER]" prefix, politician name, common decorators, and normalizes whitespace.
+ * Stripping the politician name is essential because different import pipelines
+ * format titles differently (e.g., "Crime — Name" vs "Condamnation de Name pour Crime").
  */
-function normalizeAffairTitle(title: string): string {
-  return title
+function normalizeAffairTitle(title: string, politicianName?: string): string {
+  let normalized = title
+    .normalize("NFC")
     .replace(/^\[À VÉRIFIER\]\s*/i, "")
     .trim()
     .toLowerCase();
+
+  if (politicianName) {
+    const name = politicianName.toLowerCase().normalize("NFC");
+    // Escape regex special chars in name
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Strip " — Name" suffix (discover-affairs format)
+    normalized = normalized.replace(new RegExp(`\\s*[—–-]\\s*${escaped}\\s*$`), "");
+    // Strip "de Name pour" (manual/press format: "Condamnation de X pour Y")
+    normalized = normalized.replace(new RegExp(`\\bde\\s+${escaped}\\s+pour\\s+`, "g"), "");
+    // Strip "contre Name" (complaint format)
+    normalized = normalized.replace(new RegExp(`\\bcontre\\s+${escaped}\\s*`, "g"), "");
+    // Strip remaining occurrences of the name
+    normalized = normalized.replace(new RegExp(`\\b${escaped}\\b`, "g"), "");
+    // Clean up leftover whitespace
+    normalized = normalized.replace(/\s{2,}/g, " ").trim();
+  }
+
+  return normalized;
 }
 
 /**
@@ -105,10 +126,19 @@ export async function findMatchingAffairs(candidate: MatchCandidate): Promise<Ma
   }
 
   // Priority 4: Normalized title matching — bidirectional
-  // Strips "[À VÉRIFIER]" prefix and compares both directions to catch
-  // duplicates from successive import waves with slightly different formats.
+  // Strips "[À VÉRIFIER]" prefix, politician name, and common decorators,
+  // then compares both directions to catch duplicates from successive
+  // import waves with different title formats (e.g., "Crime — Name" vs
+  // "Condamnation de Name pour Crime").
   if (candidate.title) {
-    const normalizedCandidate = normalizeAffairTitle(candidate.title);
+    // Fetch politician name for title normalization
+    const politician = await db.politician.findUnique({
+      where: { id: candidate.politicianId },
+      select: { fullName: true },
+    });
+    const politicianName = politician?.fullName ?? undefined;
+
+    const normalizedCandidate = normalizeAffairTitle(candidate.title, politicianName);
 
     const samePoliticianAffairs = await db.affair.findMany({
       where: { politicianId: candidate.politicianId },
@@ -118,7 +148,7 @@ export async function findMatchingAffairs(candidate: MatchCandidate): Promise<Ma
     for (const existing of samePoliticianAffairs) {
       if (matches.some((m) => m.affairId === existing.id)) continue;
 
-      const normalizedExisting = normalizeAffairTitle(existing.title);
+      const normalizedExisting = normalizeAffairTitle(existing.title, politicianName);
 
       // Exact normalized title → HIGH
       if (normalizedExisting === normalizedCandidate) {

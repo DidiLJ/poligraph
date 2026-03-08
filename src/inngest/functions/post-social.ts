@@ -17,11 +17,13 @@ export const postSocial = inngest.createFunction(
       const { generateForCategory } = await import("@/lib/social/generators");
       const { SOCIAL_CATEGORIES } = await import("@/lib/social/config");
       const { getRotationIndex } = await import("@/lib/social/rotation");
+      const { getRecentlyPosted } = await import("@/lib/social/dedup");
 
+      const recent = await getRecentlyPosted();
       let idx = await getRotationIndex();
       for (let attempt = 0; attempt < 3; attempt++) {
         const cat = SOCIAL_CATEGORIES[idx % SOCIAL_CATEGORIES.length];
-        const result = await generateForCategory(cat!);
+        const result = await generateForCategory(cat!, recent);
         if (result) return { ...result, resolvedCategory: cat };
         idx++;
       }
@@ -47,17 +49,14 @@ export const postSocial = inngest.createFunction(
         const { notifySlackReview } = await import("@/lib/social/notify");
         const { advanceRotation } = await import("@/lib/social/rotation");
 
-        let fullText = tweetDraft.content;
-        if (tweetDraft.link) fullText += `\n\n${tweetDraft.link}`;
-        if (tweetDraft.hashtags?.length) {
-          fullText += `\n\n${tweetDraft.hashtags.map((h: string) => `#${h}`).join(" ")}`;
-        }
+        const fullText = tweetDraft.content;
 
         const post = await db.socialPost.create({
           data: {
             category: resolvedCategory,
             content: fullText,
             link: tweetDraft.link,
+            entityId: tweetDraft.entityId,
             status: "PENDING_REVIEW",
           },
         });
@@ -83,13 +82,7 @@ export const postSocial = inngest.createFunction(
       const { db } = await import("@/lib/db");
       const { advanceRotation } = await import("@/lib/social/rotation");
 
-      let fullText = tweetDraft.content;
-      if (tweetDraft.hashtags?.length) {
-        fullText += `\n\n${tweetDraft.hashtags.map((h: string) => `#${h}`).join(" ")}`;
-      }
-      if (tweetDraft.mentions?.length) {
-        fullText += ` ${tweetDraft.mentions.map((m: string) => `@${m}`).join(" ")}`;
-      }
+      const fullText = tweetDraft.content;
 
       if (!isAutoPostEnabled()) {
         console.log(`[social] Dry-run [${resolvedCategory}]: ${fullText.substring(0, 100)}...`);
@@ -106,6 +99,7 @@ export const postSocial = inngest.createFunction(
           category: resolvedCategory,
           content: fullText,
           link: tweetDraft.link,
+          entityId: tweetDraft.entityId,
           status,
           blueskyUrl: postResult.blueskyUrl,
           twitterUrl: postResult.twitterUrl,

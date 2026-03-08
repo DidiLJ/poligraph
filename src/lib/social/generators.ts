@@ -2,82 +2,20 @@ import { db } from "@/lib/db";
 import {
   AFFAIR_STATUS_LABELS,
   AFFAIR_STATUS_NEEDS_PRESUMPTION,
-  VOTING_RESULT_LABELS,
+  AFFAIR_CATEGORY_LABELS,
   MANDATE_TYPE_LABELS,
 } from "@/config/labels";
 import { SITE_URL } from "./config";
-import { formatDate } from "@/lib/utils";
+import type { RecentlyPosted } from "./dedup";
+import { wasRecentlyPosted } from "./dedup";
 
 // --- Types ---
 
 export interface TweetDraft {
-  category: string; // emoji + titre de section
-  content: string; // texte du tweet
-  link?: string; // lien poligraph.fr
-  hashtags?: string[]; // hashtags (sans #)
-  mentions?: string[]; // comptes Twitter a tagger (sans @)
+  content: string;
+  link?: string;
+  entityId?: string;
 }
-
-// --- Hashtags par categorie ---
-
-export const CATEGORY_HASHTAGS: Record<string, string[]> = {
-  votes: ["DirectAN", "PolitiqueFR"],
-  consensus: ["DirectAN", "PolitiqueFR"],
-  chiffres: ["DataPolitique", "OpenData", "PolitiqueFR"],
-  affaires: ["Justice", "PolitiqueFR"],
-  factchecks: ["FactCheck", "PolitiqueFR"],
-  profil: ["PolitiqueFR"],
-  elections: ["Municipales2026", "Elections", "PolitiqueFR"],
-  presse: ["PolitiqueFR"],
-  presence: ["DirectAN", "Absenteisme", "PolitiqueFR"],
-};
-
-// --- Comptes Twitter des medias et institutions ---
-
-export const MEDIA_TWITTER: Record<string, string> = {
-  lemonde: "lemondefr",
-  lefigaro: "Le_Figaro",
-  mediapart: "Mediapart",
-  liberation: "libe",
-  bfmtv: "BFMTV",
-  france24: "France24_fr",
-  lcp: "LCP",
-  ouest_france: "OuestFrance",
-};
-
-// Handles institutionnels pour les votes selon la chambre
-export const CHAMBER_TWITTER: Record<string, string> = {
-  AN: "AssembleeNat",
-  SENAT: "Senat",
-};
-
-export const FEED_NAMES: Record<string, string> = {
-  lemonde: "Le Monde",
-  lefigaro: "Le Figaro",
-  mediapart: "Mediapart",
-  liberation: "Libération",
-  bfmtv: "BFMTV",
-  france24: "France 24",
-  politico: "Politico",
-  google: "Google News",
-  ouest_france: "Ouest-France",
-  la_depeche: "La Dépêche",
-  laprovence: "La Provence",
-  dernieresnouvellesalsace: "DNA",
-  contexte: "Contexte",
-  lcp: "LCP",
-};
-
-export const VERDICT_LABELS: Record<string, string> = {
-  TRUE: "vrai",
-  MOSTLY_TRUE: "plutôt vrai",
-  HALF_TRUE: "à nuancer",
-  MISLEADING: "trompeur",
-  OUT_OF_CONTEXT: "hors contexte",
-  MOSTLY_FALSE: "plutôt faux",
-  FALSE: "faux",
-  UNVERIFIABLE: "invérifiable",
-};
 
 // --- Helpers ---
 
@@ -90,9 +28,57 @@ export function plural(n: number, singular: string, pluralForm?: string): string
   return n <= 1 ? singular : pluralForm || singular + "s";
 }
 
-// --- Generateurs ---
+export const VERDICT_LABELS: Record<string, string> = {
+  TRUE: "vrai",
+  MOSTLY_TRUE: "plutôt vrai",
+  HALF_TRUE: "à nuancer",
+  MISLEADING: "trompeur",
+  OUT_OF_CONTEXT: "hors contexte",
+  MOSTLY_FALSE: "plutôt faux",
+  FALSE: "faux",
+  UNVERIFIABLE: "invérifiable",
+};
 
-async function divisiveVotes(): Promise<TweetDraft[]> {
+// --- Methodo static topics ---
+
+const METHODO_TOPICS = [
+  {
+    slug: "identity-resolution",
+    content: `🔧 Comment Poligraph relie un député à ses affaires judiciaires ?\n\nMatching par nom, identifiant Wikidata (Q-ID), seuil de confiance à 95%. Les homonymes sont le cauchemar — c'est pour ça qu'on vérifie chaque lien manuellement au-dessus de ce seuil.\n\n→ ${SITE_URL}\n\n#OpenData #TransparencePolitique`,
+  },
+  {
+    slug: "wikidata-source",
+    content: `🔧 D'où viennent les condamnations sur Poligraph ?\n\nToutes les condamnations sont issues de Wikidata (propriété P1399), une base collaborative et sourcée. Chaque entrée est vérifiable et liée à des sources de presse.\n\n→ ${SITE_URL}\n\n#OpenData #TransparencePolitique`,
+  },
+  {
+    slug: "votes-sync",
+    content: `🔧 Comment sont récupérés les votes parlementaires ?\n\nChaque nuit, Poligraph synchronise les scrutins de l'Assemblée nationale et du Sénat via l'open data officiel. Plus de 10 000 votes analysés et croisés avec les groupes parlementaires.\n\n→ ${SITE_URL}/votes\n\n#OpenData #TransparencePolitique`,
+  },
+  {
+    slug: "presumption-innocence",
+    content: `🔧 Mis en examen ≠ coupable.\n\nSur Poligraph, chaque affaire affiche son statut judiciaire exact. Une mise en examen n'est pas une condamnation. La présomption d'innocence s'applique tant qu'il n'y a pas de jugement définitif.\n\n→ ${SITE_URL}\n\n#TransparencePolitique`,
+  },
+  {
+    slug: "factcheck-sources",
+    content: `🔧 Comment fonctionne le fact-checking sur Poligraph ?\n\nLes vérifications viennent de sources labellisées : AFP Factuel, Les Décodeurs, CheckNews, Politifact. Poligraph ne vérifie pas — il relie les déclarations aux verdicts des professionnels.\n\n→ ${SITE_URL}\n\n#FactCheck #TransparencePolitique`,
+  },
+  {
+    slug: "open-data-an",
+    content: `🔧 Les données de l'Assemblée sont en open data. Mais le format est... créatif.\n\nRelier un scrutin à son dossier législatif a nécessité du reverse-engineering sur les fichiers XML. 4 500 scrutins reliés à leur texte de loi sur 10 000.\n\n→ ${SITE_URL}/votes\n\n#OpenData #TransparencePolitique`,
+  },
+  {
+    slug: "severity-levels",
+    content: `🔧 Pourquoi distinguer atteinte à la probité et autres affaires ?\n\nUne condamnation pour corruption et une pour rébellion ne sont pas comparables. L'hémicycle de Poligraph distingue les atteintes à la probité (détournement, corruption, favoritisme) des autres infractions.\n\n→ ${SITE_URL}/statistiques\n\n#TransparencePolitique`,
+  },
+  {
+    slug: "patrimoine",
+    content: `🔧 Les déclarations de patrimoine sont publiques.\n\nLa Haute Autorité pour la Transparence (HATVP) publie le patrimoine des élus. Poligraph les structure pour permettre la comparaison. Immobilier, comptes, véhicules — tout est consultable.\n\n→ ${SITE_URL}\n\n#Transparence #HATVP`,
+  },
+] as const;
+
+// --- Generators ---
+
+async function divisiveVotes(recent: RecentlyPosted): Promise<TweetDraft[]> {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -120,6 +106,8 @@ async function divisiveVotes(): Promise<TweetDraft[]> {
   const drafts: TweetDraft[] = [];
 
   for (const s of scrutins) {
+    const entityId = `votes:${s.slug || s.id}`;
+    if (wasRecentlyPosted(recent, entityId)) continue;
     if (s.votes.length < 50) continue;
 
     // Aggregate votes by parliamentary group
@@ -132,7 +120,13 @@ async function divisiveVotes(): Promise<TweetDraft[]> {
       const group = v.politician.mandates[0]?.parliamentaryGroup;
       const code = group?.code || "NI";
       const name = group?.name || "Non-inscrits";
-      const entry = groupVotes.get(code) || { name, pour: 0, contre: 0, abstention: 0, total: 0 };
+      const entry = groupVotes.get(code) || {
+        name,
+        pour: 0,
+        contre: 0,
+        abstention: 0,
+        total: 0,
+      };
       if (v.position === "POUR") entry.pour++;
       else if (v.position === "CONTRE") entry.contre++;
       else if (v.position === "ABSTENTION") entry.abstention++;
@@ -140,42 +134,41 @@ async function divisiveVotes(): Promise<TweetDraft[]> {
       groupVotes.set(code, entry);
     }
 
-    // Find the most divided large group (>10 voters)
-    let maxDivision = 0;
-    let dividedGroup = { code: "", name: "" };
-    let dividedStats = { name: "", pour: 0, contre: 0, abstention: 0, total: 0 };
+    // Find the group most in favor and the group most against
+    let topPourGroup = { name: "", pct: 0 };
+    let topContreGroup = { name: "", pct: 0 };
 
-    for (const [code, counts] of groupVotes) {
+    for (const [, counts] of groupVotes) {
       if (counts.total < 10) continue;
       const pourPct = counts.pour / counts.total;
-      const division = Math.min(pourPct, 1 - pourPct);
-      if (division > maxDivision) {
-        maxDivision = division;
-        dividedGroup = { code, name: counts.name };
-        dividedStats = counts;
+      const contrePct = counts.contre / counts.total;
+      if (pourPct > topPourGroup.pct) {
+        topPourGroup = { name: counts.name, pct: pourPct };
+      }
+      if (contrePct > topContreGroup.pct) {
+        topContreGroup = { name: counts.name, pct: contrePct };
       }
     }
 
-    if (maxDivision < 0.25) continue;
-
+    // Check divisiveness: the overall split should be meaningful
     const total = s.votesFor + s.votesAgainst + s.votesAbstain;
+    if (total === 0) continue;
     const pourPct = Math.round((s.votesFor / total) * 100);
     const contrePct = Math.round((s.votesAgainst / total) * 100);
-    const result = VOTING_RESULT_LABELS[s.result].toLowerCase();
-    const pourPartyPct = Math.round((dividedStats.pour / dividedStats.total) * 100);
-    const contrePartyPct = Math.round((dividedStats.contre / dividedStats.total) * 100);
+    const minSide = Math.min(pourPct, 100 - pourPct);
+    if (minSide < 20) continue; // Not divisive enough
 
-    let content = `\u{1F5F3}\uFE0F ${pourPartyPct}% pour, ${contrePartyPct}% contre au sein de ${dividedGroup.name}.\n\n`;
-    content += `\u00AB ${s.title} \u00BB \u2014 ${result} (${pourPct}\u2013${contrePct}), ${formatDate(s.votingDate)}.`;
+    let content = `🗳️ L'Assemblée s'est divisée sur « ${s.title} ».\n\n`;
+    content += `Pour : ${pourPct}% | Contre : ${contrePct}%`;
 
-    const chamberHandle = CHAMBER_TWITTER[s.chamber || "AN"];
-    drafts.push({
-      category: "\u{1F5F3}\uFE0F Votes clivants",
-      content,
-      link: `${SITE_URL}/votes/${s.slug || s.id}`,
-      hashtags: s.chamber === "SENAT" ? ["DirectSenat", "PolitiqueFR"] : CATEGORY_HASHTAGS.votes,
-      mentions: chamberHandle ? [chamberHandle] : [],
-    });
+    if (topPourGroup.name && topContreGroup.name && topPourGroup.name !== topContreGroup.name) {
+      content += `\n${topPourGroup.name} : ${Math.round(topPourGroup.pct * 100)}% pour · ${topContreGroup.name} : ${Math.round(topContreGroup.pct * 100)}% contre`;
+    }
+
+    const link = `${SITE_URL}/votes/${s.slug || s.id}`;
+    content += `\n\n→ ${link}`;
+
+    drafts.push({ content, link, entityId });
 
     if (drafts.length >= 2) break;
   }
@@ -183,155 +176,167 @@ async function divisiveVotes(): Promise<TweetDraft[]> {
   return drafts;
 }
 
-async function unanimousVotes(): Promise<TweetDraft[]> {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const scrutins = await db.scrutin.findMany({
-    where: {
-      votingDate: { gte: thirtyDaysAgo },
-      result: "ADOPTED",
-    },
-    orderBy: { votingDate: "desc" },
-    take: 30,
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      votingDate: true,
-      votesFor: true,
-      votesAgainst: true,
-      votesAbstain: true,
-      summary: true,
-      chamber: true,
-    },
-  });
-
-  const drafts: TweetDraft[] = [];
-
-  for (const s of scrutins) {
-    const total = s.votesFor + s.votesAgainst + s.votesAbstain;
-    if (total < 50) continue;
-
-    const pourPct = (s.votesFor / total) * 100;
-    if (pourPct < 90) continue; // Only near-unanimous
-
-    const chamberLabel = s.chamber === "AN" ? "l'Assembl\u00E9e" : "le S\u00E9nat";
-
-    let content = `\u{1F91D} ${Math.round(pourPct)}% pour \u2014 \u00AB ${s.title} \u00BB adopt\u00E9 quasi \u00E0 l'unanimit\u00E9 par ${chamberLabel}.\n\n`;
-    content += `${s.votesFor} pour, ${s.votesAgainst} contre, ${s.votesAbstain} abstentions. ${formatDate(s.votingDate)}.`;
-
-    const chamberTag = s.chamber === "SENAT" ? "DirectSenat" : "DirectAN";
-    drafts.push({
-      category: "\u{1F91D} Consensus",
-      content,
-      link: `${SITE_URL}/votes/${s.slug || s.id}`,
-      hashtags: [chamberTag, "PolitiqueFR"],
-      mentions: CHAMBER_TWITTER[s.chamber] ? [CHAMBER_TWITTER[s.chamber]!] : [],
-    });
-
-    if (drafts.length >= 1) break;
-  }
-
-  return drafts;
-}
-
-async function partyStats(): Promise<TweetDraft[]> {
-  const parties = await db.party.findMany({
-    where: {
-      politicians: { some: { publicationStatus: "PUBLISHED" } },
-    },
-    select: {
-      shortName: true,
-      name: true,
-      _count: {
-        select: {
-          politicians: { where: { publicationStatus: "PUBLISHED" } },
-        },
-      },
-    },
-    orderBy: { politicians: { _count: "desc" } },
-    take: 8,
-  });
-
-  const condamnationCounts = await db.affair.groupBy({
-    by: ["politicianId"],
-    where: {
-      publicationStatus: "PUBLISHED",
-      involvement: "DIRECT",
-      status: {
-        in: ["CONDAMNATION_DEFINITIVE", "CONDAMNATION_PREMIERE_INSTANCE", "APPEL_EN_COURS"],
-      },
-    },
-    _count: true,
-  });
-
-  const politicianCondamnations = new Map(
-    condamnationCounts.map((a) => [a.politicianId, a._count])
-  );
-
-  const politiciansWithParty = await db.politician.findMany({
-    where: {
-      publicationStatus: "PUBLISHED",
-      currentPartyId: { not: null },
-    },
-    select: { id: true, currentParty: { select: { shortName: true } } },
-  });
-
-  const partyCondamnationMap = new Map<string, { count: number; members: number }>();
-  for (const p of politiciansWithParty) {
-    const party = p.currentParty!.shortName;
-    const entry = partyCondamnationMap.get(party) || { count: 0, members: 0 };
-    entry.count += politicianCondamnations.get(p.id) || 0;
-    entry.members++;
-    partyCondamnationMap.set(party, entry);
-  }
-
-  const totalPoliticians = parties.reduce((sum, p) => sum + p._count.politicians, 0);
-  const topParties = parties.slice(0, 6);
-
-  let content = `\u{1F4CA} ${totalPoliticians} \u00E9lus suivis sur Poligraph.\n\n`;
-  for (const p of topParties) {
-    content += `\u2022 ${p.shortName} \u2014 ${p._count.politicians}\n`;
-  }
-  content += `\nVotes, mandats, affaires, patrimoine \u2014 m\u00EAmes crit\u00E8res pour tous.`;
-
-  const drafts: TweetDraft[] = [
-    {
-      category: "\u{1F4CA} Chiffres",
-      content,
-      link: `${SITE_URL}/statistiques`,
-      hashtags: CATEGORY_HASHTAGS.chiffres,
-    },
+async function keyStats(recent: RecentlyPosted): Promise<TweetDraft[]> {
+  // Rotate between 4 angles — pick first not recently posted
+  const angles = [
+    "condamnations-par-parti",
+    "participation-groupes",
+    "elus-par-parti",
+    "patrimoine",
   ];
 
-  // Second tweet: condamnations by party
-  const sortedCondamnations = [...partyCondamnationMap.entries()]
-    .filter(([, v]) => v.count > 0)
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 6);
+  for (const angle of angles) {
+    const entityId = `chiffres:${angle}`;
+    if (wasRecentlyPosted(recent, entityId)) continue;
 
-  if (sortedCondamnations.length > 0) {
-    const totalCondamnations = sortedCondamnations.reduce((sum, [, v]) => sum + v.count, 0);
-
-    let condContent = `\u2696\uFE0F ${totalCondamnations} condamnations d'\u00E9lus par parti :\n\n`;
-    for (const [party, { count, members }] of sortedCondamnations) {
-      condContent += `\u2022 ${party} : ${count}/${members} ${plural(members, "\u00E9lu")}\n`;
-    }
-    condContent += `\nImplication directe, 1\u00E8re instance ou d\u00E9finitive.`;
-
-    drafts.push({
-      category: "\u{1F4CA} Chiffres",
-      content: condContent,
-      link: `${SITE_URL}/affaires`,
-      hashtags: ["Justice", "DataPolitique", "PolitiqueFR"],
-    });
+    const draft = await generateStatsAngle(angle, entityId);
+    if (draft) return [draft];
   }
 
-  return drafts;
+  return [];
 }
 
-async function recentAffairs(): Promise<TweetDraft[]> {
+async function generateStatsAngle(angle: string, entityId: string): Promise<TweetDraft | null> {
+  switch (angle) {
+    case "condamnations-par-parti": {
+      const condamnationCounts = await db.affair.groupBy({
+        by: ["politicianId"],
+        where: {
+          publicationStatus: "PUBLISHED",
+          involvement: "DIRECT",
+          status: {
+            in: ["CONDAMNATION_DEFINITIVE", "CONDAMNATION_PREMIERE_INSTANCE", "APPEL_EN_COURS"],
+          },
+        },
+        _count: true,
+      });
+
+      const politicianCondamnations = new Map(
+        condamnationCounts.map((a) => [a.politicianId, a._count])
+      );
+
+      const politiciansWithParty = await db.politician.findMany({
+        where: {
+          publicationStatus: "PUBLISHED",
+          currentPartyId: { not: null },
+        },
+        select: { id: true, currentParty: { select: { shortName: true } } },
+      });
+
+      const partyMap = new Map<string, { count: number; members: number }>();
+      for (const p of politiciansWithParty) {
+        const party = p.currentParty!.shortName;
+        const entry = partyMap.get(party) || { count: 0, members: 0 };
+        entry.count += politicianCondamnations.get(p.id) || 0;
+        entry.members++;
+        partyMap.set(party, entry);
+      }
+
+      const sorted = [...partyMap.entries()]
+        .filter(([, v]) => v.count > 0)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 6);
+
+      if (sorted.length === 0) return null;
+
+      const totalCondamnations = sorted.reduce((sum, [, v]) => sum + v.count, 0);
+
+      let content = `📊 ${totalCondamnations} condamnations d'élus par parti :\n\n`;
+      for (const [party, { count, members }] of sorted) {
+        content += `• ${party} : ${count}/${members} ${plural(members, "élu")}\n`;
+      }
+      content += `\nImplication directe, 1ère instance ou définitive.`;
+
+      const link = `${SITE_URL}/affaires`;
+      content += `\n\n→ ${link}`;
+
+      return { content, link, entityId };
+    }
+
+    case "participation-groupes": {
+      const topGroups = await db.politicianParticipation.groupBy({
+        by: ["groupName", "groupCode"],
+        where: { eligibleScrutins: { gte: 50 }, chamber: "AN" },
+        _avg: { participationRate: true },
+        _count: true,
+      });
+
+      const sorted = topGroups
+        .filter((g) => g._count >= 5 && g.groupName && g._avg.participationRate !== null)
+        .sort((a, b) => (b._avg.participationRate ?? 0) - (a._avg.participationRate ?? 0))
+        .slice(0, 6);
+
+      if (sorted.length === 0) return null;
+
+      let content = `📊 Participation moyenne par groupe à l'Assemblée :\n\n`;
+      for (const g of sorted) {
+        content += `• ${g.groupName} — ${Math.round(g._avg.participationRate!)}%\n`;
+      }
+
+      const link = `${SITE_URL}/statistiques`;
+      content += `\n→ ${link}`;
+
+      return { content, link, entityId };
+    }
+
+    case "elus-par-parti": {
+      const parties = await db.party.findMany({
+        where: {
+          politicians: { some: { publicationStatus: "PUBLISHED" } },
+        },
+        select: {
+          shortName: true,
+          _count: {
+            select: {
+              politicians: { where: { publicationStatus: "PUBLISHED" } },
+            },
+          },
+        },
+        orderBy: { politicians: { _count: "desc" } },
+        take: 8,
+      });
+
+      if (parties.length === 0) return null;
+
+      const totalPoliticians = parties.reduce((sum, p) => sum + p._count.politicians, 0);
+
+      let content = `📊 ${totalPoliticians} élus suivis sur Poligraph.\n\n`;
+      for (const p of parties.slice(0, 6)) {
+        content += `• ${p.shortName} — ${p._count.politicians}\n`;
+      }
+      content += `\nVotes, mandats, affaires, patrimoine — mêmes critères pour tous.`;
+
+      const link = `${SITE_URL}/statistiques`;
+      content += `\n\n→ ${link}`;
+
+      return { content, link, entityId };
+    }
+
+    case "patrimoine": {
+      const withDeclarations = await db.politician.count({
+        where: {
+          publicationStatus: "PUBLISHED",
+          declarations: { some: {} },
+        },
+      });
+
+      if (withDeclarations === 0) return null;
+
+      let content = `📊 ${withDeclarations} élus avec déclaration de patrimoine publiée sur Poligraph.\n\n`;
+      content += `Immobilier, comptes, véhicules — données HATVP structurées et comparables.`;
+
+      const link = `${SITE_URL}/statistiques`;
+      content += `\n\n→ ${link}`;
+
+      return { content, link, entityId };
+    }
+
+    default:
+      return null;
+  }
+}
+
+async function recentAffairs(recent: RecentlyPosted): Promise<TweetDraft[]> {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -346,7 +351,7 @@ async function recentAffairs(): Promise<TweetDraft[]> {
         select: {
           fullName: true,
           slug: true,
-          currentParty: { select: { shortName: true, name: true } },
+          currentParty: { select: { shortName: true } },
           mandates: {
             where: { isCurrent: true },
             take: 1,
@@ -356,49 +361,63 @@ async function recentAffairs(): Promise<TweetDraft[]> {
       },
     },
     orderBy: { updatedAt: "desc" },
-    take: 3,
+    take: 10,
   });
 
-  return affairs.map((a) => {
-    const statusLabel = AFFAIR_STATUS_LABELS[a.status];
+  const drafts: TweetDraft[] = [];
+
+  for (const a of affairs) {
+    const entityId = `affaires:${a.slug}`;
+    if (wasRecentlyPosted(recent, entityId)) continue;
+
+    const statusLabel = AFFAIR_STATUS_LABELS[a.status].toLowerCase();
     const needsPresumption = AFFAIR_STATUS_NEEDS_PRESUMPTION[a.status];
     const party = a.politician.currentParty?.shortName || "";
     const mandate = a.politician.mandates[0];
     const mandateLabel = mandate ? MANDATE_TYPE_LABELS[mandate.type].toLowerCase() : "";
+    const categoryLabel = AFFAIR_CATEGORY_LABELS[a.category]?.toLowerCase() || "";
 
-    let content = `\u2696\uFE0F ${a.politician.fullName}`;
+    let content = `⚖️ ${a.politician.fullName}`;
     if (party) content += ` (${party})`;
     if (mandateLabel) content += `, ${mandateLabel}`;
-    content += `\n\n${a.title}\nStatut : ${statusLabel}.`;
+    if (categoryLabel) content += ` — ${categoryLabel}`;
+    content += `.\n\n`;
+    content += `Statut : ${statusLabel}.`;
 
-    if (needsPresumption) {
-      content += `\n\n\u26A0\uFE0F Pr\u00E9somption d'innocence.`;
+    if (a.sentence) {
+      content += `\n« Peine : ${a.sentence} »`;
     }
 
-    return {
-      category: "\u2696\uFE0F Affaires r\u00E9centes",
-      content,
-      link: `${SITE_URL}/affaires/${a.slug}`,
-      hashtags: CATEGORY_HASHTAGS.affaires,
-    };
-  });
+    if (needsPresumption) {
+      content += `\n⚠️ Présomption d'innocence.`;
+    }
+
+    const link = `${SITE_URL}/affaires/${a.slug}`;
+    content += `\n\n→ ${link}`;
+
+    drafts.push({ content, link, entityId });
+
+    if (drafts.length >= 2) break;
+  }
+
+  return drafts;
 }
 
-async function factchecks(): Promise<TweetDraft[]> {
+async function factchecks(recent: RecentlyPosted): Promise<TweetDraft[]> {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const recent = await db.factCheck.findMany({
-    where: { publishedAt: { gte: sevenDaysAgo } },
-    select: {
-      slug: true,
-      title: true,
-      claimText: true,
-      claimant: true,
-      verdict: true,
-      verdictRating: true,
-      source: true,
-      publishedAt: true,
+  const recentFcs = await db.factCheck.findMany({
+    where: {
+      publishedAt: { gte: sevenDaysAgo },
+      languageCode: "fr",
+      mentions: {
+        some: {
+          politician: { publicationStatus: "PUBLISHED" },
+        },
+      },
+    },
+    include: {
       mentions: {
         where: { isClaimant: true },
         include: {
@@ -414,105 +433,50 @@ async function factchecks(): Promise<TweetDraft[]> {
       },
     },
     orderBy: { publishedAt: "desc" },
+    take: 10,
   });
 
-  if (recent.length === 0) return [];
+  if (recentFcs.length === 0) return [];
 
   const drafts: TweetDraft[] = [];
 
-  // --- Tweet 1: One notable factcheck with context ---
+  for (const fc of recentFcs) {
+    const entityId = `factchecks:${fc.slug || fc.id}`;
+    if (wasRecentlyPosted(recent, entityId)) continue;
 
-  // Prefer a factcheck linked to a known politician, or a notable false claim
-  const notable =
-    recent.find(
-      (f) => ["MOSTLY_FALSE", "FALSE"].includes(f.verdictRating) && f.mentions.length > 0
-    ) ||
-    recent.find((f) => f.mentions.length > 0) ||
-    recent.find((f) => ["MOSTLY_FALSE", "FALSE"].includes(f.verdictRating) && f.claimant) ||
-    recent[0];
+    const politician = fc.mentions[0]?.politician;
+    if (!politician) continue; // Must be linked to a tracked politician
 
-  const verdictLabel = VERDICT_LABELS[notable!.verdictRating] || notable!.verdict;
-  const politician = notable!.mentions[0]?.politician;
-  const party = politician?.currentParty?.shortName;
+    const verdictLabel = VERDICT_LABELS[fc.verdictRating] || fc.verdict;
+    const claim = fc.claimText || fc.title;
+    const claimantName = fc.claimant || politician.fullName;
 
-  let content = `\u{1F50D} `;
-  if (politician) {
-    content += `${politician.fullName}`;
-    if (party) content += ` (${party})`;
-    content += ` :\n\n`;
-  } else if (notable!.claimant) {
-    const isGenericClaimant = /utilisateur|r\u00E9seaux|social|internet|viral/i.test(
-      notable!.claimant
-    );
-    content += isGenericClaimant ? `Affirmation virale :\n\n` : `${notable!.claimant} :\n\n`;
-  } else {
-    content += `Affirmation virale :\n\n`;
-  }
+    let content = `🔍 « ${claim} »\n— ${claimantName}`;
 
-  const claim = notable!.claimText || notable!.title;
-  content += `\u00AB ${claim} \u00BB\n\n`;
-  content += `Verdict : ${verdictLabel}`;
-  if (notable!.source) content += ` (${notable!.source})`;
-  content += `.`;
+    content += `\n\nVerdict : ${verdictLabel.toUpperCase()}.`;
+    if (fc.source) content += ` (${fc.source})`;
 
-  // Link to the specific factcheck page, or the politician's page
-  const link = notable!.slug
-    ? `${SITE_URL}/factchecks/${notable!.slug}`
-    : politician?.slug
-      ? `${SITE_URL}/politiques/${politician.slug}`
-      : `${SITE_URL}/factchecks`;
+    const link = `${SITE_URL}/politiques/${politician.slug}`;
+    content += `\n\n→ ${link}`;
 
-  drafts.push({
-    category: "\u{1F50D} Fact-checks",
-    content,
-    link,
-    hashtags: CATEGORY_HASHTAGS.factchecks,
-  });
+    drafts.push({ content, link, entityId });
 
-  // --- Tweet 2 (optional): Weekly summary if enough data ---
-
-  if (recent.length >= 3) {
-    const truthy = recent.filter((f) => ["TRUE", "MOSTLY_TRUE"].includes(f.verdictRating)).length;
-    const misleading = recent.filter((f) =>
-      ["HALF_TRUE", "MISLEADING", "OUT_OF_CONTEXT"].includes(f.verdictRating)
-    ).length;
-    const falsy = recent.filter((f) => ["MOSTLY_FALSE", "FALSE"].includes(f.verdictRating)).length;
-
-    let summary = `\u{1F50D} ${recent.length} d\u00E9clarations v\u00E9rifi\u00E9es cette semaine.\n\n`;
-    summary += `\u2705 ${truthy} ${plural(truthy, "vraie")} \u00B7 \u26A0\uFE0F ${misleading} ${plural(misleading, "trompeuse")} \u00B7 \u274C ${falsy} ${plural(falsy, "fausse")}`;
-
-    drafts.push({
-      category: "\u{1F50D} Fact-checks",
-      content: summary,
-      link: `${SITE_URL}/factchecks`,
-      hashtags: CATEGORY_HASHTAGS.factchecks,
-    });
+    if (drafts.length >= 1) break;
   }
 
   return drafts;
 }
 
-async function deputySpotlight(): Promise<TweetDraft[]> {
-  const count = await db.politician.count({
-    where: {
-      publicationStatus: "PUBLISHED",
-      prominenceScore: { gte: 100 },
-      mandates: { some: { isCurrent: true } },
-    },
-  });
-
-  if (count === 0) return [];
-
-  const skip = Math.floor(Math.random() * count);
-
-  const politician = await db.politician.findFirst({
+async function deputySpotlight(recent: RecentlyPosted): Promise<TweetDraft[]> {
+  // Fetch a batch of prominent politicians with current mandates
+  const candidates = await db.politician.findMany({
     where: {
       publicationStatus: "PUBLISHED",
       prominenceScore: { gte: 100 },
       mandates: { some: { isCurrent: true } },
     },
     include: {
-      currentParty: { select: { shortName: true, name: true } },
+      currentParty: { select: { shortName: true } },
       mandates: {
         where: { isCurrent: true },
         take: 1,
@@ -520,49 +484,57 @@ async function deputySpotlight(): Promise<TweetDraft[]> {
       },
       _count: {
         select: {
-          votes: true,
           affairs: { where: { publicationStatus: "PUBLISHED", involvement: "DIRECT" } },
         },
       },
+      participation: true,
     },
-    skip,
+    orderBy: { prominenceScore: "desc" },
+    take: 50,
   });
 
-  if (!politician) return [];
+  for (const politician of candidates) {
+    const entityId = `politiques:${politician.slug}`;
+    if (wasRecentlyPosted(recent, entityId)) continue;
 
-  const mandate = politician.mandates[0];
-  const mandateLabel = mandate ? MANDATE_TYPE_LABELS[mandate.type].toLowerCase() : "";
-  const constituency = mandate?.constituency ? `, ${mandate.constituency}` : "";
-  const partyName = politician.currentParty?.shortName || "";
+    const mandate = politician.mandates[0];
+    const mandateLabel = mandate ? MANDATE_TYPE_LABELS[mandate.type].toLowerCase() : "";
+    const party = politician.currentParty?.shortName || "";
 
-  let hook = "";
-  if (politician._count.votes > 0 && politician._count.affairs > 0) {
-    hook = `${politician._count.votes.toLocaleString("fr-FR")} votes, ${politician._count.affairs} ${plural(politician._count.affairs, "affaire")} judiciaire${politician._count.affairs > 1 ? "s" : ""}`;
-  } else if (politician._count.votes > 0) {
-    hook = `${politician._count.votes.toLocaleString("fr-FR")} votes`;
-  } else {
-    hook = mandateLabel || "\u00E9lu en exercice";
+    // Build hook — skip this politician if no factual hook
+    let hook = "";
+
+    if (politician.participation) {
+      const rate = Math.round(politician.participation.participationRate);
+      hook = `Participation : ${rate}%`;
+      if (politician.participation.eligibleScrutins >= 50) {
+        hook += ` sur ${politician.participation.eligibleScrutins} scrutins`;
+      }
+    }
+
+    if (politician._count.affairs > 0) {
+      const affairCount = politician._count.affairs;
+      hook = `${affairCount} ${plural(affairCount, "affaire")} judiciaire${affairCount > 1 ? "s" : ""} documentée${affairCount > 1 ? "s" : ""}`;
+    }
+
+    // Skip if no hook
+    if (!hook) continue;
+
+    let content = `👤 ${politician.fullName}`;
+    if (party) content += ` (${party})`;
+    if (mandateLabel) content += `, ${mandateLabel}`;
+    content += `.\n\n${hook}.`;
+
+    const link = `${SITE_URL}/politiques/${politician.slug}`;
+    content += `\n\n→ ${link}`;
+
+    return [{ content, link, entityId }];
   }
 
-  const details = [partyName, mandateLabel ? `${mandateLabel}${constituency}` : ""]
-    .filter(Boolean)
-    .join(" \u00B7 ");
-
-  let content = `\u{1F464} ${politician.fullName}`;
-  if (details) content += ` \u2014 ${details}`;
-  content += `\n\n${hook}.`;
-
-  return [
-    {
-      category: "\u{1F464} Profil du jour",
-      content,
-      link: `${SITE_URL}/politiques/${politician.slug}`,
-      hashtags: CATEGORY_HASHTAGS.profil,
-    },
-  ];
+  return [];
 }
 
-async function elections(): Promise<TweetDraft[]> {
+async function elections(recent: RecentlyPosted): Promise<TweetDraft[]> {
   const now = new Date();
 
   const upcoming = await db.election.findFirst({
@@ -577,221 +549,129 @@ async function elections(): Promise<TweetDraft[]> {
   });
 
   if (upcoming) {
+    const entityId = `elections:${upcoming.slug}`;
+    if (wasRecentlyPosted(recent, entityId)) return [];
+
     const days = daysUntil(upcoming.round1Date!);
-    const date = formatDate(upcoming.round1Date!);
 
-    let content = `\u{1F5F3}\uFE0F J-${days}.\n\n`;
-    content += `${upcoming.title} \u2014 1er tour le ${date}.`;
-
+    let content = `🗳️ J-${days} avant les ${upcoming.title}.\n\n`;
     if (upcoming._count.candidacies > 0) {
-      content += `\n${upcoming._count.candidacies} ${plural(upcoming._count.candidacies, "candidature")}${upcoming._count.candidacies > 1 ? "s" : ""}.`;
+      content += `${upcoming._count.candidacies.toLocaleString("fr-FR")} candidatures enregistrées.`;
     }
 
-    return [
-      {
-        category: "\u{1F5F3}\uFE0F \u00C9lections",
-        content,
-        link: `${SITE_URL}/elections/${upcoming.slug}`,
-        hashtags: CATEGORY_HASHTAGS.elections,
-      },
-    ];
+    const link = `${SITE_URL}/elections/${upcoming.slug}`;
+    content += `\n\n→ ${link}`;
+
+    return [{ content, link, entityId }];
   }
 
-  const recent = await db.election.findFirst({
+  // Fallback: recent completed election
+  const completed = await db.election.findFirst({
     where: { status: "COMPLETED" },
     orderBy: { round1Date: "desc" },
   });
 
-  if (recent) {
-    let content = `\u{1F5F3}\uFE0F ${recent.title}\n\n`;
-    content += `R\u00E9sultats, \u00E9lus, candidats \u2014 tout est en ligne.`;
+  if (completed) {
+    const entityId = `elections:${completed.slug}`;
+    if (wasRecentlyPosted(recent, entityId)) return [];
 
-    return [
-      {
-        category: "\u{1F5F3}\uFE0F \u00C9lections",
-        content,
-        link: `${SITE_URL}/elections/${recent.slug}`,
-        hashtags: CATEGORY_HASHTAGS.elections,
-      },
-    ];
+    let content = `🗳️ ${completed.title}\n\n`;
+    content += `Résultats, élus, candidats — tout est en ligne.`;
+
+    const link = `${SITE_URL}/elections/${completed.slug}`;
+    content += `\n\n→ ${link}`;
+
+    return [{ content, link, entityId }];
   }
 
   return [];
 }
 
-async function recentPress(): Promise<TweetDraft[]> {
-  const twoDaysAgo = new Date();
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+async function participationRanking(recent: RecentlyPosted): Promise<TweetDraft[]> {
+  // Alternate bottom 5 / top 5 based on day parity
+  const dayOfYear = Math.floor(
+    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const showBottom = dayOfYear % 2 === 0;
 
-  const mentions = await db.pressArticleMention.findMany({
-    where: {
-      article: { publishedAt: { gte: twoDaysAgo } },
-      politician: { publicationStatus: "PUBLISHED", prominenceScore: { gte: 200 } },
-    },
-    include: {
-      article: { select: { title: true, feedSource: true, publishedAt: true } },
-      politician: {
-        select: {
-          fullName: true,
-          slug: true,
-          currentParty: { select: { shortName: true } },
-        },
-      },
-    },
-    orderBy: { article: { publishedAt: "desc" } },
-    take: 20,
-  });
-
-  if (mentions.length === 0) return [];
-
-  // Group by politician, pick the one with most mentions
-  const byPolitician = new Map<string, typeof mentions>();
-  for (const m of mentions) {
-    const key = m.politician.slug;
-    const list = byPolitician.get(key) || [];
-    list.push(m);
-    byPolitician.set(key, list);
+  const entityId = `presence:${showBottom ? "bottom5" : "top5"}`;
+  if (wasRecentlyPosted(recent, entityId)) {
+    // Try the other variant
+    const altEntityId = `presence:${showBottom ? "top5" : "bottom5"}`;
+    if (wasRecentlyPosted(recent, altEntityId)) return [];
+    return generateParticipationDraft(!showBottom, altEntityId);
   }
 
-  const topEntry = [...byPolitician.entries()].sort((a, b) => b[1].length - a[1].length)[0];
-
-  if (!topEntry) return [];
-
-  const [, pMentions] = topEntry;
-  const pol = pMentions[0]!.politician;
-  const party = pol.currentParty?.shortName ? ` (${pol.currentParty.shortName})` : "";
-
-  // Deduplicate by feedSource, take top 5
-  const seen = new Set<string>();
-  const uniqueArticles = pMentions
-    .filter((m) => {
-      if (seen.has(m.article.feedSource)) return false;
-      seen.add(m.article.feedSource);
-      return true;
-    })
-    .slice(0, 5);
-
-  // Lead with the first headline
-  const firstArticle = uniqueArticles[0];
-  const firstSource =
-    FEED_NAMES[firstArticle!.article.feedSource] || firstArticle!.article.feedSource;
-
-  let content = `\u{1F4F0} ${pol.fullName}${party} \u2014 ${pMentions.length} ${plural(pMentions.length, "mention")} presse en 48h.\n\n`;
-  content += `\u00AB ${firstArticle!.article.title} \u00BB (${firstSource})`;
-
-  if (uniqueArticles.length > 1) {
-    const otherSources = uniqueArticles
-      .slice(1)
-      .map((m) => FEED_NAMES[m.article.feedSource] || m.article.feedSource);
-    content += `\n\n\u00C9galement dans : ${otherSources.join(", ")}.`;
-  }
-
-  // Collect media Twitter handles from cited sources
-  const mediaMentions = uniqueArticles
-    .map((m) => MEDIA_TWITTER[m.article.feedSource])
-    .filter((x): x is string => Boolean(x));
-  // Deduplicate
-  const uniqueMentions = [...new Set(mediaMentions)];
-
-  return [
-    {
-      category: "\u{1F4F0} Revue de presse",
-      content,
-      link: `${SITE_URL}/politiques/${pol.slug}`,
-      hashtags: CATEGORY_HASHTAGS.presse,
-      mentions: uniqueMentions,
-    },
-  ];
+  return generateParticipationDraft(showBottom, entityId);
 }
 
-async function participationRanking(): Promise<TweetDraft[]> {
-  const participationSelect = {
-    firstName: true,
-    lastName: true,
-    slug: true,
-    participationRate: true,
-    votesCount: true,
-    eligibleScrutins: true,
-    chamber: true,
-    groupName: true,
-  } as const;
+async function generateParticipationDraft(
+  showBottom: boolean,
+  entityId: string
+): Promise<TweetDraft[]> {
+  const ranking = await db.politicianParticipation.findMany({
+    where: { eligibleScrutins: { gte: 50 }, chamber: "AN" },
+    orderBy: { participationRate: showBottom ? "asc" : "desc" },
+    take: 5,
+    select: {
+      firstName: true,
+      lastName: true,
+      participationRate: true,
+      groupName: true,
+    },
+  });
 
-  // Query separately per chamber to avoid mixing AN/SENAT rankings
-  const [bottomAN, topAN] = await Promise.all([
-    db.politicianParticipation.findMany({
-      where: { eligibleScrutins: { gte: 50 }, chamber: "AN" },
-      orderBy: { participationRate: "asc" },
-      take: 5,
-      select: participationSelect,
-    }),
-    db.politicianParticipation.findMany({
-      where: { eligibleScrutins: { gte: 50 }, chamber: "AN" },
-      orderBy: { participationRate: "desc" },
-      take: 5,
-      select: participationSelect,
-    }),
-  ]);
+  if (ranking.length < 3) return [];
 
-  const drafts: TweetDraft[] = [];
+  const emoji = showBottom ? "📉" : "📈";
+  const label = showBottom ? "les moins assidus" : "les plus assidus";
 
-  if (bottomAN.length >= 3) {
-    const worst = bottomAN[0];
-    let content = `\u{1F4C9} ${worst!.firstName} ${worst!.lastName}`;
-    if (worst!.groupName) content += ` (${worst!.groupName})`;
-    content += ` : ${Math.round(worst!.participationRate)}% de participation.\n\n`;
-    for (const p of bottomAN) {
-      content += `\u2022 ${p.firstName} ${p.lastName} \u2014 ${Math.round(p.participationRate)}%\n`;
-    }
+  let content = `${emoji} Les 5 députés ${label} ce mois :\n\n`;
+  ranking.forEach((p, i) => {
+    const group = p.groupName ? ` (${p.groupName})` : "";
+    content += `${i + 1}. ${p.firstName} ${p.lastName}${group} — ${Math.round(p.participationRate)}%\n`;
+  });
 
-    drafts.push({
-      category: "\u{1F4C9} Pr\u00E9sence au Parlement",
-      content,
-      link: `${SITE_URL}/statistiques`,
-      hashtags: CATEGORY_HASHTAGS.presence,
-    });
+  const link = `${SITE_URL}/statistiques`;
+  content += `\n→ ${link}`;
+
+  return [{ content, link, entityId }];
+}
+
+async function methodoPost(recent: RecentlyPosted): Promise<TweetDraft[]> {
+  for (const topic of METHODO_TOPICS) {
+    const entityId = `methodo:${topic.slug}`;
+    if (wasRecentlyPosted(recent, entityId)) continue;
+
+    return [{ content: topic.content, entityId }];
   }
 
-  if (topAN.length >= 3) {
-    const best = topAN[0];
-    let content = `\u{1F4C8} ${best!.firstName} ${best!.lastName}`;
-    if (best!.groupName) content += ` (${best!.groupName})`;
-    content += ` : ${Math.round(best!.participationRate)}% de participation.\n\n`;
-    for (const p of topAN) {
-      content += `\u2022 ${p.firstName} ${p.lastName} \u2014 ${Math.round(p.participationRate)}%\n`;
-    }
-
-    drafts.push({
-      category: "\u{1F4C8} Pr\u00E9sence au Parlement",
-      content,
-      link: `${SITE_URL}/statistiques`,
-      hashtags: CATEGORY_HASHTAGS.presence,
-    });
-  }
-
-  return drafts;
+  return [];
 }
 
 // --- Exports ---
 
-export const GENERATORS: Record<string, () => Promise<TweetDraft[]>> = {
+export const GENERATORS: Record<string, (recent: RecentlyPosted) => Promise<TweetDraft[]>> = {
   votes: divisiveVotes,
-  consensus: unanimousVotes,
-  chiffres: partyStats,
+  chiffres: keyStats,
   affaires: recentAffairs,
   factchecks: factchecks,
   profil: deputySpotlight,
   elections: elections,
-  presse: recentPress,
   presence: participationRanking,
+  methodo: methodoPost,
 };
 
 /** Generate a single tweet draft for a given category. Returns null if the generator produces nothing. */
-export async function generateForCategory(category: string): Promise<TweetDraft | null> {
+export async function generateForCategory(
+  category: string,
+  recent: RecentlyPosted
+): Promise<TweetDraft | null> {
   const gen = GENERATORS[category];
   if (!gen) return null;
   try {
-    const drafts = await gen();
-    return drafts[0] || null;
+    const drafts = await gen(recent);
+    return drafts[0] ?? null;
   } catch (err) {
     console.error(`[social] Generator "${category}" failed:`, err);
     return null;

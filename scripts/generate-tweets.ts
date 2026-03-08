@@ -3,11 +3,12 @@ import * as fs from "fs";
 import * as path from "path";
 import { db } from "../src/lib/db";
 import { GENERATORS, type TweetDraft } from "../src/lib/social/generators";
+import { getRecentlyPosted } from "../src/lib/social/dedup";
 import { formatDate } from "../src/lib/utils";
 
 const MAX_CHARS = 4000; // X Premium
 
-function renderMarkdown(drafts: TweetDraft[]): string {
+function renderMarkdown(drafts: { category: string; tweet: TweetDraft }[]): string {
   const today = formatDate(new Date());
   let md = `# Brouillons tweets — ${today}\n\n`;
 
@@ -15,7 +16,7 @@ function renderMarkdown(drafts: TweetDraft[]): string {
   const grouped = new Map<string, TweetDraft[]>();
   for (const d of drafts) {
     const list = grouped.get(d.category) || [];
-    list.push(d);
+    list.push(d.tweet);
     grouped.set(d.category, list);
   }
 
@@ -23,15 +24,8 @@ function renderMarkdown(drafts: TweetDraft[]): string {
   for (const [category, tweets] of grouped) {
     md += `## ${category}\n\n`;
     for (const t of tweets) {
-      // Build the full tweet text with tags
       let fullText = t.content;
       if (t.link) fullText += `\n\n👉 ${t.link}`;
-
-      // Add mentions and hashtags on the last line
-      const tagParts: string[] = [];
-      if (t.mentions?.length) tagParts.push(t.mentions.map((m) => `@${m}`).join(" "));
-      if (t.hashtags?.length) tagParts.push(t.hashtags.map((h) => `#${h}`).join(" "));
-      if (tagParts.length > 0) fullText += `\n\n${tagParts.join(" ")}`;
 
       const charCount = fullText.length;
       const status = charCount > MAX_CHARS ? "⚠️ TROP LONG" : "✅";
@@ -48,13 +42,16 @@ function renderMarkdown(drafts: TweetDraft[]): string {
 async function main() {
   console.log("Génération des brouillons de tweets...\n");
 
+  const recent = await getRecentlyPosted();
   const generators = Object.entries(GENERATORS);
-  const allDrafts: TweetDraft[] = [];
+  const allDrafts: { category: string; tweet: TweetDraft }[] = [];
 
   for (const [name, fn] of generators) {
     try {
-      const drafts = await fn();
-      allDrafts.push(...drafts);
+      const drafts = await fn(recent);
+      for (const d of drafts) {
+        allDrafts.push({ category: name, tweet: d });
+      }
       console.log(`  ✓ ${name}: ${drafts.length} tweet(s)`);
     } catch (error) {
       console.error(`  ✗ ${name}: ${error}`);

@@ -15,7 +15,7 @@ const DATA_SOURCES = [
     name: "Assemblée nationale",
     shortName: "AN",
     description: "Liste officielle des 577 députés, mandats, groupes parlementaires",
-    url: "https://data.gouv.fr",
+    url: "https://data.assemblee-nationale.fr/",
     frequency: "Quotidienne",
     fields: ["Identité", "Parti", "Circonscription", "Date de mandat", "Photo"],
     color: "#0066CC",
@@ -78,8 +78,8 @@ const DATA_SOURCES = [
     name: "Presse (RSS)",
     shortName: "Presse",
     description:
-      "Articles politiques du Monde, Politico et Mediapart avec détection automatique des mentions",
-    url: "https://www.lemonde.fr/politique/",
+      "Articles politiques agrégés depuis les flux RSS de médias nationaux, avec détection automatique des mentions",
+    url: null,
     frequency: "Quotidienne",
     fields: ["Articles", "Mentions politiciens", "Mentions partis"],
     color: "#E8A838",
@@ -224,14 +224,16 @@ export default function SourcesPage() {
                       Mise à jour : {source.frequency}
                     </p>
                   </div>
-                  <a
-                    href={source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline shrink-0"
-                  >
-                    Source
-                  </a>
+                  {source.url && (
+                    <a
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline shrink-0"
+                    >
+                      Source
+                    </a>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -266,9 +268,6 @@ export default function SourcesPage() {
             </p>
             <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
               <li>
-                <strong>Chatbot</strong> : répond aux questions à partir des données du site (RAG)
-              </li>
-              <li>
                 <strong>Classification</strong> : catégorise les textes législatifs dans 13 thèmes
               </li>
               <li>
@@ -278,14 +277,12 @@ export default function SourcesPage() {
               <li>
                 <strong>Modération</strong> : aide à la vérification des données judiciaires
               </li>
-              <li>
-                <strong>Extraction</strong> : structure les informations depuis Wikipedia
-              </li>
             </ul>
             <p className="text-sm text-muted-foreground">
               L&apos;IA n&apos;est pas utilisée pour rédiger des contenus éditoriaux. Certains
-              champs (biographies, résumés de votes) peuvent avoir été générés puis validés
-              manuellement. Toutes les sources de données sont réelles et vérifiables.
+              champs descriptifs (biographies, résumés) ont été générés à partir des données
+              structurées Wikidata présentes en base, puis validés manuellement. Toutes les sources
+              de données sont réelles et vérifiables.
             </p>
           </CardContent>
         </Card>
@@ -531,17 +528,19 @@ export default function SourcesPage() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="opacity-60">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Chatbot IA</CardTitle>
+              <CardTitle className="text-lg">
+                Chatbot IA{" "}
+                <Badge variant="outline" className="ml-2 text-xs font-normal">
+                  À venir
+                </Badge>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Assistant conversationnel basé sur nos données (RAG), avec citations obligatoires et
                 rappel de la présomption d&apos;innocence.
-                <Link href="/chat" className="text-primary hover:underline ml-1">
-                  Poser une question
-                </Link>
               </p>
             </CardContent>
           </Card>

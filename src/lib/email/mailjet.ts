@@ -69,9 +69,9 @@ export async function sendNewsletter({
   // 1. Create campaign draft targeting the contact list
   const draftRes = await mailjet.post("campaigndraft").request({
     Locale: "fr_FR",
-    Sender: "Poligraph",
-    SenderName: "Poligraph",
-    SenderEmail: "newsletter@poligraph.fr",
+    Sender: process.env.MAILJET_SENDER_NAME || "Poligraph",
+    SenderName: process.env.MAILJET_SENDER_NAME || "Poligraph",
+    SenderEmail: process.env.MAILJET_SENDER_EMAIL || "newsletter@poligraph.fr",
     Subject: subject,
     ContactsListID: listId,
   });

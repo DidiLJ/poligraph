@@ -4,6 +4,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
+import { User, Briefcase, Vote, Scale } from "lucide-react";
 
 const VALID_TABS = ["profil", "carriere", "votes", "affaires"] as const;
 type TabValue = (typeof VALID_TABS)[number];
@@ -14,6 +15,7 @@ interface ProfileTabsProps {
   careerContent: ReactNode;
   votesContent: ReactNode | null;
   affairsContent: ReactNode;
+  affairsCount?: number;
 }
 
 function ProfileTabsInner({
@@ -21,6 +23,7 @@ function ProfileTabsInner({
   careerContent,
   votesContent,
   affairsContent,
+  affairsCount,
 }: ProfileTabsProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -48,10 +51,29 @@ function ProfileTabsInner({
   return (
     <Tabs value={tab} onValueChange={onTabChange}>
       <TabsList variant="line" className="w-full justify-start">
-        <TabsTrigger value="profil">Profil</TabsTrigger>
-        <TabsTrigger value="carriere">Carriere</TabsTrigger>
-        {votesContent && <TabsTrigger value="votes">Votes</TabsTrigger>}
-        <TabsTrigger value="affaires">Affaires</TabsTrigger>
+        <TabsTrigger value="profil">
+          <User className="size-4" />
+          Profil
+        </TabsTrigger>
+        <TabsTrigger value="carriere">
+          <Briefcase className="size-4" />
+          Carriere
+        </TabsTrigger>
+        {votesContent && (
+          <TabsTrigger value="votes">
+            <Vote className="size-4" />
+            Votes
+          </TabsTrigger>
+        )}
+        <TabsTrigger value="affaires">
+          <Scale className="size-4" />
+          Affaires
+          {affairsCount != null && affairsCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium min-w-[1.25rem] h-5 px-1.5">
+              {affairsCount}
+            </span>
+          )}
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="profil">{profileContent}</TabsContent>
       <TabsContent value="carriere">{careerContent}</TabsContent>
@@ -61,7 +83,7 @@ function ProfileTabsInner({
   );
 }
 
-export function ProfileTabs(props: ProfileTabsProps) {
+export function ProfileTabs(props: ProfileTabsProps & { affairsCount?: number }) {
   return (
     <Suspense>
       <ProfileTabsInner {...props} />

@@ -7,7 +7,7 @@
  */
 
 import { db } from "@/lib/db";
-import { classifyTheme, ThemeCategoryValue } from "@/services/summarize";
+import { classifyTheme, ThemeCategoryValue } from "@/services/classify-theme";
 import type { ThemeCategory } from "@/generated/prisma";
 import { AI_RATE_LIMIT_MS, AI_429_BACKOFF_MS } from "@/config/rate-limits";
 

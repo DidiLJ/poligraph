@@ -65,6 +65,26 @@ function formatDateShort(date: Date): string {
   });
 }
 
+/**
+ * Convert AI editorial text to email-safe HTML:
+ * - Strip markdown headings (# Title)
+ * - Convert **bold** to <strong>
+ * - Convert newlines to <br>
+ * - Escape remaining HTML
+ */
+function formatEditorialHtml(text: string): string {
+  let result = text;
+  // Strip markdown headings (# Title → Title)
+  result = result.replace(/^#{1,3}\s+/gm, "");
+  // Escape HTML first
+  result = escapeHtml(result);
+  // Convert **bold** to <strong> (after escaping so the ** aren't affected)
+  result = result.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  // Convert newlines to <br>
+  result = result.replace(/\n/g, "<br />");
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // HTML building helpers (private)
 // ---------------------------------------------------------------------------
@@ -134,11 +154,17 @@ function buildFactChecksHtml(recap: WeeklyRecapData): string {
   const fc = recap.factChecks;
   if (fc.total === 0) return "";
 
-  const countsHtml = `<div style="padding: 8px 0;">
+  const hasBreakdown = fc.trueCount > 0 || fc.falseCount > 0 || fc.mixedCount > 0;
+  const countsHtml = hasBreakdown
+    ? `<div style="padding: 8px 0;">
     <span style="color: #166534; font-weight: 600;">${fc.trueCount} vrai${fc.trueCount > 1 ? "s" : ""}</span> ·
     <span style="color: #991b1b; font-weight: 600;">${fc.falseCount} faux</span> ·
     <span style="color: #92400e; font-weight: 600;">${fc.mixedCount} mitigé${fc.mixedCount > 1 ? "s" : ""}</span>
     <span style="font-size: 13px; color: #6b7280;"> sur ${fc.total} vérification${fc.total > 1 ? "s" : ""} cette semaine</span>
+  </div>`
+    : `<div style="padding: 8px 0;">
+    <span style="font-weight: 600; color: #1e3a5f;">${fc.total} vérification${fc.total > 1 ? "s" : ""}</span>
+    <span style="font-size: 13px; color: #6b7280;"> publiée${fc.total > 1 ? "s" : ""} cette semaine</span>
   </div>`;
 
   const topClaimant = fc.topPoliticians[0];
@@ -334,7 +360,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
     totalArticles: String(recap.press.articleCount),
     totalAffairs: String(recap.affairs.total),
     totalFactChecks: String(recap.factChecks.total),
-    editorialIntro: escapeHtml(editorialIntro),
+    editorialIntro: formatEditorialHtml(editorialIntro),
     votesHtml,
     affairsHtml,
     factChecksHtml,

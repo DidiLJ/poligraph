@@ -102,6 +102,10 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
         font-weight: 700;
         color: #1e3a5f;
       }
+      .politician-photo img {
+        object-fit: cover;
+        aspect-ratio: 1;
+      }
     </style>
     
   </head>
@@ -866,7 +870,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
           
               <tr>
                 <td
-                   align="center" style="font-size:0px;padding:10px 25px;word-break:break-word;"
+                   align="center" class="politician-photo" style="font-size:0px;padding:10px 25px;word-break:break-word;"
                 >
                   
       <table
@@ -877,7 +881,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
             <td  style="width:30px;">
               
       <img
-         alt="{{politicianName}}" src="{{politicianPhoto}}" style="border:0;border-radius:32px;display:block;outline:none;text-decoration:none;height:64px;width:100%;font-size:14px;" width="30" height="64"
+         alt="{{politicianName}}" src="{{politicianPhoto}}" style="border:0;border-radius:50%;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:14px;" width="30" height="auto"
       />
     
             </td>

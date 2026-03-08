@@ -9,7 +9,8 @@
 
 import { db } from "@/lib/db";
 import { generateDateSlug, generateUniqueSlug } from "@/lib/utils";
-import { DossierStatus } from "@/generated/prisma";
+import { DossierStatus, Prisma } from "@/generated/prisma";
+import type { DossierTimelineEntry } from "@/types/legislation";
 import * as fs from "fs";
 import * as path from "path";
 import * as https from "https";
@@ -135,6 +136,40 @@ function findAllDates(actes: ANActe | ANActe[] | undefined | null): Date[] {
     }
   }
   return dates;
+}
+
+function inferChamber(code: string): string {
+  if (code.startsWith("ANL") || code.startsWith("AN1") || code.startsWith("AN2")) return "AN";
+  if (code.startsWith("SNL") || code.startsWith("SN1") || code.startsWith("SN2")) return "SENAT";
+  if (code.startsWith("CMP")) return "CMP";
+  if (code.startsWith("CC")) return "CC";
+  if (code.startsWith("PROM")) return "GOV";
+  // Fallback heuristics based on known AN-specific codes
+  if (code.includes("DEPOT") || code.includes("COM-FOND") || code.includes("COM-AVIS")) return "AN";
+  if (code.includes("DEBATS")) return "AN";
+  return "UNKNOWN";
+}
+
+function buildTimeline(actes: ANActe | ANActe[] | undefined | null): DossierTimelineEntry[] {
+  if (!actes) return [];
+  const acteArray = Array.isArray(actes) ? actes : [actes];
+  const entries: DossierTimelineEntry[] = [];
+  for (const acte of acteArray) {
+    const entry: DossierTimelineEntry = {
+      code: acte.codeActe,
+      label: acte.libelleActe?.nomCanonique || acte.codeActe,
+      date: acte.dateActe || null,
+      chamber: inferChamber(acte.codeActe),
+    };
+    if (acte.actesLegislatifs?.acteLegislatif) {
+      const children = buildTimeline(acte.actesLegislatifs.acteLegislatif);
+      if (children.length > 0) {
+        entry.children = children;
+      }
+    }
+    entries.push(entry);
+  }
+  return entries;
 }
 
 function determineStatus(codes: string[], legislature?: number): DossierStatus {
@@ -344,6 +379,8 @@ export async function syncLegislation(options?: {
 
         const sourceUrl = `https://www.assemblee-nationale.fr/dyn/${legislature}/dossiers/${dp.titreDossier?.titreChemin || externalId}`;
 
+        const timeline = buildTimeline(dp.actesLegislatifs?.acteLegislatif);
+
         const existing = await db.legislativeDossier.findUnique({
           where: { externalId },
         });
@@ -359,6 +396,8 @@ export async function syncLegislation(options?: {
           adoptionDate,
           sourceUrl,
           documentExternalId,
+          timeline:
+            timeline.length > 0 ? (timeline as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
         };
 
         if (existing) {

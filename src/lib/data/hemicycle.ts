@@ -49,7 +49,7 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
               lastName: true,
               photoUrl: true,
               affairs: {
-                where: { publicationStatus: "PUBLISHED" },
+                where: { publicationStatus: "PUBLISHED", involvement: "DIRECT" },
                 select: { status: true },
               },
             },

@@ -237,7 +237,7 @@ function buildPlainText(input: RenderInput): string {
   const year = recap.weekStart.getUTCFullYear();
   const lines: string[] = [];
 
-  lines.push(`ALERTE VOTE — Semaine ${weekNum} (${year})`);
+  lines.push(`LA SEMAINE POLIGRAPH - S${weekNum} (${year})`);
   lines.push(`Du ${formatDateShort(recap.weekStart)} au ${formatDateShort(recap.weekEnd)}`);
   lines.push("");
   lines.push(
@@ -355,7 +355,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
 
   // All replacements
   const replacements: Record<string, string> = {
-    weekLabel: `Semaine ${weekNum} — Du ${formatDateShort(recap.weekStart)} au ${formatDateShort(recap.weekEnd)} ${year}`,
+    weekLabel: `Semaine ${weekNum} - Du ${formatDateShort(recap.weekStart)} au ${formatDateShort(recap.weekEnd)} ${year}`,
     totalScrutins: String(recap.votes.total),
     totalArticles: String(recap.press.articleCount),
     totalAffairs: String(recap.affairs.total),

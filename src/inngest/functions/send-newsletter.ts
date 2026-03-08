@@ -163,7 +163,7 @@ Parti : ${sanitize(politicianData.partyShortName || "sans étiquette")}
       const weekNum = getISOWeekNumber(weekStart);
 
       const result = await send({
-        subject: `Alerte Vote — Semaine ${weekNum}`,
+        subject: `La Semaine Poligraph - S${weekNum}`,
         htmlContent: email.html,
         textContent: email.text,
       });

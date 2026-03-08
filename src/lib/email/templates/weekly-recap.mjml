@@ -67,7 +67,7 @@
           letter-spacing="0.5px"
           padding-bottom="4px"
         >
-          Alerte Vote
+          La Semaine Poligraph
         </mj-text>
         <mj-text align="center" color="#93c5fd" font-size="14px" padding-top="0">
           {{ weekLabel }}
@@ -232,7 +232,7 @@
     <mj-section padding="16px 20px 32px">
       <mj-column>
         <mj-text align="center" font-size="11px" color="#9ca3af">
-          Vous recevez cet email car vous êtes abonné à Alerte Vote par Poligraph.
+          Vous recevez cet email car vous êtes abonné à La Semaine Poligraph.
           <br />
           <a href="{{unsubscribeUrl}}" style="color: #9ca3af; text-decoration: underline"
             >Se désabonner</a

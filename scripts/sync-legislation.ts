@@ -15,7 +15,8 @@ import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
 import { db } from "../src/lib/db";
 import { generateDateSlug } from "../src/lib/utils";
-import { DossierStatus } from "../src/generated/prisma";
+import { DossierStatus, Prisma } from "../src/generated/prisma";
+import type { DossierTimelineEntry } from "../src/types/legislation";
 import * as fs from "fs";
 import * as path from "path";
 import * as https from "https";
@@ -215,6 +216,45 @@ function findAllDates(actes: ANActe | ANActe[] | undefined | null): Date[] {
   }
 
   return dates;
+}
+
+/**
+ * Infer chamber from act code prefix
+ */
+function inferChamber(code: string): string {
+  if (code.startsWith("ANL") || code.startsWith("AN1") || code.startsWith("AN2")) return "AN";
+  if (code.startsWith("SNL") || code.startsWith("SN1") || code.startsWith("SN2")) return "SENAT";
+  if (code.startsWith("CMP")) return "CMP";
+  if (code.startsWith("CC")) return "CC";
+  if (code.startsWith("PROM")) return "GOV";
+  if (code.includes("DEPOT") || code.includes("COM-FOND") || code.includes("COM-AVIS")) return "AN";
+  if (code.includes("DEBATS")) return "AN";
+  return "UNKNOWN";
+}
+
+/**
+ * Recursively build timeline from actesLegislatifs tree
+ */
+function buildTimeline(actes: ANActe | ANActe[] | undefined | null): DossierTimelineEntry[] {
+  if (!actes) return [];
+  const acteArray = Array.isArray(actes) ? actes : [actes];
+  const entries: DossierTimelineEntry[] = [];
+  for (const acte of acteArray) {
+    const entry: DossierTimelineEntry = {
+      code: acte.codeActe,
+      label: acte.libelleActe?.nomCanonique || acte.codeActe,
+      date: acte.dateActe || null,
+      chamber: inferChamber(acte.codeActe),
+    };
+    if (acte.actesLegislatifs?.acteLegislatif) {
+      const children = buildTimeline(acte.actesLegislatifs.acteLegislatif);
+      if (children.length > 0) {
+        entry.children = children;
+      }
+    }
+    entries.push(entry);
+  }
+  return entries;
 }
 
 /**
@@ -507,6 +547,9 @@ async function syncLegislation(
         // Source URL
         const sourceUrl = `https://www.assemblee-nationale.fr/dyn/${legislature}/dossiers/${dp.titreDossier?.titreChemin || externalId}`;
 
+        // Build timeline from acts tree
+        const timeline = buildTimeline(dp.actesLegislatifs?.acteLegislatif);
+
         // Update stats
         stats.byStatus[status] = (stats.byStatus[status] || 0) + 1;
         if (category) {
@@ -530,6 +573,8 @@ async function syncLegislation(
             adoptionDate,
             sourceUrl,
             documentExternalId,
+            timeline:
+              timeline.length > 0 ? (timeline as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
           };
 
           if (existing) {

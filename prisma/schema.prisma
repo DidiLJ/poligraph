@@ -70,6 +70,7 @@ model Politician {
   participation       PoliticianParticipation? // Pre-computed participation stats
   identityDecisions   IdentityDecision[] // Identity resolution audit trail
   newsletterEditions  NewsletterEdition[] // Weeks featured as "politician of the week"
+  dossierAuthors      DossierAuthor[] // Dossiers authored/initiated by this politician
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -851,6 +852,7 @@ model LegislativeDossier {
 
   amendments Amendment[]
   scrutins   Scrutin[]
+  authors    DossierAuthor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -859,6 +861,19 @@ model LegislativeDossier {
   @@index([category])
   @@index([theme])
   @@index([filingDate])
+}
+
+model DossierAuthor {
+  id           String              @id @default(cuid())
+  dossierId    String
+  dossier      LegislativeDossier  @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  politicianId String
+  politician   Politician          @relation(fields: [politicianId], references: [id], onDelete: Cascade)
+  acteurRef    String? // AN acteurRef for traceability
+
+  @@unique([dossierId, politicianId])
+  @@index([dossierId])
+  @@index([politicianId])
 }
 
 enum DossierStatus {

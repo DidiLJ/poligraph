@@ -135,8 +135,8 @@ export function computeHemicycleLayout(
         const seatPosition = seatCursor + 0.5;
         const angle = arcStart - (seatPosition / rowTotal) * (arcStart - arcEnd);
         seats.push({
-          x: cx + radius * Math.cos(angle),
-          y: cy - radius * Math.sin(angle),
+          x: Math.round((cx + radius * Math.cos(angle)) * 100) / 100,
+          y: Math.round((cy - radius * Math.sin(angle)) * 100) / 100,
           groupCode: group.code,
           groupColor: group.color,
           seatIndex: globalIndex++,

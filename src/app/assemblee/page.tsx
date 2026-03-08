@@ -4,16 +4,11 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { DossierCard, StatusBadge, CategoryBadge } from "@/components/legislation";
+import { DossierCard, DossierFilterBar } from "@/components/legislation";
 import {
   DOSSIER_STATUS_LABELS,
-  DOSSIER_STATUS_COLORS,
   DOSSIER_STATUS_ICONS,
   DOSSIER_STATUS_DESCRIPTIONS,
-  THEME_CATEGORY_LABELS,
-  THEME_CATEGORY_ICONS,
-  THEME_CATEGORY_COLORS,
 } from "@/config/labels";
 import type { DossierStatus, ThemeCategory } from "@/generated/prisma";
 import { ExternalLink } from "lucide-react";
@@ -32,13 +27,14 @@ interface PageProps {
   searchParams: Promise<{
     status?: string;
     theme?: string;
+    sort?: string;
     page?: string;
   }>;
 }
 
 const ITEMS_PER_PAGE = 15;
 
-async function getDossiers(status?: string, theme?: string, page = 1) {
+async function getDossiers(status?: string, theme?: string, sort?: string, page = 1) {
   const skip = (page - 1) * ITEMS_PER_PAGE;
 
   const where: Record<string, unknown> = {};
@@ -49,13 +45,15 @@ async function getDossiers(status?: string, theme?: string, page = 1) {
     where.theme = theme as ThemeCategory;
   }
 
+  const orderBy =
+    sort === "updated"
+      ? [{ updatedAt: "desc" as const }]
+      : [{ status: "asc" as const }, { filingDate: "desc" as const }];
+
   const [dossiers, total] = await Promise.all([
     db.legislativeDossier.findMany({
       where,
-      orderBy: [
-        { status: "asc" }, // DEPOSE, EN_COURS first (active dossiers)
-        { filingDate: "desc" },
-      ],
+      orderBy,
       skip,
       take: ITEMS_PER_PAGE,
       include: {
@@ -108,10 +106,11 @@ export default async function AssembleePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const statusFilter = params.status || "";
   const themeFilter = params.theme || "";
+  const sortFilter = params.sort || "";
   const page = parseInt(params.page || "1", 10);
 
   const [{ dossiers, total, totalPages }, statusCounts, themeCounts] = await Promise.all([
-    getDossiers(statusFilter, themeFilter, page),
+    getDossiers(statusFilter, themeFilter, sortFilter, page),
     getStatusCounts(),
     getThemeCounts(),
   ]);
@@ -160,96 +159,16 @@ export default async function AssembleePage({ searchParams }: PageProps) {
         />
       </div>
 
-      {/* Status filter cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {(Object.keys(DOSSIER_STATUS_LABELS) as DossierStatus[]).map((status) => {
-          const count = statusCounts[status] || 0;
-          const isActive = statusFilter === status;
-          const colorClasses = DOSSIER_STATUS_COLORS[status];
-
-          return (
-            <Link
-              key={status}
-              href={
-                isActive
-                  ? buildUrl({ theme: themeFilter })
-                  : buildUrl({ status, theme: themeFilter })
-              }
-            >
-              <Card
-                className={`cursor-pointer transition-all hover:shadow-md ${
-                  isActive ? "ring-2 ring-primary" : ""
-                }`}
-              >
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <span>{DOSSIER_STATUS_ICONS[status]}</span>
-                    <div>
-                      <div className={`text-xl font-bold ${colorClasses.split(" ")[1]}`}>
-                        {count}
-                      </div>
-                      <div className="text-xs font-medium">{DOSSIER_STATUS_LABELS[status]}</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Theme filter */}
-      {themeCounts.length > 0 && (
-        <div className="mb-6">
-          <p className="text-sm font-medium mb-2">Filtrer par thème</p>
-          <div className="flex flex-wrap gap-2">
-            <Link href={buildUrl({ status: statusFilter })}>
-              <Badge
-                variant={themeFilter === "" ? "default" : "outline"}
-                className="cursor-pointer"
-              >
-                Tous
-              </Badge>
-            </Link>
-            {themeCounts.map(({ theme: t, count }) => {
-              const isActive = themeFilter === t;
-              const colorClass = THEME_CATEGORY_COLORS[t];
-              const icon = THEME_CATEGORY_ICONS[t];
-              const label = THEME_CATEGORY_LABELS[t];
-
-              return (
-                <Link
-                  key={t}
-                  href={
-                    isActive
-                      ? buildUrl({ status: statusFilter })
-                      : buildUrl({ status: statusFilter, theme: t })
-                  }
-                >
-                  <Badge
-                    variant={isActive ? "default" : "outline"}
-                    className={`cursor-pointer ${isActive ? colorClass : ""}`}
-                  >
-                    {icon} {label} ({count})
-                  </Badge>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Active filters */}
-      {(statusFilter || themeFilter) && (
-        <div className="mb-6 flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Filtres actifs :</span>
-          {statusFilter && <StatusBadge status={statusFilter as DossierStatus} />}
-          {themeFilter && <CategoryBadge theme={themeFilter as ThemeCategory} />}
-          <Link href="/assemblee" className="text-primary hover:underline ml-2">
-            Effacer les filtres
-          </Link>
-        </div>
-      )}
+      {/* Filter bar */}
+      <DossierFilterBar
+        currentFilters={{
+          status: statusFilter,
+          theme: themeFilter,
+          sort: sortFilter,
+        }}
+        statusCounts={statusCounts}
+        themeCounts={themeCounts}
+      />
 
       {/* Results count */}
       <p className="text-sm text-muted-foreground mb-4">
@@ -290,6 +209,7 @@ export default async function AssembleePage({ searchParams }: PageProps) {
                     page: String(page - 1),
                     status: statusFilter,
                     theme: themeFilter,
+                    sort: sortFilter,
                   })}
                   className="px-4 py-2 border rounded-md hover:bg-muted"
                 >
@@ -305,6 +225,7 @@ export default async function AssembleePage({ searchParams }: PageProps) {
                     page: String(page + 1),
                     status: statusFilter,
                     theme: themeFilter,
+                    sort: sortFilter,
                   })}
                   className="px-4 py-2 border rounded-md hover:bg-muted"
                 >

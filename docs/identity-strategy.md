@@ -65,7 +65,7 @@ Le poligraphId est le point d'ancrage pour toutes les références externes. Il 
 
 Si vous identifiez un politicien dont les données semblent mélangées avec un homonyme :
 
-1. Ouvrez une issue sur [GitHub](https://github.com/ldiaby/politic-tracker/issues)
+1. Ouvrez une issue sur [GitHub](https://github.com/ironlam/poligraph/issues)
 2. Indiquez le poligraphId ou le slug du politicien concerné
 3. Précisez quelle donnée semble incorrecte et de quelle source elle provient
 

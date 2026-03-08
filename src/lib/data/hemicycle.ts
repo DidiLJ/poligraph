@@ -10,6 +10,7 @@ export interface HemicycleDeputy {
   lastName: string;
   photoUrl: string | null;
   affairCount: number;
+  condamnationCount: number;
 }
 
 export interface HemicycleGroup {
@@ -47,12 +48,9 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
               firstName: true,
               lastName: true,
               photoUrl: true,
-              _count: {
-                select: {
-                  affairs: {
-                    where: { publicationStatus: "PUBLISHED" },
-                  },
-                },
+              affairs: {
+                where: { publicationStatus: "PUBLISHED" },
+                select: { status: true },
               },
             },
           },
@@ -81,7 +79,10 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
         firstName: m.politician.firstName,
         lastName: m.politician.lastName,
         photoUrl: m.politician.photoUrl,
-        affairCount: m.politician._count.affairs,
+        affairCount: m.politician.affairs.length,
+        condamnationCount: m.politician.affairs.filter(
+          (a) => a.status === "CONDAMNATION_DEFINITIVE"
+        ).length,
       })),
     }));
 }

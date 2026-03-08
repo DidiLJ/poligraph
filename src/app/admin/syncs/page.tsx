@@ -115,29 +115,9 @@ const SCRIPT_CATALOG: ScriptCategory[] = [
     ],
   },
   {
-    name: "IA & Analyse",
+    name: "Classification & Index",
     scripts: [
-      {
-        id: "generate-biographies",
-        label: "Biographies",
-        description: "Génération IA biographies",
-      },
-      {
-        id: "generate-summaries",
-        label: "Résumés dossiers",
-        description: "Résumés IA des dossiers",
-      },
-      {
-        id: "generate-scrutin-summaries",
-        label: "Résumés scrutins",
-        description: "Résumés IA des votes",
-      },
       { id: "classify-themes", label: "Classification", description: "Thèmes des dossiers" },
-      {
-        id: "generate-citizen-impacts",
-        label: "Impact citoyen",
-        description: "Décryptage IA des votes",
-      },
       { id: "index-embeddings", label: "Embeddings", description: "Index vectoriel RAG" },
     ],
   },

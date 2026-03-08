@@ -85,7 +85,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
       </div>
 
       <div style={{ fontSize: 26, color: "#94a3b8", marginBottom: 24 }}>
-        {affair.politician.firstName} {affair.politician.lastName}
+        {`${affair.politician.firstName} ${affair.politician.lastName}`}
       </div>
 
       <div style={{ display: "flex" }}>

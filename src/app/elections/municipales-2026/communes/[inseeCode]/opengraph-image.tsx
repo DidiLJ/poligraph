@@ -100,8 +100,7 @@ export default async function Image({ params }: { params: Promise<{ inseeCode: s
         >
           <span>📋</span>
           <span>
-            {listCount} liste{listCount > 1 ? "s" : ""} · {candidateCount} candidat
-            {candidateCount > 1 ? "s" : ""}
+            {`${listCount} liste${listCount > 1 ? "s" : ""} · ${candidateCount} candidat${candidateCount > 1 ? "s" : ""}`}
           </span>
         </div>
       )}

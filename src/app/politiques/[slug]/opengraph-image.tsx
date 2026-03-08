@@ -110,7 +110,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
               marginBottom: 16,
             }}
           >
-            {politician.firstName} {politician.lastName}
+            {`${politician.firstName} ${politician.lastName}`}
           </div>
           {role && <div style={{ fontSize: 26, color: "#94a3b8", marginBottom: 12 }}>{role}</div>}
           {partyName && (

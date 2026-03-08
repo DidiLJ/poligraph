@@ -222,7 +222,7 @@ function processConditionals(
 }
 
 function replacePlaceholders(template: string, replacements: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_match, key: string) => {
     return replacements[key] ?? "";
   });
 }

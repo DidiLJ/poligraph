@@ -160,7 +160,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
                   
       <div
          style="font-family:Arial, Helvetica, sans-serif;font-size:14px;line-height:1.6;text-align:center;color:#93c5fd;"
-      >{{weekLabel}}</div>
+      >{{ weekLabel }}</div>
     
                 </td>
               </tr>
@@ -214,10 +214,10 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
                   
       <div
          style="font-family:Arial, Helvetica, sans-serif;font-size:14px;line-height:1.6;text-align:center;color:#6b7280;"
-      ><span class="kpi-value">{{totalScrutins}}</span> scrutins &middot;
-          <span class="kpi-value">{{totalArticles}}</span> articles &middot;
-          <span class="kpi-value">{{totalAffairs}}</span> affaires &middot;
-          <span class="kpi-value">{{totalFactChecks}}</span> fact-checks</div>
+      ><span class="kpi-value">{{ totalScrutins }}</span> scrutins &middot;
+          <span class="kpi-value">{{ totalArticles }}</span> articles &middot;
+          <span class="kpi-value">{{ totalAffairs }}</span> affaires &middot;
+          <span class="kpi-value">{{ totalFactChecks }}</span> fact-checks</div>
     
                 </td>
               </tr>
@@ -293,7 +293,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
                   
       <div
          style="font-family:Arial, Helvetica, sans-serif;font-size:15px;font-style:italic;line-height:1.7;text-align:left;color:#374151;"
-      >{{editorialIntro}}</div>
+      >{{ editorialIntro }}</div>
     
                 </td>
               </tr>
@@ -915,7 +915,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
                   
       <div
          style="font-family:Arial, Helvetica, sans-serif;font-size:18px;font-weight:700;line-height:1.6;text-align:left;color:#1e3a5f;"
-      >{{politicianName}}</div>
+      >{{ politicianName }}</div>
     
                 </td>
               </tr>
@@ -927,7 +927,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
                   
       <div
          style="font-family:Arial, Helvetica, sans-serif;font-size:13px;line-height:1.6;text-align:left;color:#6b7280;"
-      >{{politicianMandate}} · {{politicianParty}}</div>
+      >{{ politicianMandate }} · {{ politicianParty }}</div>
     
                 </td>
               </tr>
@@ -977,7 +977,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
                   
       <div
          style="font-family:Arial, Helvetica, sans-serif;font-size:14px;line-height:1.6;text-align:left;color:#374151;"
-      >{{politicianBio}}</div>
+      >{{ politicianBio }}</div>
     
                 </td>
               </tr>
@@ -1161,7 +1161,9 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
          style="font-family:Arial, Helvetica, sans-serif;font-size:11px;line-height:1.6;text-align:center;color:#9ca3af;"
       >Vous recevez cet email car vous êtes abonné à Alerte Vote par Poligraph.
           <br />
-          <a href="{{unsubscribeUrl}}" style="color: #9ca3af; text-decoration: underline;">Se désabonner</a></div>
+          <a href="{{unsubscribeUrl}}" style="color: #9ca3af; text-decoration: underline"
+            >Se désabonner</a
+          ></div>
     
                 </td>
               </tr>

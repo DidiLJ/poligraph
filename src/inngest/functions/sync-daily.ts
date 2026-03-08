@@ -42,29 +42,6 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
-    name: "summaries-dossiers",
-    run: async () => {
-      const { generateSummaries } = await import("@/services/sync/generate-summaries");
-      return generateSummaries({ limit: 10 });
-    },
-  },
-  {
-    name: "summaries-scrutins",
-    run: async () => {
-      const { generateScrutinSummaries } =
-        await import("@/services/sync/generate-scrutin-summaries");
-      return generateScrutinSummaries({ limit: 20 });
-    },
-  },
-  {
-    name: "citizen-impacts",
-    run: async () => {
-      const { generateScrutinCitizenImpacts } =
-        await import("@/services/sync/generate-scrutin-citizen-impacts");
-      return generateScrutinCitizenImpacts({ limit: 20 });
-    },
-  },
-  {
     name: "press-rss",
     run: async () => {
       const { syncPress } = await import("@/services/sync/press");

@@ -76,62 +76,47 @@ export const sendNewsletter = inngest.createFunction(
       };
     });
 
-    // Step 3: Generate AI editorial
-    const aiContent = await step.run("generate-editorial", async () => {
-      const { callAnthropic, extractText } = await import("@/lib/api/anthropic");
+    // Step 3: Build static content (no AI)
+    const content = await step.run("build-content", async () => {
+      const { buildStaticEditorial, buildStaticBio } = await import("@/lib/email/static-content");
+      const { getWeekStart, getISOWeekNumber } = await import("@/lib/data/recap");
 
-      // Sanitize vote titles to prevent prompt injection
-      const sanitize = (s: string) => s.replace(/["\n\r]/g, " ").slice(0, 200);
-      const voteSummary = recap.votes.scrutins
-        .slice(0, 3)
-        .map(
-          (s: { title: string; result: string }) =>
-            `- ${sanitize(s.title)} (${s.result === "ADOPTED" ? "adopté" : "rejeté"})`
-        )
-        .join("\n");
+      const now = new Date();
+      const weekStart = getWeekStart(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
+      const weekNum = getISOWeekNumber(weekStart);
 
-      const introPrompt = `Tu es un journaliste politique français. Résume cette semaine parlementaire en 2-3 phrases concises et factuelles, dans un ton informatif mais engageant. Pas de formules comme "Cette semaine" ou "Au programme".
+      // Rehydrate dates (serialized to ISO strings by Inngest step storage)
+      const rehydrated = {
+        ...recap,
+        weekStart: new Date(recap.weekStart),
+        weekEnd: new Date(recap.weekEnd),
+        votes: {
+          ...recap.votes,
+          scrutins: recap.votes.scrutins.map(
+            (s: { votingDate: string; [key: string]: unknown }) => ({
+              ...s,
+              votingDate: new Date(s.votingDate),
+            })
+          ),
+        },
+      };
 
-<données>
-Scrutins : ${recap.votes.total} (${recap.votes.adopted} adoptés, ${recap.votes.rejected} rejetés)
-Affaires judiciaires : ${recap.affairs.total}
-Fact-checks : ${recap.factChecks.total}
-Articles de presse : ${recap.press.articleCount}
-</données>
+      const editorialIntro = buildStaticEditorial(rehydrated, weekNum);
+      const politicianBio = politicianData
+        ? buildStaticBio(
+            politicianData.fullName,
+            politicianData.mandateTitle,
+            politicianData.partyShortName
+          )
+        : "";
 
-<votes_notables>
-${voteSummary}
-</votes_notables>`;
-
-      const introRes = await callAnthropic([{ role: "user", content: introPrompt }], {
-        model: "claude-haiku-4-5-20251001",
-        maxTokens: 200,
-      });
-      const editorialIntro = extractText(introRes) ?? "";
-
-      let politicianBio = "";
-      if (politicianData) {
-        const bioPrompt = `En 1-2 phrases, présente brièvement la personne suivante. Ton factuel et neutre, pas de jugement de valeur.
-
-<personne>
-Nom : ${sanitize(politicianData.fullName)}
-Mandat : ${sanitize(politicianData.mandateTitle || "élu(e)")}
-Parti : ${sanitize(politicianData.partyShortName || "sans étiquette")}
-</personne>`;
-        const bioRes = await callAnthropic([{ role: "user", content: bioPrompt }], {
-          model: "claude-haiku-4-5-20251001",
-          maxTokens: 100,
-        });
-        politicianBio = extractText(bioRes) ?? "";
-      }
-
-      return { editorialIntro, politicianBio };
+      return { editorialIntro, politicianBio, weekNum };
     });
 
     // Step 4: Render email
     const email = await step.run("render-email", async () => {
       const { renderNewsletterHtml } = await import("@/lib/email/render-recap");
-      // Rehydrate dates (serialized to ISO strings by Inngest step storage)
+      // Rehydrate dates
       const rehydrated = {
         ...recap,
         weekStart: new Date(recap.weekStart),
@@ -148,28 +133,26 @@ Parti : ${sanitize(politicianData.partyShortName || "sans étiquette")}
       };
       return renderNewsletterHtml({
         recap: rehydrated,
-        editorialIntro: aiContent.editorialIntro,
-        politician: politicianData ? { ...politicianData, bio: aiContent.politicianBio } : null,
+        editorialIntro: content.editorialIntro,
+        politician: politicianData ? { ...politicianData, bio: content.politicianBio } : null,
       });
     });
 
     // Step 5: Send via Mailjet
     const sendResult = await step.run("send-via-mailjet", async () => {
       const { sendNewsletter: send } = await import("@/lib/email/mailjet");
-      const { getWeekStart, getISOWeekNumber } = await import("@/lib/data/recap");
-
-      const now = new Date();
-      const weekStart = getWeekStart(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
-      const weekNum = getISOWeekNumber(weekStart);
 
       const result = await send({
-        subject: `La Semaine Poligraph - S${weekNum}`,
+        subject: `La Semaine Poligraph - S${content.weekNum}`,
         htmlContent: email.html,
         textContent: email.text,
       });
 
       if (result.recipientCount > 0) {
         const { db } = await import("@/lib/db");
+        const { getWeekStart } = await import("@/lib/data/recap");
+        const now = new Date();
+        const weekStart = getWeekStart(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
         await db.newsletterEdition.update({
           where: { weekStart },
           data: { sentAt: new Date(), recipientCount: result.recipientCount },

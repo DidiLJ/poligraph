@@ -1,5 +1,12 @@
 /**
- * Wikidata Affairs Sync Service
+ * @deprecated Use discover-affairs.ts instead. This SPARQL-based pipeline
+ * is superseded by the Entity API-based discover-affairs pipeline which
+ * supports P1399 + P1595, penalty extraction, and Wikipedia enrichment.
+ *
+ * Note: CRIME_CATEGORY_MAP is still imported by judilibre-mapping.ts.
+ * Consider migrating it to a shared config if this file is removed.
+ *
+ * Wikidata Affairs Sync Service (legacy)
  *
  * Business logic for importing politician convictions from Wikidata SPARQL.
  * Extracted from scripts/import-wikidata.ts for use with createCLI.

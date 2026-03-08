@@ -21,6 +21,7 @@ import { PersonJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { DeclarationCard } from "@/components/declarations/DeclarationCard";
 import { MarkdownText } from "@/components/ui/markdown";
 import type { DeclarationDetails } from "@/types/hatvp";
+import { Scale } from "lucide-react";
 import { BetaDisclaimer } from "@/components/BetaDisclaimer";
 import { ProfileTabs } from "@/components/politicians/ProfileTabs";
 import { CareerTimeline } from "@/components/politicians/CareerTimeline";
@@ -314,6 +315,7 @@ export default async function PoliticianPage({ params }: PageProps) {
           {/* Main content */}
           <div className="lg:col-span-2">
             <ProfileTabs
+              affairsCount={directAffairs.length}
               profileContent={
                 <div className="space-y-8">
                   {/* Interactive Timeline - Desktop only */}
@@ -353,6 +355,48 @@ export default async function PoliticianPage({ params }: PageProps) {
                         </div>
                       </CardContent>
                     </Card>
+                  )}
+
+                  {/* Affairs summary card — links to Affaires tab */}
+                  {directAffairs.length > 0 && (
+                    <Link
+                      href={`/politiques/${politician.slug}?tab=affaires`}
+                      prefetch={false}
+                      scroll={false}
+                    >
+                      <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors cursor-pointer group">
+                        <CardContent className="py-4 flex items-center gap-4">
+                          <div className="flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 size-10 shrink-0">
+                            <Scale className="size-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">
+                              {`${directAffairs.length} affaire${directAffairs.length > 1 ? "s" : ""} judiciaire${directAffairs.length > 1 ? "s" : ""}`}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {directAffairs
+                                .slice(0, 2)
+                                .map((a) => a.title)
+                                .join(", ")}
+                              {directAffairs.length > 2 && "..."}
+                            </p>
+                          </div>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="size-5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
+                            aria-hidden="true"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   )}
 
                   {/* Career / Mandates */}

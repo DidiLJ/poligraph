@@ -65,6 +65,7 @@ export default async function HomePage() {
                   aria-hidden="true"
                   width={72}
                   height={72}
+                  priority
                   className="w-14 h-14 md:w-[72px] md:h-[72px] drop-shadow-lg"
                 />
                 <div className="flex items-baseline gap-3">

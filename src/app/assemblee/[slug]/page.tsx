@@ -42,7 +42,13 @@ const includeOptions = {
   authors: {
     include: {
       politician: {
-        select: { slug: true, fullName: true, photoUrl: true },
+        select: {
+          slug: true,
+          fullName: true,
+          photoUrl: true,
+          civility: true,
+          currentParty: { select: { shortName: true, color: true } },
+        },
       },
     },
   },
@@ -198,10 +204,10 @@ export default async function DossierDetailPage({ params }: PageProps) {
               </div>
             )}
           </div>
-
-          {/* Authors */}
-          <DossierAuthors authors={dossier.authors} />
         </div>
+
+        {/* Authors */}
+        <DossierAuthors authors={dossier.authors} />
 
         {/* Summary */}
         {dossier.summary && (

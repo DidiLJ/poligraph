@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getWeeklyRecap, getWeekStart, getISOWeekNumber } from "@/lib/data/recap";
 import { renderNewsletterHtml } from "@/lib/email/render-recap";
 import type { PoliticianOfWeek } from "@/lib/email/render-recap";
+import { buildStaticEditorial, buildStaticBio } from "@/lib/email/static-content";
 
 export const revalidate = 300;
 
@@ -80,48 +81,4 @@ export async function GET(request: NextRequest) {
   return new NextResponse(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
-}
-
-// ---------------------------------------------------------------------------
-// Static content builders (no AI dependency)
-// ---------------------------------------------------------------------------
-
-function buildStaticEditorial(
-  recap: Awaited<ReturnType<typeof getWeeklyRecap>>,
-  weekNum: number
-): string {
-  const parts: string[] = [];
-
-  if (recap.votes.total > 0) {
-    parts.push(
-      `${recap.votes.total} scrutins ont été examinés en semaine ${weekNum}, dont ${recap.votes.adopted} adopté${recap.votes.adopted > 1 ? "s" : ""} et ${recap.votes.rejected} rejeté${recap.votes.rejected > 1 ? "s" : ""}.`
-    );
-  }
-
-  if (recap.affairs.total > 0) {
-    parts.push(
-      `${recap.affairs.total} affaire${recap.affairs.total > 1 ? "s" : ""} judiciaire${recap.affairs.total > 1 ? "s" : ""} ${recap.affairs.total > 1 ? "ont" : "a"} été signalée${recap.affairs.total > 1 ? "s" : ""}.`
-    );
-  }
-
-  if (recap.press.articleCount > 0) {
-    parts.push(`${recap.press.articleCount} articles de presse ont couvert la vie politique.`);
-  }
-
-  if (parts.length === 0) {
-    parts.push("Semaine calme sur la scène parlementaire.");
-  }
-
-  return parts.join(" ");
-}
-
-function buildStaticBio(
-  fullName: string,
-  mandateTitle: string | null | undefined,
-  partyShortName: string | null | undefined
-): string {
-  const parts = [fullName];
-  if (mandateTitle) parts.push(mandateTitle);
-  if (partyShortName) parts.push(`membre du ${partyShortName}`);
-  return parts.join(", ") + ".";
 }

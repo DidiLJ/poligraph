@@ -6,14 +6,23 @@ describe("social config", () => {
     vi.unstubAllEnvs();
   });
 
-  it("marks all categories as sensitive (pending quality rework)", () => {
+  it("has exactly 8 categories", () => {
+    expect(SOCIAL_CATEGORIES).toHaveLength(8);
+  });
+
+  it("does not include consensus or presse", () => {
+    expect(SOCIAL_CATEGORIES).not.toContain("consensus");
+    expect(SOCIAL_CATEGORIES).not.toContain("presse");
+  });
+
+  it("includes methodo", () => {
+    expect(SOCIAL_CATEGORIES).toContain("methodo");
+  });
+
+  it("marks all categories as sensitive", () => {
     for (const cat of SOCIAL_CATEGORIES) {
       expect(isSensitiveCategory(cat)).toBe(true);
     }
-  });
-
-  it("has exactly 9 categories", () => {
-    expect(SOCIAL_CATEGORIES).toHaveLength(9);
   });
 
   it("auto-post is enabled by default", () => {

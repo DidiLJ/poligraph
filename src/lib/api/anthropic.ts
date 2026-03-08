@@ -69,11 +69,6 @@ export function extractToolUse(response: AnthropicResponse): unknown | null {
   return toolUse?.input ?? null;
 }
 
-export function extractText(response: AnthropicResponse): string | null {
-  const textBlock = response.content.find((c) => c.type === "text");
-  return textBlock?.text ?? null;
-}
-
 export function parseAnthropicJSON<T = unknown>(text: string): T {
   let cleaned = text.trim();
   const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);

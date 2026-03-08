@@ -65,6 +65,27 @@ export function formatDate(date: Date | string | null): string {
   });
 }
 
+/**
+ * Format a date-only string (YYYY-MM-DD) in French, using UTC to avoid timezone shifts.
+ */
+export function formatDateFrUTC(dateStr: string): string {
+  const date = new Date(dateStr + "T00:00:00Z");
+  return date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * Format a Date to YYYY-MM-DD for HTML date inputs.
+ */
+export function formatDateForInput(date: Date | null): string {
+  if (!date) return "";
+  return new Date(date).toISOString().split("T")[0]!;
+}
+
 export function formatDateShort(date: Date | string | null): string {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;

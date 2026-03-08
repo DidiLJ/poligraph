@@ -5,6 +5,9 @@ import { withCache } from "@/lib/cache";
 import { parsePagination } from "@/lib/api/pagination";
 import { withPublicRoute } from "@/lib/api/with-public-route";
 
+const VALID_MANDATE_TYPES = Object.values(MandateType) as string[];
+const VALID_STATUSES = Object.values(PublicationStatus) as string[];
+
 /**
  * @openapi
  * /api/politiques:
@@ -89,20 +92,28 @@ export const GET = withPublicRoute(async (request) => {
 
   const search = searchParams.get("search") || undefined;
   const partyId = searchParams.get("partyId") || undefined;
-  const mandateType = searchParams.get("mandateType") || undefined;
+  const mandateTypeParam = searchParams.get("mandateType") || undefined;
+  const validMandateType =
+    mandateTypeParam && VALID_MANDATE_TYPES.includes(mandateTypeParam)
+      ? (mandateTypeParam as MandateType)
+      : undefined;
   const hasAffairsParam = searchParams.get("hasAffairs");
   const hasAffairs =
     hasAffairsParam === "true" ? true : hasAffairsParam === "false" ? false : undefined;
-  const status = searchParams.get("status") || "PUBLISHED";
+  const statusParam = searchParams.get("status") || "PUBLISHED";
+  const validStatus =
+    statusParam !== "all" && VALID_STATUSES.includes(statusParam)
+      ? (statusParam as PublicationStatus)
+      : undefined;
   const sort = searchParams.get("sort");
   const { page, limit } = parsePagination(searchParams, { defaultLimit: 20 });
 
   const result = await getPoliticians({
     search,
     partyId,
-    mandateType: mandateType as MandateType,
+    mandateType: validMandateType,
     hasAffairs,
-    ...(status !== "all" && { publicationStatus: status as PublicationStatus }),
+    ...(statusParam !== "all" && validStatus && { publicationStatus: validStatus }),
     ...(sort === "prominence" && { sortBy: "prominence" as const }),
     page,
     limit,

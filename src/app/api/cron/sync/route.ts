@@ -36,6 +36,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Cron sync error:", error);
-    return NextResponse.json({ error: "Sync failed", details: String(error) }, { status: 500 });
+    return NextResponse.json({ error: "Sync failed" }, { status: 500 });
   }
 }

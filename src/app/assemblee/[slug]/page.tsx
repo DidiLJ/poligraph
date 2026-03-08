@@ -175,7 +175,7 @@ export default async function DossierDetailPage({ params }: PageProps) {
             <CategoryBadge category={dossier.category} theme={dossier.theme} />
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-bold mb-4">
+          <h1 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight mb-4">
             {dossier.shortTitle || dossier.title}
           </h1>
 

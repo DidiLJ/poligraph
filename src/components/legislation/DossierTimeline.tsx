@@ -1,14 +1,33 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { GitBranch } from "lucide-react";
 import type { DossierTimelineEntry } from "@/types/legislation";
-import { TIMELINE_CHAMBER_COLORS, TIMELINE_CHAMBER_LABELS } from "@/config/labels";
+import { TIMELINE_CHAMBER_LABELS } from "@/config/labels";
+
+/** Tailwind bg-* → text-* for the timeline line accent */
+const CHAMBER_LINE_COLORS: Record<string, string> = {
+  AN: "border-blue-400",
+  SENAT: "border-rose-400",
+  CMP: "border-purple-400",
+  CC: "border-amber-400",
+  GOV: "border-emerald-400",
+  UNKNOWN: "border-gray-300",
+};
+
+const CHAMBER_DOT_BG: Record<string, string> = {
+  AN: "bg-blue-500",
+  SENAT: "bg-rose-500",
+  CMP: "bg-purple-500",
+  CC: "bg-amber-500",
+  GOV: "bg-emerald-500",
+  UNKNOWN: "bg-gray-400",
+};
 
 function formatDate(iso: string | null): string | null {
   if (!iso) return null;
   try {
     return new Date(iso).toLocaleDateString("fr-FR", {
       day: "numeric",
-      month: "long",
+      month: "short",
       year: "numeric",
       timeZone: "Europe/Paris",
     });
@@ -26,51 +45,80 @@ function sortByDate(entries: DossierTimelineEntry[]): DossierTimelineEntry[] {
   });
 }
 
-function TimelineEntry({
-  entry,
-  isChild = false,
-}: {
-  entry: DossierTimelineEntry;
-  isChild?: boolean;
-}) {
-  const dotColor = TIMELINE_CHAMBER_COLORS[entry.chamber] || TIMELINE_CHAMBER_COLORS.UNKNOWN;
-  const chamberLabel = TIMELINE_CHAMBER_LABELS[entry.chamber] || "";
-  const dateStr = formatDate(entry.date);
-  const dotSize = isChild ? "h-2.5 w-2.5" : "h-3.5 w-3.5";
-  const offset = isChild ? "-left-[17px]" : "-left-[21px]";
+/**
+ * Flatten nested timeline into leaf events (those with dates),
+ * preserving the depth for indentation but removing structural-only parents.
+ */
+interface FlatEntry {
+  code: string;
+  label: string;
+  date: string | null;
+  chamber: string;
+  depth: number;
+}
+
+function flattenEntries(entries: DossierTimelineEntry[], depth: number = 0): FlatEntry[] {
+  const result: FlatEntry[] = [];
+  for (const entry of entries) {
+    // Always include entries that have a date (real events)
+    if (entry.date) {
+      result.push({
+        code: entry.code,
+        label: entry.label,
+        date: entry.date,
+        chamber: entry.chamber,
+        depth,
+      });
+    }
+    // Recurse into children
+    if (entry.children && entry.children.length > 0) {
+      result.push(...flattenEntries(entry.children, depth + 1));
+    }
+  }
+  return result;
+}
+
+/**
+ * Top-level phase: "1ère lecture (1ère assemblée saisie)", etc.
+ * These become the phase headers with chamber badges.
+ */
+function PhaseHeader({ entry }: { entry: DossierTimelineEntry }) {
+  const dotBg = CHAMBER_DOT_BG[entry.chamber] || CHAMBER_DOT_BG.UNKNOWN;
+  const chamberLabel = TIMELINE_CHAMBER_LABELS[entry.chamber] || entry.chamber;
 
   return (
-    <div className={isChild ? "ml-6" : ""}>
-      <div className="relative border-l-2 border-border pl-6 pb-4 last:pb-0">
-        {/* Dot */}
-        <div
-          className={`absolute ${offset} top-1 ${dotSize} rounded-full ${dotColor} ring-2 ring-background`}
-        />
+    <div className="flex items-center gap-3 pt-1 pb-2">
+      <div className={`h-4 w-4 rounded-full ${dotBg} shrink-0 ring-4 ring-background`} />
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="font-display font-bold text-sm tracking-tight">{entry.label}</span>
+        <span
+          className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${dotBg} text-white`}
+        >
+          {chamberLabel}
+        </span>
+      </div>
+    </div>
+  );
+}
 
-        {/* Content */}
-        <div className="min-w-0">
-          <p className={`font-medium ${isChild ? "text-sm" : "text-base"} leading-snug`}>
-            {entry.label}
-          </p>
-          <div className="flex flex-wrap items-center gap-2 mt-1">
-            {chamberLabel && (
-              <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${dotColor} text-white`}
-              >
-                {entry.chamber}
-              </span>
-            )}
-            {dateStr && <span className="text-xs text-muted-foreground">{dateStr}</span>}
-          </div>
-        </div>
+/**
+ * Individual event within a phase — a dated legislative act.
+ */
+function EventRow({ entry, isLast }: { entry: FlatEntry; isLast: boolean }) {
+  const dateStr = formatDate(entry.date);
 
-        {/* Children */}
-        {entry.children && entry.children.length > 0 && (
-          <div className="mt-3">
-            {sortByDate(entry.children).map((child, i) => (
-              <TimelineEntry key={`${child.code}-${i}`} entry={child} isChild />
-            ))}
-          </div>
+  return (
+    <div className={`flex items-start gap-3 ml-[7px] ${isLast ? "" : "pb-3"}`}>
+      {/* Small dot on the line */}
+      <div className="relative flex flex-col items-center shrink-0">
+        <div className="h-2 w-2 rounded-full bg-muted-foreground/40 ring-2 ring-background mt-1.5" />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-2">
+        <span className="text-sm leading-snug">{entry.label}</span>
+        {dateStr && (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
         )}
       </div>
     </div>
@@ -91,9 +139,37 @@ export function DossierTimeline({ entries }: { entries: DossierTimelineEntry[] }
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {sorted.map((entry, i) => (
-          <TimelineEntry key={`${entry.code}-${i}`} entry={entry} />
-        ))}
+        <div className="space-y-1">
+          {sorted.map((phase, i) => {
+            const lineColor = CHAMBER_LINE_COLORS[phase.chamber] || CHAMBER_LINE_COLORS.UNKNOWN;
+
+            // Get flattened dated events from this phase
+            const events = flattenEntries(phase.children || []);
+
+            return (
+              <div
+                key={`${phase.code}-${i}`}
+                className={`relative ${i < sorted.length - 1 ? "pb-4" : ""}`}
+              >
+                {/* Phase header */}
+                <PhaseHeader entry={phase} />
+
+                {/* Events list with colored left border */}
+                {events.length > 0 && (
+                  <div className={`ml-[7px] border-l-2 ${lineColor} pl-5 mt-1 space-y-0`}>
+                    {events.map((event, j) => (
+                      <EventRow
+                        key={`${event.code}-${j}`}
+                        entry={event}
+                        isLast={j === events.length - 1}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

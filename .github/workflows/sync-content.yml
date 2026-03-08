@@ -1,16 +1,10 @@
-name: Sync Content (Legislation + AI)
+name: Sync Content (Legislation)
 
 on:
   schedule:
     # Run every Sunday at 5:00 AM UTC (after votes sync)
     - cron: "0 5 * * 0"
   workflow_dispatch:
-    inputs:
-      summaries_limit:
-        description: "Max AI summaries to generate (default: 20)"
-        required: false
-        default: "20"
-        type: string
 
 env:
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -45,23 +39,10 @@ jobs:
         run: npm run sync:legislation:stats
         continue-on-error: true
 
-      - name: Generate AI Summaries (Active Dossiers)
-        run: npm run generate:summaries -- --limit=${{ github.event.inputs.summaries_limit || '20' }}
-        continue-on-error: true
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
-      - name: Show summaries stats
-        run: npm run generate:summaries:stats
-        continue-on-error: true
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
       - name: Summary
         if: always()
         run: |
           echo "## Sync Content Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Summaries limit**: ${{ github.event.inputs.summaries_limit || '20' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

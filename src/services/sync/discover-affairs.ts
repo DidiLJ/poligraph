@@ -338,6 +338,18 @@ async function runPhase1Wikidata(
     }
   }
 
+  // Batch-resolve court Q-IDs to labels
+  const courtQids = [...new Set(discovered.map((d) => d.courtQid).filter(Boolean))] as string[];
+  if (courtQids.length > 0) {
+    const courtEntities = await wikidataService.getEntities(courtQids, ["labels"]);
+    for (const affair of discovered) {
+      if (affair.courtQid) {
+        const entity = courtEntities.get(affair.courtQid);
+        affair.court = entity?.labels?.fr ?? entity?.labels?.en ?? null;
+      }
+    }
+  }
+
   return discovered;
 }
 
@@ -439,6 +451,48 @@ async function runPhase2Wikipedia(
   return discovered;
 }
 
+/**
+ * Build a human-readable sentence summary from structured penalty fields.
+ * e.g., "2 ans de prison ferme, 5 ans d'inéligibilité"
+ */
+function buildSentenceSummary(affair: DiscoveredAffair): string | null {
+  const parts: string[] = [];
+
+  if (affair.prisonMonths !== null && affair.prisonMonths > 0) {
+    if (affair.prisonMonths === 9999) {
+      parts.push("réclusion criminelle à perpétuité");
+    } else {
+      const years = Math.floor(affair.prisonMonths / 12);
+      const months = affair.prisonMonths % 12;
+      const duration =
+        years > 0 && months > 0
+          ? `${years} an${years > 1 ? "s" : ""} et ${months} mois`
+          : years > 0
+            ? `${years} an${years > 1 ? "s" : ""}`
+            : `${months} mois`;
+      const suffix = affair.prisonSuspended ? " avec sursis" : " de prison ferme";
+      parts.push(duration + suffix);
+    }
+  }
+
+  if (affair.ineligibilityMonths !== null && affair.ineligibilityMonths > 0) {
+    const years = Math.floor(affair.ineligibilityMonths / 12);
+    const months = affair.ineligibilityMonths % 12;
+    const duration = years > 0 ? `${years} an${years > 1 ? "s" : ""}` : `${months} mois`;
+    parts.push(`${duration} d'inéligibilité`);
+  }
+
+  if (affair.communityService !== null && affair.communityService > 0) {
+    parts.push(`${affair.communityService}h de travail d'intérêt général`);
+  }
+
+  if (affair.otherSentence) {
+    parts.push(affair.otherSentence.toLowerCase());
+  }
+
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 async function runPhase3Reconciliation(
   allAffairs: DiscoveredAffair[],
   stats: DiscoverAffairsResult
@@ -456,6 +510,30 @@ async function runPhase3Reconciliation(
       const highMatch = matches.find((m) => m.confidence === "HIGH" || m.confidence === "CERTAIN");
 
       if (highMatch) {
+        // Enrich existing affair with penalty data if fields are NULL
+        if (affair.phase === "wikidata") {
+          const updateData: Record<string, unknown> = {};
+          if (affair.prisonMonths !== null) updateData.prisonMonths = affair.prisonMonths;
+          if (affair.prisonSuspended !== null) updateData.prisonSuspended = affair.prisonSuspended;
+          if (affair.ineligibilityMonths !== null)
+            updateData.ineligibilityMonths = affair.ineligibilityMonths;
+          if (affair.communityService !== null)
+            updateData.communityService = affair.communityService;
+          if (affair.otherSentence !== null) updateData.otherSentence = affair.otherSentence;
+          if (affair.factsDate) updateData.verdictDate = affair.factsDate;
+          if (affair.court) updateData.court = affair.court;
+
+          const sentence = buildSentenceSummary(affair);
+          if (sentence) updateData.sentence = sentence;
+
+          if (Object.keys(updateData).length > 0) {
+            await db.affair.update({
+              where: { id: highMatch.affairId },
+              data: updateData,
+            });
+          }
+        }
+
         stats.duplicatesSkipped++;
         continue;
       }
@@ -477,6 +555,12 @@ async function runPhase3Reconciliation(
           involvement: affair.involvement,
           factsDate: affair.factsDate,
           court: affair.court,
+          prisonMonths: affair.prisonMonths,
+          prisonSuspended: affair.prisonSuspended,
+          ineligibilityMonths: affair.ineligibilityMonths,
+          communityService: affair.communityService,
+          otherSentence: affair.otherSentence,
+          sentence: buildSentenceSummary(affair),
           confidenceScore: affair.confidenceScore,
           publicationStatus: affair.publicationStatus,
           verifiedAt: affair.publicationStatus === "PUBLISHED" ? new Date() : null,

@@ -15,7 +15,7 @@ import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
 import { db } from "../src/lib/db";
 import { generateDateSlug } from "../src/lib/utils";
-import { DossierStatus, Prisma } from "../src/generated/prisma";
+import { DataSource, DossierStatus, Prisma } from "../src/generated/prisma";
 import type { DossierTimelineEntry } from "../src/types/legislation";
 import * as fs from "fs";
 import * as path from "path";
@@ -255,6 +255,41 @@ function buildTimeline(actes: ANActe | ANActe[] | undefined | null): DossierTime
     entries.push(entry);
   }
   return entries;
+}
+
+async function resolveAuthors(
+  dossierId: string,
+  initiateur: ANDossier["dossierParlementaire"]["initiateur"]
+): Promise<void> {
+  if (!initiateur?.acteurs?.acteur) return;
+
+  const acteurs = Array.isArray(initiateur.acteurs.acteur)
+    ? initiateur.acteurs.acteur
+    : [initiateur.acteurs.acteur];
+
+  for (const acteur of acteurs) {
+    const ext = await db.externalId.findFirst({
+      where: {
+        source: DataSource.ASSEMBLEE_NATIONALE,
+        externalId: acteur.acteurRef,
+        politicianId: { not: null },
+      },
+      select: { politicianId: true },
+    });
+    if (!ext?.politicianId) continue;
+
+    await db.dossierAuthor.upsert({
+      where: {
+        dossierId_politicianId: { dossierId, politicianId: ext.politicianId },
+      },
+      update: { acteurRef: acteur.acteurRef },
+      create: {
+        dossierId,
+        politicianId: ext.politicianId,
+        acteurRef: acteur.acteurRef,
+      },
+    });
+  }
 }
 
 /**
@@ -577,6 +612,7 @@ async function syncLegislation(
               timeline.length > 0 ? (timeline as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
           };
 
+          let dossierId: string;
           if (existing) {
             // Update existing dossier, generate slug if missing
             const updateData: typeof dossierData & { slug?: string } = { ...dossierData };
@@ -587,15 +623,20 @@ async function syncLegislation(
               where: { id: existing.id },
               data: updateData,
             });
+            dossierId = existing.id;
             stats.dossiersUpdated++;
           } else {
             // Create new dossier with slug
             const slug = await generateUniqueDossierSlug(filingDate!, shortTitle || title);
-            await db.legislativeDossier.create({
+            const created = await db.legislativeDossier.create({
               data: { ...dossierData, slug },
             });
+            dossierId = created.id;
             stats.dossiersCreated++;
           }
+
+          // Resolve initiateur → DossierAuthor links
+          await resolveAuthors(dossierId, dp.initiateur);
         } else {
           // Dry run: just count
           stats.dossiersCreated++;

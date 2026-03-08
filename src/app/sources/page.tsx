@@ -256,6 +256,41 @@ export default function SourcesPage() {
         </div>
       </section>
 
+      {/* Intelligence artificielle */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold mb-6">Intelligence Artificielle</h2>
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Poligraph utilise l&apos;intelligence artificielle de manière ciblée et transparente :
+            </p>
+            <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+              <li>
+                <strong>Chatbot</strong> : répond aux questions à partir des données du site (RAG)
+              </li>
+              <li>
+                <strong>Classification</strong> : catégorise les textes législatifs dans 13 thèmes
+              </li>
+              <li>
+                <strong>Analyse de presse</strong> : détecte les mentions de politiciens dans les
+                articles
+              </li>
+              <li>
+                <strong>Modération</strong> : aide à la vérification des données judiciaires
+              </li>
+              <li>
+                <strong>Extraction</strong> : structure les informations depuis Wikipedia
+              </li>
+            </ul>
+            <p className="text-sm text-muted-foreground">
+              L&apos;IA n&apos;est pas utilisée pour rédiger des contenus éditoriaux. Certains
+              champs (biographies, résumés de votes) peuvent avoir été générés puis validés
+              manuellement. Toutes les sources de données sont réelles et vérifiables.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* Inclusion Criteria */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">Critères de Pertinence</h2>

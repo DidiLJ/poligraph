@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ensureContrast } from "@/lib/contrast";
+import { formatDateForInput } from "@/lib/utils";
 import { PARTY_ROLE_LABELS } from "@/config/labels";
 
 interface Party {
@@ -33,11 +34,6 @@ interface EditablePartyCardProps {
   currentParty: Party | null;
   partyHistory: PartyMembership[];
   allParties: Party[];
-}
-
-function formatDateForInput(date: Date | null): string {
-  if (!date) return "";
-  return new Date(date).toISOString().split("T")[0]!;
 }
 
 function formatDateDisplay(date: Date | null): string {

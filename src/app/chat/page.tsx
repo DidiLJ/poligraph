@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: "Assistant IA - Poligraph",
   description:
     "Posez vos questions sur les représentants politiques français, les votes parlementaires et les dossiers législatifs. Réponses basées sur des sources officielles.",
+  alternates: { canonical: "/chat" },
   robots: { index: false, follow: true },
   openGraph: {
     title: "Assistant IA - Poligraph",

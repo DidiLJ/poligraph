@@ -80,8 +80,12 @@ export const GET = withPublicRoute(async (request) => {
   const institution = searchParams.get("institution");
   const { page, limit, skip } = parsePagination(searchParams, { defaultLimit: 20 });
 
+  const mandateTypes = Object.values(MandateType);
+  const validType =
+    type && (mandateTypes as string[]).includes(type) ? (type as MandateType) : undefined;
+
   const where = {
-    ...(type && { type: type as MandateType }),
+    ...(validType && { type: validType }),
     ...(isCurrent && { isCurrent: isCurrent === "true" }),
     ...(politicianId && { politicianId }),
     ...(institution && {

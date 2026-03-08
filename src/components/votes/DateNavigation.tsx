@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { formatDateFrUTC } from "@/lib/utils";
 
 interface DateNavigationProps {
   prevDate: string | null;
@@ -8,18 +9,8 @@ interface DateNavigationProps {
   isToday?: boolean;
 }
 
-function formatDateFr(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00Z");
-  return date.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 export function DateNavigation({ prevDate, nextDate, currentDate, isToday }: DateNavigationProps) {
-  const formatted = formatDateFr(currentDate);
+  const formatted = formatDateFrUTC(currentDate);
 
   return (
     <div className="flex items-center justify-between gap-2 sm:gap-4">
@@ -28,10 +19,10 @@ export function DateNavigation({ prevDate, nextDate, currentDate, isToday }: Dat
           href={`/votes/${prevDate}`}
           className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           prefetch={false}
-          aria-label={`Votes du ${formatDateFr(prevDate)}`}
+          aria-label={`Votes du ${formatDateFrUTC(prevDate)}`}
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          <span className="hidden sm:inline">{formatDateFr(prevDate)}</span>
+          <span className="hidden sm:inline">{formatDateFrUTC(prevDate)}</span>
           <span className="sm:hidden">Précédent</span>
         </Link>
       ) : (
@@ -60,9 +51,9 @@ export function DateNavigation({ prevDate, nextDate, currentDate, isToday }: Dat
           href={`/votes/${nextDate}`}
           className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           prefetch={false}
-          aria-label={`Votes du ${formatDateFr(nextDate)}`}
+          aria-label={`Votes du ${formatDateFrUTC(nextDate)}`}
         >
-          <span className="hidden sm:inline">{formatDateFr(nextDate)}</span>
+          <span className="hidden sm:inline">{formatDateFrUTC(nextDate)}</span>
           <span className="sm:hidden">Suivant</span>
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </Link>

@@ -73,11 +73,17 @@ export const GET = withPublicRoute(async (request) => {
   const legislature = searchParams.get("legislature");
   const { page, limit, skip } = parsePagination(searchParams, { defaultLimit: 20 });
 
+  const ALLOWED_RESULTS = ["ADOPTED", "REJECTED"] as const;
+  const validResult =
+    result && (ALLOWED_RESULTS as readonly string[]).includes(result)
+      ? (result as (typeof ALLOWED_RESULTS)[number])
+      : undefined;
+
   const where = {
     ...(search && {
       title: { contains: search, mode: "insensitive" as const },
     }),
-    ...(result && { result: result as "ADOPTED" | "REJECTED" }),
+    ...(validResult && { result: validResult }),
     ...(legislature && { legislature: parseInt(legislature, 10) }),
   };
 

@@ -14,7 +14,7 @@ import {
   PUBLICATION_STATUS_STYLES,
   PUBLICATION_STATUS_LABELS,
 } from "@/config/labels";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateForInput } from "@/lib/utils";
 import type { PublicationStatus } from "@/generated/prisma";
 
 interface ExternalIdData {
@@ -54,11 +54,6 @@ interface FormState {
   birthPlace: string;
   biography: string;
   publicationStatus: string;
-}
-
-function formatDateForInput(date: Date | null): string {
-  if (!date) return "";
-  return new Date(date).toISOString().split("T")[0]!;
 }
 
 export function EditableCivilStatusCard({ politician }: EditableCivilStatusCardProps) {

@@ -5,6 +5,7 @@ import { BreadcrumbJsonLd, CollectionPageJsonLd } from "@/components/seo/JsonLd"
 import { getScrutinsByDate, getAdjacentVoteDates } from "@/lib/data/votes";
 import { CHAMBER_LABELS } from "@/config/labels";
 import { SITE_URL } from "@/config/site";
+import { formatDateFrUTC } from "@/lib/utils";
 import { Vote, CheckCircle, XCircle, Building2, ArrowRight, Sparkles } from "lucide-react";
 import type { Chamber } from "@/generated/prisma";
 import type { DailyScrutin } from "@/lib/data/votes";
@@ -14,20 +15,10 @@ interface DailyVotesPageProps {
   isToday?: boolean;
 }
 
-function formatDateFr(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00Z");
-  return date.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 export async function DailyVotesPage({ date, isToday }: DailyVotesPageProps) {
   const [data, adjacent] = await Promise.all([getScrutinsByDate(date), getAdjacentVoteDates(date)]);
 
-  const formatted = formatDateFr(date);
+  const formatted = formatDateFrUTC(date);
   const title = isToday ? "Votes du jour" : `Votes du ${formatted}`;
   const canonicalPath = isToday ? "/votes/aujourd-hui" : `/votes/${date}`;
 
@@ -188,7 +179,7 @@ function EmptyState({ prevDate }: { prevDate: string | null }) {
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:underline"
             prefetch={false}
           >
-            Derniers votes ({formatDateFr(prevDate)})
+            Derniers votes ({formatDateFrUTC(prevDate)})
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         )}

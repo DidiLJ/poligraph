@@ -16,6 +16,7 @@
 import { readFileSync, existsSync } from "fs";
 import { execSync } from "child_process";
 import { db } from "@/lib/db";
+import { Prisma } from "@/generated/prisma";
 
 const EXPORT_URL =
   "https://api-lannuaire.service-public.fr/api/explore/v2.1/catalog/datasets/api-lannuaire-administration/exports/json?where=pivot+LIKE+%22mairie%22&select=code_insee_commune,site_internet";
@@ -103,13 +104,11 @@ async function updateCommunes(websites: Map<string, string>): Promise<number> {
   for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
     const batch = toUpdate.slice(i, i + BATCH_SIZE);
 
-    const values = batch.map((c) => `('${c.id}', '${c.website.replace(/'/g, "''")}')`).join(",");
+    const valueParts = batch.map((c) => Prisma.sql`(${c.id}::text, ${c.website}::text)`);
 
-    await db.$executeRawUnsafe(
-      `UPDATE "Commune" SET "website" = v.website
-       FROM (VALUES ${values}) AS v(id, website)
-       WHERE "Commune"."id" = v.id`
-    );
+    await db.$executeRaw`UPDATE "Commune" SET "website" = v.website
+       FROM (VALUES ${Prisma.join(valueParts)}) AS v(id, website)
+       WHERE "Commune"."id" = v.id`;
 
     updated += batch.length;
 

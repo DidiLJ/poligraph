@@ -1,3 +1,5 @@
+import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/lib/db";
 
 // ============================================
@@ -5,6 +7,10 @@ import { db } from "@/lib/db";
 // ============================================
 
 export async function getDeputiesByDepartment(departmentName: string) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("politicians", "departments");
+
   return db.politician.findMany({
     where: {
       mandates: {
@@ -36,6 +42,10 @@ export async function getDeputiesByDepartment(departmentName: string) {
 }
 
 export async function getSenatorsByDepartment(departmentName: string) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("politicians", "departments");
+
   return db.politician.findMany({
     where: {
       mandates: {

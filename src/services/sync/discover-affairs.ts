@@ -12,7 +12,9 @@ import { generateAffairSlug, generateUniqueSlug } from "@/lib/utils";
 import { WikidataService } from "@/lib/api/wikidata";
 import { WD_PROPS } from "@/config/wikidata";
 import { mapWikidataOffense, getOffenseLabel } from "@/config/wikidata-affairs";
+import { mapWikidataPenalty, parseDurationToMonths } from "@/config/wikidata-penalties";
 import { wikipediaService } from "@/lib/api/wikipedia";
+import type { WikidataClaim } from "@/lib/api/wikidata";
 import { extractAffairsFromWikipedia } from "@/services/wikipedia-affair-extraction";
 import { findMatchingAffairs } from "@/services/affairs/matching";
 import { clampConfidenceScore } from "@/services/affairs/confidence";
@@ -29,6 +31,12 @@ interface DiscoveredAffair {
   involvement: Involvement;
   factsDate: Date | null;
   court: string | null;
+  prisonMonths: number | null;
+  prisonSuspended: boolean | null;
+  ineligibilityMonths: number | null;
+  communityService: number | null;
+  otherSentence: string | null;
+  courtQid: string | null;
   charges: string[];
   confidenceScore: number;
   publicationStatus: "PUBLISHED" | "DRAFT";
@@ -49,6 +57,89 @@ export interface DiscoverAffairsResult {
   duplicatesSkipped: number;
   affairsCreated: number;
   errors: string[];
+}
+
+export interface ExtractedPenaltyData {
+  prisonMonths?: number;
+  prisonSuspended?: boolean;
+  hasFine?: boolean;
+  ineligibilityMonths?: number;
+  communityService?: number;
+  otherSentence?: string;
+  verdictDate?: Date;
+  courtQid?: string;
+}
+
+/**
+ * Extract penalty data from a Wikidata P1399/P1595 claim's qualifiers.
+ */
+export function extractPenaltyData(claim: WikidataClaim): ExtractedPenaltyData {
+  if (!claim.qualifiers) return {};
+
+  const result: ExtractedPenaltyData = {};
+
+  // P585 — Verdict date
+  const timeClaims = claim.qualifiers[WD_PROPS.POINT_IN_TIME];
+  if (timeClaims?.[0]?.datavalue?.value) {
+    const tv = timeClaims[0].datavalue.value;
+    if (typeof tv === "object" && "time" in tv) {
+      const match = tv.time.match(/^\+?(\d{4}-\d{2}-\d{2})/);
+      if (match) result.verdictDate = new Date(match[1]!);
+    }
+  }
+
+  // P4884 — Court
+  const courtClaims = claim.qualifiers[WD_PROPS.COURT];
+  if (courtClaims?.[0]?.datavalue?.value) {
+    const cv = courtClaims[0].datavalue.value;
+    if (typeof cv === "object" && "id" in cv) {
+      result.courtQid = cv.id;
+    }
+  }
+
+  // P2047 — Duration (used for prison/ineligibility months)
+  let durationMonths: number | undefined;
+  const durationClaims = claim.qualifiers[WD_PROPS.DURATION];
+  if (durationClaims?.[0]?.datavalue?.value) {
+    const dv = durationClaims[0].datavalue.value;
+    if (typeof dv === "object" && "amount" in dv && "unit" in dv) {
+      const months = parseDurationToMonths(dv.amount, dv.unit);
+      if (months !== null) durationMonths = months;
+    }
+  }
+
+  // P1596 — Penalties (can be multiple: prison + fine + ineligibility)
+  const penaltyClaims = claim.qualifiers[WD_PROPS.PENALTY];
+  if (penaltyClaims) {
+    for (const pc of penaltyClaims) {
+      const pv = pc.datavalue?.value;
+      if (!pv || typeof pv !== "object" || !("id" in pv)) continue;
+
+      const mapping = mapWikidataPenalty(pv.id);
+      if (!mapping) continue;
+
+      switch (mapping.field) {
+        case "prisonMonths":
+          result.prisonMonths = mapping.fixedMonths ?? durationMonths;
+          result.prisonSuspended = mapping.suspended ?? false;
+          break;
+        case "fineAmount":
+          result.hasFine = true;
+          break;
+        case "ineligibilityMonths":
+          result.ineligibilityMonths = durationMonths;
+          break;
+        case "communityService":
+          result.communityService = durationMonths ? durationMonths * 30 : undefined;
+          break;
+        case "otherSentence":
+          result.otherSentence = mapping.label;
+          break;
+      }
+    }
+  }
+
+  return result;
 }
 
 function extractPublisherFromUrl(url: string): string {
@@ -198,6 +289,7 @@ async function runPhase1Wikidata(
           const offenseQid = value.id;
           const { category, status } = mapWikidataOffense(offenseQid, prop);
           const label = getOffenseLabel(offenseQid);
+          const penaltyData = extractPenaltyData(claim);
 
           const isConviction = prop === "P1399";
           const publicationStatus = isConviction ? "PUBLISHED" : "DRAFT";
@@ -213,8 +305,14 @@ async function runPhase1Wikidata(
             category,
             status,
             involvement: isConviction ? "DIRECT" : "MENTIONED_ONLY",
-            factsDate: null,
+            factsDate: penaltyData.verdictDate ?? null,
             court: null,
+            prisonMonths: penaltyData.prisonMonths ?? null,
+            prisonSuspended: penaltyData.prisonSuspended ?? null,
+            ineligibilityMonths: penaltyData.ineligibilityMonths ?? null,
+            communityService: penaltyData.communityService ?? null,
+            otherSentence: penaltyData.otherSentence ?? null,
+            courtQid: penaltyData.courtQid ?? null,
             charges: [label],
             confidenceScore: clampConfidenceScore(confidence),
             publicationStatus: publicationStatus as "PUBLISHED" | "DRAFT",
@@ -315,6 +413,12 @@ async function runPhase2Wikipedia(
             involvement: extracted.involvement,
             factsDate: extracted.factsDate ? new Date(extracted.factsDate) : null,
             court: extracted.court,
+            prisonMonths: null,
+            prisonSuspended: null,
+            ineligibilityMonths: null,
+            communityService: null,
+            otherSentence: null,
+            courtQid: null,
             charges: extracted.charges,
             confidenceScore: clampConfidenceScore(extracted.confidenceScore),
             publicationStatus: "DRAFT",

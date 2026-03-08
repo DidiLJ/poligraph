@@ -343,6 +343,12 @@ function determineStatus(codes: string[], legislature?: number): DossierStatus {
     return "EN_COMMISSION";
   }
 
+  // RTRINI = "Retrait d'une initiative" — only mark RETIRE if no debates followed
+  // (during active discussion, RTRINI indicates a partial retrait, not full withdrawal)
+  if (codes.some((c) => c.includes("RTRINI"))) {
+    return "RETIRE";
+  }
+
   // Default: filed but not yet examined
   return "DEPOSE";
 }

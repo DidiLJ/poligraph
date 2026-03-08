@@ -6,14 +6,10 @@ describe("social config", () => {
     vi.unstubAllEnvs();
   });
 
-  it("marks affaires and factchecks as sensitive", () => {
-    expect(isSensitiveCategory("affaires")).toBe(true);
-    expect(isSensitiveCategory("factchecks")).toBe(true);
-  });
-
-  it("marks other categories as safe", () => {
-    expect(isSensitiveCategory("votes")).toBe(false);
-    expect(isSensitiveCategory("profil")).toBe(false);
+  it("marks all categories as sensitive (pending quality rework)", () => {
+    for (const cat of SOCIAL_CATEGORIES) {
+      expect(isSensitiveCategory(cat)).toBe(true);
+    }
   });
 
   it("has exactly 9 categories", () => {

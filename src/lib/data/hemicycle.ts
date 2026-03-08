@@ -9,8 +9,14 @@ export interface HemicycleDeputy {
   firstName: string;
   lastName: string;
   photoUrl: string | null;
-  affairCount: number;
-  condamnationCount: number;
+  /** Weighted severity score (probité ×4, other ×1-2; condamnation ×3, MEX ×2, en cours ×1) */
+  severityScore: number;
+  /** Has at least one atteinte à la probité (CRITIQUE severity) */
+  hasProbity: boolean;
+  /** Has at least one condamnation (définitive or 1ère instance) */
+  hasCondamnation: boolean;
+  /** Has at least one mise en examen */
+  hasMiseEnExamen: boolean;
 }
 
 export interface HemicycleGroup {
@@ -21,6 +27,29 @@ export interface HemicycleGroup {
   politicalPosition: PoliticalPosition | null;
   deputies: HemicycleDeputy[];
 }
+
+/** Severity category weight */
+const SEVERITY_WEIGHT: Record<string, number> = {
+  CRITIQUE: 4,
+  GRAVE: 2,
+  SIGNIFICATIF: 1,
+  MINEUR: 1,
+};
+
+/** Judicial status weight — exonerating statuses score 0 */
+const STATUS_WEIGHT: Record<string, number> = {
+  CONDAMNATION_DEFINITIVE: 3,
+  CONDAMNATION_PREMIERE_INSTANCE: 3,
+  APPEL_EN_COURS: 3,
+  MISE_EN_EXAMEN: 2,
+  EN_COURS: 1,
+};
+
+const CONDAMNATION_STATUSES = new Set([
+  "CONDAMNATION_DEFINITIVE",
+  "CONDAMNATION_PREMIERE_INSTANCE",
+  "APPEL_EN_COURS",
+]);
 
 export async function getHemicycleData(): Promise<HemicycleGroup[]> {
   "use cache";
@@ -49,8 +78,11 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
               lastName: true,
               photoUrl: true,
               affairs: {
-                where: { publicationStatus: "PUBLISHED", involvement: "DIRECT" },
-                select: { status: true },
+                where: {
+                  publicationStatus: "PUBLISHED",
+                  involvement: "DIRECT",
+                },
+                select: { severity: true, status: true },
               },
             },
           },
@@ -59,9 +91,8 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
     },
   });
 
-  // Sort groups left-to-right by political position
   const positionIndex = (pos: PoliticalPosition | null) => {
-    if (!pos) return POLITICAL_POSITION_ORDER.length; // unpositioned at the end
+    if (!pos) return POLITICAL_POSITION_ORDER.length;
     return POLITICAL_POSITION_ORDER.indexOf(pos);
   };
 
@@ -73,16 +104,27 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
       shortName: g.shortName,
       color: g.color || "#AAAAAA",
       politicalPosition: g.politicalPosition,
-      deputies: g.mandates.map((m) => ({
-        id: m.politician.id,
-        slug: m.politician.slug,
-        firstName: m.politician.firstName,
-        lastName: m.politician.lastName,
-        photoUrl: m.politician.photoUrl,
-        affairCount: m.politician.affairs.length,
-        condamnationCount: m.politician.affairs.filter(
-          (a) => a.status === "CONDAMNATION_DEFINITIVE"
-        ).length,
-      })),
+      deputies: g.mandates.map((m) => {
+        const affairs = m.politician.affairs;
+        let score = 0;
+        for (const a of affairs) {
+          const sw = STATUS_WEIGHT[a.status] ?? 0;
+          if (sw === 0) continue; // exonerating status — skip
+          score += (SEVERITY_WEIGHT[a.severity] ?? 1) * sw;
+        }
+        return {
+          id: m.politician.id,
+          slug: m.politician.slug,
+          firstName: m.politician.firstName,
+          lastName: m.politician.lastName,
+          photoUrl: m.politician.photoUrl,
+          severityScore: score,
+          hasProbity: affairs.some(
+            (a) => a.severity === "CRITIQUE" && (STATUS_WEIGHT[a.status] ?? 0) > 0
+          ),
+          hasCondamnation: affairs.some((a) => CONDAMNATION_STATUSES.has(a.status)),
+          hasMiseEnExamen: affairs.some((a) => a.status === "MISE_EN_EXAMEN"),
+        };
+      }),
     }));
 }

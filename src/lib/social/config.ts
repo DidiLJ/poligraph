@@ -1,18 +1,17 @@
 export const SOCIAL_CATEGORIES = [
-  "votes",
-  "consensus",
-  "chiffres",
   "affaires",
+  "votes",
+  "elections",
+  "methodo",
   "factchecks",
   "profil",
-  "elections",
-  "presse",
+  "chiffres",
   "presence",
 ] as const;
 
 export type SocialCategory = (typeof SOCIAL_CATEGORIES)[number];
 
-/** Categories requiring editorial review before posting — currently ALL */
+/** All categories require editorial review */
 export const SENSITIVE_CATEGORIES: SocialCategory[] = [...SOCIAL_CATEGORIES];
 
 export function isSensitiveCategory(category: SocialCategory): boolean {
@@ -23,6 +22,21 @@ export function isSensitiveCategory(category: SocialCategory): boolean {
 export function isAutoPostEnabled(): boolean {
   return process.env.SOCIAL_AUTO_POST !== "false";
 }
+
+/** Category priority order (index = priority, lower = higher priority) */
+export const CATEGORY_PRIORITY: SocialCategory[] = [
+  "affaires",
+  "votes",
+  "elections",
+  "methodo",
+  "factchecks",
+  "profil",
+  "chiffres",
+  "presence",
+];
+
+/** Methodo posts limited to 1 per week */
+export const METHODO_COOLDOWN_DAYS = 7;
 
 export const SLACK_SOCIAL_WEBHOOK_URL = process.env.SLACK_SOCIAL_WEBHOOK_URL;
 export { SITE_URL } from "@/config/site";

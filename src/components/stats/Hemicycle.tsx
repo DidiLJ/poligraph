@@ -29,9 +29,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [highlightGroup, setHighlightGroup] = useState<string | null>(null);
 
-  // Build deputy map matching seat layout order
-  const { seats, deputyMap, totalWithAffairs, totalCondamnes, totalDeputies } = useMemo(() => {
-    // Filter out empty groups (no current deputies)
+  const { seats, deputyMap, totalMisEnCause, totalProbity, totalDeputies } = useMemo(() => {
     const activeGroups = groups.filter((g) => g.deputies.length > 0);
     const groupInputs = activeGroups.map((g) => ({
       code: g.code,
@@ -41,17 +39,20 @@ export function Hemicycle({ groups }: HemicycleProps) {
 
     const seatPositions = computeHemicycleLayout(groupInputs, {
       width: SVG_WIDTH,
-      height: SVG_HEIGHT - 20, // leave space for bottom
+      height: SVG_HEIGHT - 20,
     });
 
-    // Build per-group sorted deputy lists (affairs first, then alphabetical)
+    // Sort: highest severity score first, then alphabetical
     const groupDeputyLists = new Map<
       string,
-      { items: { deputy: HemicycleDeputy; groupName: string; groupCode: string }[]; cursor: number }
+      {
+        items: { deputy: HemicycleDeputy; groupName: string; groupCode: string }[];
+        cursor: number;
+      }
     >();
     for (const group of activeGroups) {
       const sorted = [...group.deputies].sort((a, b) => {
-        if (b.affairCount !== a.affairCount) return b.affairCount - a.affairCount;
+        if (b.severityScore !== a.severityScore) return b.severityScore - a.severityScore;
         return a.lastName.localeCompare(b.lastName, "fr");
       });
       groupDeputyLists.set(group.code, {
@@ -64,7 +65,6 @@ export function Hemicycle({ groups }: HemicycleProps) {
       });
     }
 
-    // Assign deputies to seats following layout order (row-by-row, matching groupCode)
     const dMap = new Map<
       number,
       { deputy: HemicycleDeputy; groupName: string; groupCode: string }
@@ -78,26 +78,25 @@ export function Hemicycle({ groups }: HemicycleProps) {
     }
 
     const total = seatPositions.length;
-    const withAffairs = [...dMap.values()].filter((d) => d.deputy.affairCount > 0).length;
-    const withCondamnations = [...dMap.values()].filter(
-      (d) => d.deputy.condamnationCount > 0
-    ).length;
+    const deputies = [...dMap.values()];
+    const misEnCause = deputies.filter((d) => d.deputy.severityScore > 0).length;
+    const probity = deputies.filter((d) => d.deputy.hasProbity).length;
 
     return {
       seats: seatPositions,
       deputyMap: dMap,
-      totalWithAffairs: withAffairs,
-      totalCondamnes: withCondamnations,
+      totalMisEnCause: misEnCause,
+      totalProbity: probity,
       totalDeputies: total,
     };
   }, [groups]);
 
-  // Radius scale: affair count → circle radius
+  // Severity score → circle radius
   const radiusScale = useMemo(
     () =>
       scaleLinear()
-        .domain([0, 1, 5])
-        .range([BASE_RADIUS, BASE_RADIUS * 1.8, BASE_RADIUS * MAX_SCALE])
+        .domain([0, 1, 4, 12])
+        .range([BASE_RADIUS, BASE_RADIUS * 1.4, BASE_RADIUS * 2, BASE_RADIUS * MAX_SCALE])
         .clamp(true),
     []
   );
@@ -136,17 +135,21 @@ export function Hemicycle({ groups }: HemicycleProps) {
         viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
         className="w-full h-auto"
         role="img"
-        aria-label={`Hémicycle de l'Assemblée nationale : ${totalWithAffairs} député${totalWithAffairs !== 1 ? "s" : ""} concerné${totalWithAffairs !== 1 ? "s" : ""} par au moins une affaire judiciaire sur ${totalDeputies}`}
+        aria-label={`Hémicycle de l'Assemblée nationale : ${totalMisEnCause} député${totalMisEnCause !== 1 ? "s" : ""} mis en cause dans une affaire judiciaire sur ${totalDeputies}`}
         aria-describedby={descId}
       >
         {seats.map((seat, i) => {
           const data = deputyMap.get(seat.seatIndex);
-          const affairCount = data?.deputy.affairCount ?? 0;
-          const condamnationCount = data?.deputy.condamnationCount ?? 0;
-          const r = radiusScale(affairCount);
+          const deputy = data?.deputy;
+          const score = deputy?.severityScore ?? 0;
+          const r = radiusScale(score);
           const isHighlighted = !highlightGroup || seat.groupCode === highlightGroup;
-          const hasAffairs = affairCount > 0;
-          const hasCondamnation = condamnationCount > 0;
+          const hasIssue = score > 0;
+
+          // Probity = group color + thick black stroke. Other affair = group color + thin gray stroke.
+          const fill = seat.groupColor;
+          const stroke = deputy?.hasProbity ? "#000000" : hasIssue ? "rgba(0,0,0,0.3)" : "none";
+          const strokeWidth = deputy?.hasProbity ? 2 : hasIssue ? 0.8 : 0;
 
           return (
             <circle
@@ -154,10 +157,10 @@ export function Hemicycle({ groups }: HemicycleProps) {
               cx={seat.x}
               cy={seat.y}
               r={r}
-              fill={seat.groupColor}
-              opacity={isHighlighted ? (hasAffairs ? 1 : 0.35) : 0.08}
-              stroke={hasCondamnation ? "#dc2626" : hasAffairs ? "rgba(0,0,0,0.3)" : "none"}
-              strokeWidth={hasCondamnation ? 1 : hasAffairs ? 0.5 : 0}
+              fill={fill}
+              opacity={isHighlighted ? (hasIssue ? 1 : 0.35) : 0.08}
+              stroke={stroke}
+              strokeWidth={strokeWidth}
               className="cursor-pointer transition-opacity duration-200"
               onMouseEnter={(e) => handleMouseEnter(seat.seatIndex, e)}
               onMouseLeave={handleMouseLeave}
@@ -170,7 +173,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-10 rounded-lg border bg-popover px-3 py-2 text-sm shadow-md max-w-[200px]"
+          className="pointer-events-none absolute z-10 rounded-lg border bg-popover px-3 py-2 text-sm shadow-md max-w-[220px]"
           style={{
             left: `clamp(100px, ${tooltip.x}px, calc(100% - 100px))`,
             top: Math.max(0, tooltip.y - 10),
@@ -183,53 +186,37 @@ export function Hemicycle({ groups }: HemicycleProps) {
           <div className="text-muted-foreground">
             {tooltip.groupName} ({tooltip.groupCode})
           </div>
-          {tooltip.deputy.affairCount > 0 && (
-            <div className="text-amber-600 dark:text-amber-400 font-medium">
-              {tooltip.deputy.affairCount} affaire
-              {tooltip.deputy.affairCount !== 1 ? "s" : ""} judiciaire
-              {tooltip.deputy.affairCount !== 1 ? "s" : ""}
-            </div>
+          {tooltip.deputy.hasProbity && <div className="font-medium">Atteinte à la probité</div>}
+          {tooltip.deputy.hasCondamnation && <div className="font-medium">Condamné</div>}
+          {tooltip.deputy.hasMiseEnExamen && !tooltip.deputy.hasCondamnation && (
+            <div className="text-amber-600 dark:text-amber-400 font-medium">Mis en examen</div>
           )}
-          {tooltip.deputy.condamnationCount > 0 && (
-            <div className="text-red-600 dark:text-red-400 font-medium">
-              dont {tooltip.deputy.condamnationCount} condamnation
-              {tooltip.deputy.condamnationCount !== 1 ? "s" : ""} définitive
-              {tooltip.deputy.condamnationCount !== 1 ? "s" : ""}
-            </div>
-          )}
+          {tooltip.deputy.severityScore > 0 &&
+            !tooltip.deputy.hasProbity &&
+            !tooltip.deputy.hasCondamnation &&
+            !tooltip.deputy.hasMiseEnExamen && (
+              <div className="text-muted-foreground font-medium">Affaire en cours</div>
+            )}
         </div>
       )}
 
-      {/* Size + stroke legend */}
-      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-3">
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      {/* Legend */}
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-3 text-xs">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
           <span className="font-medium text-foreground">Taille =</span>
-          {[1, 3, 5].map((n) => (
-            <span key={n} className="flex items-center gap-1">
-              <svg width={radiusScale(n) * 2 + 2} height={radiusScale(n) * 2 + 2}>
-                <circle
-                  cx={radiusScale(n) + 1}
-                  cy={radiusScale(n) + 1}
-                  r={radiusScale(n)}
-                  fill="#9ca3af"
-                  opacity={0.6}
-                />
-              </svg>
-              <span>
-                {n}
-                {n === 5 ? "+" : ""}
-              </span>
-            </span>
-          ))}
-          <span>affaires</span>
+          <span>gravité</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
           <svg width="14" height="14">
-            <circle cx="7" cy="7" r="5" fill="#9ca3af" stroke="#dc2626" strokeWidth="1.5" />
+            <circle cx="7" cy="7" r="5" fill="#9ca3af" stroke="#000000" strokeWidth="2" />
           </svg>
-          <span className="text-red-600 dark:text-red-400 font-medium">
-            Condamnation définitive
-          </span>
+          <span className="font-medium">Atteinte à la probité</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <svg width="14" height="14">
+            <circle cx="7" cy="7" r="5" fill="#9ca3af" stroke="rgba(0,0,0,0.4)" strokeWidth="1.5" />
+          </svg>
+          <span className="text-muted-foreground font-medium">Autre affaire judiciaire</span>
         </div>
       </div>
 
@@ -254,19 +241,13 @@ export function Hemicycle({ groups }: HemicycleProps) {
 
       {/* Summary stat */}
       <p className="text-center text-sm text-muted-foreground mt-2">
-        <span className="font-semibold text-amber-600 dark:text-amber-400">{totalWithAffairs}</span>{" "}
-        député{totalWithAffairs !== 1 ? "s" : ""} concerné
-        {totalWithAffairs !== 1 ? "s" : ""} par au moins une affaire judiciaire sur{" "}
-        <span className="font-semibold">{totalDeputies}</span>
-        {totalCondamnes > 0 && (
+        <span className="font-semibold text-amber-600 dark:text-amber-400">{totalMisEnCause}</span>{" "}
+        député{totalMisEnCause !== 1 ? "s" : ""} mis en cause dans au moins une affaire judiciaire
+        sur <span className="font-semibold">{totalDeputies}</span>
+        {totalProbity > 0 && (
           <>
             {" "}
-            dont{" "}
-            <span className="font-semibold text-red-600 dark:text-red-400">
-              {totalCondamnes}
-            </span>{" "}
-            avec condamnation{totalCondamnes !== 1 ? "s" : ""} définitive
-            {totalCondamnes !== 1 ? "s" : ""}
+            dont <span className="font-semibold">{totalProbity}</span> pour atteinte à la probité
           </>
         )}
       </p>
@@ -278,8 +259,8 @@ export function Hemicycle({ groups }: HemicycleProps) {
           <tr>
             <th>Groupe</th>
             <th>Députés</th>
-            <th>Avec affaires</th>
-            <th>Condamnations définitives</th>
+            <th>Mis en cause</th>
+            <th>Atteinte à la probité</th>
           </tr>
         </thead>
         <tbody>
@@ -287,8 +268,8 @@ export function Hemicycle({ groups }: HemicycleProps) {
             <tr key={g.code}>
               <td>{g.shortName || g.name}</td>
               <td>{g.deputies.length}</td>
-              <td>{g.deputies.filter((d) => d.affairCount > 0).length}</td>
-              <td>{g.deputies.filter((d) => d.condamnationCount > 0).length}</td>
+              <td>{g.deputies.filter((d) => d.severityScore > 0).length}</td>
+              <td>{g.deputies.filter((d) => d.hasProbity).length}</td>
             </tr>
           ))}
         </tbody>

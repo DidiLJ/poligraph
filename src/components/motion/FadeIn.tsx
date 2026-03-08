@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView, useReducedMotion } from "motion/react";
+import { useRef, useEffect, useState } from "react";
 
 interface FadeInProps {
   children: React.ReactNode;
@@ -12,28 +11,43 @@ interface FadeInProps {
 
 export function FadeIn({ children, className, delay = 0, direction = "up" }: FadeInProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
-  const shouldReduceMotion = useReducedMotion();
+  const [isVisible, setIsVisible] = useState(false);
 
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "-80px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const y = direction === "up" ? 20 : direction === "down" ? -20 : 0;
 
   return (
-    <motion.div
+    <div
       ref={ref}
       className={className}
-      initial={{ opacity: 0, y }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y }}
-      transition={{
-        duration: 0.4,
-        delay,
-        ease: [0.25, 0.1, 0.25, 1],
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "none" : `translateY(${y}px)`,
+        transition: `opacity 0.4s cubic-bezier(0.25,0.1,0.25,1) ${delay}s, transform 0.4s cubic-bezier(0.25,0.1,0.25,1) ${delay}s`,
       }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

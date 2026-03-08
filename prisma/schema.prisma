@@ -1435,6 +1435,7 @@ model StatsSnapshot {
 
 enum SocialPostStatus {
   PENDING_REVIEW
+  APPROVED
   POSTED
   REJECTED
   FAILED
@@ -1445,6 +1446,7 @@ model SocialPost {
   category   String
   content    String           @db.Text
   link       String?
+  entityId   String?
   status     SocialPostStatus @default(PENDING_REVIEW)
   blueskyUrl String?
   twitterUrl String?
@@ -1455,6 +1457,7 @@ model SocialPost {
 
   @@index([status])
   @@index([createdAt])
+  @@index([entityId])
 }
 
 // ============================================

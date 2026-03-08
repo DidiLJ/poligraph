@@ -10,7 +10,8 @@ import { DailyVotesPage } from "@/components/votes/DailyVotesPage";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { formatDate } from "@/lib/utils";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
-import { ExternalLink, Calendar, Users, Sparkles, Lightbulb } from "lucide-react";
+import { ExternalLink, Calendar, Users, Sparkles, Lightbulb, FileText } from "lucide-react";
+import { StatusBadge } from "@/components/legislation";
 import { ExportButton } from "@/components/ui/ExportButton";
 import { MarkdownText } from "@/components/ui/markdown";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
@@ -58,6 +59,15 @@ const getScrutinWithRedirect = cache(async function getScrutinWithRedirect(slugO
       },
       orderBy: {
         politician: { lastName: "asc" },
+      },
+    },
+    dossierLegislatif: {
+      select: {
+        slug: true,
+        shortTitle: true,
+        title: true,
+        number: true,
+        status: true,
       },
     },
   } as const;
@@ -318,6 +328,30 @@ export default async function ScrutinPage({ params }: PageProps) {
               <MarkdownText className="text-sm">{scrutin.citizenImpact}</MarkdownText>
             </CardContent>
           </Card>
+        )}
+
+        {/* Dossier législatif lié */}
+        {scrutin.dossierLegislatif && (
+          <Link
+            href={`/assemblee/${scrutin.dossierLegislatif.slug}`}
+            className="flex items-center gap-3 mb-8 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors group"
+          >
+            <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-muted-foreground">Dossier législatif</p>
+              <p className="font-medium group-hover:underline truncate">
+                {scrutin.dossierLegislatif.shortTitle || scrutin.dossierLegislatif.title}
+              </p>
+            </div>
+            <div className="shrink-0 flex items-center gap-2">
+              {scrutin.dossierLegislatif.number && (
+                <Badge variant="secondary" className="font-mono text-xs">
+                  {scrutin.dossierLegislatif.number}
+                </Badge>
+              )}
+              <StatusBadge status={scrutin.dossierLegislatif.status} />
+            </div>
+          </Link>
         )}
 
         {/* Results summary */}

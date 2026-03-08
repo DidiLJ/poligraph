@@ -14,7 +14,8 @@ import {
 } from "@/components/legislation";
 import type { DossierTimelineEntry } from "@/types/legislation";
 import { AMENDMENT_STATUS_LABELS, AMENDMENT_STATUS_COLORS } from "@/config/labels";
-import { ExternalLink, ArrowLeft, Calendar, FileText } from "lucide-react";
+import { VotingResultBadge } from "@/components/votes";
+import { ExternalLink, ArrowLeft, Calendar, FileText, Vote } from "lucide-react";
 import { LegislationJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import { formatDate } from "@/lib/utils";
@@ -51,6 +52,18 @@ const includeOptions = {
         },
       },
     },
+  },
+  scrutins: {
+    select: {
+      slug: true,
+      title: true,
+      votingDate: true,
+      result: true,
+      votesFor: true,
+      votesAgainst: true,
+      votesAbstain: true,
+    },
+    orderBy: { votingDate: "desc" },
   },
 } as const;
 
@@ -232,6 +245,56 @@ export default async function DossierDetailPage({ params }: PageProps) {
             entries={(dossier.timeline as unknown as DossierTimelineEntry[]) ?? []}
           />
         </div>
+
+        {/* Related votes */}
+        {dossier.scrutins.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Vote className="h-5 w-5" />
+                Votes liés ({dossier.scrutins.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {dossier.scrutins.map((scrutin) => {
+                  const total = scrutin.votesFor + scrutin.votesAgainst + scrutin.votesAbstain;
+                  const forPct = total > 0 ? (scrutin.votesFor / total) * 100 : 0;
+                  const againstPct = total > 0 ? (scrutin.votesAgainst / total) * 100 : 0;
+                  const abstainPct = total > 0 ? (scrutin.votesAbstain / total) * 100 : 0;
+
+                  return (
+                    <Link
+                      key={scrutin.slug}
+                      href={`/votes/${scrutin.slug}`}
+                      prefetch={false}
+                      className="block p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <p className="text-sm font-medium flex-1 min-w-0 leading-snug">
+                          {scrutin.title}
+                        </p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(scrutin.votingDate)}
+                          </span>
+                          <VotingResultBadge result={scrutin.result} />
+                        </div>
+                      </div>
+                      {total > 0 && (
+                        <div className="flex h-2 rounded-full overflow-hidden">
+                          <div className="bg-green-500" style={{ width: `${forPct}%` }} />
+                          <div className="bg-red-500" style={{ width: `${againstPct}%` }} />
+                          <div className="bg-yellow-500" style={{ width: `${abstainPct}%` }} />
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Amendments */}
         {dossier.amendments.length > 0 && (

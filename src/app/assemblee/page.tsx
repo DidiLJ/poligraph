@@ -131,7 +131,9 @@ export default async function AssembleePage({ searchParams }: PageProps) {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <span className="text-3xl">🏛️</span>
-          <h1 className="text-3xl font-bold">En direct de l&apos;Assemblée</h1>
+          <h1 className="text-3xl font-display font-extrabold tracking-tight">
+            En direct de l&apos;Assemblée
+          </h1>
         </div>
         <p className="text-muted-foreground text-lg">
           Comprendre simplement ce qui se vote à l&apos;Assemblée nationale

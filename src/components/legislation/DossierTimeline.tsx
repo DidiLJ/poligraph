@@ -10,6 +10,7 @@ function formatDate(iso: string | null): string | null {
       day: "numeric",
       month: "long",
       year: "numeric",
+      timeZone: "Europe/Paris",
     });
   } catch {
     return null;

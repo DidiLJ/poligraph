@@ -59,11 +59,18 @@
     <!-- Header -->
     <mj-section background-color="#1e3a5f" padding="24px 20px 20px">
       <mj-column>
-        <mj-text align="center" color="#ffffff" font-size="28px" font-weight="800" letter-spacing="0.5px" padding-bottom="4px">
+        <mj-text
+          align="center"
+          color="#ffffff"
+          font-size="28px"
+          font-weight="800"
+          letter-spacing="0.5px"
+          padding-bottom="4px"
+        >
           Alerte Vote
         </mj-text>
         <mj-text align="center" color="#93c5fd" font-size="14px" padding-top="0">
-          {{weekLabel}}
+          {{ weekLabel }}
         </mj-text>
       </mj-column>
     </mj-section>
@@ -72,10 +79,10 @@
     <mj-section background-color="#ffffff" padding="16px 20px" border-radius="0">
       <mj-column>
         <mj-text align="center" font-size="14px" color="#6b7280">
-          <span class="kpi-value">{{totalScrutins}}</span> scrutins &middot;
-          <span class="kpi-value">{{totalArticles}}</span> articles &middot;
-          <span class="kpi-value">{{totalAffairs}}</span> affaires &middot;
-          <span class="kpi-value">{{totalFactChecks}}</span> fact-checks
+          <span class="kpi-value">{{ totalScrutins }}</span> scrutins &middot;
+          <span class="kpi-value">{{ totalArticles }}</span> articles &middot;
+          <span class="kpi-value">{{ totalAffairs }}</span> affaires &middot;
+          <span class="kpi-value">{{ totalFactChecks }}</span> fact-checks
         </mj-text>
       </mj-column>
     </mj-section>
@@ -86,7 +93,7 @@
     <mj-section background-color="#ffffff" padding="20px 24px">
       <mj-column>
         <mj-text font-style="italic" color="#374151" font-size="15px" line-height="1.7">
-          {{editorialIntro}}
+          {{ editorialIntro }}
         </mj-text>
       </mj-column>
     </mj-section>
@@ -97,14 +104,12 @@
     {{#if hasVotes}}
     <mj-section background-color="#ffffff" padding="20px 24px 12px">
       <mj-column>
-        <mj-text css-class="section-title" padding-bottom="12px">
-          Votes de la semaine
-        </mj-text>
+        <mj-text css-class="section-title" padding-bottom="12px"> Votes de la semaine </mj-text>
       </mj-column>
     </mj-section>
     <mj-section background-color="#ffffff" padding="0 24px 20px">
       <mj-column>
-        {{votesHtml}}
+        {{ votesHtml }}
       </mj-column>
     </mj-section>
     <mj-section padding="4px 0"></mj-section>
@@ -114,14 +119,12 @@
     {{#if hasAffairs}}
     <mj-section background-color="#ffffff" padding="20px 24px 12px">
       <mj-column>
-        <mj-text css-class="section-title" padding-bottom="12px">
-          Affaires judiciaires
-        </mj-text>
+        <mj-text css-class="section-title" padding-bottom="12px"> Affaires judiciaires </mj-text>
       </mj-column>
     </mj-section>
     <mj-section background-color="#ffffff" padding="0 24px 20px">
       <mj-column>
-        {{affairsHtml}}
+        {{ affairsHtml }}
       </mj-column>
     </mj-section>
     <mj-section padding="4px 0"></mj-section>
@@ -131,14 +134,12 @@
     {{#if hasFactChecks}}
     <mj-section background-color="#ffffff" padding="20px 24px 12px">
       <mj-column>
-        <mj-text css-class="section-title" padding-bottom="12px">
-          Fact-checking
-        </mj-text>
+        <mj-text css-class="section-title" padding-bottom="12px"> Fact-checking </mj-text>
       </mj-column>
     </mj-section>
     <mj-section background-color="#ffffff" padding="0 24px 20px">
       <mj-column>
-        {{factChecksHtml}}
+        {{ factChecksHtml }}
       </mj-column>
     </mj-section>
     <mj-section padding="4px 0"></mj-section>
@@ -148,14 +149,12 @@
     {{#if hasPress}}
     <mj-section background-color="#ffffff" padding="20px 24px 12px">
       <mj-column>
-        <mj-text css-class="section-title" padding-bottom="12px">
-          Revue de presse
-        </mj-text>
+        <mj-text css-class="section-title" padding-bottom="12px"> Revue de presse </mj-text>
       </mj-column>
     </mj-section>
     <mj-section background-color="#ffffff" padding="0 24px 20px">
       <mj-column>
-        {{pressHtml}}
+        {{ pressHtml }}
       </mj-column>
     </mj-section>
     <mj-section padding="4px 0"></mj-section>
@@ -172,23 +171,37 @@
     </mj-section>
     <mj-section background-color="#eff6ff" padding="0 24px 8px">
       <mj-column width="80px" vertical-align="top">
-        <mj-image src="{{politicianPhoto}}" width="64px" border-radius="50%" alt="{{politicianName}}" css-class="politician-photo" />
+        <mj-image
+          src="{{politicianPhoto}}"
+          width="64px"
+          border-radius="50%"
+          alt="{{politicianName}}"
+          css-class="politician-photo"
+        />
       </mj-column>
       <mj-column vertical-align="top">
         <mj-text font-size="18px" font-weight="700" color="#1e3a5f" padding-bottom="2px">
-          {{politicianName}}
+          {{ politicianName }}
         </mj-text>
         <mj-text font-size="13px" color="#6b7280" padding-top="0">
-          {{politicianMandate}} · {{politicianParty}}
+          {{ politicianMandate }} · {{ politicianParty }}
         </mj-text>
       </mj-column>
     </mj-section>
     <mj-section background-color="#eff6ff" padding="0 24px 16px">
       <mj-column>
         <mj-text font-size="14px" color="#374151" line-height="1.6">
-          {{politicianBio}}
+          {{ politicianBio }}
         </mj-text>
-        <mj-button background-color="#1e3a5f" color="#ffffff" border-radius="6px" font-size="14px" font-weight="600" padding-top="12px" href="{{politicianUrl}}">
+        <mj-button
+          background-color="#1e3a5f"
+          color="#ffffff"
+          border-radius="6px"
+          font-size="14px"
+          font-weight="600"
+          padding-top="12px"
+          href="{{politicianUrl}}"
+        >
           Voir le profil complet
         </mj-button>
       </mj-column>
@@ -202,7 +215,14 @@
         <mj-text align="center" font-size="15px" color="#374151" padding-bottom="8px">
           Retrouvez le récap complet sur Poligraph
         </mj-text>
-        <mj-button background-color="#1e3a5f" color="#ffffff" border-radius="6px" font-size="15px" font-weight="600" href="{{recapUrl}}">
+        <mj-button
+          background-color="#1e3a5f"
+          color="#ffffff"
+          border-radius="6px"
+          font-size="15px"
+          font-weight="600"
+          href="{{recapUrl}}"
+        >
           Voir le récap de la semaine
         </mj-button>
       </mj-column>
@@ -214,7 +234,9 @@
         <mj-text align="center" font-size="11px" color="#9ca3af">
           Vous recevez cet email car vous êtes abonné à Alerte Vote par Poligraph.
           <br />
-          <a href="{{unsubscribeUrl}}" style="color: #9ca3af; text-decoration: underline;">Se désabonner</a>
+          <a href="{{unsubscribeUrl}}" style="color: #9ca3af; text-decoration: underline"
+            >Se désabonner</a
+          >
         </mj-text>
       </mj-column>
     </mj-section>

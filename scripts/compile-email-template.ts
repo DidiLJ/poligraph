@@ -26,7 +26,7 @@ template = template.replace(/^(\s*)\{\{\/if\}\}\s*$/gm, "$1<mj-raw><!--/IF--></m
 
 // Wrap raw HTML placeholders ({{votesHtml}} etc.) inside <mj-column> with <mj-raw>
 template = template.replace(
-  /<mj-column>\s*\{\{(\w+Html)\}\}\s*<\/mj-column>/g,
+  /<mj-column>\s*\{\{\s*(\w+Html)\s*\}\}\s*<\/mj-column>/g,
   "<mj-column><mj-raw>{{$1}}</mj-raw></mj-column>"
 );
 

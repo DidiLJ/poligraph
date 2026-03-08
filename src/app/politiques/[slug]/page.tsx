@@ -21,7 +21,8 @@ import { PersonJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { DeclarationCard } from "@/components/declarations/DeclarationCard";
 import { MarkdownText } from "@/components/ui/markdown";
 import type { DeclarationDetails } from "@/types/hatvp";
-import { Scale } from "lucide-react";
+import { Scale, FileText } from "lucide-react";
+import { StatusBadge } from "@/components/legislation";
 import { BetaDisclaimer } from "@/components/BetaDisclaimer";
 import { ProfileTabs } from "@/components/politicians/ProfileTabs";
 import { CareerTimeline } from "@/components/politicians/CareerTimeline";
@@ -414,6 +415,49 @@ export default async function PoliticianPage({ params }: PageProps) {
                           mandates={politician.mandates}
                           civility={politician.civility}
                         />
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Authored Dossiers */}
+                  {politician.dossierAuthors.length > 0 && (
+                    <Card id="dossiers">
+                      <CardHeader>
+                        <h2 className="leading-none font-semibold flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          Propositions de loi ({politician.dossierAuthors.length})
+                        </h2>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {politician.dossierAuthors.map((da) => (
+                            <Link
+                              key={da.dossier.slug}
+                              href={`/assemblee/${da.dossier.slug}`}
+                              prefetch={false}
+                              className="flex items-start justify-between gap-3 py-2 border-b last:border-0 hover:bg-muted/50 -mx-2 px-2 rounded transition-colors"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium leading-snug">
+                                  {da.dossier.shortTitle || da.dossier.title}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {da.dossier.number && (
+                                    <span className="text-xs text-muted-foreground font-mono">
+                                      {da.dossier.number}
+                                    </span>
+                                  )}
+                                  {da.dossier.filingDate && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatDate(da.dossier.filingDate)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <StatusBadge status={da.dossier.status} />
+                            </Link>
+                          ))}
+                        </div>
                       </CardContent>
                     </Card>
                   )}

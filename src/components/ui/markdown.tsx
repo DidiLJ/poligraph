@@ -39,8 +39,16 @@ function parseMarkdown(text: string): string {
   html = html.replace(/_([^_]+)_/g, "<em>$1</em>");
 
   // Links: [text](url) — internal links stay in-page, external open new tab
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText, url) => {
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText, url: string) => {
     const isInternal = url.startsWith("/");
+    if (!isInternal) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return linkText;
+      } catch {
+        return linkText;
+      }
+    }
     if (isInternal) {
       return `<a href="${url}" class="text-primary hover:underline">${linkText}</a>`;
     }

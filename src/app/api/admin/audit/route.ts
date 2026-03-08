@@ -4,10 +4,25 @@ import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import type { Prisma } from "@/generated/prisma";
 import { parsePagination } from "@/lib/api/pagination";
 
+const VALID_ENTITY_TYPES = new Set([
+  "Politician",
+  "Affair",
+  "Party",
+  "Mandate",
+  "FactCheck",
+  "Scrutin",
+  "SocialPost",
+  "PressArticle",
+]);
+const VALID_ACTIONS = new Set(["CREATE", "UPDATE", "DELETE", "PUBLISH", "REJECT", "ARCHIVE"]);
+
 export const GET = withAdminAuth(async (request) => {
   const { searchParams } = new URL(request.url);
-  const entityType = searchParams.get("entityType");
-  const action = searchParams.get("action");
+  const entityTypeParam = searchParams.get("entityType");
+  const entityType =
+    entityTypeParam && VALID_ENTITY_TYPES.has(entityTypeParam) ? entityTypeParam : undefined;
+  const actionParam = searchParams.get("action");
+  const action = actionParam && VALID_ACTIONS.has(actionParam) ? actionParam : undefined;
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
   const search = searchParams.get("search");

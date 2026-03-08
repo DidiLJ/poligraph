@@ -4,15 +4,24 @@ import { generateAffairSlug } from "@/lib/utils";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { invalidateEntity } from "@/lib/cache";
 import { createAffairSchema } from "@/lib/validations/affairs";
-import type { AffairCategory, PublicationStatus, AffairStatus } from "@/generated/prisma";
+import { AffairCategory, PublicationStatus, AffairStatus } from "@/generated/prisma";
 import { computeSeverity, isInherentlyMandateCategory } from "@/config/labels";
 import { parsePagination } from "@/lib/api/pagination";
 
+const VALID_PUB_STATUSES = new Set(Object.values(PublicationStatus));
+const VALID_CATEGORIES = new Set(Object.values(AffairCategory));
+const VALID_AFFAIR_STATUSES = new Set(Object.values(AffairStatus));
+
+function validateEnum<T>(value: string | null, validSet: Set<T>): T | undefined {
+  if (!value) return undefined;
+  return validSet.has(value as T) ? (value as T) : undefined;
+}
+
 export const GET = withAdminAuth(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
-  const pubStatus = searchParams.get("publicationStatus") as PublicationStatus | null;
-  const category = searchParams.get("category") as AffairCategory | null;
-  const status = searchParams.get("status") as AffairStatus | null;
+  const pubStatus = validateEnum(searchParams.get("publicationStatus"), VALID_PUB_STATUSES);
+  const category = validateEnum(searchParams.get("category"), VALID_CATEGORIES);
+  const status = validateEnum(searchParams.get("status"), VALID_AFFAIR_STATUSES);
   const search = searchParams.get("search");
   const hasEcli = searchParams.get("hasEcli");
   const { page, limit, skip } = parsePagination(searchParams);

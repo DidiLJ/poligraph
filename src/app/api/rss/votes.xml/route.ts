@@ -3,10 +3,11 @@ import { buildRss, createRssResponse } from "@/lib/rss";
 import { VOTING_RESULT_LABELS, CHAMBER_LABELS } from "@/config/labels";
 import type { VotingResult, Chamber } from "@/types";
 import { SITE_URL } from "@/config/site";
+import { withPublicRoute } from "@/lib/api/with-public-route";
 
 export const revalidate = 300;
 
-export async function GET() {
+export const GET = withPublicRoute(async () => {
   const scrutins = await db.scrutin.findMany({
     orderBy: { votingDate: "desc" },
     take: 50,
@@ -46,4 +47,4 @@ export async function GET() {
   );
 
   return createRssResponse(xml);
-}
+});

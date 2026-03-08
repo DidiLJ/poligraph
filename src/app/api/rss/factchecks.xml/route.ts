@@ -2,10 +2,11 @@ import { db } from "@/lib/db";
 import { buildRss, createRssResponse } from "@/lib/rss";
 import { FACTCHECK_ALLOWED_SOURCES } from "@/config/labels";
 import { SITE_URL } from "@/config/site";
+import { withPublicRoute } from "@/lib/api/with-public-route";
 
 export const revalidate = 300;
 
-export async function GET() {
+export const GET = withPublicRoute(async () => {
   const factchecks = await db.factCheck.findMany({
     where: { source: { in: FACTCHECK_ALLOWED_SOURCES } },
     orderBy: { publishedAt: "desc" },
@@ -40,4 +41,4 @@ export async function GET() {
   );
 
   return createRssResponse(xml);
-}
+});

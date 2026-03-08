@@ -50,6 +50,10 @@ export const WD_PROPS = {
   // Judicial
   CONVICTED_OF: "P1399", // convicted of (criminal offense)
   CHARGE: "P1595", // charge (accusation)
+  PENALTY: "P1596", // penalty (type of sentence)
+  POINT_IN_TIME: "P585", // point in time (verdict date)
+  DURATION: "P2047", // duration (sentence length)
+  COURT: "P4884", // court (which court)
 } as const;
 
 // ============================================================================

@@ -1,29 +1,43 @@
 import { db } from "@/lib/db";
-import { SOCIAL_CATEGORIES, type SocialCategory } from "./config";
+import { CATEGORY_PRIORITY, METHODO_COOLDOWN_DAYS } from "./config";
+import type { SocialCategory } from "./config";
+import { getRecentlyPosted } from "./dedup";
+import { generateForCategory, type TweetDraft } from "./generators";
 
-const ROTATION_KEY = "social:rotation-index";
+/**
+ * Generate the best 2-3 drafts across all categories.
+ * Returns drafts sorted by priority.
+ */
+export async function generateBatchDrafts(
+  maxDrafts = 3
+): Promise<{ category: SocialCategory; draft: TweetDraft }[]> {
+  const recent = await getRecentlyPosted();
+  const results: { category: SocialCategory; draft: TweetDraft }[] = [];
 
-/** Read the current rotation index (0-8). Returns 0 if not yet initialized. */
-export async function getRotationIndex(): Promise<number> {
-  const row = await db.statsSnapshot.findUnique({ where: { key: ROTATION_KEY } });
-  if (!row) return 0;
-  const idx = (row.data as { index: number }).index;
-  return typeof idx === "number" ? idx % SOCIAL_CATEGORIES.length : 0;
-}
-
-/** Get the next category to post. */
-export async function getNextCategory(): Promise<SocialCategory> {
-  const idx = await getRotationIndex();
-  return SOCIAL_CATEGORIES[idx]!;
-}
-
-/** Advance the rotation index by 1 (modulo 9). */
-export async function advanceRotation(): Promise<void> {
-  const current = await getRotationIndex();
-  const next = (current + 1) % SOCIAL_CATEGORIES.length;
-  await db.statsSnapshot.upsert({
-    where: { key: ROTATION_KEY },
-    create: { key: ROTATION_KEY, data: { index: next }, durationMs: 0 },
-    update: { data: { index: next }, computedAt: new Date() },
+  // Check methodo cooldown
+  const methodoSince = new Date();
+  methodoSince.setDate(methodoSince.getDate() - METHODO_COOLDOWN_DAYS);
+  const recentMethodo = await db.socialPost.count({
+    where: {
+      category: "methodo",
+      createdAt: { gte: methodoSince },
+      status: { in: ["PENDING_REVIEW", "APPROVED", "POSTED"] },
+    },
   });
+
+  for (const category of CATEGORY_PRIORITY) {
+    if (results.length >= maxDrafts) break;
+    if (category === "methodo" && recentMethodo > 0) continue;
+
+    try {
+      const draft = await generateForCategory(category, recent);
+      if (draft) {
+        results.push({ category, draft });
+      }
+    } catch {
+      // Skip failed generators
+    }
+  }
+
+  return results;
 }

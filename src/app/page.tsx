@@ -52,7 +52,7 @@ export default async function HomePage() {
         {/* Hero Section */}
         <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/10">
           <div className="container mx-auto px-4 py-20 md:py-28 relative z-10">
-            <FadeIn className="max-w-3xl mx-auto text-center">
+            <div className="max-w-3xl mx-auto text-center">
               <Badge variant="secondary" className="mb-6 text-xs sm:text-sm font-medium">
                 Observatoire citoyen de la vie politique
               </Badge>
@@ -106,7 +106,7 @@ export default async function HomePage() {
                   </Link>
                 </Button>
               </div>
-            </FadeIn>
+            </div>
           </div>
           <HexPattern className="absolute inset-0 text-primary opacity-[0.03] dark:opacity-[0.05] pointer-events-none" />
         </section>

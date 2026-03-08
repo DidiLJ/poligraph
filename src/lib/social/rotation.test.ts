@@ -1,69 +1,46 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    statsSnapshot: {
-      findUnique: vi.fn(),
-      upsert: vi.fn(),
+    socialPost: {
+      findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
     },
   },
 }));
 
-import { getRotationIndex, getNextCategory, advanceRotation } from "./rotation";
-import { db } from "@/lib/db";
+vi.mock("./generators", () => ({
+  generateForCategory: vi.fn().mockResolvedValue(null),
+}));
 
-const mockFind = vi.mocked(db.statsSnapshot.findUnique);
-const mockUpsert = vi.mocked(db.statsSnapshot.upsert);
+import { generateBatchDrafts } from "./rotation";
+import { generateForCategory } from "./generators";
 
-// Minimal mock matching the shape read by rotation.ts
-function mockRow(index: number) {
-  return { data: { index } } as unknown as Awaited<ReturnType<typeof db.statsSnapshot.findUnique>>;
-}
+const mockGenerate = vi.mocked(generateForCategory);
 
-describe("rotation", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe("generateBatchDrafts", () => {
+  it("returns empty array when no generators produce content", async () => {
+    const result = await generateBatchDrafts(3);
+    expect(result).toEqual([]);
   });
 
-  it("returns 0 when no row exists", async () => {
-    mockFind.mockResolvedValue(null);
-    expect(await getRotationIndex()).toBe(0);
+  it("returns drafts sorted by category priority", async () => {
+    mockGenerate.mockImplementation(async (category) => {
+      if (category === "affaires") return { content: "affair post", link: "https://example.com" };
+      if (category === "votes") return { content: "vote post", link: "https://example.com" };
+      return null;
+    });
+
+    const result = await generateBatchDrafts(3);
+    expect(result).toHaveLength(2);
+    expect(result[0]!.category).toBe("affaires");
+    expect(result[1]!.category).toBe("votes");
   });
 
-  it("returns stored index", async () => {
-    mockFind.mockResolvedValue(mockRow(5));
-    expect(await getRotationIndex()).toBe(5);
-  });
+  it("stops at maxDrafts", async () => {
+    mockGenerate.mockResolvedValue({ content: "post", link: "https://example.com" });
 
-  it("wraps around modulo 9", async () => {
-    mockFind.mockResolvedValue(mockRow(15));
-    expect(await getRotationIndex()).toBe(6);
-  });
-
-  it("getNextCategory returns the category at current index", async () => {
-    mockFind.mockResolvedValue(mockRow(3));
-    expect(await getNextCategory()).toBe("affaires");
-  });
-
-  it("advanceRotation increments by 1", async () => {
-    mockFind.mockResolvedValue(mockRow(7));
-    mockUpsert.mockResolvedValue({} as Awaited<ReturnType<typeof db.statsSnapshot.upsert>>);
-    await advanceRotation();
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        update: expect.objectContaining({ data: { index: 8 } }),
-      })
-    );
-  });
-
-  it("advanceRotation wraps from 8 to 0", async () => {
-    mockFind.mockResolvedValue(mockRow(8));
-    mockUpsert.mockResolvedValue({} as Awaited<ReturnType<typeof db.statsSnapshot.upsert>>);
-    await advanceRotation();
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        update: expect.objectContaining({ data: { index: 0 } }),
-      })
-    );
+    const result = await generateBatchDrafts(2);
+    expect(result).toHaveLength(2);
   });
 });

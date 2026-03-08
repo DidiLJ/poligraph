@@ -3,6 +3,7 @@ import {
   AFFAIR_STATUS_LABELS,
   AFFAIR_STATUS_NEEDS_PRESUMPTION,
   AFFAIR_CATEGORY_LABELS,
+  FACTCHECK_ALLOWED_SOURCES,
   MANDATE_TYPE_LABELS,
 } from "@/config/labels";
 import { SITE_URL } from "./config";
@@ -411,6 +412,7 @@ async function factchecks(recent: RecentlyPosted): Promise<TweetDraft[]> {
     where: {
       publishedAt: { gte: sevenDaysAgo },
       languageCode: "fr",
+      source: { in: FACTCHECK_ALLOWED_SOURCES },
       mentions: {
         some: {
           politician: { publicationStatus: "PUBLISHED" },

@@ -26,7 +26,7 @@
 
 ## Qu'est-ce que Poligraph ?
 
-Poligraph centralise les informations publiques sur les responsables politiques français : mandats, votes parlementaires, déclarations de patrimoine, affaires judiciaires, et activité législative — le tout sourcé, vérifiable et présenté de manière factuelle.
+Poligraph centralise les informations publiques sur les responsables politiques français : mandats, votes parlementaires, déclarations de patrimoine, affaires judiciaires, activité législative et couverture médiatique. Le tout sourcé, vérifiable et présenté de manière factuelle.
 
 ### Principes fondateurs
 
@@ -41,57 +41,73 @@ Poligraph centralise les informations publiques sur les responsables politiques 
 
 ### Fiches politiques
 
-- 577 députés, 348 sénateurs, membres du gouvernement
-- Parcours politique complet : mandats, partis, fonctions
+- Députés, sénateurs, eurodéputés, ministres, maires
+- Parcours politique complet : mandats, partis, fonctions, carrière Wikidata
 - Photos officielles, biographies générées par IA
 - Score de notoriété calculé automatiquement
+- Watchlist personnelle (Mon Observatoire)
 
-### Votes & législation
+### Votes et législation
 
-- Scrutins de l'Assemblée nationale avec résumés IA
-- Vote individuel de chaque député (pour / contre / abstention)
+- Scrutins de l'Assemblée nationale et du Sénat avec résumés IA
+- Vote individuel de chaque parlementaire (pour / contre / abstention)
 - Taux de participation et classement par parlementaire
-- Suivi des dossiers législatifs et amendements
+- Suivi des dossiers législatifs : statut, timeline des actes, amendements, auteurs
+- Liens croisés entre scrutins et dossiers législatifs
+- Impact citoyen généré par IA pour chaque vote
 
 ### Transparence financière
 
-- Déclarations de patrimoine HATVP (intérêts & activités)
+- Déclarations de patrimoine HATVP (intérêts et activités)
 - Portefeuille immobilier, valeurs mobilières, revenus
 
 ### Affaires judiciaires
 
-- Découverte automatique via Wikidata, Judilibre et presse
-- Timeline des procédures (mise en examen → condamnation)
+- Découverte automatique via Wikidata, Judilibre et presse (analyse IA)
+- Timeline des procédures (mise en examen, condamnation)
 - Modération éditoriale avec triage IA
 - Fact-checks agrégés (AFP, Les Décodeurs)
+
+### Élections
+
+- Municipales 2026 : candidatures, résultats par commune
+- Historique des élections municipales 2020
+- Pages par département et par institution
 
 ### Exploration
 
 - Recherche par nom, code postal, département
 - Filtres par parti, mandat, statut, chambre
 - Comparateur de politiques (votes, patrimoine)
-- Pages par département et par institution
+- Carte interactive des élus
+- Récap hebdomadaire
 
-### IA & recherche sémantique
+### IA et automatisation
 
-- Chatbot avec RAG (pgvector + embeddings)
-- Résumés automatiques des scrutins
+- Chatbot avec RAG (pgvector + embeddings Voyage AI)
+- Résumés automatiques des scrutins et dossiers législatifs
+- Impact citoyen généré pour chaque vote
 - Biographies générées et vérifiées
 - Classification thématique des textes de loi
+- Découverte d'affaires judiciaires dans la presse (Claude Haiku)
+- Newsletter hebdomadaire "Alerte Vote" avec contenu éditorial IA
+- Auto-publication sur les réseaux sociaux (Twitter, Bluesky)
 
 ## Stack technique
 
-| Technologie       | Usage                                           |
-| ----------------- | ----------------------------------------------- |
-| **Next.js 16**    | Framework React (App Router, Server Components) |
-| **TypeScript**    | Typage statique                                 |
-| **Prisma 7**      | ORM avec 37 modèles                             |
-| **PostgreSQL**    | Base de données (Supabase) + pgvector           |
-| **Tailwind CSS**  | Styles                                          |
-| **shadcn/ui**     | Composants UI                                   |
-| **Inngest**       | Orchestration de jobs asynchrones               |
-| **Vercel**        | Hébergement & CDN                               |
-| **Upstash Redis** | Cache                                           |
+| Technologie      | Usage                                           |
+| ---------------- | ----------------------------------------------- |
+| **Next.js 16**   | Framework React (App Router, Server Components) |
+| **TypeScript**   | Typage statique (strict)                        |
+| **Prisma 7**     | ORM avec 44 modèles                             |
+| **PostgreSQL**   | Base de données (Supabase) + pgvector           |
+| **Tailwind CSS** | Styles                                          |
+| **shadcn/ui**    | Composants UI                                   |
+| **Inngest**      | Orchestration de jobs asynchrones               |
+| **Claude Haiku** | Génération IA (résumés, impacts, bios, analyse) |
+| **Voyage AI**    | Embeddings vectoriels (chatbot RAG)             |
+| **Mailjet**      | Newsletter hebdomadaire                         |
+| **Vercel**       | Hébergement et CDN                              |
 
 ## Installation
 
@@ -116,13 +132,26 @@ npm run db:push
 npm run dev
 ```
 
+### Variables d'environnement requises
+
+| Variable                   | Description                       | Obligatoire            |
+| -------------------------- | --------------------------------- | ---------------------- |
+| `DATABASE_URL`             | URL PostgreSQL (Supabase)         | Oui                    |
+| `ANTHROPIC_API_KEY`        | Clé API Anthropic (génération IA) | Pour les scripts IA    |
+| `GOOGLE_FACTCHECK_API_KEY` | Clé API Google Fact Check         | Pour `sync:factchecks` |
+| `VOYAGE_API_KEY`           | Clé Voyage AI (embeddings)        | Pour le chatbot        |
+| `MAILJET_API_KEY`          | Clé Mailjet                       | Pour la newsletter     |
+| `ADMIN_TOKEN`              | Token d'authentification admin    | Pour l'admin           |
+
+Voir `docs/DATASOURCES.md` pour la liste complète.
+
 ## Sources de données
 
 | Source                                                             | Données                              | Fréquence    |
 | ------------------------------------------------------------------ | ------------------------------------ | ------------ |
 | [Assemblée nationale](https://data.assemblee-nationale.fr)         | Députés, votes, dossiers législatifs | Quotidienne  |
-| [Sénat](https://www.senat.fr/open-data.html)                       | Sénateurs                            | Quotidienne  |
-| [data.gouv.fr](https://www.data.gouv.fr)                           | Gouvernement, élections              | Quotidienne  |
+| [Sénat](https://www.senat.fr/open-data.html)                       | Sénateurs, votes                     | Quotidienne  |
+| [data.gouv.fr](https://www.data.gouv.fr)                           | Gouvernement, élections, RNE         | Quotidienne  |
 | [HATVP](https://www.hatvp.fr/open-data/)                           | Déclarations de patrimoine           | Hebdomadaire |
 | [Wikidata](https://www.wikidata.org)                               | Enrichissement, affaires, décès      | Hebdomadaire |
 | [Judilibre](https://www.courdecassation.fr/acces-rapide-judilibre) | Jurisprudence                        | Hebdomadaire |
@@ -137,8 +166,9 @@ npm run sync:assemblee         # Députés (CSV data.gouv.fr)
 npm run sync:senat             # Sénateurs (API senat.fr)
 npm run sync:gouvernement      # Ministres (corrections + data.gouv.fr)
 
-# Votes & législation
+# Votes et législation
 npm run sync:votes-an          # Scrutins Assemblée nationale
+npm run sync:votes-senat       # Scrutins Sénat
 npm run sync:legislation       # Dossiers législatifs
 
 # Transparence
@@ -151,7 +181,7 @@ npm run sync:press             # Articles de presse (RSS)
 npm run sync:factchecks        # Fact-checks
 
 # Pré-calcul
-npm run sync:compute-stats     # Stats de participation & classements
+npm run sync:compute-stats     # Stats de participation et classements
 ```
 
 Un **sync quotidien** tourne automatiquement via GitHub Actions + Inngest. Les données sont mises à jour toutes les heures pour les votes et la presse, quotidiennement pour le reste.
@@ -160,42 +190,45 @@ Un **sync quotidien** tourne automatiquement via GitHub Actions + Inngest. Les d
 
 ```
 src/
-├── app/                     # 56 pages (Next.js App Router)
+├── app/                     # 73 pages (Next.js App Router)
 │   ├── politiques/          # Fiches politiques
-│   ├── votes/               # Scrutins & votes
+│   ├── votes/               # Scrutins et votes
 │   ├── affaires/            # Affaires judiciaires
+│   ├── assemblee/           # Dossiers législatifs
 │   ├── declarations-*/      # Patrimoine HATVP
-│   ├── assemblee/           # Députés
+│   ├── elections/           # Élections municipales
 │   ├── statistiques/        # Dashboard stats
 │   ├── comparer/            # Comparateur
 │   ├── chat/                # Chatbot IA
-│   ├── elections/           # Élections
+│   ├── mon-observatoire/    # Watchlist personnelle
 │   ├── presse/              # Revue de presse
 │   ├── mon-depute/          # Recherche par code postal
 │   ├── admin/               # Interface d'administration
 │   └── api/                 # Endpoints REST
-├── components/              # Composants React
+├── components/              # 25 répertoires de composants React
 ├── services/
-│   └── sync/                # 18 services de synchronisation
-├── inngest/                 # Jobs Inngest (sync, IA, maintenance)
-├── lib/                     # Utilitaires (DB, API clients, cache)
+│   └── sync/                # 39 services de synchronisation
+├── inngest/                 # 13 fonctions Inngest (sync, IA, newsletter, social)
+├── lib/                     # Utilitaires (DB, API clients, cache, email, social)
+│   └── data/                # 12 modules de données (couche cachée)
 ├── config/                  # Labels, constantes, Wikidata Q-IDs
 └── types/                   # Types TypeScript partagés
 
-scripts/                     # 50+ scripts CLI
+scripts/                     # 107 scripts CLI
 data/                        # Corrections manuelles (gouvernement, etc.)
 docs/                        # Documentation technique
 ```
 
 ## Documentation
 
-| Document                                  | Description                    |
-| ----------------------------------------- | ------------------------------ |
-| [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Architecture technique         |
-| [DATASOURCES.md](./docs/DATASOURCES.md)   | Sources de données et pipeline |
-| [LEGAL.md](./docs/LEGAL.md)               | Cadre juridique                |
-| [CONTRIBUTING.md](./CONTRIBUTING.md)      | Guide de contribution          |
-| [SECURITY.md](./SECURITY.md)              | Politique de sécurité          |
+| Document                                    | Description                       |
+| ------------------------------------------- | --------------------------------- |
+| [ARCHITECTURE.md](./docs/ARCHITECTURE.md)   | Architecture technique            |
+| [DATASOURCES.md](./docs/DATASOURCES.md)     | Sources de données et pipeline    |
+| [DATA-MATCHING.md](./docs/DATA-MATCHING.md) | Croisement de données et matching |
+| [LEGAL.md](./docs/LEGAL.md)                 | Cadre juridique                   |
+| [CONTRIBUTING.md](./CONTRIBUTING.md)        | Guide de contribution             |
+| [SECURITY.md](./SECURITY.md)                | Politique de sécurité             |
 
 ## Écosystème
 

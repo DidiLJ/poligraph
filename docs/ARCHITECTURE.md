@@ -1,6 +1,6 @@
 # Architecture technique
 
-> **Dernière mise à jour**: 2026-03-01
+> **Dernière mise à jour** : 2026-03-08
 
 ---
 
@@ -19,7 +19,7 @@ graph TB
         JD[Judilibre]
         RSS[Flux RSS presse]
         FC[Google Fact-Check API]
-        RNE[RNE — maires]
+        RNE[RNE maires]
     end
 
     subgraph Sync["Pipelines de synchronisation"]
@@ -30,15 +30,23 @@ graph TB
 
     subgraph App["Application Next.js"]
         RSC[React Server Components]
-        DL[Data Layer — src/lib/data/]
-        API[API Routes — src/app/api/]
+        DL[Data Layer src/lib/data/]
+        API[API Routes src/app/api/]
         ADM[Admin Dashboard]
+    end
+
+    subgraph IA["IA et génération"]
+        HAI[Claude Haiku - résumés, impacts, bios]
+        VOY[Voyage AI - embeddings RAG]
+        NL[Newsletter éditoriale]
+        SOC[Auto-post social]
     end
 
     subgraph Infra["Infrastructure"]
         PG[(PostgreSQL / Supabase)]
-        VC[Vercel — hébergement]
-        BS[Blob Store — images]
+        VC[Vercel hébergement]
+        BS[Blob Store images]
+        MJ[Mailjet newsletter]
     end
 
     Sources --> Sync
@@ -47,6 +55,9 @@ graph TB
     API --> PG
     ADM --> API
     VC --> RSC
+    Sync --> IA
+    IA --> PG
+    NL --> MJ
 ```
 
 ---
@@ -66,6 +77,9 @@ graph TB
 | Hébergement     | Vercel                         | -       |
 | BDD managée     | Supabase (PostgreSQL)          | -       |
 | Jobs async      | Inngest                        | -       |
+| IA génération   | Claude Haiku (Anthropic)       | -       |
+| IA embeddings   | Voyage AI (voyage-3-lite)      | -       |
+| Newsletter      | Mailjet + MJML                 | -       |
 | CI              | GitHub Actions                 | -       |
 
 ---
@@ -74,55 +88,76 @@ graph TB
 
 ```
 src/
-├── app/                    # Next.js App Router
+├── app/                    # Next.js App Router (73 pages)
 │   ├── politiques/         #   Fiches et listes politiciens
 │   ├── affaires/           #   Affaires judiciaires
 │   ├── partis/             #   Partis politiques
 │   ├── votes/              #   Scrutins parlementaires
+│   ├── assemblee/          #   Dossiers législatifs (En direct de l'Assemblée)
 │   ├── statistiques/       #   Dashboard statistiques
 │   ├── comparer/           #   Comparateur
-│   ├── elections/          #   Élections (municipales 2026...)
+│   ├── elections/          #   Élections (municipales 2026)
+│   ├── mon-observatoire/   #   Watchlist personnelle
+│   ├── factchecks/         #   Fact-checks agrégés
+│   ├── presse/             #   Revue de presse
+│   ├── recap/              #   Récap hebdomadaire
 │   ├── admin/              #   Dashboard admin (auth HMAC)
-│   └── api/                #   Routes API (admin + public)
+│   └── api/                #   Routes API (admin + public + inngest)
 │
-├── components/             # Composants React
+├── components/             # Composants React (25 répertoires)
 │   ├── ui/                 #   Primitives shadcn/ui (Button, Card...)
 │   ├── layout/             #   Header, Footer, Navigation
 │   ├── politicians/        #   Cartes, filtres, profils politiciens
 │   ├── affairs/            #   Timeline, détails affaires
-│   ├── stats/              #   Charts (DonutChart, HorizontalBars...)
+│   ├── legislation/        #   DossierCard, Timeline, FilterBar, Authors
 │   ├── votes/              #   Badges, cartes scrutins
+│   ├── stats/              #   Charts (DonutChart, HorizontalBars...)
 │   ├── elections/          #   Municipales, countdown, cartes
+│   ├── filters/            #   FilterBarShell, SelectFilter (composants réutilisables)
 │   ├── compare/            #   Comparaison côte-à-côte
 │   ├── search/             #   Recherche globale (Cmd+K)
 │   ├── admin/              #   Formulaires admin, éditeurs
 │   └── seo/                #   JsonLd, SeoIntro
 │
 ├── config/                 # Configuration et constantes
-│   ├── labels.ts           #   150+ enum → label français
+│   ├── labels.ts           #   150+ enum vers label français
 │   ├── wikidata.ts         #   Q-IDs connus (partis, positions)
 │   └── colors.ts           #   Couleurs partis et thèmes
 │
 ├── lib/                    # Utilitaires et couche données
-│   ├── data/               #   ⭐ Data layer (requêtes cachées)
+│   ├── data/               #   Data layer (12 modules cachés)
 │   │   ├── politicians.ts  #     getPolitician, getPoliticianForComparison
 │   │   ├── affairs.ts      #     getAffairs, getAffairsFiltered
 │   │   ├── parties.ts      #     getParty, getPartyLeadership
 │   │   ├── declarations.ts #     getDeclarations, getDeclarationStats
-│   │   └── municipales.ts  #     getMaires, getMaireStats
+│   │   ├── votes.ts        #     getScrutins, getLegislatures, getChambers
+│   │   ├── elections.ts    #     getUpcomingElections, getElections
+│   │   ├── factchecks.ts   #     getFactchecks, getFactcheckStats
+│   │   ├── departments.ts  #     getDeputiesByDepartment, getSenatorsByDepartment
+│   │   ├── municipalities.ts #   getMaires, getMaireStats
+│   │   ├── compare.ts      #     Comparaison de politiciens
+│   │   ├── recap.ts        #     getWeeklyRecap
+│   │   └── hemicycle.ts    #     Données hémicycle
 │   ├── api/                #   Clients API externes (Wikidata, RSS...)
+│   │   ├── with-admin-auth.ts  # HOF wrapper routes admin
+│   │   ├── with-public-route.ts # HOF wrapper routes publiques
+│   │   ├── pagination.ts       # parsePagination() utilitaire
+│   │   └── anthropic.ts        # callAnthropic() wrapper Claude API
+│   ├── email/              #   Newsletter Mailjet + sélection politicien
 │   ├── social/             #   Auto-post Twitter/Bluesky
+│   ├── security/           #   Validation Zod, audit logging
+│   ├── identity/           #   Identity Resolution Engine
 │   ├── cache.ts            #   invalidateEntity(), cacheTag helpers
 │   ├── db.ts               #   Prisma singleton (pg pool)
 │   └── utils.ts            #   Helpers (formatDate, slugify...)
 │
 ├── services/               # Logique métier
-│   ├── sync/               #   Services de synchronisation (30+ fichiers)
+│   ├── sync/               #   Services de synchronisation (39 fichiers)
 │   ├── affairs/            #   Enrichissement, modération, matching
 │   └── chat/               #   Chatbot RAG (patterns, embeddings)
 │
-├── inngest/                # Jobs asynchrones Inngest
-│   └── functions/          #   Pipelines : sync, social, IA
+├── inngest/                # Jobs asynchrones Inngest (13 fonctions)
+│   └── functions/          #   Pipelines : sync, social, newsletter, IA
 │
 ├── types/                  # Types TypeScript partagés
 └── generated/prisma/       # Client Prisma auto-généré (NE PAS ÉDITER)
@@ -162,14 +197,14 @@ sequenceDiagram
 graph LR
     subgraph Trigger
         CR[Cron GitHub Actions]
-        MN[Manuel — npm run sync:*]
+        MN[Manuel via npm run sync:*]
     end
 
     subgraph Pipeline
         FE[Fetch API source]
         TR[Transformer les données]
         UP[Upsert en base]
-        IV[Invalider le cache — cacheTag]
+        IV[Invalider le cache via cacheTag]
     end
 
     subgraph Résultat
@@ -184,22 +219,60 @@ graph LR
     UP --> LOG
 ```
 
-### 4.3 Stratégie de cache
+### 4.3 Pipeline IA
+
+```mermaid
+graph LR
+    subgraph Données source
+        SC[Scrutins]
+        DL[Dossiers législatifs]
+        PR[Articles presse]
+        PO[Politiciens]
+    end
+
+    subgraph Génération Claude Haiku
+        SUM[Résumés scrutins]
+        IMP[Impacts citoyens]
+        BIO[Biographies]
+        THM[Classification thématique]
+        AFF[Détection affaires presse]
+        DSM[Résumés dossiers]
+        NWS[Contenu newsletter]
+        TWE[Tweets auto-post]
+    end
+
+    subgraph Stockage
+        DB[(PostgreSQL)]
+        MJ[Mailjet envoi]
+        TW[Twitter / Bluesky]
+    end
+
+    SC --> SUM --> DB
+    SC --> IMP --> DB
+    DL --> DSM --> DB
+    DL --> THM --> DB
+    PR --> AFF --> DB
+    PO --> BIO --> DB
+    DB --> NWS --> MJ
+    DB --> TWE --> TW
+```
+
+### 4.4 Stratégie de cache
 
 ```mermaid
 graph TD
     subgraph Pages listing
-        ISR["ISR — revalidate = 300s"]
-        SEARCH[Recherche libre — PAS de cache]
+        ISR["ISR revalidate = 300s"]
+        SEARCH[Recherche libre, pas de cache]
     end
 
     subgraph Pages détail
         UC["'use cache' + cacheLife('minutes')"]
-        CT[cacheTag — invalidation ciblée]
+        CT[cacheTag invalidation ciblée]
     end
 
     subgraph Déduplication
-        RC["React.cache() — même requête dans generateMetadata + page"]
+        RC["React.cache() même requête dans generateMetadata + page"]
     end
 
     ISR --> |"/politiques?search=..."| SEARCH
@@ -220,9 +293,13 @@ erDiagram
     Politician }o--|| Party : "parti actuel"
     Politician ||--o{ PartyMembership : "historique partis"
     Politician ||--o{ ExternalId : "IDs externes"
+    Politician ||--o{ DossierAuthor : "auteur de dossiers"
     Affair ||--o{ Source : "sourcé par"
     Affair ||--o{ AffairEvent : "chronologie"
     Scrutin ||--o{ Vote : "contient"
+    Scrutin }o--o| LegislativeDossier : "lié à un dossier"
+    LegislativeDossier ||--o{ DossierAuthor : "auteurs"
+    LegislativeDossier ||--o{ Amendment : "amendements"
     Party ||--o{ PartyMembership : "membres"
     Election ||--o{ ElectionRound : "tours"
     Election ||--o{ Candidacy : "candidatures"
@@ -230,6 +307,7 @@ erDiagram
     Politician {
         string slug PK
         string fullName
+        string poligraphId
         float prominenceScore
         string publicationStatus
     }
@@ -252,8 +330,18 @@ erDiagram
         date votingDate
         enum result "ADOPTED, REJECTED"
         enum chamber "AN, SENAT"
+        string citizenImpact
+    }
+
+    LegislativeDossier {
+        string title
+        enum status "DEPOSE, EN_COURS, ADOPTE..."
+        enum theme "SECURITE_JUSTICE, SANTE..."
+        string summary
     }
 ```
+
+Le schéma complet comprend 44 modèles Prisma.
 
 ---
 
@@ -273,7 +361,7 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
 });
 ```
 
-### 6.2 Cache — 3 niveaux
+### 6.2 Cache : 3 niveaux
 
 | Niveau                                 | Quand l'utiliser                  | Exemple                         |
 | -------------------------------------- | --------------------------------- | ------------------------------- |
@@ -281,7 +369,7 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
 | `revalidate = 300` (ISR)               | Pages listing avec search         | `/politiques?page=2`            |
 | `React.cache()`                        | Déduplication dans un même render | `generateMetadata()` + `page()` |
 
-**Règle d'or** : ne JAMAIS mettre `"use cache"` sur une fonction avec un paramètre `search` libre (cache explosion).
+**Règle d'or** : ne JAMAIS mettre `"use cache"` sur une fonction avec un paramètre `search` libre (explosion de cache).
 
 ### 6.3 Admin Auth
 
@@ -293,6 +381,8 @@ import { withAdminAuth } from "@/lib/api/with-admin-auth";
 export const POST = withAdminAuth(async (req) => { ... });
 ```
 
+Les routes publiques utilisent `withPublicRoute()` pour la gestion d'erreurs.
+
 ### 6.4 Labels et i18n
 
 Les enums Prisma sont traduits via `src/config/labels.ts`. Ne jamais hardcoder un label français :
@@ -301,6 +391,58 @@ Les enums Prisma sont traduits via `src/config/labels.ts`. Ne jamais hardcoder u
 import { AFFAIR_STATUS_LABELS } from "@/config/labels";
 const label = AFFAIR_STATUS_LABELS[affair.status]; // "Enquête préliminaire"
 ```
+
+### 6.5 Filtres réutilisables
+
+Les pages listing utilisent un pattern de filtres standardisé :
+
+```typescript
+// Composant client
+import { useFilterParams } from "@/hooks/useFilterParams";
+import { SelectFilter } from "@/components/filters";
+import { FilterBarShell } from "@/components/filters/FilterBarShell";
+```
+
+Ce pattern est utilisé sur `/politiques`, `/affaires`, `/assemblee`, `/municipales`, `/factchecks`.
+
+### 6.6 Génération IA (Claude Haiku)
+
+Toute interaction avec l'API Claude passe par `callAnthropic()` depuis `@/lib/api/anthropic`. Ne jamais importer `@anthropic-ai/sdk` directement. Le contenu DB est sanitisé avant interpolation dans les prompts (délimiteurs XML, pas d'interpolation brute).
+
+Contenus générés par IA :
+
+- Résumés de scrutins (`summary`, `summaryDate`)
+- Impacts citoyens (`citizenImpact`, `citizenImpactDate`) avec contexte du dossier législatif lié
+- Biographies de politiciens (`biography`, `biographyGeneratedAt`) avec liens internes markdown
+- Résumés de dossiers législatifs (`summary`, `summaryDate`)
+- Classification thématique des scrutins et dossiers (`theme`)
+- Détection d'affaires judiciaires dans la presse (scraping + analyse Claude)
+- Contenu éditorial de la newsletter hebdomadaire "Alerte Vote"
+- Tweets auto-publiés sur Twitter et Bluesky (3 crons/jour)
+
+Pipeline Inngest : les tâches IA sont orchestrées en steps séquentiels dans `src/inngest/functions/generate-ai.ts`.
+
+### 6.7 Identity Resolution
+
+Le matching cross-source passe par `batchResolve()` depuis `@/lib/identity/`. Seules les décisions avec confiance >= 0.95 sont auto-liées. Les décisions sont journalisées dans `IdentityDecision`. Voir `docs/DATA-MATCHING.md` et `docs/identity-strategy.md`.
+
+### 6.8 Newsletter
+
+Newsletter hebdomadaire "Alerte Vote" envoyée chaque lundi via Inngest + Mailjet :
+
+- Sélection d'un politicien spotlight via `scoreDiversity()` (évite les répétitions)
+- Récap de la semaine via `getWeeklyRecap()` (votes, affaires, presse)
+- Template MJML compilé en HTML
+- Envoi via Campaign Draft API Mailjet (pour gestion des désinscriptions)
+
+### 6.9 Auto-post social
+
+Publication automatique sur Twitter et Bluesky, 3 fois par jour (08:00, 12:30, 18:00 Paris) :
+
+- Sélection de contenu pertinent (votes, affaires, dossiers)
+- Génération de texte via Claude Haiku
+- Publication via les APIs Twitter et Bluesky
+- Orchestré par `src/inngest/functions/post-social.ts`
 
 ---
 
@@ -325,18 +467,17 @@ const label = AFFAIR_STATUS_LABELS[affair.status]; // "Enquête préliminaire"
 ```bash
 # Développement
 npm run dev              # Serveur dev (localhost:3000)
-npm run setup            # Bootstrap complet (Docker + deps + seed)
 
 # Qualité
 npm run lint             # ESLint
 npm run typecheck        # TypeScript strict
 npm run format           # Prettier
-npm run test:run         # Vitest (316 tests)
+npm run test:run         # Vitest
 
 # Base de données
 npm run db:studio        # Explorer visuellement la BDD
 npm run db:push          # Appliquer les changements de schéma
-npm run seed:fixtures    # Charger des données de test
+npm run db:generate      # Générer le client Prisma
 ```
 
 ---
@@ -345,6 +486,10 @@ npm run seed:fixtures    # Charger des données de test
 
 - **Auth admin** : HMAC token en cookie HTTP-only
 - **CSP** : Content-Security-Policy strict (pas de `unsafe-eval` en prod)
+- **Validation** : Zod schemas via `withValidation()` sur les routes POST/PUT/PATCH
+- **Rate limiting** : Tiers via middleware (général, search, export, admin, subscribe)
+- **Audit logging** : Toutes les mutations admin loguées avec IP et user-agent
 - **Données** : uniquement des données publiques, pas de tracking visiteurs
 - **Présomption d'innocence** : champs judiciaires default au plus conservateur (`involvement: "MENTIONED_ONLY"`)
 - **Factchecks** : whitelist de sources francophones (`FACTCHECK_ALLOWED_SOURCES`)
+- **Prompts IA** : contenu DB sanitisé, délimiteurs XML, jamais d'interpolation brute

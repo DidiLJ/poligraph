@@ -1,8 +1,8 @@
 # Considérations juridiques
 
-> **Dernière mise à jour**: 2026-01-24
+> **Dernière mise à jour** : 2026-03-08
 
-Ce document détaille le cadre juridique applicable au projet Transparence Politique et les mesures prises pour assurer sa conformité.
+Ce document détaille le cadre juridique applicable au projet Poligraph et les mesures prises pour assurer sa conformité.
 
 ---
 
@@ -50,17 +50,17 @@ Service de communication publique en ligne édité à titre non professionnel (a
 
 ### 3.1 Données confidentielles
 
-- ❌ Accéder ou diffuser le casier judiciaire (B1, B2, B3)
-- ❌ Informations issues d'une instruction en cours (secret)
-- ❌ Données médicales ou vie privée
-- ❌ Adresses personnelles des élus
+- Accéder ou diffuser le casier judiciaire (B1, B2, B3)
+- Informations issues d'une instruction en cours (secret)
+- Données médicales ou vie privée
+- Adresses personnelles des élus
 
 ### 3.2 Pratiques interdites
 
-- ❌ Présenter une mise en examen comme une condamnation
-- ❌ Diffuser des informations non sourcées
-- ❌ Utiliser des photos sans droit de réutilisation
-- ❌ Porter atteinte à la présomption d'innocence
+- Présenter une mise en examen comme une condamnation
+- Diffuser des informations non sourcées
+- Utiliser des photos sans droit de réutilisation
+- Porter atteinte à la présomption d'innocence
 
 ---
 
@@ -83,7 +83,7 @@ Service de communication publique en ligne édité à titre non professionnel (a
 
 ### 4.3 Formulation type
 
-> "⚠️ Présomption d'innocence : Cette procédure est en cours. [Nom] bénéficie de la présomption d'innocence jusqu'à sa condamnation définitive."
+> "Présomption d'innocence : Cette procédure est en cours. [Nom] bénéficie de la présomption d'innocence jusqu'à sa condamnation définitive."
 
 ---
 
@@ -132,7 +132,7 @@ Les représentants politiques mentionnés disposent de :
 
 - Droit d'accès (article 15 RGPD)
 - Droit de rectification (article 16 RGPD)
-- Droit d'opposition (article 21 RGPD) - appréciation au cas par cas
+- Droit d'opposition (article 21 RGPD), appréciation au cas par cas
 
 ---
 
@@ -142,7 +142,7 @@ Les représentants politiques mentionnés disposent de :
 
 | Contenu            | Licence        |
 | ------------------ | -------------- |
-| Code source        | MIT            |
+| Code source        | AGPL-3.0       |
 | Données factuelles | Domaine public |
 | Textes éditoriaux  | CC BY-SA 4.0   |
 

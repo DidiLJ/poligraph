@@ -1,29 +1,30 @@
-# Croisement de donnees et matching
+# Croisement de données et matching
 
-> **Derniere mise a jour** : 2026-02-26
+> **Dernière mise à jour** : 2026-03-08
 
-Comment Poligraph reconcilie les donnees de 14+ sources pour construire une fiche unique par politicien. Ce document decrit les identifiants, les strategies de matching et les bonnes pratiques pour ajouter une nouvelle source.
+Comment Poligraph réconcilie les données de 14+ sources pour construire une fiche unique par politicien. Ce document décrit les identifiants, les stratégies de matching et les bonnes pratiques pour ajouter une nouvelle source.
 
 ---
 
-## Table des matieres
+## Table des matières
 
-- [Principe general](#1-principe-general)
+- [Principe général](#1-principe-général)
 - [Carte des identifiants](#2-carte-des-identifiants)
-- [Strategies de matching](#3-strategies-de-matching)
-- [Croisement Wikidata](#4-croisement-wikidata)
-- [Cas concrets](#5-cas-concrets)
-- [Ajouter une nouvelle source](#6-ajouter-une-nouvelle-source)
-- [Pieges connus](#7-pieges-connus)
+- [Stratégies de matching](#3-stratégies-de-matching)
+- [Identity Resolution Engine](#4-identity-resolution-engine)
+- [Croisement Wikidata](#5-croisement-wikidata)
+- [Cas concrets](#6-cas-concrets)
+- [Ajouter une nouvelle source](#7-ajouter-une-nouvelle-source)
+- [Pièges connus](#8-pièges-connus)
 
 ---
 
-## 1. Principe general
+## 1. Principe général
 
-Chaque politicien possede un `id` interne (CUID) et zero ou plusieurs `ExternalId` qui le relient aux sources externes :
+Chaque politicien possède un `id` interne (CUID), un `poligraphId` public (`PG-XXXXXX`) et zéro ou plusieurs `ExternalId` qui le relient aux sources externes :
 
 ```
-Politician (id: cuid)
+Politician (id: cuid, poligraphId: PG-000542)
   ├── ExternalId(ASSEMBLEE_NATIONALE, "PA841729")
   ├── ExternalId(SENAT, "21077")
   ├── ExternalId(WIKIDATA, "Q3052772")
@@ -33,9 +34,9 @@ Politician (id: cuid)
   └── ExternalId(RNE, "...")
 ```
 
-Le modele `ExternalId` a une contrainte unique sur `(source, externalId)`. Un politicien peut avoir plusieurs IDs de la meme source (ex: mandat depute + mandat senateur).
+Le modèle `ExternalId` a une contrainte unique sur `(source, externalId)`. Un politicien peut avoir plusieurs IDs de la même source (ex : mandat député + mandat sénateur).
 
-**Workflow d'import standard** : chercher par ID externe → sinon matcher par nom → creer si absent → toujours creer/mettre a jour l'ExternalId.
+**Workflow d'import standard** : `batchResolve()` centralise tout le matching. Il consulte les décisions antérieures, puis les identifiants externes, puis les critères biographiques. Voir [section 4](#4-identity-resolution-engine).
 
 ---
 
@@ -45,64 +46,64 @@ Le modele `ExternalId` a une contrainte unique sur `(source, externalId)`. Un po
 
 | Source              | Champ source     | Format              | Exemple                 | ExternalId.source     | Wikidata P-ID |
 | ------------------- | ---------------- | ------------------- | ----------------------- | --------------------- | ------------- |
-| Assemblee nationale | ID CSV           | `PA` + chiffres     | `PA841729`              | `ASSEMBLEE_NATIONALE` | P4123         |
-| Senat               | matricule        | chiffres + lettre   | `21077M`                | `SENAT`               | P4324         |
+| Assemblée nationale | ID CSV           | `PA` + chiffres     | `PA841729`              | `ASSEMBLEE_NATIONALE` | P4123         |
+| Sénat               | matricule        | chiffres + lettre   | `21077M`                | `SENAT`               | P4324         |
 | HATVP               | classement (CSV) | `nomaaaprenom12345` | `macronaaaemmanuel5835` | `HATVP`               | P4703         |
-| Parlement europeen  | identifier (API) | chiffres            | `97236`                 | `PARLEMENT_EUROPEEN`  | —             |
-| Wikidata            | Q-ID             | `Q` + chiffres      | `Q3052772`              | `WIKIDATA`            | —             |
-| NosDéputes          | slug             | prenom-nom          | `jean-luc-melenchon`    | `NOSDEPUTES`          | P7384         |
-| RNE                 | —                | —                   | —                       | `RNE`                 | —             |
+| Parlement européen  | identifier (API) | chiffres            | `97236`                 | `PARLEMENT_EUROPEEN`  | -             |
+| Wikidata            | Q-ID             | `Q` + chiffres      | `Q3052772`              | `WIKIDATA`            | -             |
+| NosDéputés          | slug             | prénom-nom          | `jean-luc-melenchon`    | `NOSDEPUTES`          | P7384         |
+| RNE                 | -                | -                   | -                       | `RNE`                 | -             |
 
-### URLs de resolution
+### URLs de résolution
 
 Chaque identifiant permet de construire l'URL vers la fiche d'origine :
 
 | Source              | Pattern URL                                                     |
 | ------------------- | --------------------------------------------------------------- |
-| Assemblee nationale | `https://www.assemblee-nationale.fr/dyn/deputes/{id}`           |
-| Senat               | `https://www.senat.fr/senateur/{matricule}.html`                |
+| Assemblée nationale | `https://www.assemblee-nationale.fr/dyn/deputes/{id}`           |
+| Sénat               | `https://www.senat.fr/senateur/{matricule}.html`                |
 | HATVP               | `https://www.hatvp.fr/fiche-nominative/?declarant={classement}` |
-| Parlement europeen  | `https://www.europarl.europa.eu/meps/fr/{id}`                   |
+| Parlement européen  | `https://www.europarl.europa.eu/meps/fr/{id}`                   |
 | Wikidata            | `https://www.wikidata.org/wiki/{qid}`                           |
-| NosDéputes          | `https://www.nosdeputes.fr/{slug}`                              |
+| NosDéputés          | `https://www.nosdeputes.fr/{slug}`                              |
 
 ---
 
-## 3. Strategies de matching
+## 3. Stratégies de matching
 
-### Strategie 1 : Matching par identifiant externe (fiable)
+### Stratégie 1 : Matching par identifiant externe (fiable)
 
-Quand la source fournit un identifiant connu (AN, Senat), on cherche directement dans `ExternalId` :
+Quand la source fournit un identifiant connu (AN, Sénat), on cherche directement dans `ExternalId` :
 
 ```
 Source → id_origine → ExternalId.findFirst({ source, externalId }) → politicianId
 ```
 
-**Utilise par** : HATVP (via `id_origine` pour deputes/senateurs), votes AN/Senat, legislation.
+**Utilisé par** : HATVP (via `id_origine` pour députés/sénateurs), votes AN/Sénat, législation.
 
-**Fiabilite** : 100% — un ID est un ID.
+**Fiabilité** : 100%, un ID est un ID.
 
-### Strategie 2 : Matching par nom (fallback)
+### Stratégie 2 : Matching par nom (fallback)
 
-Quand il n'y a pas d'identifiant, on matche par nom (prenom + nom, case-insensitive) :
+Quand il n'y a pas d'identifiant, on matche par nom (prénom + nom, case-insensitive) :
 
 ```
-Source → (prenom, nom) → Politician.findFirst({ firstName, lastName, mode: insensitive }) → id
+Source → (prénom, nom) → Politician.findFirst({ firstName, lastName, mode: insensitive }) → id
 ```
 
-**Utilise par** : HATVP (pour gouvernement, president, communes), presse, fact-checks.
+**Utilisé par** : HATVP (pour gouvernement, président, communes), presse, fact-checks.
 
-**Fiabilite** : ~95% — risque d'homonymes.
+**Fiabilité** : ~95%, risque d'homonymes.
 
-**Ameliorations** :
+**Améliorations** :
 
-- Normalisation des accents (`Eléonore` vs `Eleonore`)
+- Normalisation des accents (`Éléonore` vs `Eleonore`)
 - Particules (`Le Pen` vs `LE PEN`)
-- Thesaurus de prenoms (`src/lib/french-names.ts`) : `Jean-Luc` ↔ `Jean Luc`
+- Thésaurus de prénoms (`src/lib/french-names.ts`) : `Jean-Luc` ↔ `Jean Luc`
 
-### Strategie 3 : Matching par nom + date de naissance (anti-homonymes)
+### Stratégie 3 : Matching par nom + date de naissance (anti-homonymes)
 
-Pour les sources a risque d'homonymes (Wikidata, RNE), on croise nom + date de naissance :
+Pour les sources à risque d'homonymes (Wikidata, RNE), on croise nom + date de naissance :
 
 ```
 Source → (nom, dateNaissance) → Politician.findFirst({
@@ -111,113 +112,145 @@ Source → (nom, dateNaissance) → Politician.findFirst({
 })
 ```
 
-**Utilise par** : Wikidata IDs, RNE maires.
+**Utilisé par** : Wikidata IDs, RNE maires.
 
-**Fiabilite** : ~99.9% — quasi impossible d'avoir deux homonymes nes le meme jour.
+**Fiabilité** : ~99.9%, quasi impossible d'avoir deux homonymes nés le même jour.
 
-### Strategie 4 : Matching par nom + departement (geographique)
+### Stratégie 4 : Matching par nom + département (géographique)
 
-Pour les elus locaux, le departement reduit les homonymes :
+Pour les élus locaux, le département réduit les homonymes :
 
 ```
-Source → (nom, departement) → Politician + Mandate.findFirst({
+Source → (nom, département) → Politician + Mandate.findFirst({
   lastName: nom,
   mandates: { departmentCode: dept }
 })
 ```
 
-**Utilise par** : Candidatures municipales, RNE.
+**Utilisé par** : Candidatures municipales, RNE.
 
-**Fiabilite** : ~98%.
+**Fiabilité** : ~98%.
 
 ---
 
-## 4. Croisement Wikidata
+## 4. Identity Resolution Engine
 
-Wikidata est le **hub de croisement** central. Chaque politicien avec un Q-ID peut etre relie a toutes les autres sources via les proprietes Wikidata :
+Depuis mars 2026, tout le matching cross-source est centralisé dans `batchResolve()` (`src/lib/identity/`).
+
+### Pipeline en 7 étapes
+
+1. **Décisions antérieures** : consulte `IdentityDecision` pour les matchs déjà validés (SAME) ou invalidés (NOT_SAME)
+2. **Matching déterministe** : identifiant externe partagé = confiance 1.0
+3. **Date de naissance** : nom + date de naissance = confiance 0.9
+4. **Département** : nom + mandat dans le même département = confiance 0.7
+5. **Nom seul** : confiance 0.5 (insuffisante pour un match auto)
+6. **Seuils** : >= 0.95 auto-lié, 0.70-0.94 file d'attente humaine, < 0.70 rejeté
+7. **Journalisation** : chaque décision enregistrée dans `IdentityDecision`
+
+### Blocklist de mentions
+
+Pour la presse et les fact-checks, `findMentions()` utilise du matching textuel (regex). Les décisions NOT_SAME servent de blocklist pour éviter les faux positifs récurrents sur les noms courants (Philippe, Laurent, etc.).
+
+### Usage
+
+```typescript
+import { batchResolve } from "@/lib/identity";
+const results = await batchResolve(candidates, { source: DataSource.RNE });
+```
+
+**Règle** : seul `Judgement.SAME` (>= 0.95) doit être auto-lié. `UNDECIDED` (0.70-0.94) nécessite une revue manuelle via l'admin.
+
+---
+
+## 5. Croisement Wikidata
+
+Wikidata est le **hub de croisement** central. Chaque politicien avec un Q-ID peut être relié à toutes les autres sources via les propriétés Wikidata :
 
 ```
 Wikidata Q3052772 (Emmanuel Macron)
-  ├── P4123 → ID Assemblee nationale
-  ├── P4324 → ID Senat
+  ├── P4123 → ID Assemblée nationale
+  ├── P4324 → ID Sénat
   ├── P4703 → ID HATVP (classement)
-  ├── P7384 → Slug NosDéputes
-  ├── P569  → Date de naissance (verification)
+  ├── P7384 → Slug NosDéputés
+  ├── P569  → Date de naissance (vérification)
   ├── P18   → Photo Wikimedia Commons
-  ├── P39   → Positions occupees (carriere)
+  ├── P39   → Positions occupées (carrière)
   ├── P102  → Parti politique
   └── P1399 → Condamnations
 ```
 
-### Configuration centralisee
+### Configuration centralisée
 
-Toutes les proprietes Wikidata sont dans `src/config/wikidata.ts` (`WD_PROPS`). Ne jamais utiliser un P-ID en dur dans le code — toujours passer par cette config.
+Toutes les propriétés Wikidata sont dans `src/config/wikidata.ts` (`WD_PROPS`). Ne jamais utiliser un P-ID en dur dans le code, toujours passer par cette config.
 
 ### Matching Wikidata → Politicien
 
 Le script `sync:wikidata-ids` :
 
 1. Cherche par nom sur l'API REST Wikidata (`wbsearchentities`)
-2. Recupere les claims du candidat (`wbgetclaims`)
-3. Verifie la date de naissance (P569) a +-5 jours
+2. Récupère les claims du candidat (`wbgetclaims`)
+3. Vérifie la date de naissance (P569) à +-5 jours
 4. Stocke le Q-ID comme `ExternalId(WIKIDATA, qid)`
 
 ---
 
-## 5. Cas concrets
+## 6. Cas concrets
 
 ### HATVP : trois niveaux de matching
 
-Le sync HATVP illustre la cascade complete :
+Le sync HATVP illustre la cascade complète :
 
-1. **Deputes** : `id_origine` (ex: `841729`) → cherche `ExternalId(ASSEMBLEE_NATIONALE, "PA841729")` ✅
-2. **Senateurs** : `id_origine` (ex: `21077M`) → cherche `ExternalId(SENAT, "21077")` ✅
-3. **Gouvernement/President/Communes** : `id_origine` vide → fallback nom ✅
+1. **Députés** : `id_origine` (ex : `841729`) → cherche `ExternalId(ASSEMBLEE_NATIONALE, "PA841729")`
+2. **Sénateurs** : `id_origine` (ex : `21077M`) → cherche `ExternalId(SENAT, "21077")`
+3. **Gouvernement/Président/Communes** : `id_origine` vide → fallback nom
 
-Le champ `classement` est ensuite stocke comme `ExternalId(HATVP, classement)`, permettant le croisement avec Wikidata P4703.
+Le champ `classement` est ensuite stocké comme `ExternalId(HATVP, classement)`, permettant le croisement avec Wikidata P4703.
 
-### Types de mandats HATVP importes
+### Types de mandats HATVP importés
 
-| `type_mandat` CSV | Importe | Raison                                           |
+| `type_mandat` CSV | Importé | Raison                                           |
 | ----------------- | ------- | ------------------------------------------------ |
 | `depute`          | Oui     | Nos politiciens                                  |
 | `senateur`        | Oui     | Nos politiciens                                  |
 | `gouvernement`    | Oui     | Nos politiciens                                  |
-| `europe`          | Oui     | Eurodeputes                                      |
-| `president`       | Oui     | President(s)                                     |
+| `europe`          | Oui     | Eurodéputés                                      |
+| `president`       | Oui     | Président(s)                                     |
 | `commune`         | Oui     | Maires (matching par nom)                        |
-| `departement`     | Non     | Pas encore de conseillers departementaux en base |
-| `region`          | Non     | Pas encore de conseillers regionaux en base      |
-| `epci`            | Non     | Intercommunalites                                |
-| `ctsp`            | Non     | Collectivites a statut particulier               |
+| `departement`     | Non     | Pas encore de conseillers départementaux en base |
+| `region`          | Non     | Pas encore de conseillers régionaux en base      |
+| `epci`            | Non     | Intercommunalités                                |
+| `ctsp`            | Non     | Collectivités à statut particulier               |
 | `autre`           | Non     | Divers                                           |
 
 ### Presse : matching prudent
 
-La presse utilise le matching par nom dans le titre/description de l'article. Pour eviter les faux positifs :
+La presse utilise le matching par nom dans le titre/description de l'article. Pour éviter les faux positifs :
 
 - Noms courts (< 4 lettres) : match mot entier uniquement
-- Thesaurus de prenoms pour les variantes
+- Thésaurus de prénoms pour les variantes
+- Blocklist via décisions NOT_SAME pour les noms courants (voir section 4)
 
 ---
 
-## 6. Ajouter une nouvelle source
+## 7. Ajouter une nouvelle source
 
-Checklist pour integrer une nouvelle source de donnees :
+Checklist pour intégrer une nouvelle source de données :
 
 ### 1. Identifier les identifiants disponibles
 
 - La source fournit-elle un ID unique par personne ?
-- Cet ID existe-t-il sur Wikidata (propriete P-xxx) ?
+- Cet ID existe-t-il sur Wikidata (propriété P-xxx) ?
 - Si oui, ajouter le P-ID dans `src/config/wikidata.ts` (`WD_PROPS`)
 
-### 2. Choisir la strategie de matching
+### 2. Choisir la stratégie de matching
 
-| Situation                                       | Strategie                                                    |
+| Situation                                       | Stratégie                                                    |
 | ----------------------------------------------- | ------------------------------------------------------------ |
-| La source a un ID qu'on a deja (ex: ID AN)      | Matching par ExternalId existant                             |
+| La source a un ID qu'on a déjà (ex : ID AN)     | Matching par ExternalId existant                             |
 | La source a un nouvel ID croisable via Wikidata | Matching par Q-ID → P-xxx                                    |
 | La source n'a pas d'ID                          | Matching par nom (+ date de naissance si risque d'homonymes) |
+
+**Recommandé** : utiliser `batchResolve()` pour tout import de données politiques.
 
 ### 3. Stocker l'ExternalId
 
@@ -225,42 +258,48 @@ Si la source a un identifiant unique :
 
 1. Ajouter la source dans l'enum `DataSource` (`prisma/schema.prisma`)
 2. `prisma db push` pour appliquer
-3. Dans le sync, appeler `db.externalId.upsert()` apres le matching
+3. Dans le sync, appeler `db.externalId.upsert()` après le matching
 
 ### 4. Documenter
 
 - Ajouter la source dans `docs/DATASOURCES.md`
 - Ajouter les identifiants dans ce document (section 2)
-- Mettre a jour `src/config/wikidata.ts` si pertinent
+- Mettre à jour `src/config/wikidata.ts` si pertinent
 
 ---
 
-## 7. Pieges connus
+## 8. Pièges connus
 
 ### Accents et normalisation
 
-Les noms dans les sources officielles varient : `Eléonore` vs `Eleonore` vs `ELEONORE`. Le matching case-insensitive de Prisma (`mode: "insensitive"`) gere la casse mais **pas les accents manquants**.
+Les noms dans les sources officielles varient : `Éléonore` vs `Eleonore` vs `ELEONORE`. Le matching case-insensitive de Prisma (`mode: "insensitive"`) gère la casse mais **pas les accents manquants**.
 
-**Solution** : le thesaurus de prenoms (`src/lib/french-names.ts`) inclut les variantes avec/sans accents.
+**Solution** : le thésaurus de prénoms (`src/lib/french-names.ts`) inclut les variantes avec/sans accents.
 
 ### Homonymes
 
-Risque reel pour les noms courants (Martin, Durand). Le matching par nom seul ne suffit pas.
+Risque réel pour les noms courants (Martin, Durand). Le matching par nom seul ne suffit pas.
 
-**Solution** : croiser avec la date de naissance (+-5 jours) ou le departement.
+**Solution** : croiser avec la date de naissance (+-5 jours) ou le département. Utiliser `batchResolve()` qui gère la cascade automatiquement.
+
+### Noms courants = faux positifs textuels
+
+Les politiciens avec des noms = prénoms courants (Philippe, Laurent, Jacques) ou mots communs (Placé, Bataille, Mesure) génèrent des faux positifs massifs dans le matching presse/factchecks.
+
+**Solution** : blocklist via décisions NOT_SAME dans `IdentityDecision`, chargée au démarrage du sync via `loadMentionBlocklist()`.
 
 ### IDs qui changent
 
-Certaines sources changent les IDs entre legislatures (ex: ID AN `PA*` change d'une legislature a l'autre).
+Certaines sources changent les IDs entre législatures (ex : ID AN `PA*` change d'une législature à l'autre).
 
-**Solution** : stocker l'ID + la source, accepter plusieurs ExternalIds par politicien pour la meme source.
+**Solution** : stocker l'ID + la source, accepter plusieurs ExternalIds par politicien pour la même source.
 
-### Double creation
+### Double création
 
-Si le matching echoue (nom mal normalise, accent different), le sync peut creer un doublon.
+Si le matching échoue (nom mal normalisé, accent différent), le sync peut créer un doublon.
 
-**Solution** : ne jamais creer de politicien dans un sync d'enrichissement (HATVP, RNE, presse). Seuls les syncs institutionnels (AN, Senat, Gouvernement) creent.
+**Solution** : ne jamais créer de politicien dans un sync d'enrichissement (HATVP, RNE, presse). Seuls les syncs institutionnels (AN, Sénat, Gouvernement) créent.
 
 ### Champs vides dans le CSV HATVP
 
-Le champ `id_origine` est vide pour certains types de mandats (gouvernement, president, commune). C'est normal — le fallback par nom prend le relais.
+Le champ `id_origine` est vide pour certains types de mandats (gouvernement, président, commune). C'est normal, le fallback par nom prend le relais.

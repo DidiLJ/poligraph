@@ -121,6 +121,7 @@ export interface WikidataClaim {
 export type WikidataValue =
   | { id: string } // Entity reference
   | { time: string; precision: number } // Time value
+  | { amount: string; unit: string } // Quantity value (e.g., duration)
   | string; // String value
 
 export interface WikidataPosition {

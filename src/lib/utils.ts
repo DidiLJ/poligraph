@@ -62,6 +62,7 @@ export function formatDate(date: Date | string | null): string {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "Europe/Paris",
   });
 }
 
@@ -93,6 +94,7 @@ export function formatDateShort(date: Date | string | null): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Europe/Paris",
   });
 }
 

@@ -3,10 +3,11 @@ import { buildRss, createRssResponse } from "@/lib/rss";
 import { AFFAIR_CATEGORY_LABELS } from "@/config/labels";
 import type { AffairCategory } from "@/types";
 import { SITE_URL } from "@/config/site";
+import { withPublicRoute } from "@/lib/api/with-public-route";
 
 export const revalidate = 300;
 
-export async function GET() {
+export const GET = withPublicRoute(async () => {
   const affairs = await db.affair.findMany({
     where: { publicationStatus: "PUBLISHED" },
     orderBy: { createdAt: "desc" },
@@ -40,4 +41,4 @@ export async function GET() {
   );
 
   return createRssResponse(xml);
-}
+});

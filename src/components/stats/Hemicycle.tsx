@@ -225,7 +225,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
         {groups.map((g) => (
           <button
             key={g.code}
-            className="flex items-center gap-1.5 text-xs hover:underline"
+            className="flex items-center gap-1.5 text-xs hover:underline focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-sm"
             style={{ opacity: !highlightGroup || highlightGroup === g.code ? 1 : 0.4 }}
             onClick={() => setHighlightGroup((prev) => (prev === g.code ? null : g.code))}
           >

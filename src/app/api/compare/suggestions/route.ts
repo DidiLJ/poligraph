@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withCache } from "@/lib/cache";
+import { withPublicRoute } from "@/lib/api/with-public-route";
 import { CATEGORY_MANDATE_TYPES } from "@/types/compare";
 import type { CompareCategory } from "@/types/compare";
 import type { PoliticalPosition } from "@/types";
@@ -87,7 +88,7 @@ const PARTY_FALLBACKS = [
  *       200:
  *         description: Paires de politiciens, partis ou groupes à comparer
  */
-export async function GET(request: NextRequest) {
+export const GET = withPublicRoute(async (request: NextRequest) => {
   const cat = (request.nextUrl.searchParams.get("cat") || "deputes") as CompareCategory;
 
   switch (cat) {
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
     default:
       return getPoliticianSuggestions("deputes");
   }
-}
+});
 
 async function getPoliticianSuggestions(cat: CompareCategory) {
   const mandateTypes = CATEGORY_MANDATE_TYPES[cat];

@@ -9,7 +9,6 @@ export {
   parseFrenchDate,
   parseWikidataDate,
   parsePartialISO,
-  formatDateFR,
   formatDateISO,
   extractYear,
   isValidDate,

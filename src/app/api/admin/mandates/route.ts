@@ -4,7 +4,10 @@ import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation, getRequestMeta } from "@/lib/security";
 import { createMandateSchema } from "@/lib/security/schemas/mandate";
 import { invalidateEntity } from "@/lib/cache";
+import { MandateType } from "@/generated/prisma";
 import type { z } from "zod/v4";
+
+const VALID_MANDATE_TYPES = new Set(Object.values(MandateType));
 
 type CreateMandateBody = z.infer<typeof createMandateSchema>;
 
@@ -109,12 +112,16 @@ export const POST = withAdminAuth(
 export const GET = withAdminAuth(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const partyId = searchParams.get("partyId");
-  const type = searchParams.get("type");
+  const typeParam = searchParams.get("type");
+  const type =
+    typeParam && VALID_MANDATE_TYPES.has(typeParam as MandateType)
+      ? (typeParam as MandateType)
+      : undefined;
 
   const mandates = await db.mandate.findMany({
     where: {
       ...(partyId && { partyId }),
-      ...(type && { type: type as "PRESIDENT_PARTI" }),
+      ...(type && { type }),
     },
     include: {
       politician: { select: { id: true, fullName: true, slug: true, photoUrl: true } },

@@ -239,7 +239,7 @@ export function AdminCommandPalette() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Rechercher dans l'admin..."
-              className="flex-1 py-3.5 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-base"
+              className="flex-1 py-3.5 bg-transparent text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring text-base"
               role="combobox"
               aria-expanded={hasResults ? "true" : "false"}
               aria-controls="admin-search-results"

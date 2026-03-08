@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
+import { withPublicRoute } from "@/lib/api/with-public-route";
 
 /**
  * Lightweight search index for client-side autocomplete in the compare page.
@@ -109,11 +110,11 @@ async function getSearchIndex() {
   return { politicians: politicianIndex, parties: partyIndex, groups: groupIndex };
 }
 
-export async function GET() {
+export const GET = withPublicRoute(async () => {
   const data = await getSearchIndex();
   return NextResponse.json(data, {
     headers: {
       "Cache-Control": "public, max-age=3600, stale-while-revalidate=7200",
     },
   });
-}
+});

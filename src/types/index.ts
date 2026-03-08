@@ -42,6 +42,9 @@ export * from "./compare";
 // Activity feed types (watchlist)
 export * from "./activity";
 
+// Legislation types
+export * from "./legislation";
+
 // Re-export Prisma types
 export type {
   Politician,

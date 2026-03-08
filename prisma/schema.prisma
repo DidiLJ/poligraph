@@ -847,6 +847,7 @@ model LegislativeDossier {
   exposeDesMotifs    String? @db.Text
   exposeSource       String? // "docparl" | "legifrance" | "manual"
   documentExternalId String? // ex: PRJLANR5L17B1906
+  timeline           Json? // Structured legislative acts (DossierTimelineEntry[])
 
   amendments Amendment[]
   scrutins   Scrutin[]

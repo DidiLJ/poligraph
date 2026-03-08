@@ -6,7 +6,12 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownText } from "@/components/ui/markdown";
-import { StatusBadge, CategoryBadge, DossierTimeline } from "@/components/legislation";
+import {
+  StatusBadge,
+  CategoryBadge,
+  DossierTimeline,
+  DossierAuthors,
+} from "@/components/legislation";
 import type { DossierTimelineEntry } from "@/types/legislation";
 import { AMENDMENT_STATUS_LABELS, AMENDMENT_STATUS_COLORS } from "@/config/labels";
 import { ExternalLink, ArrowLeft, Calendar, FileText } from "lucide-react";
@@ -33,6 +38,13 @@ const includeOptions = {
   amendments: {
     orderBy: { number: "asc" },
     take: 50,
+  },
+  authors: {
+    include: {
+      politician: {
+        select: { slug: true, fullName: true, photoUrl: true },
+      },
+    },
   },
 } as const;
 
@@ -186,6 +198,9 @@ export default async function DossierDetailPage({ params }: PageProps) {
               </div>
             )}
           </div>
+
+          {/* Authors */}
+          <DossierAuthors authors={dossier.authors} />
         </div>
 
         {/* Summary */}

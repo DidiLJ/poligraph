@@ -152,7 +152,7 @@ export async function generateCitizenImpact(
   }
 
   return {
-    citizenImpact: sanitizeInternalLinks(output.citizen_impact),
+    citizenImpact: sanitizeOutput(output.citizen_impact),
     confidence: output.confidence ?? 0,
   };
 }
@@ -164,11 +164,17 @@ export { SONNET_MODEL, HAIKU_MODEL };
 // ============================================
 
 /**
- * Fix AI hallucination where the model adds https:// to our relative internal links.
- * e.g. https://assemblee/slug → /assemblee/slug, https://votes/slug → /votes/slug
+ * Post-process AI output to fix common hallucination patterns:
+ * 1. https:// prefix on relative links: https://assemblee/slug → /assemblee/slug
+ * 2. Double parentheses on markdown links: ((/path)) → (/path)
  */
-function sanitizeInternalLinks(text: string): string {
-  return text.replace(/https?:\/\/(assemblee|votes|partis|elections)\//g, "/$1/");
+function sanitizeOutput(text: string): string {
+  let result = text;
+  // Fix https:// prefix on internal relative links
+  result = result.replace(/https?:\/\/(assemblee|votes|partis|elections|politiques)\//g, "/$1/");
+  // Fix double parentheses around markdown link URLs: ]((/path)) → ](/path)
+  result = result.replace(/\]\(\((\/.+?)\)\)/g, "]($1)");
+  return result;
 }
 
 function buildUserMessage(input: CitizenImpactInput): string {

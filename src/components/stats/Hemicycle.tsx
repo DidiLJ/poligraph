@@ -29,7 +29,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [highlightGroup, setHighlightGroup] = useState<string | null>(null);
 
-  // Build flat deputy list matching seat order
+  // Build deputy map matching seat layout order
   const { seats, deputyMap, totalWithAffairs, totalDeputies } = useMemo(() => {
     // Filter out empty groups (no current deputies)
     const activeGroups = groups.filter((g) => g.deputies.length > 0);
@@ -44,29 +44,40 @@ export function Hemicycle({ groups }: HemicycleProps) {
       height: SVG_HEIGHT - 20, // leave space for bottom
     });
 
-    // Build deputy map: for each group, assign deputies to seats in order
-    const dMap = new Map<
-      number,
-      { deputy: HemicycleDeputy; groupName: string; groupCode: string }
+    // Build per-group sorted deputy lists (affairs first, then alphabetical)
+    const groupDeputyLists = new Map<
+      string,
+      { items: { deputy: HemicycleDeputy; groupName: string; groupCode: string }[]; cursor: number }
     >();
-    let globalIdx = 0;
     for (const group of activeGroups) {
-      // Sort deputies: those with affairs first (visually interesting), then alphabetical
       const sorted = [...group.deputies].sort((a, b) => {
         if (b.affairCount !== a.affairCount) return b.affairCount - a.affairCount;
         return a.lastName.localeCompare(b.lastName, "fr");
       });
-      for (const deputy of sorted) {
-        dMap.set(globalIdx, {
+      groupDeputyLists.set(group.code, {
+        items: sorted.map((deputy) => ({
           deputy,
           groupName: group.shortName || group.name,
           groupCode: group.code,
-        });
-        globalIdx++;
+        })),
+        cursor: 0,
+      });
+    }
+
+    // Assign deputies to seats following layout order (row-by-row, matching groupCode)
+    const dMap = new Map<
+      number,
+      { deputy: HemicycleDeputy; groupName: string; groupCode: string }
+    >();
+    for (const seat of seatPositions) {
+      const groupData = groupDeputyLists.get(seat.groupCode);
+      if (groupData && groupData.cursor < groupData.items.length) {
+        dMap.set(seat.seatIndex, groupData.items[groupData.cursor]!);
+        groupData.cursor++;
       }
     }
 
-    const total = globalIdx;
+    const total = seatPositions.length;
     const withAffairs = [...dMap.values()].filter((d) => d.deputy.affairCount > 0).length;
 
     return {

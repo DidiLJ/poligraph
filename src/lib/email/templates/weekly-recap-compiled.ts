@@ -148,7 +148,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
                   
       <div
          style="font-family:Arial, Helvetica, sans-serif;font-size:28px;font-weight:800;letter-spacing:0.5px;line-height:1.6;text-align:center;color:#ffffff;"
-      >Alerte Vote</div>
+      >La Semaine Poligraph</div>
     
                 </td>
               </tr>
@@ -1159,7 +1159,7 @@ export const WEEKLY_RECAP_HTML = `<!doctype html>
                   
       <div
          style="font-family:Arial, Helvetica, sans-serif;font-size:11px;line-height:1.6;text-align:center;color:#9ca3af;"
-      >Vous recevez cet email car vous êtes abonné à Alerte Vote par Poligraph.
+      >Vous recevez cet email car vous êtes abonné à La Semaine Poligraph.
           <br />
           <a href="{{unsubscribeUrl}}" style="color: #9ca3af; text-decoration: underline"
             >Se désabonner</a

@@ -12,8 +12,8 @@ export const SOCIAL_CATEGORIES = [
 
 export type SocialCategory = (typeof SOCIAL_CATEGORIES)[number];
 
-/** Categories requiring editorial review before posting */
-export const SENSITIVE_CATEGORIES: SocialCategory[] = ["affaires", "factchecks"];
+/** Categories requiring editorial review before posting — currently ALL */
+export const SENSITIVE_CATEGORIES: SocialCategory[] = [...SOCIAL_CATEGORIES];
 
 export function isSensitiveCategory(category: SocialCategory): boolean {
   return SENSITIVE_CATEGORIES.includes(category);

@@ -30,7 +30,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
   const [highlightGroup, setHighlightGroup] = useState<string | null>(null);
 
   // Build deputy map matching seat layout order
-  const { seats, deputyMap, totalWithAffairs, totalDeputies } = useMemo(() => {
+  const { seats, deputyMap, totalWithAffairs, totalCondamnes, totalDeputies } = useMemo(() => {
     // Filter out empty groups (no current deputies)
     const activeGroups = groups.filter((g) => g.deputies.length > 0);
     const groupInputs = activeGroups.map((g) => ({
@@ -79,11 +79,15 @@ export function Hemicycle({ groups }: HemicycleProps) {
 
     const total = seatPositions.length;
     const withAffairs = [...dMap.values()].filter((d) => d.deputy.affairCount > 0).length;
+    const withCondamnations = [...dMap.values()].filter(
+      (d) => d.deputy.condamnationCount > 0
+    ).length;
 
     return {
       seats: seatPositions,
       deputyMap: dMap,
       totalWithAffairs: withAffairs,
+      totalCondamnes: withCondamnations,
       totalDeputies: total,
     };
   }, [groups]);
@@ -138,9 +142,11 @@ export function Hemicycle({ groups }: HemicycleProps) {
         {seats.map((seat, i) => {
           const data = deputyMap.get(seat.seatIndex);
           const affairCount = data?.deputy.affairCount ?? 0;
+          const condamnationCount = data?.deputy.condamnationCount ?? 0;
           const r = radiusScale(affairCount);
           const isHighlighted = !highlightGroup || seat.groupCode === highlightGroup;
           const hasAffairs = affairCount > 0;
+          const hasCondamnation = condamnationCount > 0;
 
           return (
             <circle
@@ -150,8 +156,8 @@ export function Hemicycle({ groups }: HemicycleProps) {
               r={r}
               fill={seat.groupColor}
               opacity={isHighlighted ? (hasAffairs ? 1 : 0.35) : 0.08}
-              stroke={hasAffairs ? "rgba(0,0,0,0.3)" : "none"}
-              strokeWidth={hasAffairs ? 0.5 : 0}
+              stroke={hasCondamnation ? "#dc2626" : hasAffairs ? "rgba(0,0,0,0.3)" : "none"}
+              strokeWidth={hasCondamnation ? 1 : hasAffairs ? 0.5 : 0}
               className="cursor-pointer transition-opacity duration-200"
               onMouseEnter={(e) => handleMouseEnter(seat.seatIndex, e)}
               onMouseLeave={handleMouseLeave}
@@ -184,11 +190,51 @@ export function Hemicycle({ groups }: HemicycleProps) {
               {tooltip.deputy.affairCount !== 1 ? "s" : ""}
             </div>
           )}
+          {tooltip.deputy.condamnationCount > 0 && (
+            <div className="text-red-600 dark:text-red-400 font-medium">
+              dont {tooltip.deputy.condamnationCount} condamnation
+              {tooltip.deputy.condamnationCount !== 1 ? "s" : ""} définitive
+              {tooltip.deputy.condamnationCount !== 1 ? "s" : ""}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Legend */}
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-3">
+      {/* Size + stroke legend */}
+      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-3">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Taille =</span>
+          {[1, 3, 5].map((n) => (
+            <span key={n} className="flex items-center gap-1">
+              <svg width={radiusScale(n) * 2 + 2} height={radiusScale(n) * 2 + 2}>
+                <circle
+                  cx={radiusScale(n) + 1}
+                  cy={radiusScale(n) + 1}
+                  r={radiusScale(n)}
+                  fill="#9ca3af"
+                  opacity={0.6}
+                />
+              </svg>
+              <span>
+                {n}
+                {n === 5 ? "+" : ""}
+              </span>
+            </span>
+          ))}
+          <span>affaires</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <svg width="14" height="14">
+            <circle cx="7" cy="7" r="5" fill="#9ca3af" stroke="#dc2626" strokeWidth="1.5" />
+          </svg>
+          <span className="text-red-600 dark:text-red-400 font-medium">
+            Condamnation définitive
+          </span>
+        </div>
+      </div>
+
+      {/* Group legend */}
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-2">
         {groups.map((g) => (
           <button
             key={g.code}
@@ -212,6 +258,17 @@ export function Hemicycle({ groups }: HemicycleProps) {
         député{totalWithAffairs !== 1 ? "s" : ""} concerné
         {totalWithAffairs !== 1 ? "s" : ""} par au moins une affaire judiciaire sur{" "}
         <span className="font-semibold">{totalDeputies}</span>
+        {totalCondamnes > 0 && (
+          <>
+            {" "}
+            dont{" "}
+            <span className="font-semibold text-red-600 dark:text-red-400">
+              {totalCondamnes}
+            </span>{" "}
+            avec condamnation{totalCondamnes !== 1 ? "s" : ""} définitive
+            {totalCondamnes !== 1 ? "s" : ""}
+          </>
+        )}
       </p>
 
       {/* SR-only accessible table */}
@@ -222,6 +279,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
             <th>Groupe</th>
             <th>Députés</th>
             <th>Avec affaires</th>
+            <th>Condamnations définitives</th>
           </tr>
         </thead>
         <tbody>
@@ -230,6 +288,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
               <td>{g.shortName || g.name}</td>
               <td>{g.deputies.length}</td>
               <td>{g.deputies.filter((d) => d.affairCount > 0).length}</td>
+              <td>{g.deputies.filter((d) => d.condamnationCount > 0).length}</td>
             </tr>
           ))}
         </tbody>

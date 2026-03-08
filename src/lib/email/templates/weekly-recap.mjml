@@ -48,6 +48,10 @@
         font-weight: 700;
         color: #1e3a5f;
       }
+      .politician-photo img {
+        object-fit: cover;
+        aspect-ratio: 1;
+      }
     </mj-style>
   </mj-head>
 
@@ -168,7 +172,7 @@
     </mj-section>
     <mj-section background-color="#eff6ff" padding="0 24px 8px">
       <mj-column width="80px" vertical-align="top">
-        <mj-image src="{{politicianPhoto}}" width="64px" height="64px" border-radius="32px" alt="{{politicianName}}" />
+        <mj-image src="{{politicianPhoto}}" width="64px" border-radius="50%" alt="{{politicianName}}" css-class="politician-photo" />
       </mj-column>
       <mj-column vertical-align="top">
         <mj-text font-size="18px" font-weight="700" color="#1e3a5f" padding-bottom="2px">

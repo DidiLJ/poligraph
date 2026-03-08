@@ -6,7 +6,8 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownText } from "@/components/ui/markdown";
-import { StatusBadge, CategoryBadge } from "@/components/legislation";
+import { StatusBadge, CategoryBadge, DossierTimeline } from "@/components/legislation";
+import type { DossierTimelineEntry } from "@/types/legislation";
 import { AMENDMENT_STATUS_LABELS, AMENDMENT_STATUS_COLORS } from "@/config/labels";
 import { ExternalLink, ArrowLeft, Calendar, FileText } from "lucide-react";
 import { LegislationJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
@@ -204,6 +205,13 @@ export default async function DossierDetailPage({ params }: PageProps) {
           </Card>
         )}
 
+        {/* Legislative Timeline */}
+        <div className="mb-8">
+          <DossierTimeline
+            entries={(dossier.timeline as unknown as DossierTimelineEntry[]) ?? []}
+          />
+        </div>
+
         {/* Amendments */}
         {dossier.amendments.length > 0 && (
           <Card className="mb-8">
@@ -262,7 +270,7 @@ export default async function DossierDetailPage({ params }: PageProps) {
                   href={dossier.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                 >
                   Voir sur AN.fr
                   <ExternalLink className="h-4 w-4" />

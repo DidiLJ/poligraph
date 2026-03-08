@@ -790,6 +790,28 @@ export const DOSSIER_CATEGORY_ICONS: Record<string, string> = {
 };
 
 // ============================================
+// TIMELINE CHAMBERS (dossier legislative timeline)
+// ============================================
+
+export const TIMELINE_CHAMBER_COLORS: Record<string, string> = {
+  AN: "bg-blue-500",
+  SENAT: "bg-rose-500",
+  CMP: "bg-purple-500",
+  CC: "bg-amber-500",
+  GOV: "bg-emerald-500",
+  UNKNOWN: "bg-gray-400",
+};
+
+export const TIMELINE_CHAMBER_LABELS: Record<string, string> = {
+  AN: "Assemblée nationale",
+  SENAT: "Sénat",
+  CMP: "Commission mixte paritaire",
+  CC: "Conseil constitutionnel",
+  GOV: "Gouvernement",
+  UNKNOWN: "",
+};
+
+// ============================================
 // THEME CATEGORIES (legislative dossiers & scrutins)
 // ============================================
 

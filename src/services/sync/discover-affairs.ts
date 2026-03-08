@@ -83,8 +83,14 @@ export function extractPenaltyData(claim: WikidataClaim): ExtractedPenaltyData {
   if (timeClaims?.[0]?.datavalue?.value) {
     const tv = timeClaims[0].datavalue.value;
     if (typeof tv === "object" && "time" in tv) {
-      const match = tv.time.match(/^\+?(\d{4}-\d{2}-\d{2})/);
-      if (match) result.verdictDate = new Date(match[1]!);
+      const match = tv.time.match(/^\+?(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        // Wikidata uses 00 for unknown month/day (year-only or month-only precision)
+        const safeMonth = match[2] === "00" ? "01" : match[2];
+        const safeDay = match[3] === "00" ? "01" : match[3];
+        const date = new Date(`${match[1]}-${safeMonth}-${safeDay}`);
+        if (!isNaN(date.getTime())) result.verdictDate = date;
+      }
     }
   }
 

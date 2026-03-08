@@ -232,11 +232,11 @@ docs/                        # Documentation technique
 
 ## Écosystème
 
-| Projet                                                                              | Description                           |
-| ----------------------------------------------------------------------------------- | ------------------------------------- |
-| [poligraph](https://github.com/ironlam/poligraph)                                   | Application web principale            |
-| [transparence-politique-mcp](https://github.com/ironlam/transparence-politique-mcp) | Serveur MCP pour agents IA            |
-| [poligraph-wikibot](https://github.com/ironlam/poligraph-wikibot)                   | Bot Wikidata (contribution open data) |
+| Projet                                                            | Description                           |
+| ----------------------------------------------------------------- | ------------------------------------- |
+| [poligraph](https://github.com/ironlam/poligraph)                 | Application web principale            |
+| [poligraph-mcp](https://github.com/ironlam/poligraph-mcp)         | Serveur MCP pour agents IA            |
+| [poligraph-wikibot](https://github.com/ironlam/poligraph-wikibot) | Bot Wikidata (contribution open data) |
 
 ## Contribuer
 

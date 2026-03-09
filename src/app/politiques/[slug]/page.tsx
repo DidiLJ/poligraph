@@ -807,6 +807,17 @@ export default async function PoliticianPage({ params }: PageProps) {
                     <span className="font-semibold text-primary">{victimAffairs.length}</span>
                   </div>
                 )}
+                {politician.dossierAuthors.length > 0 && (
+                  <div className="flex justify-between">
+                    <Link
+                      href={`/politiques/${politician.slug}#dossiers`}
+                      className="text-muted-foreground hover:underline"
+                    >
+                      Propositions de loi
+                    </Link>
+                    <span className="font-semibold">{politician.dossierAuthors.length}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Déclarations HATVP</span>
                   <span className="font-semibold">{politician.declarations.length}</span>

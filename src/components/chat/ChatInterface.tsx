@@ -224,7 +224,13 @@ export function ChatInterface() {
   return (
     <div className="flex flex-col h-[600px] max-h-[80vh]">
       {/* Messages area */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        role="log"
+        aria-live="polite"
+        aria-atomic="false"
+      >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
             <Image

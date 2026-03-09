@@ -35,6 +35,40 @@ jobs:
             exit 1
           fi
 
+      - name: No JSON.parse of user input without try-catch
+        run: |
+          # Flag JSON.parse(searchParams/param/body) in public API routes without try-catch
+          # Excludes: admin routes (behind withAdminAuth), JSON.parse(JSON.stringify(...)) (deep clone)
+          FOUND=0
+          for f in $(grep -rl 'JSON\.parse' src/app/api/ --include='*.ts' | grep -v '/admin/'); do
+            grep -n 'JSON\.parse' "$f" | grep -v 'JSON\.stringify' | while IFS=: read -r linenum rest; do
+              START=$((linenum > 5 ? linenum - 5 : 1))
+              CONTEXT=$(sed -n "${START},${linenum}p" "$f")
+              echo "$CONTEXT" | grep -q 'try' && continue
+              echo "::error file=$f,line=$linenum::JSON.parse of user input without try-catch"
+              FOUND=1
+            done
+          done
+          exit $FOUND
+
+      - name: No findMany without where clause (full table scan)
+        run: |
+          # Flag findMany() with no where/take/select within 10 lines (unfiltered full table scan)
+          VIOLATIONS=$(grep -rn '\.findMany(' src/lib/data/ src/lib/feature-flags.ts --include='*.ts' \
+            | while IFS= read -r line; do
+                FILE=$(echo "$line" | cut -d: -f1)
+                LINENUM=$(echo "$line" | cut -d: -f2)
+                END=$((LINENUM + 10))
+                BLOCK=$(sed -n "${LINENUM},${END}p" "$FILE")
+                echo "$BLOCK" | grep -q 'where[:, ]\|take:\|select:' && continue
+                echo "$line"
+              done || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::findMany() without 'where:' or 'take:' is a full table scan. Add a filter or limit."
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+
       - name: No secrets in NEXT_PUBLIC_ vars
         run: |
           VIOLATIONS=$(grep -rn 'NEXT_PUBLIC_.*SECRET\|NEXT_PUBLIC_.*TOKEN\|NEXT_PUBLIC_.*PASSWORD\|NEXT_PUBLIC_.*API_KEY' src/ .env.example --include='*.ts' --include='*.tsx' --include='*.env*' || true)

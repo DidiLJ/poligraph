@@ -484,21 +484,25 @@ async function getPartyForComparison(slugOrId: string) {
     _count: true,
   });
 
-  // Published affairs of members
+  // Published affairs of members (bounded)
   const affairs = await db.affair.findMany({
     where: {
       publicationStatus: "PUBLISHED",
       politician: { currentPartyId: party.id },
     },
     select: { id: true, status: true, severity: true },
+    orderBy: { updatedAt: "desc" },
+    take: 200,
   });
 
-  // Fact-check citations (isClaimant) of party members
+  // Fact-check citations (isClaimant) of party members (bounded)
   const factCheckMentions = await db.factCheckMention.findMany({
     where: { isClaimant: true, politician: { currentPartyId: party.id } },
     include: {
       factCheck: { select: { verdictRating: true } },
     },
+    orderBy: { factCheck: { publishedAt: "desc" } },
+    take: 200,
   });
 
   return {

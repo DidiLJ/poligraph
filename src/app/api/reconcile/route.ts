@@ -38,7 +38,12 @@ export const GET = withPublicRoute(async (request) => {
     });
   }
 
-  const queries: Record<string, ReconciliationQuery> = JSON.parse(queriesParam);
+  let queries: Record<string, ReconciliationQuery>;
+  try {
+    queries = JSON.parse(queriesParam);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON in queries parameter" }, { status: 400 });
+  }
   return handleQueries(queries);
 });
 

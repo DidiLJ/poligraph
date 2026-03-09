@@ -6,7 +6,9 @@ export async function getFeatureFlags() {
   cacheTag("feature-flags");
   cacheLife("minutes");
 
-  const flags = await db.featureFlag.findMany();
+  const flags = await db.featureFlag.findMany({
+    select: { name: true, enabled: true, value: true, startDate: true, endDate: true },
+  });
   const now = new Date();
   return flags.reduce(
     (acc, flag) => {

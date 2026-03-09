@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { generateAffairSlug, generateUniqueSlug } from "@/lib/utils";
 import { WikidataService } from "@/lib/api/wikidata";
 import { WD_PROPS } from "@/config/wikidata";
-import { mapWikidataOffense, getOffenseLabel } from "@/config/wikidata-affairs";
+import { mapWikidataOffense, getOffenseLabel, isKnownOffense } from "@/config/wikidata-affairs";
 import { mapWikidataPenalty, parseDurationToMonths } from "@/config/wikidata-penalties";
 import { wikipediaService } from "@/lib/api/wikipedia";
 import type { WikidataClaim } from "@/lib/api/wikidata";
@@ -298,7 +298,10 @@ async function runPhase1Wikidata(
           const penaltyData = extractPenaltyData(claim);
 
           const isConviction = prop === "P1399";
-          const publicationStatus = isConviction ? "PUBLISHED" : "DRAFT";
+          const knownOffense = isKnownOffense(offenseQid);
+          // Only auto-publish convictions with known offense types.
+          // Unknown Q-IDs produce "Infraction inconnue" titles -> DRAFT for review.
+          const publicationStatus = isConviction && knownOffense ? "PUBLISHED" : "DRAFT";
           const confidence = isConviction ? 95 : 75;
           const titlePrefix = isConviction ? "" : "[\u00c0 V\u00c9RIFIER] ";
           const title = `${titlePrefix}${label} \u2014 ${politician.fullName}`;

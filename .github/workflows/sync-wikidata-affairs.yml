@@ -32,10 +32,6 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Import Wikidata convictions (SPARQL)
-        run: npm run import:wikidata
-        continue-on-error: true
-
       - name: Discover affairs (Wikidata + Wikipedia AI)
         run: npm run discover:affairs -- --wikidata-only --limit=50
         continue-on-error: true
@@ -43,10 +39,6 @@ jobs:
       - name: Reconcile duplicate affairs
         run: npm run reconcile:affairs -- --auto-merge
         continue-on-error: true
-
-      - name: Show stats
-        if: always()
-        run: npm run import:wikidata -- --stats
 
       - name: Summary
         if: always()

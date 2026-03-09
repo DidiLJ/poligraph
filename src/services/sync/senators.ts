@@ -277,7 +277,10 @@ async function syncSenator(
       });
 
       // Update party affiliation via service (real party, not group)
-      await politicianService.setCurrentParty(existing.id, partyId);
+      // Skip if group is transpartisan (partyId null) and politician already has a party
+      if (partyId || !existing.currentPartyId) {
+        await politicianService.setCurrentParty(existing.id, partyId);
+      }
 
       // Upsert external ID
       await upsertExternalIds(existing.id, sen.matricule, slug);

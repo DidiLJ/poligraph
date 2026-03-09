@@ -55,7 +55,7 @@ Ce document décrit les sources de données utilisées par Poligraph, leur forma
 | 15  | Judilibre            | API REST (PISTE) | OAuth 2.0 | Décisions justice           | `sync:judilibre`             | Quotidienne  |
 | 16  | Candidatures         | CSV (data.gouv)  | Aucune    | Candidats municipales       | `sync:elections:municipales` | Ponctuelle   |
 | 17  | Photos               | HTTP HEAD        | Aucune    | Photos politiciens          | `sync:photos`                | Hebdomadaire |
-| 18  | Analyse presse       | IA (Claude)      | API key   | Détection affaires          | `sync:press-analysis`        | Quotidienne  |
+| 18  | Analyse presse       | Analyse auto.    | API key   | Détection affaires          | `sync:press-analysis`        | Quotidienne  |
 
 ---
 
@@ -248,15 +248,15 @@ Wikidata est utilisé comme source d'enrichissement à travers plusieurs scripts
 - **Données** : Associe un Q-ID Wikidata à chaque politicien (match par nom + date de naissance +-5 jours)
 - **Script** : `npm run sync:wikidata-ids` (supporte `--resume` pour reprendre)
 
-### 8.2 Condamnations (`import:wikidata`)
+### 8.2 Condamnations et mises en cause (`discover:affairs`)
 
-- **URL** : `https://query.wikidata.org/sparql`
-- **Type d'accès** : SPARQL
+- **URL** : `https://www.wikidata.org/w/api.php` (action `wbgetclaims`)
+- **Type d'accès** : API REST Wikidata
 - **Auth** : Aucune
-- **Rate limit** : 300 ms (`WIKIDATA_SPARQL_RATE_LIMIT_MS`)
-- **Données** : Propriété P1399 (condamnations) des politiciens français
-- **Filtres** : Ve République (1958+), nationalité française, décès après 1958
-- **Script** : `npm run import:wikidata`
+- **Rate limit** : 200 ms (`WIKIDATA_RATE_LIMIT_MS`)
+- **Données** : Propriétés P1399 (condamnations) et P1595 (mises en cause)
+- **Script** : `npm run discover:affairs -- --wikidata-only`
+- **Complément** : le même script peut aussi scraper les sections judiciaires Wikipedia via IA (`--limit=50` par défaut)
 
 ### 8.3 Dates de décès (`sync:deceased`)
 
@@ -556,9 +556,9 @@ npm run sync:photos -- --validate  # Valider les URLs existantes + sync
 
 ---
 
-## 18. Analyse presse (IA)
+## 18. Analyse presse
 
-- **Type d'accès** : IA (Claude Haiku via Vercel AI SDK) + scraping d'articles
+- **Type d'accès** : Analyse automatisée + scraping d'articles
 - **Authentification** : **`ANTHROPIC_API_KEY`** (requis) + `MEDIAPART_EMAIL`/`MEDIAPART_PASSWORD` (optionnel)
 - **Rate limit** : 500 ms (`AI_RATE_LIMIT_MS`), backoff 30s sur 429
 
@@ -566,7 +566,7 @@ npm run sync:photos -- --validate  # Valider les URLs existantes + sync
 
 1. Récupère les articles non analysés depuis la base
 2. Scrape le contenu complet pour les sources accessibles (franceinfo, LCP, Public Sénat, Politico, Libération)
-3. Analyse par Claude Haiku pour détecter d'éventuelles affaires judiciaires
+3. Analyse automatisée pour détecter d'éventuelles affaires judiciaires
 4. Crée des affaires préfixées `[A VERIFIER]` (validation manuelle requise)
 5. **Ne stocke PAS le contenu scrapé** (copyright), uniquement le résumé et les faits extraits
 6. Intervalle minimum entre syncs : 6 heures
@@ -581,52 +581,31 @@ npm run sync:press-analysis -- --force
 
 ---
 
-## 19. Enrichissement IA
+## 19. Enrichissement et contenus éditoriaux
 
-Scripts utilisant l'IA pour générer des contenus à partir des données existantes.
+### Scripts d'enrichissement
 
-### Biographies
+| Script                     | Fonction                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| `npm run classify:themes`  | Classification thématique des scrutins et dossiers (13 catégories)               |
+| `npm run index:embeddings` | Indexation vectorielle pour le chatbot (Voyage AI). Env: `VOYAGE_API_KEY`        |
+| `npm run discover:affairs` | Détection d'affaires judiciaires via Wikidata (P1399/P1595) + scraping Wikipedia |
 
-- **Script** : `npm run generate:biographies`
-- **IA** : Claude Haiku
-- **Données** : Génère une biographie factuelle pour chaque politicien publié
+### Contenus éditoriaux (admin)
 
-### Résumés de dossiers législatifs
+Les contenus suivants sont saisis ou mis à jour via le dashboard admin :
 
-- **Script** : `npm run generate:summaries`
-- **IA** : Claude Haiku
-- **Données** : Résume l'exposé des motifs de chaque dossier
-
-### Résumés de scrutins
-
-- **Script** : `npm run generate:scrutin-summaries`
-- **IA** : Claude Haiku
-- **Données** : Résume chaque scrutin (contexte, enjeux, résultat)
-
-### Citizen impacts (impacts citoyens)
-
-- **Script** : `npm run generate:citizen-impacts`
-- **IA** : Claude Haiku
-- **Données** : Génère un texte vulgarisé (80-200 mots) expliquant l'impact concret de chaque vote sur le quotidien des citoyens
-- **Contexte** : utilise le résumé du scrutin + l'exposé des motifs du dossier législatif lié (si disponible)
-
-### Classification thématique
-
-- **Script** : `npm run classify:themes`
-- **IA** : Claude Haiku
-- **Données** : Classifie les dossiers législatifs par thème (13 catégories : économie, sécurité, santé, etc.)
-
-### Embeddings (RAG)
-
-- **Script** : `npm run index:embeddings`
-- **IA** : Voyage AI (`voyage-3-lite`, 512 dimensions)
-- **Env** : `VOYAGE_API_KEY`
-- **Types** : POLITICIAN, PARTY, AFFAIR, DOSSIER, SCRUTIN, PRESS_ARTICLE, FACTCHECK
+| Contenu                         | Champs DB                            |
+| ------------------------------- | ------------------------------------ |
+| Biographies politiciens         | `biography`, `biographyGeneratedAt`  |
+| Résumés de scrutins             | `summary`, `summaryDate`             |
+| Impacts citoyens                | `citizenImpact`, `citizenImpactDate` |
+| Résumés de dossiers législatifs | `summary`, `summaryDate`             |
+| Descriptions de partis          | `description`                        |
 
 ### Newsletter "Alerte Vote"
 
 - **Cron** : Inngest, tous les lundis à 7h00 UTC
-- **IA** : Claude Haiku pour le contenu éditorial (édito, spotlight politicien)
 - **Envoi** : Mailjet (Campaign Draft API)
 - **Template** : MJML compilé en HTML
 - **Données** : récap hebdomadaire (votes, affaires, presse) via `getWeeklyRecap()`
@@ -634,7 +613,6 @@ Scripts utilisant l'IA pour générer des contenus à partir des données exista
 ### Auto-post réseaux sociaux
 
 - **Cron** : Inngest, 3 fois par jour (08:00, 12:30, 18:00 Paris)
-- **IA** : Claude Haiku pour la rédaction des tweets
 - **Plateformes** : Twitter (API v2) + Bluesky (AT Protocol)
 - **Contenu** : votes marquants, nouvelles affaires, faits saillants
 
@@ -701,20 +679,17 @@ Le script `npm run sync:full` exécute toutes les étapes dans l'ordre de dépen
 ### Phase 7 : Backfills
 
 ```
-25. migrate-mandate-party-links  # Lier partis aux mandats
-26. migrate-slugs                # Générer les slugs
+25. migrate-slugs              # Générer les slugs manquants
 ```
 
 ### Phase 8 : IA (optionnel, `--skip-ai` pour ignorer)
 
 ```
-27. classify:themes            # Classification thématique
-28. generate:summaries         # Résumés dossiers
-29. generate:scrutin-summaries # Résumés scrutins
-30. generate:citizen-impacts   # Impacts citoyens
-31. generate:biographies       # Biographies
-32. index:embeddings           # Embeddings vectoriels, ~20 min
+26. classify:themes            # Classification thématique
+27. index:embeddings           # Embeddings vectoriels, ~20 min
 ```
+
+> Les autres contenus (biographies, résumés, impacts citoyens) sont saisis via le dashboard admin.
 
 ### Commandes orchestrateur
 
@@ -746,21 +721,21 @@ npm run sync:daily -- --dry-run
 
 ### Par source
 
-| Variable                   | Source                                                                     | Obligatoire                             |
-| -------------------------- | -------------------------------------------------------------------------- | --------------------------------------- |
-| `GOOGLE_FACTCHECK_API_KEY` | Google Fact Check (#13)                                                    | Pour `sync:factchecks`                  |
-| `JUDILIBRE_CLIENT_ID`      | Judilibre (#15)                                                            | Pour `sync:judilibre`                   |
-| `JUDILIBRE_CLIENT_SECRET`  | Judilibre (#15)                                                            | Pour `sync:judilibre`                   |
-| `JUDILIBRE_API_KEY`        | Judilibre (#15)                                                            | Pour `sync:judilibre`                   |
-| `JUDILIBRE_BASE_URL`       | Judilibre (#15)                                                            | Pour `sync:judilibre`                   |
-| `JUDILIBRE_OAUTH_URL`      | Judilibre (#15)                                                            | Pour `sync:judilibre`                   |
-| `ANTHROPIC_API_KEY`        | Analyse presse, résumés, biographies, classification thématique (#18, #19) | Pour scripts IA                         |
-| `VOYAGE_API_KEY`           | Embeddings RAG (#19)                                                       | Pour `index:embeddings`                 |
-| `MAILJET_API_KEY`          | Newsletter (#19)                                                           | Pour la newsletter                      |
-| `MAILJET_SECRET_KEY`       | Newsletter (#19)                                                           | Pour la newsletter                      |
-| `MEDIAPART_EMAIL`          | Analyse presse (#18)                                                       | Optionnel (articles complets Mediapart) |
-| `MEDIAPART_PASSWORD`       | Analyse presse (#18)                                                       | Optionnel                               |
-| `CRON_SECRET`              | Cache revalidation (sync:daily)                                            | Optionnel                               |
+| Variable                   | Source                                               | Obligatoire                             |
+| -------------------------- | ---------------------------------------------------- | --------------------------------------- |
+| `GOOGLE_FACTCHECK_API_KEY` | Google Fact Check (#13)                              | Pour `sync:factchecks`                  |
+| `JUDILIBRE_CLIENT_ID`      | Judilibre (#15)                                      | Pour `sync:judilibre`                   |
+| `JUDILIBRE_CLIENT_SECRET`  | Judilibre (#15)                                      | Pour `sync:judilibre`                   |
+| `JUDILIBRE_API_KEY`        | Judilibre (#15)                                      | Pour `sync:judilibre`                   |
+| `JUDILIBRE_BASE_URL`       | Judilibre (#15)                                      | Pour `sync:judilibre`                   |
+| `JUDILIBRE_OAUTH_URL`      | Judilibre (#15)                                      | Pour `sync:judilibre`                   |
+| `ANTHROPIC_API_KEY`        | Analyse presse, classification thématique (#18, #19) | Pour scripts d'enrichissement           |
+| `VOYAGE_API_KEY`           | Embeddings RAG (#19)                                 | Pour `index:embeddings`                 |
+| `MAILJET_API_KEY`          | Newsletter (#19)                                     | Pour la newsletter                      |
+| `MAILJET_SECRET_KEY`       | Newsletter (#19)                                     | Pour la newsletter                      |
+| `MEDIAPART_EMAIL`          | Analyse presse (#18)                                 | Optionnel (articles complets Mediapart) |
+| `MEDIAPART_PASSWORD`       | Analyse presse (#18)                                 | Optionnel                               |
+| `CRON_SECRET`              | Cache revalidation (sync:daily)                      | Optionnel                               |
 
 ### Configuration des URLs
 
@@ -789,8 +764,8 @@ Tous les rate limits sont centralisés dans `src/config/rate-limits.ts`.
 | `RSS_RATE_LIMIT_MS`               | 1000 ms   | Flux RSS           | Politesse standard            |
 | `FACTCHECK_RATE_LIMIT_MS`         | 200 ms    | Google Fact Check  | Politesse                     |
 | `JUDILIBRE_RATE_LIMIT_MS`         | 500 ms    | PISTE/Judilibre    | Politesse                     |
-| `AI_RATE_LIMIT_MS`                | 500 ms    | Claude/OpenAI      | Entre appels IA               |
-| `AI_429_BACKOFF_MS`               | 30 000 ms | Claude/OpenAI      | Backoff sur rate limit 429    |
+| `AI_RATE_LIMIT_MS`                | 500 ms    | API IA             | Entre appels IA               |
+| `AI_429_BACKOFF_MS`               | 30 000 ms | API IA             | Backoff sur rate limit 429    |
 
 ### HTTPClient
 

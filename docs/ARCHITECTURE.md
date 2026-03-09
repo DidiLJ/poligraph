@@ -35,9 +35,8 @@ graph TB
         ADM[Admin Dashboard]
     end
 
-    subgraph IA["IA et génération"]
-        HAI[Claude Haiku - résumés, impacts, bios]
-        VOY[Voyage AI - embeddings RAG]
+    subgraph Services["Services annexes"]
+        VOY[Embeddings RAG]
         NL[Newsletter éditoriale]
         SOC[Auto-post social]
     end
@@ -55,8 +54,8 @@ graph TB
     API --> PG
     ADM --> API
     VC --> RSC
-    Sync --> IA
-    IA --> PG
+    Sync --> Services
+    Services --> PG
     NL --> MJ
 ```
 
@@ -77,8 +76,7 @@ graph TB
 | Hébergement     | Vercel                         | -       |
 | BDD managée     | Supabase (PostgreSQL)          | -       |
 | Jobs async      | Inngest                        | -       |
-| IA génération   | Claude Haiku (Anthropic)       | -       |
-| IA embeddings   | Voyage AI (voyage-3-lite)      | -       |
+| Embeddings      | Voyage AI (voyage-3-lite)      | -       |
 | Newsletter      | Mailjet + MJML                 | -       |
 | CI              | GitHub Actions                 | -       |
 
@@ -142,7 +140,7 @@ src/
 │   │   ├── with-admin-auth.ts  # HOF wrapper routes admin
 │   │   ├── with-public-route.ts # HOF wrapper routes publiques
 │   │   ├── pagination.ts       # parsePagination() utilitaire
-│   │   └── anthropic.ts        # callAnthropic() wrapper Claude API
+│   │   └── anthropic.ts        # callAnthropic() wrapper API Anthropic
 │   ├── email/              #   Newsletter Mailjet + sélection politicien
 │   ├── social/             #   Auto-post Twitter/Bluesky
 │   ├── security/           #   Validation Zod, audit logging
@@ -219,42 +217,34 @@ graph LR
     UP --> LOG
 ```
 
-### 4.3 Pipeline IA
+### 4.3 Pipeline d'enrichissement
 
 ```mermaid
 graph LR
     subgraph Données source
-        SC[Scrutins]
         DL[Dossiers législatifs]
         PR[Articles presse]
-        PO[Politiciens]
+        WD[Wikidata / Wikipedia]
     end
 
-    subgraph Génération Claude Haiku
-        SUM[Résumés scrutins]
-        IMP[Impacts citoyens]
-        BIO[Biographies]
+    subgraph Enrichissement
         THM[Classification thématique]
-        AFF[Détection affaires presse]
-        DSM[Résumés dossiers]
-        NWS[Contenu newsletter]
-        TWE[Tweets auto-post]
+        AFF[Détection affaires]
+        EMB[Embeddings chatbot]
     end
 
-    subgraph Stockage
+    subgraph Distribution
         DB[(PostgreSQL)]
-        MJ[Mailjet envoi]
+        MJ[Mailjet newsletter]
         TW[Twitter / Bluesky]
     end
 
-    SC --> SUM --> DB
-    SC --> IMP --> DB
-    DL --> DSM --> DB
     DL --> THM --> DB
     PR --> AFF --> DB
-    PO --> BIO --> DB
-    DB --> NWS --> MJ
-    DB --> TWE --> TW
+    WD --> AFF
+    DB --> EMB
+    DB --> MJ
+    DB --> TW
 ```
 
 ### 4.4 Stratégie de cache
@@ -405,22 +395,24 @@ import { FilterBarShell } from "@/components/filters/FilterBarShell";
 
 Ce pattern est utilisé sur `/politiques`, `/affaires`, `/assemblee`, `/municipales`, `/factchecks`.
 
-### 6.6 Génération IA (Claude Haiku)
+### 6.6 Enrichissement et contenus éditoriaux
 
-Toute interaction avec l'API Claude passe par `callAnthropic()` depuis `@/lib/api/anthropic`. Ne jamais importer `@anthropic-ai/sdk` directement. Le contenu DB est sanitisé avant interpolation dans les prompts (délimiteurs XML, pas d'interpolation brute).
+**Scripts d'enrichissement** (CLI + Inngest) :
 
-Contenus générés par IA :
+- Classification thématique des scrutins et dossiers (`classify:themes`)
+- Détection d'affaires judiciaires via Wikidata + Wikipedia (`discover:affairs`)
+- Analyse d'articles de presse (`sync:press-analysis`)
+- Indexation vectorielle pour le chatbot RAG (`index:embeddings`)
 
-- Résumés de scrutins (`summary`, `summaryDate`)
-- Impacts citoyens (`citizenImpact`, `citizenImpactDate`) avec contexte du dossier législatif lié
-- Biographies de politiciens (`biography`, `biographyGeneratedAt`) avec liens internes markdown
-- Résumés de dossiers législatifs (`summary`, `summaryDate`)
-- Classification thématique des scrutins et dossiers (`theme`)
-- Détection d'affaires judiciaires dans la presse (scraping + analyse Claude)
-- Contenu éditorial de la newsletter hebdomadaire "Alerte Vote"
-- Tweets auto-publiés sur Twitter et Bluesky (3 crons/jour)
+**Contenus éditoriaux** (saisis via le dashboard admin) :
 
-Pipeline Inngest : les tâches IA sont orchestrées en steps séquentiels dans `src/inngest/functions/generate-ai.ts`.
+- Biographies de politiciens (`biography`)
+- Résumés de scrutins (`summary`)
+- Impacts citoyens (`citizenImpact`)
+- Résumés de dossiers législatifs (`summary`)
+- Descriptions de partis (`description`)
+
+L'API Anthropic est utilisée par certains scripts d'enrichissement. Toute interaction passe par `callAnthropic()` depuis `@/lib/api/anthropic`. Le contenu DB est sanitisé avant interpolation dans les prompts (délimiteurs XML).
 
 ### 6.7 Identity Resolution
 
@@ -440,7 +432,7 @@ Newsletter hebdomadaire "Alerte Vote" envoyée chaque lundi via Inngest + Mailje
 Publication automatique sur Twitter et Bluesky, 3 fois par jour (08:00, 12:30, 18:00 Paris) :
 
 - Sélection de contenu pertinent (votes, affaires, dossiers)
-- Génération de texte via Claude Haiku
+- Génération de texte automatisée
 - Publication via les APIs Twitter et Bluesky
 - Orchestré par `src/inngest/functions/post-social.ts`
 

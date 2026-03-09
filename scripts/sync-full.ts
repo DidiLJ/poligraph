@@ -142,37 +142,15 @@ const steps: SyncStep[] = [
 
   // ── Phase 7: Backfills & Migrations ────────────────────────
   {
-    name: "Backfill partyId sur mandats direction",
-    command: `npx tsx scripts/migrate-mandate-party-links.ts${DRY_RUN ? " --dry-run" : ""}`,
-  },
-  {
     name: "Migration slugs",
     command: `npx tsx scripts/migrate-slugs.ts${DRY_RUN ? " --dry-run" : ""}`,
   },
 
-  // ── Phase 8: AI-powered enrichment (optional) ──────────────
+  // ── Phase 8: Enrichment (optional) ─────────────────────────
   {
     name: "Classification thématique",
     command: `npx tsx scripts/classify-themes.ts${dryRunFlag}`,
     ai: true,
-  },
-  {
-    name: "Résumés IA dossiers",
-    command: `npx tsx scripts/generate-summaries.ts${dryRunFlag}`,
-    ai: true,
-    timeout: 15 * 60 * 1000,
-  },
-  {
-    name: "Résumés IA scrutins",
-    command: `npx tsx scripts/generate-scrutin-summaries.ts${dryRunFlag}`,
-    ai: true,
-    timeout: 15 * 60 * 1000,
-  },
-  {
-    name: "Biographies IA",
-    command: `npx tsx scripts/generate-biographies.ts${dryRunFlag}`,
-    ai: true,
-    timeout: 15 * 60 * 1000,
   },
   {
     name: "Embeddings (tous types)",

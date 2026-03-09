@@ -4,7 +4,8 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { Card, CardContent } from "@/components/ui/card";
-import { DossierCard, DossierFilterBar } from "@/components/legislation";
+import { DossierCard, DossierFilterBar, DossierPPLStats } from "@/components/legislation";
+import { getPPLStats } from "@/lib/data/legislation";
 import {
   DOSSIER_STATUS_LABELS,
   DOSSIER_STATUS_ICONS,
@@ -109,10 +110,11 @@ export default async function AssembleePage({ searchParams }: PageProps) {
   const sortFilter = params.sort || "";
   const page = parseInt(params.page || "1", 10);
 
-  const [{ dossiers, total, totalPages }, statusCounts, themeCounts] = await Promise.all([
+  const [{ dossiers, total, totalPages }, statusCounts, themeCounts, pplStats] = await Promise.all([
     getDossiers(statusFilter, themeFilter, sortFilter, page),
     getStatusCounts(),
     getThemeCounts(),
+    getPPLStats(),
   ]);
 
   const totalDossiers = Object.values(statusCounts).reduce((a, b) => a + b, 0);
@@ -158,6 +160,9 @@ export default async function AssembleePage({ searchParams }: PageProps) {
           text={`${totalDossiers.toLocaleString("fr-FR")} dossiers législatifs suivis à l'Assemblée nationale, dont ${activeCount} en discussion. Résumés simplifiés et suivi en temps réel.`}
         />
       </div>
+
+      {/* PPL Stats */}
+      <DossierPPLStats stats={pplStats} />
 
       {/* Filter bar */}
       <DossierFilterBar

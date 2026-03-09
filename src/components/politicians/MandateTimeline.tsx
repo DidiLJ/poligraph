@@ -4,8 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { MANDATE_TYPE_LABELS, feminizeRole } from "@/config/labels";
 import type { SerializedMandate, MandateType } from "@/types";
 
+interface MandateWithGroup extends SerializedMandate {
+  parliamentaryGroup?: { code: string; name: string; color: string | null } | null;
+}
+
 interface MandateTimelineProps {
-  mandates: SerializedMandate[];
+  mandates: MandateWithGroup[];
   civility?: string | null;
 }
 
@@ -102,12 +106,12 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
       acc[cat].push(m);
       return acc;
     },
-    {} as Record<string, SerializedMandate[]>
+    {} as Record<string, MandateWithGroup[]>
   );
 
   // Within each category, group mandates by type for compact display
-  function groupByType(mandates: SerializedMandate[]) {
-    const groups = new Map<MandateType, SerializedMandate[]>();
+  function groupByType(mandates: MandateWithGroup[]) {
+    const groups = new Map<MandateType, MandateWithGroup[]>();
     for (const m of mandates) {
       const list = groups.get(m.type) || [];
       list.push(m);
@@ -154,11 +158,20 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-semibold text-lg">{heading}</p>
-                        {displayRole && (
-                          <Badge variant="outline" className="mt-1">
-                            {typeLabel}
-                          </Badge>
-                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          {displayRole && <Badge variant="outline">{typeLabel}</Badge>}
+                          {mandate.parliamentaryGroup && (
+                            <Badge
+                              variant="outline"
+                              style={{
+                                borderColor: mandate.parliamentaryGroup.color || undefined,
+                                color: mandate.parliamentaryGroup.color || undefined,
+                              }}
+                            >
+                              {mandate.parliamentaryGroup.code}
+                            </Badge>
+                          )}
+                        </div>
                         {mandate.constituency && !titleIsDescriptive && (
                           <p className="text-muted-foreground">{mandate.constituency}</p>
                         )}
@@ -238,6 +251,17 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
                                   </span>
                                   <span>·</span>
                                   <span className="truncate">
+                                    {mandate.parliamentaryGroup && (
+                                      <span
+                                        className="font-medium"
+                                        style={{
+                                          color: mandate.parliamentaryGroup.color || undefined,
+                                        }}
+                                      >
+                                        {mandate.parliamentaryGroup.code}
+                                      </span>
+                                    )}
+                                    {mandate.parliamentaryGroup && " · "}
                                     {detail
                                       ? `${detail} · ${formatDuration(mandate.startDate, mandate.endDate)}`
                                       : formatDuration(mandate.startDate, mandate.endDate)}

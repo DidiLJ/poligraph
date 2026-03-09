@@ -19,6 +19,7 @@ import { ExternalLink, ArrowLeft, Calendar, FileText, Vote } from "lucide-react"
 import { LegislationJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import { formatDate } from "@/lib/utils";
+import type { MandateType } from "@/generated/prisma";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -52,6 +53,19 @@ const includeOptions = {
           photoUrl: true,
           civility: true,
           currentParty: { select: { shortName: true, color: true } },
+          mandates: {
+            where: {
+              type: { in: ["DEPUTE", "SENATEUR"] as MandateType[] },
+              parliamentaryGroupId: { not: null },
+            },
+            orderBy: { startDate: "desc" as const },
+            take: 1,
+            select: {
+              parliamentaryGroup: {
+                select: { code: true, name: true, shortName: true, color: true },
+              },
+            },
+          },
         },
       },
     },

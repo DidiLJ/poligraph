@@ -17,20 +17,28 @@ export const syncLegislation = inngest.createFunction(
         const { syncLegislation: syncLegislationService } =
           await import("@/services/sync/legislation");
         const result = await syncLegislationService({ activeOnly: true });
-        if (jobId) await updateJobProgress(jobId, 50);
+        if (jobId) await updateJobProgress(jobId, 33);
         return result;
       });
 
       const contentStats = await step.run("legislation-content", async () => {
         const { syncLegislationContent } = await import("@/services/sync/legislation-content");
-        return syncLegislationContent({ limit: 20 });
+        const result = await syncLegislationContent({ limit: 20 });
+        if (jobId) await updateJobProgress(jobId, 66);
+        return result;
+      });
+
+      const senatStats = await step.run("legislation-senat", async () => {
+        const { syncLegislationSenat } = await import("@/services/sync/legislation-senat");
+        return syncLegislationSenat();
       });
 
       if (jobId)
         await markJobCompleted(jobId, {
-          steps: ["legislation", "legislation-content"],
+          steps: ["legislation", "legislation-content", "legislation-senat"],
           legStats,
           contentStats,
+          senatStats,
         });
     } catch (err) {
       if (jobId) {

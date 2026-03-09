@@ -14,20 +14,14 @@ import { resolveBatch } from "@/lib/identity";
 import { IDENTITY_THRESHOLDS } from "@/lib/identity";
 import type { ResolveInput } from "@/lib/identity";
 import { normalizeText } from "@/lib/name-matching";
-import { HTTPClient } from "@/lib/api/http-client";
-import { DATA_GOUV_RATE_LIMIT_MS } from "@/config/rate-limits";
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-const client = new HTTPClient({ rateLimitMs: DATA_GOUV_RATE_LIMIT_MS });
-
-/** data.gouv.fr community resource IDs */
-const PPL_RESOURCE_ID = "7698274a-65f6-4687-8b2b-6961199b6922";
-const RAPPORTS_RESOURCE_ID = "492a2438-60b1-4359-9eae-acbc7729b8d3";
-
-const DATA_GOUV_API = "https://www.data.gouv.fr/api/1/datasets/community_resources";
+/** Direct download URLs for Senate DOSLEG CSVs */
+const PPL_CSV_URL = "https://data.senat.fr/data/dosleg/ppl.csv";
+const RAPPORTS_CSV_URL = "https://data.senat.fr/data/dosleg/rapports.csv";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -190,18 +184,7 @@ function normalizeTitle(title: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Get the download URL for a data.gouv.fr community resource.
- */
-async function getResourceDownloadUrl(resourceId: string): Promise<string> {
-  const { data } = await client.get<{ url: string }>(`${DATA_GOUV_API}/${resourceId}/`);
-  if (!data.url) {
-    throw new Error(`No download URL found for resource ${resourceId}`);
-  }
-  return data.url;
-}
-
-/**
- * Download a CSV file and decode from ISO-8859-1.
+ * Download a CSV file and return raw buffer.
  */
 async function downloadCsvBuffer(url: string): Promise<Buffer> {
   const response = await fetch(url, {
@@ -386,8 +369,7 @@ async function processPplPhase(
   stats: SenatSyncResult
 ): Promise<void> {
   console.log("Phase 1: Downloading PPL CSV...");
-  const downloadUrl = await getResourceDownloadUrl(PPL_RESOURCE_ID);
-  const buf = await downloadCsvBuffer(downloadUrl);
+  const buf = await downloadCsvBuffer(PPL_CSV_URL);
   const rows = parseCsv<PplRow>(buf);
   stats.ppl.rowsParsed = rows.length;
   console.log(`  Parsed ${rows.length} PPL rows`);
@@ -471,8 +453,7 @@ async function processRapportsPhase(
   stats: SenatSyncResult
 ): Promise<void> {
   console.log("Phase 2: Downloading Rapports CSV...");
-  const downloadUrl = await getResourceDownloadUrl(RAPPORTS_RESOURCE_ID);
-  const buf = await downloadCsvBuffer(downloadUrl);
+  const buf = await downloadCsvBuffer(RAPPORTS_CSV_URL);
   const rows = parseCsv<RapportRow>(buf);
   stats.rapports.rowsParsed = rows.length;
   console.log(`  Parsed ${rows.length} Rapports rows`);

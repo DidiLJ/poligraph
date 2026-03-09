@@ -14,6 +14,15 @@ import { getPoliticianVotingStats } from "@/services/voteStats";
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes (paginated content)
 
+export async function generateStaticParams() {
+  const politicians = await db.politician.findMany({
+    select: { slug: true },
+    orderBy: { prominenceScore: "desc" },
+    take: 50,
+  });
+  return politicians.map((p) => ({ slug: p.slug }));
+}
+
 interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ page?: string }>;

@@ -7,6 +7,15 @@ import { RelationsClient } from "./RelationsClient";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
+export async function generateStaticParams() {
+  const politicians = await db.politician.findMany({
+    select: { slug: true },
+    orderBy: { prominenceScore: "desc" },
+    take: 50,
+  });
+  return politicians.map((p) => ({ slug: p.slug }));
+}
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }

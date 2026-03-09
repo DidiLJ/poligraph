@@ -30,7 +30,12 @@ export interface DepartmentStats {
 
 export const GET = withPublicRoute(async (request: NextRequest) => {
   const searchParams = request.nextUrl.searchParams;
-  const filter = searchParams.get("filter") as "all" | "deputes" | "senateurs" | null;
+  const VALID_FILTERS = new Set(["all", "deputes", "senateurs"]);
+  const filterParam = searchParams.get("filter");
+  const filter =
+    filterParam && VALID_FILTERS.has(filterParam)
+      ? (filterParam as "all" | "deputes" | "senateurs")
+      : null;
 
   // Build type filter
   const mandateTypes =

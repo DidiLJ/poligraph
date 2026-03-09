@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -119,6 +119,71 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Data-driven section config — one entry per result type
+// ---------------------------------------------------------------------------
+
+interface SectionConfig {
+  key: Exclude<TabKey, "all">;
+  icon: typeof Search;
+  label: string;
+  accent?: "amber";
+  footerHref?: (q: string) => string;
+  footerLabel?: string;
+}
+
+const SECTIONS: SectionConfig[] = [
+  {
+    key: "politicians",
+    icon: Users,
+    label: "Représentants",
+    footerHref: (q) => `/politiques?search=${encodeURIComponent(q)}`,
+    footerLabel: "tous les représentants",
+  },
+  {
+    key: "parties",
+    icon: Building2,
+    label: "Partis",
+    footerHref: (q) => `/partis?search=${encodeURIComponent(q)}`,
+    footerLabel: "tous les partis",
+  },
+  {
+    key: "affairs",
+    icon: Scale,
+    label: "Affaires judiciaires",
+    accent: "amber",
+    footerHref: (q) => `/affaires?search=${encodeURIComponent(q)}`,
+    footerLabel: "toutes les affaires",
+  },
+  {
+    key: "scrutins",
+    icon: Vote,
+    label: "Votes",
+    footerHref: (q) => `/votes?search=${encodeURIComponent(q)}`,
+    footerLabel: "tous les votes",
+  },
+  {
+    key: "factchecks",
+    icon: CheckCircle2,
+    label: "Fact-checks",
+    footerHref: (q) => `/factchecks?search=${encodeURIComponent(q)}`,
+    footerLabel: "tous les fact-checks",
+  },
+  { key: "dossiers", icon: FileText, label: "Dossiers législatifs" },
+  { key: "communes", icon: MapPin, label: "Communes" },
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ROW_COMPONENTS: Record<string, React.ComponentType<{ result: any }>> = {
+  politicians: PoliticianRow,
+  parties: PartyRow,
+  affairs: AffairRow,
+  scrutins: ScrutinRow,
+  factchecks: FactCheckRow,
+  dossiers: DossierRow,
+  communes: CommuneRow,
+};
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -190,34 +255,16 @@ export function SearchClient() {
     return () => clearTimeout(timer);
   }, [query, router]);
 
-  // If URL changes externally (e.g., initial load with ?q=)
-  const urlQuery = searchParams.get("q") || "";
-  useEffect(() => {
-    if (urlQuery && urlQuery !== query) {
-      setQuery(urlQuery);
+  // Counts per category (memoized to avoid recalculating on every render)
+  const counts = useMemo(() => {
+    if (!results) return null;
+    const c: Record<string, number> = {};
+    for (const key of Object.keys(results) as (keyof SearchResults)[]) {
+      c[key] = results[key].length;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Counts per category
-  const counts = results
-    ? {
-        politicians: results.politicians.length,
-        parties: results.parties.length,
-        affairs: results.affairs.length,
-        scrutins: results.scrutins.length,
-        factchecks: results.factchecks.length,
-        dossiers: results.dossiers.length,
-        communes: results.communes.length,
-        all:
-          results.politicians.length +
-          results.parties.length +
-          results.affairs.length +
-          results.scrutins.length +
-          results.factchecks.length +
-          results.dossiers.length +
-          results.communes.length,
-      }
-    : null;
+    c.all = Object.values(c).reduce((sum, n) => sum + n, 0);
+    return c as Record<TabKey, number>;
+  }, [results]);
 
   const hasResults = counts !== null && counts.all > 0;
   const noResults = results !== null && counts !== null && counts.all === 0 && query.length >= 2;
@@ -296,128 +343,29 @@ export function SearchClient() {
       <div className="max-w-2xl mx-auto">
         {results && counts && counts.all > 0 && (
           <div className="space-y-10">
-            {/* Politicians */}
-            {showSection("politicians", activeTab) && results.politicians.length > 0 && (
-              <section>
-                <SectionHeader icon={Users} label="Représentants" count={counts.politicians} />
-                <div className="divide-y divide-border/50">
-                  {results.politicians.map((p) => (
-                    <PoliticianRow key={p.slug} result={p} />
-                  ))}
-                </div>
-                {activeTab === "all" && (
-                  <SectionFooter
-                    href={`/politiques?search=${encodeURIComponent(query)}`}
-                    label="tous les représentants"
+            {SECTIONS.map((section) => {
+              const items = results[section.key] as { slug?: string; id?: string }[];
+              if (!showSection(section.key, activeTab) || items.length === 0) return null;
+              const RowComponent = ROW_COMPONENTS[section.key]!;
+              return (
+                <section key={section.key}>
+                  <SectionHeader
+                    icon={section.icon}
+                    label={section.label}
+                    count={counts[section.key]}
+                    accent={section.accent}
                   />
-                )}
-              </section>
-            )}
-
-            {/* Parties */}
-            {showSection("parties", activeTab) && results.parties.length > 0 && (
-              <section>
-                <SectionHeader icon={Building2} label="Partis" count={counts.parties} />
-                <div className="divide-y divide-border/50">
-                  {results.parties.map((p) => (
-                    <PartyRow key={p.slug} result={p} />
-                  ))}
-                </div>
-                {activeTab === "all" && (
-                  <SectionFooter
-                    href={`/partis?search=${encodeURIComponent(query)}`}
-                    label="tous les partis"
-                  />
-                )}
-              </section>
-            )}
-
-            {/* Affairs */}
-            {showSection("affairs", activeTab) && results.affairs.length > 0 && (
-              <section>
-                <SectionHeader
-                  icon={Scale}
-                  label="Affaires judiciaires"
-                  count={counts.affairs}
-                  accent="amber"
-                />
-                <div className="divide-y divide-border/50">
-                  {results.affairs.map((a) => (
-                    <AffairRow key={a.slug} result={a} />
-                  ))}
-                </div>
-                {activeTab === "all" && (
-                  <SectionFooter
-                    href={`/affaires?search=${encodeURIComponent(query)}`}
-                    label="toutes les affaires"
-                  />
-                )}
-              </section>
-            )}
-
-            {/* Scrutins */}
-            {showSection("scrutins", activeTab) && results.scrutins.length > 0 && (
-              <section>
-                <SectionHeader icon={Vote} label="Votes" count={counts.scrutins} />
-                <div className="divide-y divide-border/50">
-                  {results.scrutins.map((s) => (
-                    <ScrutinRow key={s.id} result={s} />
-                  ))}
-                </div>
-                {activeTab === "all" && (
-                  <SectionFooter
-                    href={`/votes?search=${encodeURIComponent(query)}`}
-                    label="tous les votes"
-                  />
-                )}
-              </section>
-            )}
-
-            {/* Fact-checks */}
-            {showSection("factchecks", activeTab) && results.factchecks.length > 0 && (
-              <section>
-                <SectionHeader icon={CheckCircle2} label="Fact-checks" count={counts.factchecks} />
-                <div className="divide-y divide-border/50">
-                  {results.factchecks.map((fc) => (
-                    <FactCheckRow key={fc.slug} result={fc} />
-                  ))}
-                </div>
-                {activeTab === "all" && (
-                  <SectionFooter
-                    href={`/factchecks?search=${encodeURIComponent(query)}`}
-                    label="tous les fact-checks"
-                  />
-                )}
-              </section>
-            )}
-
-            {/* Dossiers législatifs */}
-            {showSection("dossiers", activeTab) && results.dossiers.length > 0 && (
-              <section>
-                <SectionHeader
-                  icon={FileText}
-                  label="Dossiers législatifs"
-                  count={counts.dossiers}
-                />
-                <div className="divide-y divide-border/50">
-                  {results.dossiers.map((d) => (
-                    <DossierRow key={d.slug} result={d} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Communes */}
-            {showSection("communes", activeTab) && results.communes.length > 0 && (
-              <section>
-                <SectionHeader icon={MapPin} label="Communes" count={counts.communes} />
-                <div className="divide-y divide-border/50">
-                  {results.communes.map((c) => (
-                    <CommuneRow key={c.id} result={c} />
-                  ))}
-                </div>
-              </section>
-            )}
+                  <div className="divide-y divide-border/50">
+                    {items.map((item) => (
+                      <RowComponent key={item.slug || item.id} result={item} />
+                    ))}
+                  </div>
+                  {activeTab === "all" && section.footerHref && section.footerLabel && (
+                    <SectionFooter href={section.footerHref(query)} label={section.footerLabel} />
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
 

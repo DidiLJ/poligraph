@@ -140,13 +140,7 @@ const steps: SyncStep[] = [
     command: `npx tsx scripts/sync-candidatures.ts${dryRunFlag}`,
   },
 
-  // ── Phase 7: Backfills & Migrations ────────────────────────
-  {
-    name: "Migration slugs",
-    command: `npx tsx scripts/migrate-slugs.ts${DRY_RUN ? " --dry-run" : ""}`,
-  },
-
-  // ── Phase 8: Enrichment (optional) ─────────────────────────
+  // ── Phase 7: Enrichment (optional) ─────────────────────────
   {
     name: "Classification thématique",
     command: `npx tsx scripts/classify-themes.ts${dryRunFlag}`,

@@ -844,6 +844,7 @@ model LegislativeDossier {
   summaryDate DateTime? // Date du dernier résumé
 
   sourceUrl String?
+  senatUrl  String? // URL du dossier cote Senat (from AN senatChemin)
 
   exposeDesMotifs    String? @db.Text
   exposeSource       String? // "docparl" | "legifrance" | "manual"
@@ -870,10 +871,20 @@ model DossierAuthor {
   politicianId String
   politician   Politician          @relation(fields: [politicianId], references: [id], onDelete: Cascade)
   acteurRef    String? // AN acteurRef for traceability
+  role         DossierActorRole    @default(AUTEUR)
+  chamber      Chamber?            // AN or SENAT
+  commission   String?             // For rapporteurs: commission name
 
-  @@unique([dossierId, politicianId])
+  @@unique([dossierId, politicianId, role])
   @@index([dossierId])
   @@index([politicianId])
+}
+
+enum DossierActorRole {
+  AUTEUR
+  COSIGNATAIRE
+  RAPPORTEUR
+  RAPPORTEUR_AVIS
 }
 
 enum DossierStatus {

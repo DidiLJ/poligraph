@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
@@ -93,6 +93,7 @@ export default function AdminAffairsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [applyingAI, setApplyingAI] = useState(false);
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Read state from URL
   const activeTab = searchParams.get("status") || "all";
@@ -281,14 +282,10 @@ export default function AdminAffairsPage() {
             aria-label="Rechercher par titre ou politicien"
             onChange={(e) => {
               const val = e.target.value;
-              // Debounce via setTimeout
-              clearTimeout(
-                (window as unknown as Record<string, ReturnType<typeof setTimeout>>).__affairSearch
-              );
-              (window as unknown as Record<string, ReturnType<typeof setTimeout>>).__affairSearch =
-                setTimeout(() => {
-                  updateParams({ search: val });
-                }, 300);
+              if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+              searchTimerRef.current = setTimeout(() => {
+                updateParams({ search: val });
+              }, 300);
             }}
             className="w-full pl-9 pr-4 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/50"
           />
@@ -440,118 +437,14 @@ export default function AdminAffairsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {affairs.map((affair) => (
-                    <tr
+                    <AffairTableRow
                       key={affair.id}
-                      className={`hover:bg-muted/30 transition-colors ${selected.has(affair.id) ? "bg-primary/5" : ""}`}
-                    >
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => toggleOne(affair.id)}
-                          aria-label={`Sélectionner ${affair.title}`}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          {selected.has(affair.id) ? (
-                            <CheckSquare className="w-4 h-4" />
-                          ) : (
-                            <Square className="w-4 h-4" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/admin/politiques/${affair.politician.id}`}
-                          className="flex items-center gap-2 hover:text-foreground"
-                        >
-                          <PoliticianAvatar
-                            photoUrl={affair.politician.photoUrl}
-                            fullName={affair.politician.fullName}
-                            size="sm"
-                            className="w-6 h-6 text-[10px]"
-                          />
-                          <span className="truncate max-w-[120px]">
-                            {affair.politician.fullName}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/admin/affaires/${affair.id}`}
-                            className="font-medium hover:underline truncate max-w-[200px] block"
-                          >
-                            {affair.moderationReviews[0]?.suggestedTitle || affair.title}
-                          </Link>
-                          {affair.moderationReviews[0] &&
-                            (() => {
-                              const rec = affair.moderationReviews[0];
-                              const style = AI_REC_STYLES[rec.recommendation];
-                              return style ? (
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] shrink-0 ${style.bg}`}
-                                  title={rec.reasoning}
-                                >
-                                  {style.label}
-                                  <span className="ml-1 opacity-60">{rec.confidence}%</span>
-                                </Badge>
-                              ) : null;
-                            })()}
-                        </div>
-                        {affair.moderationReviews[0]?.suggestedTitle && (
-                          <span className="text-xs text-muted-foreground line-through block truncate max-w-[200px]">
-                            {affair.title}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">
-                        {
-                          AFFAIR_CATEGORY_LABELS[
-                            affair.category as keyof typeof AFFAIR_CATEGORY_LABELS
-                          ]
-                        }
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          className={
-                            AFFAIR_STATUS_COLORS[affair.status as keyof typeof AFFAIR_STATUS_COLORS]
-                          }
-                        >
-                          {AFFAIR_STATUS_LABELS[affair.status as keyof typeof AFFAIR_STATUS_LABELS]}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          variant="outline"
-                          className={PUB_STATUS_STYLES[affair.publicationStatus] || ""}
-                        >
-                          {affair.publicationStatus}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-center text-muted-foreground">
-                        <div className="flex items-center justify-center gap-1">
-                          {affair.sources.length}
-                          {affair.moderationReviews[0]?.recommendation === "REJECT" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              title="Enrichir via recherche web"
-                              onClick={() => handleEnrich(affair.id)}
-                              disabled={enrichingId === affair.id}
-                            >
-                              {enrichingId === affair.id ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Search className="w-3 h-3" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                        {new Date(affair.createdAt).toLocaleDateString("fr-FR")}
-                      </td>
-                    </tr>
+                      affair={affair}
+                      isSelected={selected.has(affair.id)}
+                      onToggle={() => toggleOne(affair.id)}
+                      onEnrich={() => handleEnrich(affair.id)}
+                      enrichingId={enrichingId}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -615,5 +508,118 @@ export default function AdminAffairsPage() {
         variant="destructive"
       />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-component: affair table row
+// ---------------------------------------------------------------------------
+
+function AffairTableRow({
+  affair,
+  isSelected,
+  onToggle,
+  onEnrich,
+  enrichingId,
+}: {
+  affair: AffairItem;
+  isSelected: boolean;
+  onToggle: () => void;
+  onEnrich: () => void;
+  enrichingId: string | null;
+}) {
+  return (
+    <tr className={`hover:bg-muted/30 transition-colors ${isSelected ? "bg-primary/5" : ""}`}>
+      <td className="px-4 py-3">
+        <button
+          onClick={onToggle}
+          aria-label={`Sélectionner ${affair.title}`}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+        </button>
+      </td>
+      <td className="px-4 py-3">
+        <Link
+          href={`/admin/politiques/${affair.politician.id}`}
+          className="flex items-center gap-2 hover:text-foreground"
+        >
+          <PoliticianAvatar
+            photoUrl={affair.politician.photoUrl}
+            fullName={affair.politician.fullName}
+            size="sm"
+            className="w-6 h-6 text-[10px]"
+          />
+          <span className="truncate max-w-[120px]">{affair.politician.fullName}</span>
+        </Link>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/admin/affaires/${affair.id}`}
+            className="font-medium hover:underline truncate max-w-[200px] block"
+          >
+            {affair.moderationReviews[0]?.suggestedTitle || affair.title}
+          </Link>
+          {affair.moderationReviews[0] &&
+            (() => {
+              const rec = affair.moderationReviews[0];
+              const style = AI_REC_STYLES[rec.recommendation];
+              return style ? (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] shrink-0 ${style.bg}`}
+                  title={rec.reasoning}
+                >
+                  {style.label}
+                  <span className="ml-1 opacity-60">{rec.confidence}%</span>
+                </Badge>
+              ) : null;
+            })()}
+        </div>
+        {affair.moderationReviews[0]?.suggestedTitle && (
+          <span className="text-xs text-muted-foreground line-through block truncate max-w-[200px]">
+            {affair.title}
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-muted-foreground text-xs">
+        {AFFAIR_CATEGORY_LABELS[affair.category as keyof typeof AFFAIR_CATEGORY_LABELS]}
+      </td>
+      <td className="px-4 py-3">
+        <Badge className={AFFAIR_STATUS_COLORS[affair.status as keyof typeof AFFAIR_STATUS_COLORS]}>
+          {AFFAIR_STATUS_LABELS[affair.status as keyof typeof AFFAIR_STATUS_LABELS]}
+        </Badge>
+      </td>
+      <td className="px-4 py-3">
+        <Badge variant="outline" className={PUB_STATUS_STYLES[affair.publicationStatus] || ""}>
+          {affair.publicationStatus}
+        </Badge>
+      </td>
+      <td className="px-4 py-3 text-center text-muted-foreground">
+        <div className="flex items-center justify-center gap-1">
+          {affair.sources.length}
+          {affair.moderationReviews[0]?.recommendation === "REJECT" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              title="Enrichir via recherche web"
+              onClick={onEnrich}
+              disabled={enrichingId === affair.id}
+            >
+              {enrichingId === affair.id ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Search className="w-3 h-3" />
+              )}
+            </Button>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+        {new Date(affair.createdAt).toLocaleDateString("fr-FR")}
+      </td>
+    </tr>
   );
 }

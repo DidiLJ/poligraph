@@ -195,13 +195,19 @@ async function resolveAuthors(
 
     await db.dossierAuthor.upsert({
       where: {
-        dossierId_politicianId: { dossierId, politicianId: ext.politicianId },
+        dossierId_politicianId_role: {
+          dossierId,
+          politicianId: ext.politicianId,
+          role: "AUTEUR",
+        },
       },
-      update: { acteurRef: acteur.acteurRef },
+      update: { acteurRef: acteur.acteurRef, chamber: "AN" },
       create: {
         dossierId,
         politicianId: ext.politicianId,
         acteurRef: acteur.acteurRef,
+        role: "AUTEUR",
+        chamber: "AN",
       },
     });
   }
@@ -418,6 +424,13 @@ export async function syncLegislation(options?: {
 
         const sourceUrl = `https://www.assemblee-nationale.fr/dyn/${legislature}/dossiers/${dp.titreDossier?.titreChemin || externalId}`;
 
+        const senatChemin = dp.titreDossier?.senatChemin;
+        const senatUrl = senatChemin
+          ? senatChemin.startsWith("http")
+            ? senatChemin
+            : `https://www.senat.fr/dossier-legislatif/${senatChemin}.html`
+          : null;
+
         const timeline = buildTimeline(dp.actesLegislatifs?.acteLegislatif);
 
         const existing = await db.legislativeDossier.findUnique({
@@ -434,6 +447,7 @@ export async function syncLegislation(options?: {
           filingDate,
           adoptionDate,
           sourceUrl,
+          senatUrl,
           documentExternalId,
           timeline:
             timeline.length > 0 ? (timeline as unknown as Prisma.InputJsonValue) : Prisma.DbNull,

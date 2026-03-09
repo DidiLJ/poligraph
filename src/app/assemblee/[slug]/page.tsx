@@ -41,7 +41,10 @@ const includeOptions = {
     take: 50,
   },
   authors: {
-    include: {
+    select: {
+      role: true,
+      chamber: true,
+      commission: true,
       politician: {
         select: {
           slug: true,

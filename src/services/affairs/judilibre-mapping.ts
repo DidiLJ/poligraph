@@ -9,7 +9,7 @@
 
 import type { AffairStatus, AffairCategory } from "@/generated/prisma";
 import type { JudilibreDecision, JudilibreDecisionSummary } from "@/lib/api/judilibre";
-import { CRIME_CATEGORY_MAP } from "@/services/sync/wikidata-affairs";
+import { CRIME_CATEGORY_MAP } from "@/config/wikidata-affairs";
 
 // ============================================
 // SOLUTION → STATUS

@@ -63,6 +63,8 @@
     "sync:legislation:stats": "tsx scripts/sync-legislation.ts --stats",
     "sync:legislation:content": "tsx scripts/sync-legislation-content.ts",
     "sync:legislation:content:stats": "tsx scripts/sync-legislation-content.ts --stats",
+    "sync:legislation:senat": "tsx scripts/sync-legislation-senat.ts",
+    "sync:legislation:senat:stats": "tsx scripts/sync-legislation-senat.ts --stats",
     "generate:tweets": "tsx scripts/generate-tweets.ts",
     "index:embeddings": "tsx scripts/index-embeddings.ts",
     "index:embeddings:stats": "tsx scripts/index-embeddings.ts --stats",

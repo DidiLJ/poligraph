@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useAdminMutation } from "@/hooks";
 import { ensureContrast } from "@/lib/contrast";
 import { formatDateForInput } from "@/lib/utils";
 import { PARTY_ROLE_LABELS } from "@/config/labels";
@@ -36,10 +36,41 @@ interface EditablePartyCardProps {
   allParties: Party[];
 }
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const EMPTY_PARTY_FORM = {
+  partyId: "",
+  startDate: new Date().toISOString().split("T")[0] ?? "",
+  role: "",
+};
+const EMPTY_MEMBERSHIP_FORM = { startDate: "", endDate: "", role: "" };
+
 function formatDateDisplay(date: Date | null): string {
   if (!date) return "En cours";
   return new Date(date).toLocaleDateString("fr-FR");
 }
+
+function renderPartyBadge(party: Party) {
+  const color = party.color || "#6b7280";
+  return (
+    <Badge
+      variant="outline"
+      style={{
+        backgroundColor: `${color}20`,
+        color: ensureContrast(color, "#ffffff"),
+        borderColor: `${color}30`,
+      }}
+    >
+      {party.shortName || party.name}
+    </Badge>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export function EditablePartyCard({
   politicianId,
@@ -47,121 +78,47 @@ export function EditablePartyCard({
   partyHistory,
   allParties,
 }: EditablePartyCardProps) {
-  const router = useRouter();
+  const { loading, status, mutate, clearStatus } = useAdminMutation({ refresh: true });
 
   const [isChangingParty, setIsChangingParty] = useState(false);
   const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
-
-  // Confirm dialog state for "Retirer" action
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
-  // Confirm dialog state for membership delete (stores membership id)
   const [confirmDeleteMembershipId, setConfirmDeleteMembershipId] = useState<string | null>(null);
 
-  // Form for party change
-  const [partyForm, setPartyForm] = useState({
-    partyId: "",
-    startDate: new Date().toISOString().split("T")[0],
-    role: "",
-  });
-
-  // Form for membership edit
-  const [membershipForm, setMembershipForm] = useState({
-    startDate: "",
-    endDate: "",
-    role: "",
-  });
-
-  function clearStatus() {
-    setStatus(null);
-  }
-
-  function showStatus(type: "success" | "error", message: string) {
-    setStatus({ type, message });
-    if (type === "success") {
-      setTimeout(clearStatus, 3000);
-    }
-  }
+  const [partyForm, setPartyForm] = useState({ ...EMPTY_PARTY_FORM });
+  const [membershipForm, setMembershipForm] = useState({ ...EMPTY_MEMBERSHIP_FORM });
 
   // --- Section A: Change current party ---
 
   function handleCancelPartyChange() {
     setIsChangingParty(false);
-    setPartyForm({
-      partyId: "",
-      startDate: new Date().toISOString().split("T")[0],
-      role: "",
-    });
+    setPartyForm({ ...EMPTY_PARTY_FORM });
   }
 
   async function handleSubmitPartyChange() {
-    if (!partyForm.partyId) {
-      showStatus("error", "Veuillez sélectionner un parti");
-      return;
-    }
+    const body: Record<string, string> = {
+      partyId: partyForm.partyId,
+      startDate: partyForm.startDate,
+    };
+    if (partyForm.role) body.role = partyForm.role;
 
-    setLoading(true);
-    clearStatus();
-
-    try {
-      const body: Record<string, string> = {
-        partyId: partyForm.partyId,
-        startDate: partyForm.startDate!,
-      };
-      if (partyForm.role) {
-        body.role = partyForm.role;
-      }
-
-      const response = await fetch(`/api/admin/politiques/${politicianId}/party`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Erreur lors du changement de parti");
-      }
-
-      showStatus("success", "Parti mis à jour");
+    const result = await mutate(`/api/admin/politiques/${politicianId}/party`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      successMessage: "Parti mis à jour",
+    });
+    if (result) {
       setIsChangingParty(false);
-      setPartyForm({
-        partyId: "",
-        startDate: new Date().toISOString().split("T")[0],
-        role: "",
-      });
-      router.refresh();
-    } catch (err) {
-      showStatus("error", err instanceof Error ? err.message : "Erreur inconnue");
-    } finally {
-      setLoading(false);
+      setPartyForm({ ...EMPTY_PARTY_FORM });
     }
   }
 
   async function handleRemoveParty() {
-    setLoading(true);
-    clearStatus();
-
-    try {
-      const response = await fetch(`/api/admin/politiques/${politicianId}/party`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Erreur lors du retrait du parti");
-      }
-
-      showStatus("success", "Affiliation retirée");
-      router.refresh();
-    } catch (err) {
-      showStatus("error", err instanceof Error ? err.message : "Erreur inconnue");
-    } finally {
-      setLoading(false);
-    }
+    await mutate(`/api/admin/politiques/${politicianId}/party`, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+      successMessage: "Affiliation retirée",
+    });
   }
 
   // --- Section B: Membership history ---
@@ -177,91 +134,35 @@ export function EditablePartyCard({
 
   function cancelEditMembership() {
     setEditingMembershipId(null);
-    setMembershipForm({ startDate: "", endDate: "", role: "" });
+    setMembershipForm({ ...EMPTY_MEMBERSHIP_FORM });
   }
 
   async function handleSaveMembership(membershipId: string) {
-    setLoading(true);
-    clearStatus();
+    const body: Record<string, string | null> = {};
+    if (membershipForm.startDate) body.startDate = membershipForm.startDate;
+    body.endDate = membershipForm.endDate || null;
+    if (membershipForm.role) body.role = membershipForm.role;
 
-    try {
-      const body: Record<string, string | null> = {};
-      if (membershipForm.startDate) body.startDate = membershipForm.startDate;
-      if (membershipForm.endDate) {
-        body.endDate = membershipForm.endDate;
-      } else {
-        body.endDate = null;
+    const result = await mutate(
+      `/api/admin/politiques/${politicianId}/party-membership/${membershipId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(body),
+        successMessage: "Affiliation mise à jour",
       }
-      if (membershipForm.role) body.role = membershipForm.role;
-
-      const response = await fetch(
-        `/api/admin/politiques/${politicianId}/party-membership/${membershipId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Erreur lors de la mise à jour");
-      }
-
-      showStatus("success", "Affiliation mise à jour");
+    );
+    if (result) {
       setEditingMembershipId(null);
-      setMembershipForm({ startDate: "", endDate: "", role: "" });
-      router.refresh();
-    } catch (err) {
-      showStatus("error", err instanceof Error ? err.message : "Erreur inconnue");
-    } finally {
-      setLoading(false);
+      setMembershipForm({ ...EMPTY_MEMBERSHIP_FORM });
     }
   }
 
   async function handleDeleteMembership(membershipId: string) {
-    setLoading(true);
-    clearStatus();
-
-    try {
-      const response = await fetch(
-        `/api/admin/politiques/${politicianId}/party-membership/${membershipId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Erreur lors de la suppression");
-      }
-
-      showStatus("success", "Affiliation supprimée");
-      router.refresh();
-    } catch (err) {
-      showStatus("error", err instanceof Error ? err.message : "Erreur inconnue");
-    } finally {
-      setLoading(false);
-      setConfirmDeleteMembershipId(null);
-    }
-  }
-
-  // --- Render helpers ---
-
-  function renderPartyBadge(party: Party) {
-    const color = party.color || "#6b7280";
-    return (
-      <Badge
-        variant="outline"
-        style={{
-          backgroundColor: `${color}20`,
-          color: ensureContrast(color, "#ffffff"),
-          borderColor: `${color}30`,
-        }}
-      >
-        {party.shortName || party.name}
-      </Badge>
-    );
+    await mutate(`/api/admin/politiques/${politicianId}/party-membership/${membershipId}`, {
+      method: "DELETE",
+      successMessage: "Affiliation supprimée",
+    });
+    setConfirmDeleteMembershipId(null);
   }
 
   return (
@@ -369,7 +270,11 @@ export function EditablePartyCard({
               </div>
 
               <div className="flex items-center gap-3">
-                <Button size="sm" onClick={handleSubmitPartyChange} disabled={loading}>
+                <Button
+                  size="sm"
+                  onClick={handleSubmitPartyChange}
+                  disabled={loading || !partyForm.partyId}
+                >
                   {loading ? "Enregistrement..." : "Confirmer"}
                 </Button>
                 <Button
@@ -421,116 +326,22 @@ export function EditablePartyCard({
                   </tr>
                 </thead>
                 <tbody>
-                  {partyHistory.map((membership) => {
-                    const isEditing = editingMembershipId === membership.id;
-                    const roleLabel =
-                      PARTY_ROLE_LABELS[membership.role as keyof typeof PARTY_ROLE_LABELS] ||
-                      membership.role;
-
-                    if (isEditing) {
-                      return (
-                        <tr key={membership.id} className="border-b">
-                          <td className="py-2 pr-3">{renderPartyBadge(membership.party)}</td>
-                          <td className="py-2 pr-3">
-                            <Select
-                              value={membershipForm.role}
-                              onChange={(e) =>
-                                setMembershipForm((prev) => ({ ...prev, role: e.target.value }))
-                              }
-                              aria-label={`Rôle dans ${membership.party.shortName || membership.party.name}`}
-                              className="h-8 text-xs"
-                            >
-                              {Object.entries(PARTY_ROLE_LABELS).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                  {label}
-                                </option>
-                              ))}
-                            </Select>
-                          </td>
-                          <td className="py-2 pr-3">
-                            <Input
-                              type="date"
-                              value={membershipForm.startDate}
-                              onChange={(e) =>
-                                setMembershipForm((prev) => ({
-                                  ...prev,
-                                  startDate: e.target.value,
-                                }))
-                              }
-                              aria-label="Date de début"
-                              className="h-8 text-xs"
-                            />
-                          </td>
-                          <td className="py-2 pr-3">
-                            <Input
-                              type="date"
-                              value={membershipForm.endDate}
-                              onChange={(e) =>
-                                setMembershipForm((prev) => ({
-                                  ...prev,
-                                  endDate: e.target.value,
-                                }))
-                              }
-                              aria-label="Date de fin"
-                              className="h-8 text-xs"
-                            />
-                          </td>
-                          <td className="py-2">
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                onClick={() => handleSaveMembership(membership.id)}
-                                disabled={loading}
-                                className="h-7 text-xs"
-                              >
-                                {loading ? "..." : "Sauvegarder"}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={cancelEditMembership}
-                                disabled={loading}
-                                className="h-7 text-xs"
-                              >
-                                Annuler
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    }
-
-                    return (
-                      <tr key={membership.id} className="border-b">
-                        <td className="py-2 pr-3">{renderPartyBadge(membership.party)}</td>
-                        <td className="py-2 pr-3">
-                          <Badge variant="outline">{roleLabel}</Badge>
-                        </td>
-                        <td className="py-2 pr-3">{formatDateDisplay(membership.startDate)}</td>
-                        <td className="py-2 pr-3">{formatDateDisplay(membership.endDate)}</td>
-                        <td className="py-2">
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => startEditMembership(membership)}
-                              className="h-7 text-xs"
-                            >
-                              Éditer
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setConfirmDeleteMembershipId(membership.id)}
-                              className="h-7 text-xs text-destructive hover:text-destructive"
-                            >
-                              Supprimer
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {partyHistory.map((membership) => (
+                    <MembershipRow
+                      key={membership.id}
+                      membership={membership}
+                      isEditing={editingMembershipId === membership.id}
+                      form={membershipForm}
+                      onFormChange={(updates) =>
+                        setMembershipForm((prev) => ({ ...prev, ...updates }))
+                      }
+                      loading={loading}
+                      onEdit={() => startEditMembership(membership)}
+                      onSave={() => handleSaveMembership(membership.id)}
+                      onCancel={cancelEditMembership}
+                      onDelete={() => setConfirmDeleteMembershipId(membership.id)}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -554,5 +365,116 @@ export function EditablePartyCard({
         />
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-component: membership table row (edit + display modes)
+// ---------------------------------------------------------------------------
+
+function MembershipRow({
+  membership,
+  isEditing,
+  form,
+  onFormChange,
+  loading,
+  onEdit,
+  onSave,
+  onCancel,
+  onDelete,
+}: {
+  membership: PartyMembership;
+  isEditing: boolean;
+  form: { startDate: string; endDate: string; role: string };
+  onFormChange: (updates: Partial<{ startDate: string; endDate: string; role: string }>) => void;
+  loading: boolean;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onDelete: () => void;
+}) {
+  const roleLabel =
+    PARTY_ROLE_LABELS[membership.role as keyof typeof PARTY_ROLE_LABELS] || membership.role;
+
+  if (isEditing) {
+    return (
+      <tr className="border-b">
+        <td className="py-2 pr-3">{renderPartyBadge(membership.party)}</td>
+        <td className="py-2 pr-3">
+          <Select
+            value={form.role}
+            onChange={(e) => onFormChange({ role: e.target.value })}
+            aria-label={`Rôle dans ${membership.party.shortName || membership.party.name}`}
+            className="h-8 text-xs"
+          >
+            {Object.entries(PARTY_ROLE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </td>
+        <td className="py-2 pr-3">
+          <Input
+            type="date"
+            value={form.startDate}
+            onChange={(e) => onFormChange({ startDate: e.target.value })}
+            aria-label="Date de début"
+            className="h-8 text-xs"
+          />
+        </td>
+        <td className="py-2 pr-3">
+          <Input
+            type="date"
+            value={form.endDate}
+            onChange={(e) => onFormChange({ endDate: e.target.value })}
+            aria-label="Date de fin"
+            className="h-8 text-xs"
+          />
+        </td>
+        <td className="py-2">
+          <div className="flex gap-1">
+            <Button size="sm" onClick={onSave} disabled={loading} className="h-7 text-xs">
+              {loading ? "..." : "Sauvegarder"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+              disabled={loading}
+              className="h-7 text-xs"
+            >
+              Annuler
+            </Button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="border-b">
+      <td className="py-2 pr-3">{renderPartyBadge(membership.party)}</td>
+      <td className="py-2 pr-3">
+        <Badge variant="outline">{roleLabel}</Badge>
+      </td>
+      <td className="py-2 pr-3">{formatDateDisplay(membership.startDate)}</td>
+      <td className="py-2 pr-3">{formatDateDisplay(membership.endDate)}</td>
+      <td className="py-2">
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 text-xs">
+            Éditer
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            className="h-7 text-xs text-destructive hover:text-destructive"
+          >
+            Supprimer
+          </Button>
+        </div>
+      </td>
+    </tr>
   );
 }

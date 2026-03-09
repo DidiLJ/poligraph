@@ -1,3 +1,4 @@
+import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import { Prisma } from "@/generated/prisma";
 
@@ -37,6 +38,9 @@ export interface PPLStats {
 // ─── Queries ─────────────────────────────────────────
 
 export async function getPPLStats(): Promise<PPLStats> {
+  "use cache";
+  cacheTag("legislation");
+  cacheLife("minutes");
   const [topAuthors, topParties, topDossiers] = await Promise.all([
     db.$queryRaw<TopAuthor[]>(Prisma.sql`
       SELECT

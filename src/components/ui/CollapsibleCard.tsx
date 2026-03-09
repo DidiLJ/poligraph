@@ -28,7 +28,14 @@ export function CollapsibleCard({
       <CardHeader
         className="cursor-pointer select-none"
         onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}
         role="button"
+        tabIndex={0}
         aria-expanded={open}
       >
         <div className="flex items-center justify-between">

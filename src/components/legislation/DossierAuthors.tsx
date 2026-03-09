@@ -15,6 +15,14 @@ interface DossierAuthor {
     photoUrl: string | null;
     civility: string | null;
     currentParty: { shortName: string; color: string | null } | null;
+    mandates?: {
+      parliamentaryGroup: {
+        code: string;
+        name: string;
+        shortName: string | null;
+        color: string | null;
+      } | null;
+    }[];
   };
 }
 
@@ -33,6 +41,8 @@ function AuthorEntry({
   const party = author.politician.currentParty;
   const partyColor = party?.color ? ensureContrast(party.color) : undefined;
   const chamberLabel = author.chamber ? CHAMBER_LABELS[author.chamber] : null;
+  const group = author.politician.mandates?.[0]?.parliamentaryGroup;
+  const groupColor = group?.color ? ensureContrast(group.color) : undefined;
 
   return (
     <Link
@@ -51,10 +61,15 @@ function AuthorEntry({
           {author.politician.civility ? `${author.politician.civility} ` : ""}
           {author.politician.fullName}
         </p>
-        {(party || chamberLabel) && (
+        {(party || group || chamberLabel) && (
           <p className="text-xs mt-0.5 flex items-center gap-1.5">
             {party && (
               <span style={partyColor ? { color: partyColor } : undefined}>{party.shortName}</span>
+            )}
+            {group && (
+              <span style={groupColor ? { color: groupColor } : undefined}>
+                {group.shortName || group.code}
+              </span>
             )}
             {chamberLabel && <span className="text-muted-foreground">{chamberLabel}</span>}
           </p>

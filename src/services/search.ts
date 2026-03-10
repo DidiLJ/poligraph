@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Prisma, MandateType } from "@/generated/prisma";
+import { findDepartmentCode } from "@/config/departments";
 
 // FTS result type from raw query
 interface FTSResult {
@@ -113,11 +114,12 @@ async function searchWithFTS(
     }
 
     if (department) {
-      additionalFilters.push({
-        mandates: {
-          some: { constituency: { startsWith: department, mode: "insensitive" }, isCurrent: true },
-        },
-      });
+      const deptCode = findDepartmentCode(department);
+      if (deptCode) {
+        additionalFilters.push({
+          mandates: { some: { departmentCode: deptCode, isCurrent: true } },
+        });
+      }
     }
 
     if (hasAffairs === true) {
@@ -235,14 +237,12 @@ export async function searchPoliticians(
 
   // Department filter
   if (department) {
-    whereConditions.push({
-      mandates: {
-        some: {
-          constituency: { startsWith: department, mode: "insensitive" },
-          isCurrent: true,
-        },
-      },
-    });
+    const deptCode = findDepartmentCode(department);
+    if (deptCode) {
+      whereConditions.push({
+        mandates: { some: { departmentCode: deptCode, isCurrent: true } },
+      });
+    }
   }
 
   // Affairs filter — only count PUBLISHED affairs

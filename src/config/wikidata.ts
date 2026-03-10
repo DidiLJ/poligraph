@@ -117,7 +117,7 @@ export const WD_POSITIONS = {
 
 export const WD_PARTIES = {
   // Major parties (current)
-  RN: "Q485840", // Rassemblement National (parti, pas le groupe AN)
+  RN: "Q205150", // Rassemblement National
   LFI: "Q27978402", // La France Insoumise
   RE: "Q23731823", // Renaissance
   LR: "Q20012759", // Les Républicains
@@ -129,15 +129,12 @@ export const WD_PARTIES = {
   HORIZONS: "Q108055027",
   UDI: "Q3549087", // Union des Démocrates et Indépendants
 
-  // Parliamentary groups (different from parties!)
-  GROUPE_RN_AN: "Q205150", // Groupe RN à l'AN
-  GROUPE_LFI_AN: "Q20905918", // Groupe LFI-NFP à l'AN
-  GROUPE_EPR_AN: "Q110797741", // Groupe EPR (Ensemble)
-  GROUPE_DR_AN: "Q829126", // Groupe DR (Droite Républicaine)
-  GROUPE_DEM_AN: "Q3277601", // Groupe Démocrate
-  GROUPE_SOC_AN: "Q151614", // Groupe SOC
-  GROUPE_ECOS_AN: "Q211595", // Groupe Écologiste et Social
-  GROUPE_GDR_AN: "Q121596", // Groupe GDR
+  // Parliamentary groups
+  // Most AN groups don't have dedicated Wikidata entities.
+  // Only include verified Q-IDs here.
+  GROUPE_RN_AN: "Q112813164", // Groupe RN à l'AN
+  GROUPE_LFI_AN: "Q30503094", // Groupe LFI-NFP à l'AN
+  GROUPE_EPR_AN: "Q30584989", // Groupe EPR (Ensemble)
 
   // Historical parties
   UMP: "Q210040",

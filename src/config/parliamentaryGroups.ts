@@ -60,7 +60,6 @@ export const ASSEMBLY_GROUPS: Record<string, ParliamentaryGroupConfig> = {
     name: "Socialistes et apparentés",
     color: "#FF8080",
     politicalPosition: "LEFT",
-    wikidataId: WD_PARTIES.GROUPE_SOC_AN,
     partyWikidataId: WD_PARTIES.PS,
   },
   EPR: {
@@ -76,7 +75,6 @@ export const ASSEMBLY_GROUPS: Record<string, ParliamentaryGroupConfig> = {
     name: "Droite Républicaine",
     color: "#0066CC",
     politicalPosition: "RIGHT",
-    wikidataId: WD_PARTIES.GROUPE_DR_AN,
     partyWikidataId: WD_PARTIES.LR,
   },
   DEM: {
@@ -84,7 +82,6 @@ export const ASSEMBLY_GROUPS: Record<string, ParliamentaryGroupConfig> = {
     name: "Les Démocrates",
     color: "#FF9900",
     politicalPosition: "CENTER",
-    wikidataId: WD_PARTIES.GROUPE_DEM_AN,
     partyWikidataId: WD_PARTIES.MODEM,
   },
   HOR: {
@@ -106,7 +103,6 @@ export const ASSEMBLY_GROUPS: Record<string, ParliamentaryGroupConfig> = {
     name: "Écologiste et Social",
     color: "#00C000",
     politicalPosition: "LEFT",
-    wikidataId: WD_PARTIES.GROUPE_ECOS_AN,
     partyWikidataId: WD_PARTIES.EELV,
   },
   GDR: {
@@ -114,7 +110,6 @@ export const ASSEMBLY_GROUPS: Record<string, ParliamentaryGroupConfig> = {
     name: "Gauche Démocrate et Républicaine",
     color: "#DD0000",
     politicalPosition: "FAR_LEFT",
-    wikidataId: WD_PARTIES.GROUPE_GDR_AN,
     partyWikidataId: WD_PARTIES.PCF,
   },
   UDR: {

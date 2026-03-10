@@ -52,8 +52,8 @@ export default async function DepartmentPage({ params }: PageProps) {
   const departmentName = dept.name;
 
   const [deputies, senators] = await Promise.all([
-    getDeputiesByDepartment(departmentName),
-    getSenatorsByDepartment(departmentName),
+    getDeputiesByDepartment(dept.code),
+    getSenatorsByDepartment(dept.code),
   ]);
 
   if (deputies.length === 0 && senators.length === 0) {

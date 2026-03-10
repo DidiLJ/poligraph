@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 // Department representatives data functions
 // ============================================
 
-export async function getDeputiesByDepartment(departmentName: string) {
+export async function getDeputiesByDepartment(departmentCode: string) {
   "use cache";
   cacheLife("minutes");
   cacheTag("politicians", "departments");
@@ -17,10 +17,7 @@ export async function getDeputiesByDepartment(departmentName: string) {
         some: {
           type: "DEPUTE",
           isCurrent: true,
-          constituency: {
-            startsWith: departmentName,
-            mode: "insensitive",
-          },
+          departmentCode,
         },
       },
     },
@@ -41,7 +38,7 @@ export async function getDeputiesByDepartment(departmentName: string) {
   });
 }
 
-export async function getSenatorsByDepartment(departmentName: string) {
+export async function getSenatorsByDepartment(departmentCode: string) {
   "use cache";
   cacheLife("minutes");
   cacheTag("politicians", "departments");
@@ -52,10 +49,7 @@ export async function getSenatorsByDepartment(departmentName: string) {
         some: {
           type: "SENATEUR",
           isCurrent: true,
-          constituency: {
-            contains: departmentName,
-            mode: "insensitive",
-          },
+          departmentCode,
         },
       },
     },

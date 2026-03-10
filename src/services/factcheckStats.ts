@@ -178,7 +178,7 @@ async function getPageStats(): Promise<FactCheckPageStats> {
 }
 
 /** Minimum fact-check mentions required to include a politician/party in rankings */
-const MIN_MENTIONS = 3;
+const MIN_MENTIONS = 5;
 
 function classifyRating(rating: string): keyof VerdictBreakdown {
   if ((VERDICT_GROUPS.vrai as readonly string[]).includes(rating)) return "vrai";

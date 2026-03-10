@@ -9,7 +9,7 @@
  */
 
 import { db } from "@/lib/db";
-import { AffairStatus, Judgement } from "@/generated/prisma";
+import { AffairStatus, DataSource, Judgement } from "@/generated/prisma";
 import { generateSlug } from "@/lib/utils";
 import {
   JudilibreClient,
@@ -754,25 +754,36 @@ async function getPoliticiansToSearch(
  * Get Judilibre sync statistics
  */
 export async function getJudilibreStats(): Promise<void> {
-  const [meta, affairsWithEcli, affairsWithJudilibreSource, totalAffairs, recentJudilibre] =
-    await Promise.all([
-      syncMetadata.get(SYNC_SOURCE_KEY),
-      db.affair.count({ where: { ecli: { not: null } } }),
-      db.source.count({ where: { sourceType: "JUDILIBRE" } }),
-      db.affair.count(),
-      db.affair.findMany({
-        where: { sources: { some: { sourceType: "JUDILIBRE" } } },
-        select: {
-          title: true,
-          ecli: true,
-          status: true,
-          verdictDate: true,
-          politician: { select: { fullName: true } },
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 5,
-      }),
-    ]);
+  const [
+    meta,
+    affairsWithEcli,
+    affairsWithJudilibreSource,
+    totalAffairs,
+    recentJudilibre,
+    identityDecisions,
+  ] = await Promise.all([
+    syncMetadata.get(SYNC_SOURCE_KEY),
+    db.affair.count({ where: { ecli: { not: null } } }),
+    db.source.count({ where: { sourceType: "JUDILIBRE" } }),
+    db.affair.count(),
+    db.affair.findMany({
+      where: { sources: { some: { sourceType: "JUDILIBRE" } } },
+      select: {
+        title: true,
+        ecli: true,
+        status: true,
+        verdictDate: true,
+        politician: { select: { fullName: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+    }),
+    db.identityDecision.groupBy({
+      by: ["judgement"],
+      where: { sourceType: DataSource.JUDILIBRE, supersededBy: null },
+      _count: true,
+    }),
+  ]);
 
   console.log("\n" + "=".repeat(60));
   console.log("Judilibre Sync Stats");
@@ -788,6 +799,15 @@ export async function getJudilibreStats(): Promise<void> {
   console.log(`\nAffaires totales: ${totalAffairs}`);
   console.log(`Affaires avec ECLI: ${affairsWithEcli}`);
   console.log(`Sources Judilibre: ${affairsWithJudilibreSource}`);
+
+  if (identityDecisions.length > 0) {
+    const counts = Object.fromEntries(identityDecisions.map((d) => [d.judgement, d._count]));
+    const total = identityDecisions.reduce((sum, d) => sum + d._count, 0);
+    console.log(`\nIdentity decisions: ${total}`);
+    console.log(`  SAME (auto-confirmed): ${counts.SAME ?? 0}`);
+    console.log(`  UNDECIDED (admin review): ${counts.UNDECIDED ?? 0}`);
+    console.log(`  NOT_SAME (blocked): ${counts.NOT_SAME ?? 0}`);
+  }
 
   if (recentJudilibre.length > 0) {
     console.log("\nDernières affaires Judilibre:");

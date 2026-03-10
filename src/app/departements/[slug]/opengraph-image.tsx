@@ -36,22 +36,14 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     db.politician.count({
       where: {
         mandates: {
-          some: {
-            type: "DEPUTE",
-            isCurrent: true,
-            constituency: { startsWith: dept.name, mode: "insensitive" },
-          },
+          some: { type: "DEPUTE", isCurrent: true, departmentCode: dept.code },
         },
       },
     }),
     db.politician.count({
       where: {
         mandates: {
-          some: {
-            type: "SENATEUR",
-            isCurrent: true,
-            constituency: { startsWith: dept.name, mode: "insensitive" },
-          },
+          some: { type: "SENATEUR", isCurrent: true, departmentCode: dept.code },
         },
       },
     }),

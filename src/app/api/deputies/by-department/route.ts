@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withCache } from "@/lib/cache";
 import { withPublicRoute } from "@/lib/api/with-public-route";
+import { findDepartmentCode } from "@/config/departments";
 
 /**
  * @openapi
@@ -59,20 +60,16 @@ export const GET = withPublicRoute(async (request: NextRequest) => {
     return NextResponse.json({ error: "Paramètre 'department' invalide" }, { status: 400 });
   }
 
-  // Find deputies with current mandate in this department
-  // Use startsWith to avoid matching "Bouches-du-Rhône" when searching for "Rhône"
+  const deptCode = findDepartmentCode(department);
+  if (!deptCode) {
+    return NextResponse.json({ error: "Département non trouvé" }, { status: 404 });
+  }
+
   const deputies = await db.politician.findMany({
     where: {
       publicationStatus: "PUBLISHED",
       mandates: {
-        some: {
-          type: "DEPUTE",
-          isCurrent: true,
-          constituency: {
-            startsWith: department,
-            mode: "insensitive",
-          },
-        },
+        some: { type: "DEPUTE", isCurrent: true, departmentCode: deptCode },
       },
     },
     include: {

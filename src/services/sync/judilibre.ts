@@ -2,18 +2,18 @@
  * Judilibre Sync Service
  *
  * Searches Cour de cassation criminal decisions for politicians:
+ * - Scored matching via Name Quality x Context Signal matrix
+ * - IdentityDecision persistence (blocklist, admin review, short-circuit)
  * - Enriches existing affairs with ECLI/pourvoi identifiers
- * - Creates new affairs for confirmed convictions (prefixed [À VÉRIFIER])
- * - Filters homonymes via birth date and name-in-text checks
+ * - Creates new affairs for confirmed convictions
  */
 
 import { db } from "@/lib/db";
-import { AffairStatus } from "@/generated/prisma";
+import { AffairStatus, Judgement } from "@/generated/prisma";
 import { generateSlug } from "@/lib/utils";
 import {
   JudilibreClient,
   createJudilibreClient,
-  type JudilibreDecision,
   type JudilibreDecisionSummary,
 } from "@/lib/api/judilibre";
 import { findMatchingAffairs } from "@/services/affairs/matching";
@@ -26,6 +26,14 @@ import {
 import { syncMetadata } from "@/lib/sync";
 import { trackStatusChange } from "@/services/affairs/status-tracking";
 import { findCourtDepartments, extractJurisdictionName } from "@/config/judilibre-courts";
+import {
+  detectNameQuality,
+  determineContextSignal,
+  scoreJudilibreMatch,
+  JUDILIBRE_THRESHOLDS,
+  type JudilibreMatchEvidence,
+} from "./judilibre-scoring";
+import { loadJudilibreDecisionCache, persistJudilibreDecision } from "./judilibre-decisions";
 
 // ============================================
 // TYPES
@@ -46,6 +54,9 @@ export interface JudilibreSyncStats {
   affairsEnriched: number;
   affairsCreated: number;
   decisionsSkipped: number;
+  decisionsBlocked: number;
+  decisionsUndecided: number;
+  decisionsShortCircuited: number;
   errors: number;
 }
 
@@ -66,122 +77,6 @@ interface PoliticianForSearch {
 const SYNC_SOURCE_KEY = "judilibre";
 const MIN_SYNC_INTERVAL_MS = 8 * 60 * 60 * 1000; // 8 hours (daily sync runs 3x/day)
 const MIN_AGE_AT_DECISION = 18; // Skip if politician was < 18 at time of decision
-
-// ============================================
-// HOMONYME FILTERING
-// ============================================
-
-/** Minimum lastName length to avoid matching single letters ("O") or very short words */
-const MIN_LASTNAME_LENGTH = 3;
-
-/** Max character distance between firstName and lastName to count as a match */
-const NAME_PROXIMITY_CHARS = 80;
-
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-// French-aware word boundaries (\b doesn't handle accented chars like é, è, ç)
-const WB_BEFORE = "(?<![a-zA-ZÀ-ÿ])";
-const WB_AFTER = "(?![a-zA-ZÀ-ÿ])";
-
-/** Wrap a pattern with French-aware word boundaries */
-function wb(pattern: string): string {
-  return `${WB_BEFORE}${pattern}${WB_AFTER}`;
-}
-
-/**
- * Check if a text likely refers to a politician (not just a common word).
- *
- * Uses word boundaries and proximity checks to prevent false positives from:
- * - Surnames that are common French words (mesure, blanc, rome, marchand...)
- * - Very short names (O, Le, Peu...)
- * - firstName and lastName appearing far apart in unrelated contexts
- */
-function textRefersToPersonByName(text: string, fullName: string): boolean {
-  const parts = fullName.split(/\s+/);
-  // firstName = first word, lastName = everything else (handles "Le Pen", "de Saint-Just")
-  const firstName = parts[0];
-  const lastName = parts.slice(1).join(" ");
-
-  // Skip names too short to match reliably
-  if (lastName.length < MIN_LASTNAME_LENGTH) return false;
-
-  // Best case: full name appears together
-  const fullNamePattern = new RegExp(wb(escapeRegex(fullName)), "i");
-  if (fullNamePattern.test(text)) return true;
-
-  // lastName preceded by a legal title — strong signal
-  const titlePattern = new RegExp(
-    `(?:M\\.|Mme|Mr|Sieur|Dame|Prévenu[e]?|Condamné[e]?|Appelant[e]?|Demandeur(?:esse)?|Défendeur(?:esse)?)\\s+${escapeRegex(lastName)}${WB_AFTER}`,
-    "i"
-  );
-  if (titlePattern.test(text)) return true;
-
-  // Both firstName and lastName with word boundaries AND proximity
-  const firstRe = new RegExp(wb(escapeRegex(firstName!)), "gi");
-  const lastRe = new RegExp(wb(escapeRegex(lastName)), "gi");
-
-  const firstPositions: number[] = [];
-  const lastPositions: number[] = [];
-
-  let match;
-  while ((match = firstRe.exec(text)) !== null) firstPositions.push(match.index);
-  while ((match = lastRe.exec(text)) !== null) lastPositions.push(match.index);
-
-  if (firstPositions.length === 0 || lastPositions.length === 0) return false;
-
-  // Check if any pair of firstName/lastName occurrence is close together
-  for (const fp of firstPositions) {
-    for (const lp of lastPositions) {
-      if (Math.abs(fp - lp) <= NAME_PROXIMITY_CHARS) return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Check if a politician could plausibly be involved in a decision.
- * Filters out homonymes by verifying:
- * 1. The politician was at least 18 at the time of the decision
- * 2. The politician's name (not just surname) appears in the text
- *
- * Note: Jurisdiction cross-check against politician departments is handled
- * separately in createAffairFromJudilibre (reduces confidence on mismatch).
- */
-function isRelevantDecision(
-  decision: JudilibreDecisionSummary,
-  politician: PoliticianForSearch
-): boolean {
-  // Check age at decision date
-  if (politician.birthDate) {
-    const decisionDate = new Date(decision.decision_date);
-    const ageAtDecision =
-      (decisionDate.getTime() - politician.birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-
-    if (ageAtDecision < MIN_AGE_AT_DECISION) {
-      return false;
-    }
-  }
-
-  // Check if the person's name (not just surname) appears in the summary
-  const summary = decision.summary || "";
-  if (!textRefersToPersonByName(summary, politician.fullName)) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Enhanced relevance check using full decision text.
- * Called after fetching the full decision.
- */
-function isRelevantFullDecision(
-  decision: JudilibreDecision,
-  politician: PoliticianForSearch
-): boolean {
-  return textRefersToPersonByName(decision.text, politician.fullName);
-}
 
 // ============================================
 // SEARCH
@@ -207,14 +102,31 @@ async function searchPoliticianDecisions(
   return results.results;
 }
 
-/**
- * Filter decisions to only relevant ones for this politician
- */
-function filterRelevantDecisions(
-  decisions: JudilibreDecisionSummary[],
-  politician: PoliticianForSearch
-): JudilibreDecisionSummary[] {
-  return decisions.filter((d) => isRelevantDecision(d, politician));
+// ============================================
+// EXTERNAL ID PRE-FILTER
+// ============================================
+
+async function checkExternalIdMatch(
+  politicianId: string,
+  decision: JudilibreDecisionSummary
+): Promise<{ hasEcliMatch: boolean; hasPourvoiMatch: boolean }> {
+  if (!decision.ecli && !decision.number) {
+    return { hasEcliMatch: false, hasPourvoiMatch: false };
+  }
+
+  const conditions = [];
+  if (decision.ecli) conditions.push({ ecli: decision.ecli, politicianId });
+  if (decision.number) conditions.push({ pourvoiNumber: decision.number, politicianId });
+
+  const match = await db.affair.findFirst({
+    where: { OR: conditions },
+    select: { ecli: true, pourvoiNumber: true },
+  });
+
+  return {
+    hasEcliMatch: !!match?.ecli && match.ecli === decision.ecli,
+    hasPourvoiMatch: !!match?.pourvoiNumber && match.pourvoiNumber === decision.number,
+  };
 }
 
 // ============================================
@@ -528,6 +440,9 @@ export async function syncJudilibre(
     affairsEnriched: 0,
     affairsCreated: 0,
     decisionsSkipped: 0,
+    decisionsBlocked: 0,
+    decisionsUndecided: 0,
+    decisionsShortCircuited: 0,
     errors: 0,
   };
 
@@ -548,94 +463,196 @@ export async function syncJudilibre(
     return stats;
   }
 
+  // Load IdentityDecision cache (blocked + confirmed)
+  const decisionCache = await loadJudilibreDecisionCache();
+  if (verbose) {
+    console.log(
+      `Cache: ${decisionCache.size.blocked} bloque(s), ${decisionCache.size.confirmed} confirme(s)\n`
+    );
+  }
+
   // Get politicians to search
   const politicians = await getPoliticiansToSearch(politicianSlug, limit);
-  console.log(`${politicians.length} politicien(s) à rechercher\n`);
+  console.log(`${politicians.length} politicien(s) a rechercher\n`);
 
   for (const politician of politicians) {
     stats.politiciansSearched++;
 
     try {
-      // Search for criminal decisions
       const decisions = await searchPoliticianDecisions(client, politician, verbose);
       stats.decisionsFound += decisions.length;
-
       if (decisions.length === 0) continue;
 
-      // Filter relevant decisions (anti-homonymes)
-      const relevant = filterRelevantDecisions(decisions, politician);
-      stats.decisionsRelevant += relevant.length;
-
-      if (verbose && relevant.length < decisions.length) {
-        console.log(`  Filtré ${decisions.length - relevant.length} décision(s) non pertinente(s)`);
-      }
-
-      for (const decision of relevant) {
-        // Try to match with existing affairs
-        const matches = await findMatchingAffairs({
-          politicianId: politician.id,
-          title: buildTitleFromDecision(decision),
-          ecli: decision.ecli,
-          pourvoiNumber: decision.number,
-          caseNumbers: decision.numbers,
-          category: mapJudilibreToCategory(decision.themes, decision.summary),
-          verdictDate: new Date(decision.decision_date),
-        });
-
-        const bestMatch = matches[0];
-
-        if (bestMatch && (bestMatch.confidence === "CERTAIN" || bestMatch.confidence === "HIGH")) {
-          // Enrich existing affair
-          const enriched = await enrichAffairFromJudilibre(
-            bestMatch.affairId,
-            decision,
-            dryRun,
-            verbose
-          );
-          if (enriched) stats.affairsEnriched++;
-        } else if (analyzeIfConviction(decision)) {
-          // Fetch full decision text for enhanced verification
-          let shouldCreate = true;
-
-          try {
-            const fullDecision = await client.getDecision(decision.id);
-            if (!isRelevantFullDecision(fullDecision, politician)) {
-              if (verbose) {
-                console.log(
-                  `  - Décision ${decision.ecli} : nom absent du texte intégral, ignorée`
-                );
-              }
-              shouldCreate = false;
-              stats.decisionsSkipped++;
-            }
-          } catch {
-            // If we can't fetch full text, still create with summary-based check
-            if (verbose) {
-              console.log(`  ⚠ Impossible de récupérer le texte intégral de ${decision.id}`);
-            }
-          }
-
-          if (shouldCreate) {
-            const created = await createAffairFromJudilibre(
-              politician.id,
+      for (const decision of decisions) {
+        // Step a: Prior SAME -> short-circuit to enrich
+        const confirmed = decisionCache.getConfirmed(decision.id, politician.id);
+        if (confirmed) {
+          stats.decisionsShortCircuited++;
+          const matches = await findMatchingAffairs({
+            politicianId: politician.id,
+            title: buildTitleFromDecision(decision),
+            ecli: decision.ecli,
+            pourvoiNumber: decision.number,
+            caseNumbers: decision.numbers,
+            category: mapJudilibreToCategory(decision.themes, decision.summary),
+            verdictDate: new Date(decision.decision_date),
+          });
+          const bestMatch = matches[0];
+          if (
+            bestMatch &&
+            (bestMatch.confidence === "CERTAIN" || bestMatch.confidence === "HIGH")
+          ) {
+            const enriched = await enrichAffairFromJudilibre(
+              bestMatch.affairId,
               decision,
-              politician.departments,
               dryRun,
               verbose
             );
-            if (created) stats.affairsCreated++;
+            if (enriched) stats.affairsEnriched++;
+          }
+          continue;
+        }
+
+        // Step b: Blocklist check
+        if (decisionCache.isBlocked(decision.id, politician.id)) {
+          stats.decisionsBlocked++;
+          if (verbose) {
+            console.log(`  - ${decision.id} bloque pour ${politician.fullName}`);
+          }
+          continue;
+        }
+
+        // Step c: Age gate
+        if (politician.birthDate) {
+          const decisionDate = new Date(decision.decision_date);
+          const ageAtDecision =
+            (decisionDate.getTime() - politician.birthDate.getTime()) /
+            (365.25 * 24 * 60 * 60 * 1000);
+          if (ageAtDecision < MIN_AGE_AT_DECISION) continue;
+        }
+
+        // Step d: ExternalId pre-filter
+        const externalIdMatch = await checkExternalIdMatch(politician.id, decision);
+
+        // Step e: Name quality on summary
+        const summary = decision.summary || "";
+        const nameQuality = detectNameQuality(summary, politician.fullName);
+
+        // No name match and no ExternalId -> skip
+        if (!nameQuality && !externalIdMatch.hasEcliMatch && !externalIdMatch.hasPourvoiMatch) {
+          continue;
+        }
+
+        // Step f: Context signal
+        const { signal: contextSignal, jurisdictionCity } = determineContextSignal(
+          summary,
+          politician.departments,
+          externalIdMatch
+        );
+
+        // Step g: Score matrix
+        const matchResult = scoreJudilibreMatch(nameQuality, contextSignal);
+        stats.decisionsRelevant++;
+
+        // Step h: Persist IdentityDecision
+        if (
+          matchResult.judgement &&
+          matchResult.score >= JUDILIBRE_THRESHOLDS.UNDECIDED &&
+          !dryRun
+        ) {
+          const evidence: JudilibreMatchEvidence = {
+            nameQuality,
+            contextSignal,
+            score: matchResult.score,
+            fullNameFound: nameQuality === "STRONG",
+            legalTitleFound: false,
+            proximityFound: nameQuality === "MODERATE",
+            jurisdictionCity,
+          };
+          await persistJudilibreDecision({
+            decisionId: decision.id,
+            politicianId: politician.id,
+            judgement: matchResult.judgement as Judgement,
+            confidence: matchResult.score,
+            method: matchResult.method,
+            evidence,
+          });
+        }
+
+        // Step i: Action
+        if (matchResult.judgement === "SAME") {
+          const matches = await findMatchingAffairs({
+            politicianId: politician.id,
+            title: buildTitleFromDecision(decision),
+            ecli: decision.ecli,
+            pourvoiNumber: decision.number,
+            caseNumbers: decision.numbers,
+            category: mapJudilibreToCategory(decision.themes, decision.summary),
+            verdictDate: new Date(decision.decision_date),
+          });
+
+          const bestMatch = matches[0];
+
+          if (
+            bestMatch &&
+            (bestMatch.confidence === "CERTAIN" || bestMatch.confidence === "HIGH")
+          ) {
+            const enriched = await enrichAffairFromJudilibre(
+              bestMatch.affairId,
+              decision,
+              dryRun,
+              verbose
+            );
+            if (enriched) stats.affairsEnriched++;
+          } else if (analyzeIfConviction(decision)) {
+            // Full-text gate before creating affair
+            let shouldCreate = true;
+            try {
+              const fullDecision = await client.getDecision(decision.id);
+              const fullTextQuality = detectNameQuality(fullDecision.text, politician.fullName);
+              if (!fullTextQuality) {
+                if (verbose) {
+                  console.log(`  - ${decision.ecli} : nom absent du texte integral, ignoree`);
+                }
+                shouldCreate = false;
+                stats.decisionsSkipped++;
+              }
+            } catch {
+              if (verbose) {
+                console.log(`  Impossible de recuperer le texte integral de ${decision.id}`);
+              }
+            }
+
+            if (shouldCreate) {
+              const created = await createAffairFromJudilibre(
+                politician.id,
+                decision,
+                politician.departments,
+                dryRun,
+                verbose
+              );
+              if (created) stats.affairsCreated++;
+            }
+          } else {
+            stats.decisionsSkipped++;
+            if (verbose) {
+              console.log(`  - ${decision.ecli || decision.id} : procedurale, ignoree`);
+            }
+          }
+        } else if (matchResult.judgement === "UNDECIDED") {
+          stats.decisionsUndecided++;
+          if (verbose) {
+            console.log(
+              `  ? ${decision.id} : UNDECIDED (score=${matchResult.score}, name=${nameQuality}, ctx=${contextSignal})`
+            );
           }
         } else {
-          // No match and not a conviction — skip procedural decision
           stats.decisionsSkipped++;
-          if (verbose) {
-            console.log(`  - Décision ${decision.ecli || decision.id} : procédurale, ignorée`);
-          }
         }
       }
     } catch (error) {
       stats.errors++;
-      console.error(`  ✗ Erreur pour ${politician.fullName}:`, error);
+      console.error(`  Erreur pour ${politician.fullName}:`, error);
     }
   }
 

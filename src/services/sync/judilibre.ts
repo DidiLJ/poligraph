@@ -326,7 +326,7 @@ async function createAffairFromJudilibre(
   dryRun: boolean,
   verbose?: boolean
 ): Promise<boolean> {
-  const title = `[À VÉRIFIER] ${buildTitleFromDecision(decision)}`;
+  const title = buildTitleFromDecision(decision);
   const category = mapJudilibreToCategory(decision.themes, decision.summary);
   const status = mapSolutionToStatus(decision.solution);
 

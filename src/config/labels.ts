@@ -499,6 +499,7 @@ export const DATA_SOURCE_LABELS: Record<DataSource, string> = {
   MUNICIPALES: "Candidatures municipales",
   PRESS: "Presse",
   FACTCHECK: "Fact-checks",
+  JUDILIBRE: "Judilibre",
 };
 
 export const DATA_SOURCE_URLS: Record<DataSource, string> = {
@@ -516,6 +517,7 @@ export const DATA_SOURCE_URLS: Record<DataSource, string> = {
     "https://www.data.gouv.fr/datasets/elections-municipales-2026-listes-candidates-au-premier-tour",
   PRESS: "",
   FACTCHECK: "",
+  JUDILIBRE: "https://www.courdecassation.fr/acces-rapide-judilibre",
 };
 
 // Political position labels (for parties)

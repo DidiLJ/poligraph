@@ -150,6 +150,7 @@ enum DataSource {
   MUNICIPALES
   PRESS
   FACTCHECK
+  JUDILIBRE
 }
 
 enum MatchMethod {

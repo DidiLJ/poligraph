@@ -118,6 +118,13 @@ const DAILY_STEPS: DailyStep[] = [
       return computeStats();
     },
   },
+  {
+    name: "indexnow",
+    run: async () => {
+      const { submitRecentToIndexNow } = await import("@/lib/indexnow");
+      return submitRecentToIndexNow();
+    },
+  },
 ];
 
 export const syncDaily = inngest.createFunction(

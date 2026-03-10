@@ -1,4 +1,5 @@
 import { SITE_URL } from "@/config/site";
+import { db } from "@/lib/db";
 
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
 
@@ -41,4 +42,54 @@ export async function submitToIndexNow(urls: string[]): Promise<void> {
       console.error("[IndexNow] Submission failed:", error);
     }
   }
+}
+
+/**
+ * Query DB for recently changed content and submit URLs to IndexNow.
+ * Designed to run as the last step of sync:daily (3x/day).
+ */
+export async function submitRecentToIndexNow(lookbackHours = 12): Promise<{ submitted: number }> {
+  const key = process.env.INDEXNOW_KEY;
+  if (!key) {
+    console.log("[IndexNow] INDEXNOW_KEY not set, skipping");
+    return { submitted: 0 };
+  }
+
+  const since = new Date(Date.now() - lookbackHours * 3600_000);
+  const urls: string[] = [];
+
+  const [scrutins, affairs, dossiers, politicians] = await Promise.all([
+    db.scrutin.findMany({
+      where: { updatedAt: { gte: since } },
+      select: { slug: true },
+    }),
+    db.affair.findMany({
+      where: { updatedAt: { gte: since }, publicationStatus: "PUBLISHED" },
+      select: { slug: true },
+    }),
+    db.legislativeDossier.findMany({
+      where: { updatedAt: { gte: since } },
+      select: { slug: true },
+    }),
+    db.politician.findMany({
+      where: { updatedAt: { gte: since }, publicationStatus: "PUBLISHED" },
+      select: { slug: true },
+    }),
+  ]);
+
+  urls.push(...scrutins.map((s) => `${SITE_URL}/votes/${s.slug}`));
+  urls.push(...affairs.map((a) => `${SITE_URL}/affaires/${a.slug}`));
+  urls.push(...dossiers.map((d) => `${SITE_URL}/assemblee/${d.slug}`));
+  urls.push(...politicians.map((p) => `${SITE_URL}/politiques/${p.slug}`));
+
+  if (urls.length > 0) {
+    console.log(
+      `[IndexNow] Submitting ${urls.length} URLs (${scrutins.length} votes, ${affairs.length} affaires, ${dossiers.length} dossiers, ${politicians.length} politiciens)`
+    );
+    await submitToIndexNow(urls);
+  } else {
+    console.log("[IndexNow] No recent changes to submit");
+  }
+
+  return { submitted: urls.length };
 }

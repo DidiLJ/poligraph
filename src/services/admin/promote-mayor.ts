@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
 import { wikidataService, WIKIDATA_PROPS } from "@/lib/api/wikidata";
-import { WD_POSITIONS } from "@/config/wikidata";
 import { DataSource, MandateType, PublicationStatus } from "@/generated/prisma";
 import { generateSlug } from "@/lib/utils";
 
@@ -77,7 +76,6 @@ export async function promoteMayor(
         wikidataService.getPositions(candidateIds),
       ]);
 
-      const maireQid = WD_POSITIONS.MAIRE;
       const candidates: WikidataCandidate[] = searchResults.map((r) => {
         const d = details.get(r.id);
         const pos = positions.get(r.id) ?? [];
@@ -87,7 +85,7 @@ export async function promoteMayor(
           isFrench: d?.isFrench ?? false,
           isPolitician: d?.isPolitician ?? false,
           birthDate: d?.birthDate ?? null,
-          hasMairePosition: pos.some((p) => p.positionId === maireQid),
+          hasMairePosition: pos.length > 0,
         };
       });
 

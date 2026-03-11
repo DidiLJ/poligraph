@@ -577,8 +577,10 @@ async function queryMaires(
     conditions.push({ gender });
   }
 
-  if (fichePoligraph) {
+  if (fichePoligraph === true) {
     conditions.push({ politicianId: { not: null } });
+  } else if (fichePoligraph === false) {
+    conditions.push({ politicianId: null });
   }
 
   const where = { AND: conditions };

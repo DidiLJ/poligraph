@@ -1129,7 +1129,8 @@ model FactCheck {
   sourceUrl     String          @unique // URL de l'article original
   publishedAt   DateTime // Date de publication du fact-check
   claimDate     DateTime? // Date de la déclaration vérifiée
-  languageCode  String? // "fr", "en"
+  languageCode      String? // "fr", "en"
+  publicationStatus PublicationStatus @default(DRAFT)
 
   mentions  FactCheckMention[]
   createdAt DateTime           @default(now())
@@ -1138,6 +1139,7 @@ model FactCheck {
   @@index([publishedAt])
   @@index([source])
   @@index([verdictRating])
+  @@index([publicationStatus])
 }
 
 model FactCheckMention {

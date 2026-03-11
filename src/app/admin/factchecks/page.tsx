@@ -4,14 +4,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateShort } from "@/lib/utils";
 import { AdminDeleteButton } from "@/components/admin/AdminDeleteButton";
-import { FACTCHECK_RATING_LABELS, FACTCHECK_RATING_COLORS } from "@/config/labels";
-import type { FactCheckRating, Prisma } from "@/generated/prisma";
+import { FACTCHECK_RATING_LABELS, FACTCHECK_ALLOWED_SOURCES } from "@/config/labels";
+import { Prisma, type PublicationStatus } from "@/generated/prisma";
+import type { FactCheckRating } from "@/generated/prisma";
+import { PublicationStatusSelect } from "@/components/admin/PublicationStatusSelect";
+import {
+  VerdictSelect,
+  ClaimantToggle,
+  AddMentionButton,
+} from "@/components/admin/FactcheckActions";
+import { updateFactcheckStatus } from "./actions";
 
 interface PageProps {
   searchParams: Promise<{
     search?: string;
     source?: string;
     rating?: string;
+    status?: string;
     page?: string;
   }>;
 }
@@ -22,6 +31,7 @@ async function getFactChecks(params: {
   search?: string;
   source?: string;
   rating?: FactCheckRating;
+  status?: PublicationStatus;
   page: number;
 }) {
   const where: Prisma.FactCheckWhereInput = {};
@@ -38,6 +48,10 @@ async function getFactChecks(params: {
     where.verdictRating = params.rating;
   }
 
+  if (params.status) {
+    where.publicationStatus = params.status;
+  }
+
   const [factChecks, total] = await Promise.all([
     db.factCheck.findMany({
       where,
@@ -50,6 +64,7 @@ async function getFactChecks(params: {
         sourceUrl: true,
         source: true,
         verdictRating: true,
+        publicationStatus: true,
         publishedAt: true,
         mentions: {
           select: {
@@ -97,6 +112,37 @@ async function getSources() {
   return sources.map((s) => ({ name: s.source, count: s._count }));
 }
 
+async function getPipelineHealth() {
+  const now = Date.now();
+  const [lastSync, last7Days, sourceFreshness] = await Promise.all([
+    db.factCheck.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+    db.factCheck.count({
+      where: {
+        createdAt: { gte: new Date(now - 7 * 24 * 60 * 60 * 1000) },
+      },
+    }),
+    db.$queryRaw<{ source: string; latest: Date }[]>(
+      Prisma.sql`
+        SELECT source, MAX("createdAt") as latest
+        FROM "FactCheck"
+        WHERE source IN (${Prisma.join(FACTCHECK_ALLOWED_SOURCES)})
+        GROUP BY source
+        ORDER BY latest DESC
+      `
+    ),
+  ]);
+
+  const sources = sourceFreshness.map((s) => {
+    const daysAgo = Math.floor((now - new Date(s.latest).getTime()) / (1000 * 60 * 60 * 24));
+    return { source: s.source, latest: s.latest, daysAgo, isStale: daysAgo > 3 };
+  });
+
+  return { lastSync: lastSync?.createdAt, last7Days, sourceFreshness: sources };
+}
+
 const RATING_OPTIONS: FactCheckRating[] = [
   "TRUE",
   "MOSTLY_TRUE",
@@ -115,13 +161,19 @@ export default async function AdminFactchecksPage({ searchParams }: PageProps) {
     ? (params.rating as FactCheckRating)
     : undefined;
 
-  const [{ factChecks, total, totalPages }, stats, sources] = await Promise.all([
-    getFactChecks({ search: params.search, source: params.source, rating, page }),
+  const VALID_STATUSES = ["PUBLISHED", "DRAFT", "ARCHIVED", "EXCLUDED", "REJECTED"];
+  const status = VALID_STATUSES.includes(params.status || "")
+    ? (params.status as PublicationStatus)
+    : undefined;
+
+  const [{ factChecks, total, totalPages }, stats, sources, health] = await Promise.all([
+    getFactChecks({ search: params.search, source: params.source, rating, status, page }),
     getStats(),
     getSources(),
+    getPipelineHealth(),
   ]);
 
-  const hasFilters = !!(params.search || params.source || params.rating);
+  const hasFilters = !!(params.search || params.source || params.rating || params.status);
 
   return (
     <div className="space-y-6">
@@ -166,6 +218,42 @@ export default async function AdminFactchecksPage({ searchParams }: PageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pipeline health */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Dernière synchronisation</p>
+              <p className="text-sm font-semibold">
+                {health.lastSync ? formatDateShort(health.lastSync) : "Jamais"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">7 derniers jours</p>
+              <p className="text-sm font-semibold">{health.last7Days} fact-checks</p>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Fraîcheur par source</p>
+              <div className="flex flex-wrap gap-1.5">
+                {health.sourceFreshness.map((s) => (
+                  <span
+                    key={s.source}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-full ${
+                      s.isStale
+                        ? "bg-red-50 text-red-600 border border-red-200"
+                        : "bg-green-50 text-green-600 border border-green-200"
+                    }`}
+                    title={`Dernier: ${formatDateShort(s.latest)}`}
+                  >
+                    {s.source}: {s.daysAgo === 0 ? "aujourd'hui" : `${s.daysAgo}j`}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -246,6 +334,41 @@ export default async function AdminFactchecksPage({ searchParams }: PageProps) {
             </Link>
           ))}
         </div>
+
+        {/* Publication status filter */}
+        <div className="flex flex-wrap gap-1.5">
+          <Link
+            href={{
+              pathname: "/admin/factchecks",
+              query: { ...params, status: undefined, page: undefined },
+            }}
+            prefetch={false}
+            className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+              !params.status
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border hover:bg-muted"
+            }`}
+          >
+            Tous statuts
+          </Link>
+          {(["PUBLISHED", "DRAFT", "EXCLUDED"] as const).map((s) => (
+            <Link
+              key={s}
+              href={{
+                pathname: "/admin/factchecks",
+                query: { ...params, status: s, page: undefined },
+              }}
+              prefetch={false}
+              className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                params.status === s
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border hover:bg-muted"
+              }`}
+            >
+              {{ PUBLISHED: "Publié", DRAFT: "Brouillon", EXCLUDED: "Exclu" }[s]}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
@@ -270,6 +393,7 @@ export default async function AdminFactchecksPage({ searchParams }: PageProps) {
                     <th className="px-4 py-3 font-medium text-muted-foreground">Titre</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Source</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Verdict</th>
+                    <th className="px-4 py-3 font-medium text-muted-foreground">Statut</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Mentions</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Date</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
@@ -292,9 +416,15 @@ export default async function AdminFactchecksPage({ searchParams }: PageProps) {
                         <Badge variant="outline">{fc.source}</Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge className={FACTCHECK_RATING_COLORS[fc.verdictRating]}>
-                          {FACTCHECK_RATING_LABELS[fc.verdictRating]}
-                        </Badge>
+                        <VerdictSelect factcheckId={fc.id} currentRating={fc.verdictRating} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <PublicationStatusSelect
+                          entityId={fc.id}
+                          entityType="factcheck"
+                          currentStatus={fc.publicationStatus}
+                          onChange={updateFactcheckStatus}
+                        />
                       </td>
                       <td className="px-4 py-3">
                         {fc.mentions.length > 0 ? (
@@ -311,14 +441,7 @@ export default async function AdminFactchecksPage({ searchParams }: PageProps) {
                                 >
                                   {m.politician.fullName}
                                 </Link>
-                                {m.isClaimant && (
-                                  <span
-                                    className="text-[10px] text-amber-600"
-                                    title="Auteur de la déclaration"
-                                  >
-                                    auteur
-                                  </span>
-                                )}
+                                <ClaimantToggle mentionId={m.id} isClaimant={m.isClaimant} />
                                 <AdminDeleteButton
                                   endpoint={`/api/admin/factchecks/mentions/${m.id}`}
                                   label="Délier"
@@ -329,8 +452,9 @@ export default async function AdminFactchecksPage({ searchParams }: PageProps) {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">-</span>
                         )}
+                        <AddMentionButton factcheckId={fc.id} />
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {formatDateShort(fc.publishedAt)}

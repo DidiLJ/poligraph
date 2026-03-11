@@ -52,6 +52,7 @@ export async function getFactchecks(params: {
   const skip = (page - 1) * limit;
 
   const where = {
+    publicationStatus: "PUBLISHED" as const,
     source: source || { in: FACTCHECK_ALLOWED_SOURCES },
     ...(verdict && { verdictRating: verdict as FactCheckRating }),
     ...(politicianSlug && {
@@ -118,7 +119,10 @@ export async function getFactcheckSources() {
 
   const sources = await db.factCheck.groupBy({
     by: ["source"],
-    where: { source: { in: FACTCHECK_ALLOWED_SOURCES } },
+    where: {
+      publicationStatus: "PUBLISHED",
+      source: { in: FACTCHECK_ALLOWED_SOURCES },
+    },
     _count: true,
     orderBy: { _count: { source: "desc" } },
   });

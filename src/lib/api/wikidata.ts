@@ -499,13 +499,22 @@ export class WikidataService {
   }
 
   /**
-   * Check if entity has political positions
+   * Check if entity has political positions.
+   * First checks known positions from WD_POSITIONS, then falls back to
+   * accepting any P39 claim (covers city-specific positions like
+   * "maire de Paris" that are subclasses of generic positions).
    */
   private checkPoliticalPositions(claims: WikidataClaim[] | undefined): boolean {
-    if (!claims) return false;
-    return claims.some((claim) => {
+    if (!claims || claims.length === 0) return false;
+    const hasKnown = claims.some((claim) => {
       const value = claim.mainsnak?.datavalue?.value;
       return typeof value === "object" && "id" in value && POLITICAL_POSITIONS.has(value.id);
+    });
+    if (hasKnown) return true;
+    // Any P39 claim on a French human is strong enough signal
+    return claims.some((claim) => {
+      const value = claim.mainsnak?.datavalue?.value;
+      return typeof value === "object" && "id" in value;
     });
   }
 }

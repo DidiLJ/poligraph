@@ -21,7 +21,7 @@ const STATUS_STYLES: Record<PublicationStatus, string> = {
 
 interface PublicationStatusSelectProps {
   entityId: string;
-  entityType: "affair" | "politician";
+  entityType: "affair" | "politician" | "factcheck";
   currentStatus: PublicationStatus;
   onChange: (id: string, status: PublicationStatus) => Promise<void>;
 }

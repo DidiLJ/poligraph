@@ -23,3 +23,4 @@ export {
   recoverRejectionSchema,
   syncPoliticianSchema,
 } from "./admin";
+export { promoteMayorSchema } from "./mayor";

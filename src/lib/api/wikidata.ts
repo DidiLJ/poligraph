@@ -6,6 +6,7 @@
 
 import { HTTPClient } from "./http-client";
 import { WIKIDATA_RATE_LIMIT_MS } from "@/config/rate-limits";
+import { WD_ENTITIES, WD_POSITIONS } from "@/config/wikidata";
 
 // ============================================================================
 // Constants
@@ -33,48 +34,18 @@ export const WIKIDATA_PROPS = {
 } as const;
 
 /**
- * Wikidata entity IDs for filtering
+ * Wikidata entity IDs for filtering.
+ * Re-exported from @/config/wikidata (single source of truth for Q-IDs).
  */
-export const WIKIDATA_ENTITIES = {
-  HUMAN: "Q5",
-  FRANCE: "Q142",
-  // French political positions
-  FRENCH_DEPUTY: "Q3044918",
-  FRENCH_SENATOR: "Q3044923",
-  FRENCH_MINISTER: "Q21032547",
-  FRENCH_MEP: "Q19546",
-  FRENCH_PRESIDENT: "Q30461",
-  FRENCH_PM: "Q2105858",
-  MAYOR: "Q21603893",
-  REGIONAL_COUNCILLOR: "Q26125059",
-  GENERAL_COUNCILLOR: "Q27169",
-  DEPUTY_MAYOR: "Q311065",
-  // Generic
-  MEMBER_NATIONAL_ASSEMBLY: "Q15686806",
-  MEMBER_SENATE: "Q18941264",
-  DEPUTY_GENERIC: "Q1127811",
-  MINISTER_GENERIC: "Q83307",
-} as const;
+export const WIKIDATA_ENTITIES = WD_ENTITIES;
 
 /**
- * Set of position IDs that indicate a French politician
+ * Set of position IDs that indicate a French politician.
+ * Built from WD_POSITIONS - handles both string and string[] values.
  */
-export const POLITICAL_POSITIONS: Set<string> = new Set([
-  WIKIDATA_ENTITIES.FRENCH_DEPUTY,
-  WIKIDATA_ENTITIES.FRENCH_SENATOR,
-  WIKIDATA_ENTITIES.FRENCH_MINISTER,
-  WIKIDATA_ENTITIES.FRENCH_MEP,
-  WIKIDATA_ENTITIES.FRENCH_PRESIDENT,
-  WIKIDATA_ENTITIES.FRENCH_PM,
-  WIKIDATA_ENTITIES.MAYOR,
-  WIKIDATA_ENTITIES.REGIONAL_COUNCILLOR,
-  WIKIDATA_ENTITIES.GENERAL_COUNCILLOR,
-  WIKIDATA_ENTITIES.DEPUTY_MAYOR,
-  WIKIDATA_ENTITIES.MEMBER_NATIONAL_ASSEMBLY,
-  WIKIDATA_ENTITIES.MEMBER_SENATE,
-  WIKIDATA_ENTITIES.DEPUTY_GENERIC,
-  WIKIDATA_ENTITIES.MINISTER_GENERIC,
-]);
+export const POLITICAL_POSITIONS: Set<string> = new Set(
+  Object.values(WD_POSITIONS).flatMap((v) => (Array.isArray(v) ? v : [v]))
+);
 
 // ============================================================================
 // Types

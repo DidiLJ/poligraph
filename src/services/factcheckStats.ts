@@ -136,16 +136,18 @@ async function getFactCheckStats(options?: { limit?: number }): Promise<FactChec
  */
 async function getPageStats(): Promise<FactCheckPageStats> {
   const [totalFactChecks, byRatingRaw, bySourceRaw, topPoliticians] = await Promise.all([
-    db.factCheck.count({ where: { source: { in: FACTCHECK_ALLOWED_SOURCES } } }),
+    db.factCheck.count({
+      where: { publicationStatus: "PUBLISHED", source: { in: FACTCHECK_ALLOWED_SOURCES } },
+    }),
     db.factCheck.groupBy({
       by: ["verdictRating"],
-      where: { source: { in: FACTCHECK_ALLOWED_SOURCES } },
+      where: { publicationStatus: "PUBLISHED", source: { in: FACTCHECK_ALLOWED_SOURCES } },
       _count: true,
       orderBy: { _count: { verdictRating: "desc" } },
     }),
     db.factCheck.groupBy({
       by: ["source"],
-      where: { source: { in: FACTCHECK_ALLOWED_SOURCES } },
+      where: { publicationStatus: "PUBLISHED", source: { in: FACTCHECK_ALLOWED_SOURCES } },
       _count: true,
       orderBy: { _count: { source: "desc" } },
     }),
@@ -155,6 +157,7 @@ async function getPageStats(): Promise<FactCheckPageStats> {
       JOIN "FactCheck" fc ON m."factCheckId" = fc.id
       JOIN "Politician" p ON m."politicianId" = p.id
       WHERE fc.source IN (${Prisma.join(FACTCHECK_ALLOWED_SOURCES)})
+        AND fc."publicationStatus" = 'PUBLISHED'
       GROUP BY p.id, p."fullName", p.slug
       ORDER BY count DESC
       LIMIT 10

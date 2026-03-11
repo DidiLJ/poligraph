@@ -60,4 +60,31 @@ describe("selectBestWikidataCandidate", () => {
     const candidates = [candidate({ id: "Q1" })];
     expect(selectBestWikidataCandidate(candidates, { birthDate: null })?.id).toBe("Q1");
   });
+
+  it("rejects birth date outside 5-day tolerance", () => {
+    const ref = new Date("1960-06-15");
+    const candidates = [
+      candidate({ id: "Q1", birthDate: new Date("1960-06-08") }),
+      candidate({ id: "Q2", hasMairePosition: true }),
+    ];
+    const result = selectBestWikidataCandidate(candidates, { birthDate: ref });
+    expect(result?.id).toBe("Q2");
+  });
+
+  it("filters out non-French among mixed candidates", () => {
+    const candidates = [
+      candidate({ id: "Q1", isFrench: false, hasMairePosition: true }),
+      candidate({ id: "Q2", isFrench: true }),
+    ];
+    expect(selectBestWikidataCandidate(candidates, { birthDate: null })?.id).toBe("Q2");
+  });
+
+  it("ignores official birth date when no candidate has one", () => {
+    const ref = new Date("1960-06-15");
+    const candidates = [
+      candidate({ id: "Q1", birthDate: null }),
+      candidate({ id: "Q2", birthDate: null, hasMairePosition: true }),
+    ];
+    expect(selectBestWikidataCandidate(candidates, { birthDate: ref })?.id).toBe("Q2");
+  });
 });

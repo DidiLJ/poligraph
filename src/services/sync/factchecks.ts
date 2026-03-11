@@ -15,9 +15,13 @@ import {
   findMentions,
   type PoliticianName,
 } from "@/lib/name-matching";
-import { isDirectPoliticianClaim } from "@/config/labels";
+import { isDirectPoliticianClaim, FACTCHECK_ALLOWED_SOURCES } from "@/config/labels";
 import { generateDateSlug, generateUniqueSlug, sleep } from "@/lib/utils";
 import { loadMentionBlocklist, type MentionBlocklist } from "@/lib/identity/mention-blocklist";
+
+export function getPublicationStatusForSource(source: string): "PUBLISHED" | "DRAFT" {
+  return FACTCHECK_ALLOWED_SOURCES.includes(source) ? "PUBLISHED" : "DRAFT";
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -255,6 +259,7 @@ export async function syncFactchecks(
                     publishedAt: reviewDate,
                     claimDate: claim.claimDate ? new Date(claim.claimDate) : null,
                     languageCode: review.languageCode || null,
+                    publicationStatus: getPublicationStatusForSource(review.publisher.name),
                     mentions: {
                       create: mentions.map((m) => ({
                         politicianId: m.politicianId,
@@ -278,6 +283,7 @@ export async function syncFactchecks(
                     publishedAt: reviewDate,
                     claimDate: claim.claimDate ? new Date(claim.claimDate) : null,
                     languageCode: review.languageCode || null,
+                    publicationStatus: getPublicationStatusForSource(review.publisher.name),
                     mentions: {
                       create: mentions.map((m) => ({
                         politicianId: m.politicianId,

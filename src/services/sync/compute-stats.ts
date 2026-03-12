@@ -280,14 +280,30 @@ async function upsertPoliticianParticipation(
     return;
   }
 
+  // Deduplicate by politicianId: keep the row with most eligible scrutins
+  const deduped = [
+    ...rows
+      .reduce((map, r) => {
+        const existing = map.get(r.politicianId);
+        if (!existing || r.eligibleScrutins > existing.eligibleScrutins) {
+          map.set(r.politicianId, r);
+        }
+        return map;
+      }, new Map<string, PoliticianRow>())
+      .values(),
+  ];
+
+  if (verbose && deduped.length < rows.length)
+    console.log(`  → Deduplicated ${rows.length} rows to ${deduped.length} (by politicianId)`);
+
   // Atomic delete+insert in a transaction to prevent readers seeing partial data
   const CHUNK_SIZE = 200;
   await db.$transaction(
     async (tx) => {
       await tx.politicianParticipation.deleteMany();
 
-      for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-        const chunk = rows.slice(i, i + CHUNK_SIZE);
+      for (let i = 0; i < deduped.length; i += CHUNK_SIZE) {
+        const chunk = deduped.slice(i, i + CHUNK_SIZE);
         await tx.politicianParticipation.createMany({
           data: chunk.map((r) => ({
             politicianId: r.politicianId,
@@ -315,7 +331,7 @@ async function upsertPoliticianParticipation(
     { timeout: 60_000 }
   );
 
-  if (verbose) console.log(`  → Inserted ${rows.length} PoliticianParticipation rows`);
+  if (verbose) console.log(`  → Inserted ${deduped.length} PoliticianParticipation rows`);
 }
 
 async function upsertStatsSnapshot(

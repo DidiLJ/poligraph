@@ -27,6 +27,9 @@ next-env.d.ts
 /tests/visual/test-results/
 /tests/visual/playwright-report/
 
+# enrich-batch progress (local tracking)
+scripts/enrich-batch-progress.json
+
 # debug / logs
 *.log
 npm-debug.log*

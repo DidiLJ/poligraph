@@ -103,6 +103,8 @@ export const createAffairSchema = z.object({
   ecli: z.string().optional(),
   pourvoiNumber: z.string().optional(),
   caseNumbers: z.array(z.string()).optional(),
+  // Cross-reference
+  linkedAffairId: z.string().nullable().optional(),
   // Sources (at least one required)
   sources: z.array(sourceInputSchema).min(1, "Au moins une source est requise"),
 });

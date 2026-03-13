@@ -15,6 +15,7 @@ import {
   SOURCE_TYPE_LABELS,
   PUBLICATION_STATUS_OPTIONS,
 } from "@/config/labels";
+import { LinkedAffairSelect } from "@/components/admin/LinkedAffairSelect";
 import type { AffairStatus, AffairCategory, Involvement, SourceType } from "@/types";
 import type { PublicationStatus } from "@/generated/prisma";
 
@@ -62,6 +63,7 @@ interface AffairFormData {
   // Judicial identifiers
   ecli?: string;
   pourvoiNumber?: string;
+  linkedAffairId?: string | null;
   sources: Source[];
 }
 
@@ -92,6 +94,7 @@ export function AffairForm({ politicians, initialData }: AffairFormProps) {
       category: "AUTRE" as AffairCategory,
       involvement: "MENTIONED_ONLY" as Involvement,
       appeal: false,
+      linkedAffairId: null,
       sources: [{ ...emptySource }],
     }
   );
@@ -311,6 +314,13 @@ export function AffairForm({ politicians, initialData }: AffairFormProps) {
               </div>
             )}
           </div>
+
+          <LinkedAffairSelect
+            value={formData.linkedAffairId ?? null}
+            onChange={(id) => updateField("linkedAffairId", id)}
+            excludeId={initialData?.id}
+            currentInvolvement={formData.involvement}
+          />
         </CardContent>
       </Card>
 

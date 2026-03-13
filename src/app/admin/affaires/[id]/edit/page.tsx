@@ -59,6 +59,7 @@ export default async function EditAffairPage({ params }: PageProps) {
     caseNumber: affair.caseNumber || undefined,
     ecli: affair.ecli || undefined,
     pourvoiNumber: affair.pourvoiNumber || undefined,
+    linkedAffairId: affair.linkedAffairId ?? null,
     sources: affair.sources.map((s) => ({
       id: s.id,
       url: s.url,

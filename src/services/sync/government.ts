@@ -476,6 +476,13 @@ async function applyLocalCorrections(): Promise<{ applied: number; errors: strin
           });
           console.log(`   ✓ Created mandate: ${newMember.fullName} - ${newMember.mandate.title}`);
           result.applied++;
+        } else if (!existingMandate.isCurrent) {
+          await db.mandate.update({
+            where: { id: existingMandate.id },
+            data: { isCurrent: true, endDate: null },
+          });
+          console.log(`   ✓ Restored mandate: ${newMember.fullName} - ${newMember.mandate.title}`);
+          result.applied++;
         } else {
           console.log(`   - Mandate already exists for ${newMember.fullName}`);
         }

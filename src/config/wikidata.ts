@@ -126,8 +126,8 @@ export const WD_PARTIES = {
   PCF: "Q192821", // Parti Communiste Français
   MODEM: "Q587370", // Mouvement Démocrate
   RECONQUETE: "Q109932430", // Reconquête
-  HORIZONS: "Q108055027",
-  UDI: "Q3549087", // Union des Démocrates et Indépendants
+  HORIZONS: "Q108846587", // Horizons
+  UDI: "Q82892", // Union des Démocrates et Indépendants
 
   // Parliamentary groups
   // Most AN groups don't have dedicated Wikidata entities.
@@ -137,9 +137,9 @@ export const WD_PARTIES = {
   GROUPE_EPR_AN: "Q30584989", // Groupe EPR (Ensemble)
 
   // Historical parties
-  UMP: "Q210040",
-  FN: "Q1397970", // Front National (ancien RN)
-  LREM: "Q25046822", // En Marche (ancien RE)
-  RPR: "Q212648",
-  UDF: "Q233647",
+  UMP: "Q173152", // Union pour un mouvement populaire (2002-2015, prédécesseur LR)
+  FN: "Q107877569", // Front National (1972-2018, prédécesseur RN)
+  LREM: "Q23731823", // La République En Marche (même entité que Renaissance)
+  RPR: "Q1052584", // Rassemblement pour la République
+  UDF: "Q827415", // Union pour la démocratie française
 } as const;

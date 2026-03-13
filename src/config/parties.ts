@@ -66,7 +66,7 @@ export const FRENCH_ASSEMBLY_PARTIES: Record<string, PartyConfig> = {
     shortName: "HOR",
     fullName: "Horizons & Indépendants",
     color: "#0001AA",
-    wikidataId: "Q108055027",
+    wikidataId: "Q108846587",
   },
   LIOT: {
     shortName: "LIOT",

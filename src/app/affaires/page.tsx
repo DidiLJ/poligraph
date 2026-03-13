@@ -27,13 +27,11 @@ import {
   CATEGORY_TO_SUPER,
   INVOLVEMENT_LABELS,
   INVOLVEMENT_COLORS,
-  INVOLVEMENT_GROUP_LABELS,
-  involvementsFromGroups,
   AFFAIR_SEVERITY_EDITORIAL,
   AFFAIR_SEVERITY_COLORS,
-  type InvolvementGroup,
   type AffairSuperCategory,
 } from "@/config/labels";
+import { AffairModeToggle } from "@/components/affairs/AffairModeToggle";
 import type { AffairStatus, AffairSeverity, Involvement } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
@@ -56,8 +54,8 @@ interface PageProps {
     category?: string;
     severity?: string;
     page?: string;
-    involvement?: string;
     parti?: string;
+    mode?: string;
   }>;
 }
 
@@ -107,18 +105,16 @@ export default async function AffairesPage({ searchParams }: PageProps) {
   const superCatFilter = (params.supercat || "") as AffairSuperCategory | "";
   const categoryFilter = params.category || "";
   const severityFilter = (params.severity || "") as AffairSeverity | "";
-  const involvementFilter = params.involvement || "";
   const partiFilter = params.parti || "";
   const page = parseInt(params.page || "1", 10);
+  const mode = (params.mode === "victime" ? "victime" : "mise-en-cause") as
+    | "mise-en-cause"
+    | "victime";
 
-  // Parse involvement filter: group-based (mise-en-cause, victime, mentionne)
-  const VALID_GROUPS: InvolvementGroup[] = ["mise-en-cause", "victime", "mentionne"];
-  const activeGroups: InvolvementGroup[] = involvementFilter
-    ? (involvementFilter
-        .split(",")
-        .filter((v) => VALID_GROUPS.includes(v as InvolvementGroup)) as InvolvementGroup[])
-    : ["mise-en-cause"];
-  const activeInvolvements = involvementsFromGroups(activeGroups);
+  const activeInvolvements =
+    mode === "victime"
+      ? (["VICTIM", "PLAINTIFF"] as Involvement[])
+      : (["DIRECT", "INDIRECT", "MENTIONED_ONLY"] as Involvement[]);
 
   const [
     { affairs, total, totalPages },
@@ -148,9 +144,13 @@ export default async function AffairesPage({ searchParams }: PageProps) {
 
   // Build URL helper (only used for super-category cards + pagination)
   function buildUrl(params: Record<string, string>) {
-    const filtered = Object.entries(params).filter(([, v]) => v);
-    if (filtered.length === 0) return "/affaires";
-    return `/affaires?${filtered.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&")}`;
+    const url = new URL("/affaires", "http://localhost");
+    for (const [k, v] of Object.entries(params)) {
+      if (v) url.searchParams.set(k, v);
+    }
+    if (mode !== "mise-en-cause") url.searchParams.set("mode", mode);
+    const search = url.searchParams.toString();
+    return search ? `/affaires?${search}` : "/affaires";
   }
 
   return (
@@ -200,6 +200,24 @@ export default async function AffairesPage({ searchParams }: PageProps) {
         })}
       </div>
 
+      {/* Mode toggle */}
+      <div className="mb-4">
+        <AffairModeToggle mode={mode} />
+      </div>
+
+      {/* Victim mode methodology note */}
+      {mode === "victime" && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
+          <p className="text-sm text-blue-800 dark:text-blue-300">
+            Affaires pour lesquelles un élu est victime ou plaignant, documentées par au moins une
+            source journalistique vérifiable.{" "}
+            <a href="/sources" className="underline hover:no-underline">
+              En savoir plus
+            </a>
+          </p>
+        </div>
+      )}
+
       {/* Compact filter bar */}
       <AffairesFilterBar
         currentFilters={{
@@ -208,7 +226,6 @@ export default async function AffairesPage({ searchParams }: PageProps) {
           severity: severityFilter,
           parti: partiFilter,
           status: statusFilter,
-          involvement: involvementFilter,
           supercat: superCatFilter,
         }}
         parties={partiesWithAffairs.map((p) => ({
@@ -222,12 +239,7 @@ export default async function AffairesPage({ searchParams }: PageProps) {
       />
 
       {/* Active filters summary */}
-      {(searchFilter ||
-        superCatFilter ||
-        statusFilter ||
-        severityFilter ||
-        involvementFilter ||
-        partiFilter) && (
+      {(searchFilter || superCatFilter || statusFilter || severityFilter || partiFilter) && (
         <div className="mb-6 flex items-center gap-2 text-sm flex-wrap">
           <span className="text-muted-foreground">Filtres actifs :</span>
           {searchFilter && <Badge variant="outline">Recherche : {searchFilter}</Badge>}
@@ -252,12 +264,11 @@ export default async function AffairesPage({ searchParams }: PageProps) {
               {AFFAIR_STATUS_LABELS[statusFilter as AffairStatus]}
             </Badge>
           )}
-          {involvementFilter && (
-            <Badge variant="outline">
-              Rôle : {activeGroups.map((g) => INVOLVEMENT_GROUP_LABELS[g]).join(", ")}
-            </Badge>
-          )}
-          <Link href="/affaires" scroll={false} className="text-primary hover:underline ml-2">
+          <Link
+            href={mode === "victime" ? "/affaires?mode=victime" : "/affaires"}
+            scroll={false}
+            className="text-primary hover:underline ml-2"
+          >
             Effacer les filtres
           </Link>
         </div>
@@ -403,7 +414,6 @@ export default async function AffairesPage({ searchParams }: PageProps) {
                 status: statusFilter,
                 supercat: superCatFilter,
                 severity: severityFilter,
-                involvement: involvementFilter,
                 parti: partiFilter,
               })
             }

@@ -57,6 +57,14 @@ async function queryAffairs(
     categoryFilter = getCategoriesForSuper(superCategory);
   }
 
+  // In victim mode, restrict to violence-related categories
+  const isVictimMode = involvements.includes("VICTIM");
+  if (isVictimMode) {
+    categoryFilter = categoryFilter
+      ? categoryFilter.filter((c) => VIOLENCE_CATEGORIES.includes(c))
+      : VIOLENCE_CATEGORIES;
+  }
+
   const where = {
     publicationStatus: "PUBLISHED" as const,
     involvement: { in: involvements },
@@ -279,6 +287,13 @@ const TERMINAL_STATUSES: AffairStatus[] = [
 ];
 
 const VICTIM_INVOLVEMENTS: Involvement[] = ["VICTIM", "PLAINTIFF"];
+const VIOLENCE_CATEGORIES: AffairCategory[] = [
+  "MENACE",
+  "VIOLENCE",
+  "HARCELEMENT_MORAL",
+  "HARCELEMENT_SEXUEL",
+  "AGRESSION_SEXUELLE",
+];
 
 export async function getVictimStats() {
   "use cache";
@@ -288,6 +303,7 @@ export async function getVictimStats() {
   const victimWhere = {
     publicationStatus: "PUBLISHED" as const,
     involvement: { in: VICTIM_INVOLVEMENTS },
+    category: { in: VIOLENCE_CATEGORIES },
   };
 
   const [totalAffairs, politicianIds, ongoingProcedures] = await Promise.all([

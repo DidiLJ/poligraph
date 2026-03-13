@@ -12,6 +12,7 @@ import {
 } from "@/config/labels";
 import type { AffairStatus, AffairCategory } from "@/types";
 import type { Chamber } from "@/generated/prisma";
+import { getVictimStats } from "@/lib/data/affairs";
 import { StatsTabs } from "@/components/stats/StatsTabs";
 import { LegislativeSection } from "@/components/stats/LegislativeSection";
 import { JudicialSection } from "@/components/stats/JudicialSection";
@@ -240,14 +241,21 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
   const pPage = Math.max(1, Math.min(100, parseInt(String(params.pPage ?? "1"), 10) || 1));
   const pSort = params.pSort === "desc" ? ("DESC" as const) : ("ASC" as const);
 
-  const [legislativeData, judicialData, factCheckData, participationData, hemicycleData] =
-    await Promise.all([
-      getLegislativeData(),
-      getJudicialData(),
-      getFactCheckData(),
-      getParticipationData(pChamber, pPage, pSort),
-      getHemicycleData(),
-    ]);
+  const [
+    legislativeData,
+    judicialData,
+    factCheckData,
+    participationData,
+    hemicycleData,
+    victimStats,
+  ] = await Promise.all([
+    getLegislativeData(),
+    getJudicialData(),
+    getFactCheckData(),
+    getParticipationData(pChamber, pPage, pSort),
+    getHemicycleData(),
+    getVictimStats(),
+  ]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -267,6 +275,7 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
             byCategory={judicialData.byCategory}
             critiqueByCategory={judicialData.critiqueByCategory}
             hemicycleGroups={hemicycleData}
+            victimStats={victimStats}
           />
         }
         factCheckContent={

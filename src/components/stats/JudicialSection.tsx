@@ -9,6 +9,7 @@ import { DonutChart } from "./DonutChart";
 import { HorizontalBars } from "./HorizontalBars";
 import { MethodologyDisclaimer } from "./MethodologyDisclaimer";
 import { Hemicycle } from "./Hemicycle";
+import { ViolenceSection } from "./ViolenceSection";
 import type { HemicycleGroup } from "@/lib/data/hemicycle";
 
 const SUPER_CATEGORY_HEX: Record<AffairSuperCategory, string> = {
@@ -36,6 +37,12 @@ interface CritiqueCategoryData {
   parties: { name: string; count: number; color: string | null; slug: string | null }[];
 }
 
+interface ViolenceStats {
+  totalAffairs: number;
+  totalPoliticians: number;
+  ongoingProcedures: number;
+}
+
 interface JudicialSectionProps {
   totalDirect: number;
   totalCondamnations: number;
@@ -45,6 +52,7 @@ interface JudicialSectionProps {
   byCategory: CategoryCount[];
   critiqueByCategory: CritiqueCategoryData[];
   hemicycleGroups: HemicycleGroup[];
+  victimStats: ViolenceStats;
 }
 
 const ONGOING_STATUSES = new Set<AffairStatus>([
@@ -65,6 +73,7 @@ export function JudicialSection({
   byCategory,
   critiqueByCategory,
   hemicycleGroups,
+  victimStats,
 }: JudicialSectionProps) {
   const totalCritique = bySeverity["CRITIQUE"] || 0;
   const ongoing = byStatus
@@ -208,6 +217,8 @@ export function JudicialSection({
           </CardContent>
         </Card>
       </div>
+
+      <ViolenceSection stats={victimStats} />
 
       <MethodologyDisclaimer>
         Les &laquo;&nbsp;atteintes à la probité&nbsp;&raquo; regroupent les infractions liées à

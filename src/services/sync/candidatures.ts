@@ -147,8 +147,23 @@ async function preWarmPartyCache(): Promise<Map<string, string | null>> {
 }
 
 /**
+ * Extract primary surname from a multi-word last name for double surname matching.
+ * Returns null for single-word names or names starting with short particles.
+ * "libert albanel" → "libert", "de la fontaine" → null
+ */
+function primarySurname(normalizedLastName: string): string | null {
+  const parts = normalizedLastName.split(" ");
+  const first = parts[0];
+  if (!first || parts.length <= 1) return null;
+  if (first.length <= 2) return null;
+  return first;
+}
+
+/**
  * Pre-load LocalOfficial birthdates for RNE enrichment.
  * Key: "normalizedFirstName|normalizedLastName|departmentCode" → { birthDate, gender }
+ * Also indexes by first word of multi-word surnames for double surname matching
+ * (e.g. "Libert Albanel" also indexed as "Libert").
  * Only keeps unique matches (1 official per name+dept) to avoid false enrichment.
  */
 async function loadRNEBirthdateLookup(): Promise<
@@ -164,18 +179,41 @@ async function loadRNEBirthdateLookup(): Promise<
       gender: true,
     },
   });
+
   // First pass: count occurrences per key to detect ambiguous matches
+  // Include both full-name keys and primary-surname fallback keys
   const counts = new Map<string, number>();
   for (const o of officials) {
-    const key = `${normalizeText(o.firstName)}|${normalizeText(o.lastName)}|${o.departmentCode}`;
+    const normFirst = normalizeText(o.firstName);
+    const normLast = normalizeText(o.lastName);
+    const key = `${normFirst}|${normLast}|${o.departmentCode}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
+
+    const primary = primarySurname(normLast);
+    if (primary) {
+      const fwKey = `${normFirst}|${primary}|${o.departmentCode}`;
+      counts.set(fwKey, (counts.get(fwKey) ?? 0) + 1);
+    }
   }
+
   // Second pass: only keep unique matches (1 official per name+dept)
   const map = new Map<string, { birthDate: Date; gender: string | null }>();
   for (const o of officials) {
-    const key = `${normalizeText(o.firstName)}|${normalizeText(o.lastName)}|${o.departmentCode}`;
+    const data = { birthDate: o.birthDate!, gender: o.gender };
+    const normFirst = normalizeText(o.firstName);
+    const normLast = normalizeText(o.lastName);
+    const key = `${normFirst}|${normLast}|${o.departmentCode}`;
     if (counts.get(key) === 1) {
-      map.set(key, { birthDate: o.birthDate!, gender: o.gender });
+      map.set(key, data);
+    }
+
+    // Fallback: index by primary surname for double surname matching
+    const primary = primarySurname(normLast);
+    if (primary) {
+      const fwKey = `${normFirst}|${primary}|${o.departmentCode}`;
+      if (counts.get(fwKey) === 1 && !map.has(fwKey)) {
+        map.set(fwKey, data);
+      }
     }
   }
   return map;
@@ -319,8 +357,17 @@ export async function syncCandidaturesMunicipales(
         gender: row.gender,
       };
       // Pre-enrich with RNE birthdate (officials re-running in their dept)
-      const rneKey = `${normalizeText(row.normalizedFirstName)}|${normalizeText(row.normalizedLastName)}|${row.deptCode}`;
-      const rneMatch = rneLookup.get(rneKey);
+      const normFirst = normalizeText(row.normalizedFirstName);
+      const normLast = normalizeText(row.normalizedLastName);
+      const rneKey = `${normFirst}|${normLast}|${row.deptCode}`;
+      let rneMatch = rneLookup.get(rneKey);
+      // Fallback: try primary surname for double surname matching
+      if (!rneMatch) {
+        const primary = primarySurname(normLast);
+        if (primary) {
+          rneMatch = rneLookup.get(`${normFirst}|${primary}|${row.deptCode}`);
+        }
+      }
       if (rneMatch) {
         resolveInput.birthDate = rneMatch.birthDate;
         enrichedCount++;

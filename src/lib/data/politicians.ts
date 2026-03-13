@@ -27,6 +27,24 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
           events: {
             orderBy: { date: "asc" },
           },
+          linkedAffair: {
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              involvement: true,
+              politician: { select: { id: true, fullName: true, slug: true } },
+            },
+          },
+          linkedBy: {
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              involvement: true,
+              politician: { select: { id: true, fullName: true, slug: true } },
+            },
+          },
         },
         orderBy: { verdictDate: "desc" },
       },

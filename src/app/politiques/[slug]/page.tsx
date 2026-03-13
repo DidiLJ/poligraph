@@ -174,12 +174,11 @@ export default async function PoliticianPage({ params }: PageProps) {
   // Split affairs by involvement for sidebar stats and timeline
   const directAffairs = politician.affairs.filter((a) => a.involvement === "DIRECT");
   const mentionAffairs = politician.affairs.filter(
-    (a) =>
-      a.involvement === "INDIRECT" ||
-      a.involvement === "MENTIONED_ONLY" ||
-      a.involvement === "PLAINTIFF"
+    (a) => a.involvement === "INDIRECT" || a.involvement === "MENTIONED_ONLY"
   );
-  const victimAffairs = politician.affairs.filter((a) => a.involvement === "VICTIM");
+  const victimAffairs = politician.affairs.filter(
+    (a) => a.involvement === "VICTIM" || a.involvement === "PLAINTIFF"
+  );
 
   // Extract companies where politician is a board member for JSON-LD
   const latestDIAForLD = politician.declarations.find((d) => d.type === "INTERETS" && d.details);

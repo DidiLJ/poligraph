@@ -2,6 +2,7 @@ import { cache } from "react";
 import { cacheTag, cacheLife } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
+import { primarySurname } from "@/lib/name-matching";
 
 // ============================================
 // Incumbent mayor helper
@@ -24,9 +25,7 @@ async function getIncumbentMayor(communeId: string, electionId: string) {
   // Check if running again: match by lastName in candidacies for this commune.
   // For double surnames (e.g. "Libert Albanel"), also try the primary surname ("Libert")
   // since ballot names are often shorter than the full legal name in the RNE.
-  const lastNameParts = mayor.lastName.split(/\s+/);
-  const primarySurname =
-    lastNameParts.length > 1 && lastNameParts[0]!.length > 2 ? lastNameParts[0]! : null;
+  const primary = primarySurname(mayor.lastName.toLowerCase());
 
   const candidacy = await db.candidacy.findFirst({
     where: {
@@ -34,11 +33,11 @@ async function getIncumbentMayor(communeId: string, electionId: string) {
       communeId,
       OR: [
         { candidateName: { contains: mayor.lastName, mode: "insensitive" } },
-        ...(primarySurname
+        ...(primary
           ? [
               {
                 candidateName: {
-                  contains: primarySurname,
+                  contains: primary,
                   mode: "insensitive" as const,
                 },
               },

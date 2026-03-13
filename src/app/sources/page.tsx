@@ -333,6 +333,44 @@ export default function SourcesPage() {
         </div>
       </section>
 
+      {/* Violences et menaces contre les elus */}
+      <section className="mb-12">
+        <h2 className="mb-4 text-2xl font-bold">Violences et menaces contre les elus</h2>
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <div className="space-y-4 text-sm text-muted-foreground">
+            <p>
+              Poligraph documente egalement les affaires judiciaires dans lesquelles un elu est
+              victime ou plaignant (menaces, violences, harcelement). Ces affaires repondent aux
+              memes criteres d{"'"}inclusion que les affaires ou l{"'"}elu est mis en cause :
+            </p>
+            <ul className="list-disc space-y-2 pl-6">
+              <li>
+                <strong>Source verifiable</strong> : au moins une source journalistique de reference
+                ou une decision de justice publique. Le signalement par l{"'"}elu seul ne suffit
+                pas.
+              </li>
+              <li>
+                <strong>Statut judiciaire reel</strong> : une plainte deposee est affichee avec son
+                statut (enquete preliminaire, instruction, etc.), jamais comme un fait etabli.
+              </li>
+              <li>
+                <strong>Pas de comparaisons partisanes</strong> : les statistiques sont presentees
+                en chiffres agreges, sans ventilation par parti politique.
+              </li>
+              <li>
+                <strong>Distinction des roles</strong> : Victime (cible directe de l{"'"}infraction)
+                et Plaignant (personne ayant initie la procedure) sont distingues. Un elu portant
+                plainte en diffamation est plaignant, pas victime.
+              </li>
+            </ul>
+            <p>
+              Lorsque l{"'"}auteur presume des faits est egalement un elu suivi par Poligraph, les
+              deux fiches d{"'"}affaire sont liees pour permettre une lecture complete.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Intelligence artificielle */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">Intelligence Artificielle</h2>

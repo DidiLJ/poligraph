@@ -268,3 +268,77 @@ export async function getSeverityCounts() {
     number
   >;
 }
+
+const TERMINAL_STATUSES: AffairStatus[] = [
+  "RELAXE",
+  "ACQUITTEMENT",
+  "NON_LIEU",
+  "PRESCRIPTION",
+  "CLASSEMENT_SANS_SUITE",
+  "CONDAMNATION_DEFINITIVE",
+];
+
+const VICTIM_INVOLVEMENTS: Involvement[] = ["VICTIM", "PLAINTIFF"];
+
+export async function getVictimStats() {
+  "use cache";
+  cacheTag("affairs");
+  cacheLife("minutes");
+
+  const victimWhere = {
+    publicationStatus: "PUBLISHED" as const,
+    involvement: { in: VICTIM_INVOLVEMENTS },
+  };
+
+  const [totalAffairs, politicianIds, ongoingProcedures] = await Promise.all([
+    db.affair.count({ where: victimWhere }),
+    db.affair.findMany({
+      where: victimWhere,
+      select: { politicianId: true },
+      distinct: ["politicianId"],
+    }),
+    db.affair.count({
+      where: {
+        ...victimWhere,
+        status: { notIn: TERMINAL_STATUSES },
+      },
+    }),
+  ]);
+
+  return {
+    totalAffairs,
+    totalPoliticians: politicianIds.length,
+    ongoingProcedures,
+  };
+}
+
+export async function getLinkedAffair(affairId: string) {
+  const affair = await db.affair.findUnique({
+    where: { id: affairId },
+    select: {
+      linkedAffair: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          involvement: true,
+          politician: { select: { id: true, fullName: true, slug: true } },
+        },
+      },
+      linkedBy: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          involvement: true,
+          politician: { select: { id: true, fullName: true, slug: true } },
+        },
+      },
+    },
+  });
+
+  if (!affair) return null;
+  if (affair.linkedAffair) return affair.linkedAffair;
+  if (affair.linkedBy.length > 0) return affair.linkedBy[0];
+  return null;
+}

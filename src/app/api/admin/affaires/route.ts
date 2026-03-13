@@ -153,6 +153,7 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
       ecli: data.ecli || null,
       pourvoiNumber: data.pourvoiNumber || null,
       caseNumbers: data.caseNumbers || [],
+      linkedAffairId: data.linkedAffairId ?? null,
       sources: {
         create: data.sources.map((s) => ({
           url: s.url,

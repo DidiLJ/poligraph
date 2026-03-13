@@ -116,6 +116,7 @@ export const PUT = withAdminAuth(async (request: NextRequest, context) => {
       ecli: data.ecli || null,
       pourvoiNumber: data.pourvoiNumber || null,
       caseNumbers: data.caseNumbers || [],
+      linkedAffairId: data.linkedAffairId ?? null,
     },
   });
 

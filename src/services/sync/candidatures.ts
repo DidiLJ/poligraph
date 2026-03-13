@@ -7,7 +7,7 @@ import { HTTPClient } from "@/lib/api/http-client";
 import { DATA_GOUV_RATE_LIMIT_MS } from "@/config/rate-limits";
 import { resolveBatch } from "@/lib/identity";
 import type { ResolveInput } from "@/lib/identity";
-import { normalizeText } from "@/lib/name-matching";
+import { normalizeText, primarySurname } from "@/lib/name-matching";
 
 // 2026 CSV (semicolon-delimited, UTF-8, no comment header)
 const DEFAULT_CSV_URL =
@@ -144,19 +144,6 @@ async function preWarmPartyCache(): Promise<Map<string, string | null>> {
 
   console.log(`  Pre-warmed party cache: ${cache.size} nuance codes`);
   return cache;
-}
-
-/**
- * Extract primary surname from a multi-word last name for double surname matching.
- * Returns null for single-word names or names starting with short particles.
- * "libert albanel" → "libert", "de la fontaine" → null
- */
-function primarySurname(normalizedLastName: string): string | null {
-  const parts = normalizedLastName.split(" ");
-  const first = parts[0];
-  if (!first || parts.length <= 1) return null;
-  if (first.length <= 2) return null;
-  return first;
 }
 
 /**

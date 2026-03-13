@@ -40,6 +40,19 @@ export function normalizeText(text: string): string {
 }
 
 /**
+ * Extract primary surname from a multi-word last name for double surname matching.
+ * Returns null for single-word names or names starting with short particles.
+ * "libert albanel" → "libert", "de la fontaine" → null
+ */
+export function primarySurname(normalizedLastName: string): string | null {
+  const parts = normalizedLastName.split(" ");
+  const first = parts[0];
+  if (!first || parts.length <= 1) return null;
+  if (first.length <= 2) return null;
+  return first;
+}
+
+/**
  * Escape special regex characters
  */
 export function escapeRegex(str: string): string {

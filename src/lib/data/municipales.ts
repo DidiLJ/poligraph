@@ -21,12 +21,30 @@ async function getIncumbentMayor(communeId: string, electionId: string) {
 
   if (!mayor) return null;
 
-  // Check if running again: match by lastName in candidacies for this commune
+  // Check if running again: match by lastName in candidacies for this commune.
+  // For double surnames (e.g. "Libert Albanel"), also try the primary surname ("Libert")
+  // since ballot names are often shorter than the full legal name in the RNE.
+  const lastNameParts = mayor.lastName.split(/\s+/);
+  const primarySurname =
+    lastNameParts.length > 1 && lastNameParts[0]!.length > 2 ? lastNameParts[0]! : null;
+
   const candidacy = await db.candidacy.findFirst({
     where: {
       electionId,
       communeId,
-      candidateName: { contains: mayor.lastName, mode: "insensitive" },
+      OR: [
+        { candidateName: { contains: mayor.lastName, mode: "insensitive" } },
+        ...(primarySurname
+          ? [
+              {
+                candidateName: {
+                  contains: primarySurname,
+                  mode: "insensitive" as const,
+                },
+              },
+            ]
+          : []),
+      ],
     },
     select: { id: true, listName: true, listPosition: true },
   });

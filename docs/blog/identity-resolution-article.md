@@ -1,20 +1,20 @@
 # How We Stopped Confusing Politicians: Building an Identity Resolution Engine for French Civic Data
 
-_Building entity resolution for a small-scale civic tech project — practical lessons from the messy middle ground between academic ER and enterprise MDM._
+_Building entity resolution for a small-scale civic tech project: practical lessons from the messy middle ground between academic ER and enterprise MDM._
 
 ---
 
 ## The Bug That Started It All
 
-Thierry Cousin is the mayor of Saint-Pryvé-Saint-Mesmin, a small town in the Loiret department. He was convicted in a financial misconduct case, and Poligraph — our civic observatory of French politicians — correctly tracks this affair.
+Thierry Cousin is the mayor of Saint-Pryve-Saint-Mesmin, a small town in the Loiret department. He was convicted in a financial misconduct case, and Poligraph (our civic observatory of French politicians) correctly tracks this affair.
 
-Thierry Cousin is also the mayor of Betoncourt-Saint-Pancras, a village in Haute-Saône. He has no judicial record.
+Thierry Cousin is also the mayor of Betoncourt-Saint-Pancras, a village in Haute-Saone. He has no judicial record.
 
 For months, our system thought they were the same person.
 
-The RNE (Répertoire National des Élus) sync had matched the second Thierry Cousin's mayoral mandate to the first one's profile, because it found exactly one "Thierry Cousin" in our database and returned it without checking the birthdate. The convicted politician's profile now showed a mandate for a town 400km away.
+The RNE (Repertoire National des Elus) sync had matched the second Thierry Cousin's mayoral mandate to the first one's profile, because it found exactly one "Thierry Cousin" in our database and returned it without checking the birthdate. The convicted politician's profile now showed a mandate for a town 400km away.
 
-This isn't just a data quality bug — it's a credibility problem. When civic tech platforms attribute criminal convictions to the wrong person, the consequences go beyond technical debt. A wrongly attributed affair can damage someone's reputation. A missing affair can undermine accountability.
+This isn't just a data quality bug, it's a credibility problem. When civic tech platforms attribute criminal convictions to the wrong person, the consequences go beyond technical debt. A wrongly attributed affair can damage someone's reputation. A missing affair can undermine accountability.
 
 We needed to fix this properly, not with another band-aid.
 
@@ -34,30 +34,30 @@ When the Thierry Cousin bug surfaced, we added a birthdate check for single cand
 
 Not really. The fix addressed one symptom, but the underlying architecture remained fragile:
 
-- **10 sync services, 10 matching implementations** — Each one slightly different, each one a potential source of homonym bugs.
-- **No shared memory** — If we flagged "Thierry Cousin from Haute-Saône is NOT the same person as Thierry Cousin from Loiret," that decision lived in a developer's head, not in the system.
-- **No audit trail** — When a match happened, it was invisible. No confidence score, no method attribution, no way to review or undo.
-- **No negative decisions** — The system could say "these are the same person" but had no way to say "these are definitely NOT the same person." This meant every sync run could potentially re-create the same wrong match.
+- **10 sync services, 10 matching implementations.** Each one slightly different, each one a potential source of homonym bugs.
+- **No shared memory.** If we flagged "Thierry Cousin from Haute-Saone is NOT the same person as Thierry Cousin from Loiret," that decision lived in a developer's head, not in the system.
+- **No audit trail.** When a match happened, it was invisible. No confidence score, no method attribution, no way to review or undo.
+- **No negative decisions.** The system could say "these are the same person" but had no way to say "these are definitely NOT the same person." This meant every sync run could potentially re-create the same wrong match.
 
 ## What the State of the Art Says
 
 Before designing our solution, we researched how others solve entity resolution (ER):
 
-**Fellegi-Sunter (1969)** — The foundational probabilistic record linkage model. Compares fields independently, accumulates match/non-match weights, makes decisions based on composite scores. Our ad-hoc matching was an informal, unstructured version of this.
+**Fellegi-Sunter (1969):** the foundational probabilistic record linkage model. Compares fields independently, accumulates match/non-match weights, makes decisions based on composite scores. Our ad-hoc matching was an informal, unstructured version of this.
 
-**OpenSanctions / nomenklatura** — The most relevant reference for our use case. OpenSanctions maintains 130K+ entity profiles across sanctions lists, PEP databases, and corporate registries. Their `nomenklatura` library uses a judgement graph: pairs of records are connected by SAME, NOT_SAME, or UNDECIDED edges. A connected components algorithm computes entity clusters. Key insight: they needed 34,600 manual decisions over 8 weeks to bootstrap the system. The negative decisions (NOT_SAME) are as important as the positive ones.
+**OpenSanctions / nomenklatura:** the most relevant reference for our use case. OpenSanctions maintains 130K+ entity profiles across sanctions lists, PEP databases, and corporate registries. Their `nomenklatura` library uses a judgement graph: pairs of records are connected by SAME, NOT_SAME, or UNDECIDED edges. A connected components algorithm computes entity clusters. Key insight: they needed 34,600 manual decisions over 8 weeks to bootstrap the system. Negative decisions (NOT_SAME) are as important as positive ones.
 
-**EveryPolitician (mySociety)** — A project that tried to maintain comprehensive data on every politician worldwide. They used UUIDs + Popolo `identifiers[]` arrays + Wikidata as a linking hub. The project was archived after 4 years — the maintenance burden of multi-source reconciliation was unsustainable without proper tooling. A cautionary tale.
+**EveryPolitician (mySociety):** a project that tried to maintain comprehensive data on every politician worldwide. They used UUIDs + Popolo `identifiers[]` arrays + Wikidata as a linking hub. The project was archived after 4 years: the maintenance burden of multi-source reconciliation was unsustainable without proper tooling. A cautionary tale.
 
-**W3C Reconciliation API v0.2** — A standard specification for entity matching services. Wikidata implements it. Enables interop with tools like OpenRefine for batch reconciliation.
+**W3C Reconciliation API v0.2:** a standard specification for entity matching services. Wikidata implements it. Enables interop with tools like OpenRefine for batch reconciliation.
 
-**Splink / Dedupe** — Production ER libraries in Python. Powerful for large-scale probabilistic matching, but complete overkill for our 2,000 politicians. Different language stack, too.
+**Splink / Dedupe:** production ER libraries in Python. Powerful for large-scale probabilistic matching, but complete overkill for our 2,000 politicians. Different language stack, too.
 
-**Key insight:** At our scale, deterministic matching (shared institutional IDs) covers 80%+ of cases. The critical missing piece wasn't a more sophisticated matching algorithm — it was **audit trail + negative decisions**.
+**Key insight:** at our scale, deterministic matching (shared institutional IDs) covers 80%+ of cases. The critical missing piece wasn't a more sophisticated matching algorithm, it was **audit trail + negative decisions**.
 
 ## The Design: Three Building Blocks
 
-### 1. The Resolver — One Pipeline to Rule Them All
+### 1. The Resolver: One Pipeline to Rule Them All
 
 Instead of 10 sync services each implementing their own matching, we built a single `IdentityResolver` with a 7-step pipeline:
 
@@ -69,18 +69,18 @@ Each step either produces a result or hands off to the next. The scoring is grad
 
 | Signal                  | Confidence | Rationale                                     |
 | ----------------------- | ---------- | --------------------------------------------- |
-| Shared institutional ID | 1.0        | Deterministic — same PA code = same deputy    |
+| Shared institutional ID | 1.0        | Deterministic: same PA code = same deputy     |
 | Name + birthdate match  | 0.9        | Strong but not infallible (data entry errors) |
-| Name + department match | 0.7        | Medium — multiple politicians per department  |
-| Name only               | 0.5        | Unreliable — below auto-match threshold       |
+| Name + department match | 0.7        | Medium: multiple politicians per department   |
+| Name only               | 0.5        | Unreliable: below auto-match threshold        |
 
 Three decision zones:
 
 - **>= 0.95**: Auto-match. The system is confident enough to proceed.
-- **0.70 – 0.94**: Review queue. A human needs to confirm.
+- **0.70 - 0.94**: Review queue. A human needs to confirm.
 - **< 0.70**: Reject. Treat as a new, unmatched person.
 
-### 2. The Decision Log — The System Remembers
+### 2. The Decision Log: The System Remembers
 
 Every matching decision is recorded in an `IdentityDecision` table:
 
@@ -96,13 +96,13 @@ decidedBy: "admin:ldiaby"
 
 This serves three purposes:
 
-1. **Blocking** — A NOT_SAME decision prevents the same wrong match from recurring. The next time the RNE sync encounters "Thierry Cousin" from Haute-Saône, it checks the decision log first and skips the incorrect politician.
+1. **Blocking.** A NOT_SAME decision prevents the same wrong match from recurring. The next time the RNE sync encounters "Thierry Cousin" from Haute-Saone, it checks the decision log first and skips the incorrect politician.
 
-2. **Fast path** — A high-confidence SAME decision allows the resolver to return immediately without re-computing the match. This is especially valuable for sources that sync daily.
+2. **Fast path.** A high-confidence SAME decision allows the resolver to return immediately without re-computing the match. This is especially valuable for sources that sync daily.
 
-3. **Auditability** — Every match can be traced back to its evidence. When something looks wrong, we can find exactly when, how, and why the match was made, and supersede it with a corrected decision.
+3. **Auditability.** Every match can be traced back to its evidence. When something looks wrong, we can find exactly when, how, and why the match was made, and supersede it with a corrected decision.
 
-### 3. The Confidence Score — Not All Matches Are Equal
+### 3. The Confidence Score: Not All Matches Are Equal
 
 Every ExternalId link now carries metadata:
 
@@ -129,9 +129,34 @@ GET /api/reconcile?queries={"q0":{"query":"Marine Le Pen"}}
 
 This enables:
 
-- **OpenRefine integration** — Data journalists can reconcile spreadsheets against our politician database
-- **Wikidata interop** — Our Wikibot can use the reconciliation endpoint to discover new links
-- **Partner integrations** — Other civic tech projects can verify politician identity against our data
+- **OpenRefine integration.** Data journalists can reconcile spreadsheets against our politician database.
+- **Wikidata interop.** Our Wikibot can use the reconciliation endpoint to discover new links.
+- **Partner integrations.** Other civic tech projects can verify politician identity against our data.
+
+## Edge Case: Double Surnames Across Data Sources
+
+Name normalization (accent removal, case folding) catches most spelling variations. But some mismatches are structural.
+
+The mayor of Vincennes is registered in the RNE as "Charlotte Libert Albanel" (double surname). In the 2026 municipal candidatures CSV from data.gouv.fr, the same person appears as "Charlotte LIBERT" (single surname, as printed on the ballot). The RNE birthdate enrichment builds a lookup key from the normalized full name:
+
+```
+charlotte|libert albanel|94
+```
+
+The candidature lookup searches for:
+
+```
+charlotte|libert|94
+```
+
+No match. Without the birthdate enrichment, the identity resolver has less signal, and the candidate stays unlinked from her politician profile.
+
+The fix: for multi-word surnames, also index by the primary surname (first word). "Libert Albanel" produces a fallback key on "libert", which the candidature lookup finds. To avoid false positives, two safety checks:
+
+- **Short particles are skipped.** "De La Fontaine" does not produce a fallback on "de" (2 chars or fewer). Same for "Le Pen", "Du Bois", etc.
+- **Ambiguity detection.** If two different officials would map to the same fallback key in the same department (say a "Charlotte Libert" and a "Charlotte Libert Albanel" both in dept 94), the fallback is dropped for both. Only unambiguous shortcuts are kept.
+
+This pattern (composite names in one source, simple names in another) is common in French administrative data. The RNE uses the full legal name from the birth certificate. Electoral lists use the ballot name, which is often shorter. Marriage name vs. birth name is another frequent variant.
 
 ## Lessons Learned
 
@@ -139,11 +164,11 @@ This enables:
 
 Attributing a conviction to the wrong person has legal and reputational consequences. Not finding a match is merely incomplete data. We designed the system to be conservative: when in doubt, don't match.
 
-**2. Deterministic matching covers 80%+ — invest there first.**
+**2. Deterministic matching covers 80%+. Invest there first.**
 
 Most of our politicians come from institutional sources with proper IDs (AN, Senate, HATVP). The hard cases (RNE mayors, court records, press articles) are a minority. Building robust handling for the easy 80% before tackling the fuzzy 20% was the right sequence.
 
-**3. Store negative decisions — they're as valuable as positive ones.**
+**3. Store negative decisions. They're as valuable as positive ones.**
 
 The NOT_SAME decision is arguably the most important feature. Without it, every sync run could re-create the Thierry Cousin bug. With it, a single manual intervention permanently blocks wrong matches.
 
@@ -151,16 +176,20 @@ The NOT_SAME decision is arguably the most important feature. Without it, every 
 
 mySociety's EveryPolitician was an ambitious attempt to maintain data on every politician worldwide. It failed because multi-source reconciliation at scale is a maintenance nightmare. We scoped ruthlessly: French politicians only, 10 curated sources, automated pipeline with human review for edge cases.
 
+**5. Name normalization is necessary but not sufficient.**
+
+Accent removal and case folding solve surface-level spelling variations. But structural differences between data sources (double surnames, ballot names vs. legal names, maiden names vs. married names) require dedicated handling. Each new data source brings its own naming conventions, and you'll keep discovering edge cases.
+
 ## What's Next
 
 The Identity Resolution Engine is live for the RNE sync (35,000+ mayors). Next steps:
 
-- **Migrate remaining 9 sync services** to the centralized resolver
-- **Build an admin UI** for the review queue (UNDECIDED decisions)
-- **LLM-assisted reconciliation** — Using Claude to analyze ambiguous cases with contextual clues from Wikipedia/press
-- **Bidirectional Wikidata sync** — Publishing poligraphIds as Wikidata external identifiers, closing the interoperability loop
+- **Migrate remaining 9 sync services** to the centralized resolver.
+- **Build an admin UI** for the review queue (UNDECIDED decisions).
+- **LLM-assisted reconciliation:** using Claude to analyze ambiguous cases with contextual clues from Wikipedia/press.
+- **Bidirectional Wikidata sync:** publishing poligraphIds as Wikidata external identifiers, closing the interoperability loop.
 
-The goal is a system where every politician in Poligraph has a clear, auditable chain from source data to profile — and where mistakes like Thierry Cousin's are caught before they ever reach production.
+The goal is a system where every politician in Poligraph has a clear, auditable chain from source data to profile, and where mistakes like Thierry Cousin's are caught before they ever reach production.
 
 ---
 

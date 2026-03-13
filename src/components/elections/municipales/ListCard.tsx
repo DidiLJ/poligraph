@@ -7,6 +7,22 @@ import { cn } from "@/lib/utils";
 import { CandidateRow } from "@/components/elections/municipales/CandidateRow";
 import { PoliticianBridge } from "@/components/elections/municipales/PoliticianBridge";
 
+/**
+ * Match a candidateName against an incumbent mayor's lastName,
+ * handling double surnames (e.g. "Libert Albanel" matches "LIBERT").
+ */
+function matchesLastName(candidateName: string, lastName: string): boolean {
+  const lower = candidateName.toLowerCase();
+  if (lower.includes(lastName.toLowerCase())) return true;
+  // Fallback: try primary surname for double surnames
+  const parts = lastName.split(/\s+/);
+  const primary = parts[0];
+  if (parts.length > 1 && primary && primary.length > 2) {
+    return lower.includes(primary.toLowerCase());
+  }
+  return false;
+}
+
 interface ListCardProps {
   name: string;
   partyLabel: string | null;
@@ -163,9 +179,7 @@ export function ListCard({
                   politician={member.politician}
                   isIncumbentMayor={
                     !!incumbentMayorLastName &&
-                    member.candidateName
-                      .toLowerCase()
-                      .includes(incumbentMayorLastName.toLowerCase())
+                    matchesLastName(member.candidateName, incumbentMayorLastName)
                   }
                   incumbentMayorGender={incumbentMayorGender}
                 />

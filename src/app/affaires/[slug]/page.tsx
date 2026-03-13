@@ -19,6 +19,7 @@ import {
   INVOLVEMENT_LABELS,
   INVOLVEMENT_COLORS,
 } from "@/config/labels";
+import { LinkedAffairBanner } from "@/components/affairs/LinkedAffairBanner";
 import { SentenceDetails } from "@/components/affairs/SentenceDetails";
 import { StatusTooltip } from "@/components/affairs/StatusTooltip";
 import { AffairTimeline } from "@/components/affairs/AffairTimeline";
@@ -65,6 +66,24 @@ const affairInclude = {
   },
   events: {
     orderBy: { date: "asc" as const },
+  },
+  linkedAffair: {
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      involvement: true,
+      politician: { select: { fullName: true, slug: true } },
+    },
+  },
+  linkedBy: {
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      involvement: true,
+      politician: { select: { fullName: true, slug: true } },
+    },
   },
 };
 
@@ -129,6 +148,7 @@ export default async function AffairDetailPage({ params }: PageProps) {
 
   const superCategory = CATEGORY_TO_SUPER[affair.category as AffairCategory];
   const partyToShow = affair.partyAtTime || affair.politician.currentParty;
+  const linked = affair.linkedAffair || affair.linkedBy?.[0];
 
   return (
     <>
@@ -236,6 +256,13 @@ export default async function AffairDetailPage({ params }: PageProps) {
               </p>
             </div>
           )}
+
+        {/* Linked affair cross-reference */}
+        {linked && (
+          <div className="mb-6">
+            <LinkedAffairBanner linked={linked} />
+          </div>
+        )}
 
         {/* Description */}
         <Card className="mb-6">

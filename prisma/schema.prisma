@@ -474,6 +474,11 @@ model Affair {
   verifiedAt DateTime?
   verifiedBy String? // Admin who verified
 
+  // Linked affair (cross-reference for inter-politician affairs)
+  linkedAffair   Affair?  @relation("LinkedAffairs", fields: [linkedAffairId], references: [id])
+  linkedAffairId String?
+  linkedBy       Affair[] @relation("LinkedAffairs")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -486,6 +491,8 @@ model Affair {
   @@index([publicationStatus])
   @@index([severity])
   @@index([publicationStatus, severity])
+  @@index([linkedAffairId])
+  @@index([involvement])
 }
 
 // Timeline events for an affair

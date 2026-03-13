@@ -3,14 +3,7 @@
 import { useFilterParams } from "@/hooks/useFilterParams";
 import { DebouncedSearchInput, SelectFilter } from "@/components/filters";
 import { FilterBarShell } from "@/components/filters/FilterBarShell";
-import { Badge } from "@/components/ui/badge";
-import {
-  AFFAIR_STATUS_LABELS,
-  AFFAIR_SEVERITY_EDITORIAL,
-  INVOLVEMENT_GROUP_LABELS,
-  INVOLVEMENT_GROUP_COLORS,
-  type InvolvementGroup,
-} from "@/config/labels";
+import { AFFAIR_STATUS_LABELS, AFFAIR_SEVERITY_EDITORIAL } from "@/config/labels";
 import type { AffairStatus, AffairSeverity } from "@/types";
 
 interface AffairesFilterBarProps {
@@ -20,7 +13,6 @@ interface AffairesFilterBarProps {
     severity: string;
     parti: string;
     status: string;
-    involvement: string;
     supercat: string;
   };
   parties: Array<{
@@ -58,8 +50,6 @@ const STATUS_GROUPS: { label: string; statuses: AffairStatus[] }[] = [
   },
 ];
 
-const VALID_GROUPS: InvolvementGroup[] = ["mise-en-cause", "victime", "mentionne"];
-
 export function AffairesFilterBar({
   currentFilters,
   parties,
@@ -67,25 +57,6 @@ export function AffairesFilterBar({
   statusCounts,
 }: AffairesFilterBarProps) {
   const { isPending, updateParams } = useFilterParams();
-
-  const activeGroups: InvolvementGroup[] = currentFilters.involvement
-    ? (currentFilters.involvement
-        .split(",")
-        .filter((v) => VALID_GROUPS.includes(v as InvolvementGroup)) as InvolvementGroup[])
-    : ["mise-en-cause"];
-
-  const toggleGroup = (group: InvolvementGroup) => {
-    const current = new Set(activeGroups);
-    if (current.has(group)) {
-      current.delete(group);
-    } else {
-      current.add(group);
-    }
-    if (current.size === 0) current.add("mise-en-cause");
-
-    const isDefault = current.size === 1 && current.has("mise-en-cause");
-    updateParams({ involvement: isDefault ? "" : [...current].join(",") });
-  };
 
   const statusOptions = [
     { value: "", label: "Tous les statuts" },
@@ -164,38 +135,6 @@ export function AffairesFilterBar({
           onChange={(v) => updateParams({ status: v })}
           options={statusOptions}
         />
-      </div>
-
-      {/* Involvement toggles */}
-      <div
-        className="flex items-center gap-2 flex-wrap pt-1 border-t border-border/50"
-        role="group"
-        aria-label="Rôle du responsable politique"
-      >
-        <span className="text-xs font-medium text-muted-foreground">Rôle :</span>
-        {(Object.keys(INVOLVEMENT_GROUP_LABELS) as InvolvementGroup[]).map((group) => {
-          const isActive = activeGroups.includes(group);
-          return (
-            <Badge
-              key={group}
-              variant={isActive ? "default" : "outline"}
-              className={`cursor-pointer hover:bg-primary/10 transition-colors ${isActive ? INVOLVEMENT_GROUP_COLORS[group] : ""}`}
-              onClick={() => toggleGroup(group)}
-              role="button"
-              tabIndex={0}
-              aria-pressed={isActive}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  toggleGroup(group);
-                }
-              }}
-            >
-              {isActive ? "● " : "○ "}
-              {INVOLVEMENT_GROUP_LABELS[group]}
-            </Badge>
-          );
-        })}
       </div>
     </FilterBarShell>
   );

@@ -39,6 +39,7 @@
     "sync:party-roles": "tsx scripts/sync-careers.ts --founders-only",
     "populate:party-leaders": "tsx scripts/populate-party-leaders.ts",
     "promote:mayors": "tsx scripts/promote-top-mayors.ts",
+    "maires:create": "tsx scripts/bulk-create-maires.ts",
     "sync:history:stats": "tsx scripts/sync-mandate-history.ts --stats",
     "sync:daily": "tsx scripts/sync-daily.ts",
     "sync:full": "tsx scripts/sync-full.ts",

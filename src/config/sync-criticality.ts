@@ -4,7 +4,7 @@ export const CRITICAL_SCRIPTS = [
   "sync-assemblee",
   "sync-senat",
   "sync-gouvernement",
-  "sync-votes-an",
+  "sync-scrutins-an",
   "sync-press-analysis",
   "sync-judilibre",
 ] as const;

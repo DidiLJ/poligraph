@@ -10,12 +10,12 @@ import { syncDaily } from "./functions/sync-daily";
 import { generateSocialDrafts, publishApprovedPost } from "./functions/post-social";
 import { sendNewsletter } from "./functions/send-newsletter";
 import { syncPress } from "./functions/sync-press";
-import { syncVotes } from "./functions/sync-votes";
+import { syncScrutins } from "./functions/sync-scrutins";
 
 // --- Grouped multi-step functions ---
 const groupedFunctions = [
   syncPress,
-  syncVotes,
+  syncScrutins,
   syncLegislation,
   discoverAffairs,
   syncFactchecksGrouped,
@@ -33,12 +33,12 @@ const groupedFunctions = [
 
 // Phase 1: Migrated — lazy dynamic imports to avoid loading heavy deps at route init
 const migratedFunctions = [
-  createSyncFunction("sync-votes-an", async (data) => {
+  createSyncFunction("sync-scrutins-an", async (data) => {
     const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
     const todayOnly = !data.flags || !(data.flags as string).includes("--all");
     return syncScrutinsAN(undefined, false, todayOnly);
   }),
-  createSyncFunction("sync-votes-senat", async (data) => {
+  createSyncFunction("sync-scrutins-senat", async (data) => {
     const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
     const todayOnly = !data.flags || !(data.flags as string).includes("--all");
     return syncScrutinsSenat(null, false, todayOnly);
@@ -136,7 +136,7 @@ const phase2Extracted = [
     const foundersOnly = Boolean(data.flags && (data.flags as string).includes("--founders-only"));
     return syncCareers({ limit, foundersOnly });
   }),
-  createSyncFunction("sync-parties", async (data) => {
+  createSyncFunction("sync-partis", async (data) => {
     const { syncPartis } = await import("@/services/sync/partis");
     const configOnly = Boolean(data.flags && (data.flags as string).includes("--config"));
     return syncPartis({ configOnly });

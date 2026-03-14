@@ -7,14 +7,14 @@ interface DailyStep {
 
 const DAILY_STEPS: DailyStep[] = [
   {
-    name: "votes-an",
+    name: "scrutins-an",
     run: async () => {
       const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
       return syncScrutinsAN(undefined, false, true);
     },
   },
   {
-    name: "votes-senat",
+    name: "scrutins-senat",
     run: async () => {
       const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
       return syncScrutinsSenat(null, false, true);

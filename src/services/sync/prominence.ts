@@ -121,7 +121,7 @@ function calcRecencyBonus(p: PoliticianData): number {
   const hasCurrentMandate = p.mandates.some((m) => m.isCurrent);
   if (hasCurrentMandate) return RECENCY_CONFIG.currentMandateBonus;
 
-  const hasActiveRole = p.partyHistory.some((pm) => pm.role !== "MEMBER" && pm.endDate === null);
+  const hasActiveRole = p.partyHistory.some((pm) => pm.role !== "MEMBRE" && pm.endDate === null);
   if (hasActiveRole) return RECENCY_CONFIG.activePartyRoleBonus;
 
   const fiveYearsAgo = new Date();

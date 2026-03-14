@@ -11,12 +11,12 @@ const VALID_POLITICAL_POSITIONS = [
 ] as const;
 
 const VALID_PARTY_ROLES = [
-  "MEMBER",
-  "FOUNDER",
-  "SPOKESPERSON",
-  "COORDINATOR",
-  "HONORARY_PRESIDENT",
-  "SECRETARY_GENERAL",
+  "MEMBRE",
+  "FONDATEUR",
+  "PORTE_PAROLE",
+  "COORDINATEUR",
+  "PRESIDENT_HONNEUR",
+  "SECRETAIRE_GENERAL",
 ] as const;
 
 export const updatePartySchema = z.object({

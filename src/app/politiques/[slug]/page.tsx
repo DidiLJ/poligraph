@@ -278,7 +278,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                 </Badge>
               )}
               {politician.partyHistory
-                .filter((ph) => !ph.endDate && ph.role !== "MEMBER")
+                .filter((ph) => !ph.endDate && ph.role !== "MEMBRE")
                 .map((ph) => (
                   <Badge key={ph.id} variant="outline" className="text-sm">
                     {feminizePartyRole(PARTY_ROLE_LABELS[ph.role], politician.civility)}

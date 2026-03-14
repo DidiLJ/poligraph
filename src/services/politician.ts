@@ -16,7 +16,7 @@ export interface SetPartyOptions {
   startDate?: Date;
   /** End the previous membership (defaults to true) */
   endPreviousMembership?: boolean;
-  /** Role in the party (defaults to MEMBER) */
+  /** Role in the party (defaults to MEMBRE) */
   role?: PartyRole;
 }
 
@@ -104,7 +104,7 @@ export async function removeParty(politicianId: string, endDate: Date = new Date
 /**
  * Set the role on an existing party membership, or create a new one.
  *
- * Use this to assign roles like FOUNDER, SPOKESPERSON, etc.
+ * Use this to assign roles like FONDATEUR, PORTE_PAROLE, etc.
  * If the politician has a current membership with this party, it updates the role.
  * Otherwise, it creates a new membership with the given role and no end date.
  */
@@ -125,18 +125,18 @@ export async function setPartyRole(
 
   if (existing) return; // Already has this role
 
-  // Check if there's a MEMBER membership we can upgrade
+  // Check if there's a MEMBRE membership we can upgrade
   const memberMembership = await db.partyMembership.findFirst({
     where: {
       politicianId,
       partyId,
       endDate: null,
-      role: "MEMBER",
+      role: "MEMBRE",
     },
   });
 
   if (memberMembership) {
-    // Upgrade existing MEMBER to the new role
+    // Upgrade existing MEMBRE to the new role
     await db.partyMembership.update({
       where: { id: memberMembership.id },
       data: { role },

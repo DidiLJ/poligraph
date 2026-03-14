@@ -559,7 +559,7 @@ async function seed() {
         politicianId: politician.id,
         partyId,
         startDate: pol.mandates[0]!.startDate,
-        role: "MEMBER",
+        role: "MEMBRE",
       },
     });
   }

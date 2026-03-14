@@ -525,7 +525,7 @@ export async function syncCareers(options?: {
         if (!politicianExt?.politicianId) continue;
 
         try {
-          await setPartyRole(politicianExt.politicianId, data.partyId, PartyRole.FOUNDER);
+          await setPartyRole(politicianExt.politicianId, data.partyId, PartyRole.FONDATEUR);
           stats.foundersCreated++;
         } catch (error) {
           stats.errors.push(`Founder @ ${data.partyName}: ${error}`);

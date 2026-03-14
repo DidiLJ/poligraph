@@ -95,7 +95,7 @@ export async function getPartyRoles(partyId: string) {
   return db.partyMembership.findMany({
     where: {
       partyId,
-      role: { not: "MEMBER" },
+      role: { not: "MEMBRE" },
     },
     include: {
       politician: true,

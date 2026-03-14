@@ -582,7 +582,7 @@ Features:
 
     // ====================================================================
     // Phase 3: Party founders via P112 (founded by) on party entities
-    // Sets PartyRole.FOUNDER on matching PartyMembership records
+    // Sets PartyRole.FONDATEUR on matching PartyMembership records
     // ====================================================================
 
     console.log("\n--- Phase 3: Party founders (P112) ---");
@@ -668,7 +668,7 @@ Features:
             stats.foundersCreated++;
           } else {
             try {
-              await setPartyRole(politicianExt.politicianId, data.partyId, PartyRole.FOUNDER);
+              await setPartyRole(politicianExt.politicianId, data.partyId, PartyRole.FONDATEUR);
               stats.foundersCreated++;
             } catch (error) {
               errors.push(`Founder ${founderLabel} @ ${data.partyName}: ${error}`);

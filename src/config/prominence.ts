@@ -41,12 +41,12 @@ export const PAST_MANDATE_MULTIPLIER = 0.3;
 // === Party role weights (for politicians without mandates) ===
 
 export const PARTY_ROLE_WEIGHTS: Record<PartyRole, number> = {
-  SECRETARY_GENERAL: 140,
-  SPOKESPERSON: 100,
-  COORDINATOR: 80,
-  FOUNDER: 80,
-  HONORARY_PRESIDENT: 40,
-  MEMBER: 0,
+  SECRETAIRE_GENERAL: 140,
+  PORTE_PAROLE: 100,
+  COORDINATEUR: 80,
+  FONDATEUR: 80,
+  PRESIDENT_HONNEUR: 40,
+  MEMBRE: 0,
 };
 
 // === Activity scoring ===
@@ -87,7 +87,7 @@ export const AFFAIRS_CONFIG = {
 export const RECENCY_CONFIG = {
   // Has current mandate
   currentMandateBonus: 150,
-  // Has significant party role (non-MEMBER, active)
+  // Has significant party role (non-MEMBRE, active)
   activePartyRoleBonus: 100,
   // Was active in last 5 years (ended mandate within 5y)
   recentlyActiveBonus: 50,

@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description:
     "Suivez l'activité de vos représentants et partis politiques : votes, actualités presse, affaires judiciaires. Votre tableau de bord civique personnalisé.",
   alternates: { canonical: "/mon-observatoire" },
+  robots: { index: false, follow: true },
 };
 
 export default function MonObservatoirePage() {

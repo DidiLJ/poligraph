@@ -13,7 +13,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     title,
     description:
       "Recherche globale : représentants politiques, partis, affaires judiciaires et votes parlementaires.",
-    robots: { index: true, follow: true },
+    robots: { index: false, follow: true },
   };
 }
 

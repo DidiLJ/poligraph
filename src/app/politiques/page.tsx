@@ -9,6 +9,8 @@ import { SearchForm } from "@/components/politicians/SearchForm";
 import { PoliticiansGrid } from "@/components/politicians/PoliticiansGrid";
 import { ExportButton } from "@/components/ui/ExportButton";
 import { SeoIntro } from "@/components/seo/SeoIntro";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { SITE_URL } from "@/config/site";
 
 // Minimum members to show a party in filters (avoid cluttering with old/small parties)
 const MIN_PARTY_MEMBERS = 2;
@@ -415,97 +417,105 @@ export default async function PolitiquesPage({ searchParams }: PageProps) {
   const activeFilterCount = [partyFilter, convictionFilter, mandateFilter].filter(Boolean).length;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
-            Représentants politiques
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {total} représentants
-            {search && ` pour "${search}"`}
-            {activeFilterCount > 0 &&
-              ` (${activeFilterCount} filtre${activeFilterCount > 1 ? "s" : ""} actif${activeFilterCount > 1 ? "s" : ""})`}
-          </p>
-          <div className="sr-only">
-            <SeoIntro
-              text={`Poligraph référence ${total.toLocaleString("fr-FR")} responsables politiques français : députés, sénateurs, membres du gouvernement et dirigeants de partis. Données issues de sources officielles.`}
-            />
-          </div>
-        </div>
-        <ExportButton
-          endpoint="/api/export/politiques"
-          label="Export CSV"
-          params={{
-            partyId: partyFilter || undefined,
-            hasAffairs: convictionFilter ? "true" : undefined,
-          }}
-        />
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        {(
-          [
-            { key: "depute", count: counts.deputes, mandate: "depute" },
-            { key: "senateur", count: counts.senateurs, mandate: "senateur" },
-            { key: "gouvernement", count: counts.gouvernement, mandate: "gouvernement" },
-            { key: "dirigeants", count: counts.dirigeants, mandate: "dirigeants" },
-            { key: "conviction", count: counts.withConviction, mandate: "" },
-          ] as const
-        ).map(({ key, count, mandate }) => {
-          const accent = MANDATE_ACCENT[key]!;
-          const isActive = key === "conviction" ? convictionFilter : mandateFilter === mandate;
-          const href =
-            key === "conviction"
-              ? isActive
-                ? "/politiques"
-                : "/politiques?conviction=true"
-              : isActive
-                ? "/politiques"
-                : `/politiques?mandate=${mandate}`;
-          return (
-            <StatCard
-              key={key}
-              count={count}
-              label={accent!.label}
-              description={accent!.desc}
-              accent={accent}
-              href={href}
-              isActive={isActive}
-            />
-          );
-        })}
-      </div>
-
-      {/* Search with autocomplete */}
-      <div className="mb-6">
-        <SearchForm
-          defaultSearch={search}
-          partyFilter={partyFilter}
-          convictionFilter={convictionFilter}
-          mandateFilter={mandateFilter}
-          sortOption={sortOption}
-        />
-      </div>
-
-      {/* Filters, grid, and pagination with loading states */}
-      <PoliticiansGrid
-        politicians={politicians}
-        total={total}
-        page={page}
-        totalPages={totalPages}
-        parties={parties}
-        counts={counts}
-        filters={{
-          search,
-          partyFilter,
-          convictionFilter,
-          mandateFilter,
-          sortOption,
-        }}
-        showMissingDeclarationBadge
+    <>
+      <CollectionPageJsonLd
+        name="Représentants politiques français"
+        description="Liste des représentants politiques français : députés, sénateurs, ministres et dirigeants de partis."
+        url={`${SITE_URL}/politiques`}
+        numberOfItems={total}
       />
-    </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
+              Représentants politiques
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {total} représentants
+              {search && ` pour "${search}"`}
+              {activeFilterCount > 0 &&
+                ` (${activeFilterCount} filtre${activeFilterCount > 1 ? "s" : ""} actif${activeFilterCount > 1 ? "s" : ""})`}
+            </p>
+            <div className="sr-only">
+              <SeoIntro
+                text={`Poligraph référence ${total.toLocaleString("fr-FR")} responsables politiques français : députés, sénateurs, membres du gouvernement et dirigeants de partis. Données issues de sources officielles.`}
+              />
+            </div>
+          </div>
+          <ExportButton
+            endpoint="/api/export/politiques"
+            label="Export CSV"
+            params={{
+              partyId: partyFilter || undefined,
+              hasAffairs: convictionFilter ? "true" : undefined,
+            }}
+          />
+        </div>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          {(
+            [
+              { key: "depute", count: counts.deputes, mandate: "depute" },
+              { key: "senateur", count: counts.senateurs, mandate: "senateur" },
+              { key: "gouvernement", count: counts.gouvernement, mandate: "gouvernement" },
+              { key: "dirigeants", count: counts.dirigeants, mandate: "dirigeants" },
+              { key: "conviction", count: counts.withConviction, mandate: "" },
+            ] as const
+          ).map(({ key, count, mandate }) => {
+            const accent = MANDATE_ACCENT[key]!;
+            const isActive = key === "conviction" ? convictionFilter : mandateFilter === mandate;
+            const href =
+              key === "conviction"
+                ? isActive
+                  ? "/politiques"
+                  : "/politiques?conviction=true"
+                : isActive
+                  ? "/politiques"
+                  : `/politiques?mandate=${mandate}`;
+            return (
+              <StatCard
+                key={key}
+                count={count}
+                label={accent!.label}
+                description={accent!.desc}
+                accent={accent}
+                href={href}
+                isActive={isActive}
+              />
+            );
+          })}
+        </div>
+
+        {/* Search with autocomplete */}
+        <div className="mb-6">
+          <SearchForm
+            defaultSearch={search}
+            partyFilter={partyFilter}
+            convictionFilter={convictionFilter}
+            mandateFilter={mandateFilter}
+            sortOption={sortOption}
+          />
+        </div>
+
+        {/* Filters, grid, and pagination with loading states */}
+        <PoliticiansGrid
+          politicians={politicians}
+          total={total}
+          page={page}
+          totalPages={totalPages}
+          parties={parties}
+          counts={counts}
+          filters={{
+            search,
+            partyFilter,
+            convictionFilter,
+            mandateFilter,
+            sortOption,
+          }}
+          showMissingDeclarationBadge
+        />
+      </div>
+    </>
   );
 }

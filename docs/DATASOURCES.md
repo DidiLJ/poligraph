@@ -46,8 +46,8 @@ Ce document décrit les sources de données utilisées par Poligraph, leur forma
 | 6   | Parlement européen   | API JSON-LD      | Aucune    | Eurodéputés français        | `sync:europarl`              | Hebdomadaire |
 | 7   | HATVP                | CSV opendata     | Aucune    | Déclarations patrimoine     | `sync:hatvp`                 | Mensuelle    |
 | 8   | Wikidata             | REST + SPARQL    | Aucune    | IDs, condamnations, décès   | `sync:wikidata-ids`          | Hebdomadaire |
-| 9   | Votes AN             | ZIP JSON         | Aucune    | Scrutins, votes individuels | `sync:votes-an`              | Quotidienne  |
-| 10  | Votes Sénat          | HTML + JSON      | Aucune    | Scrutins, votes individuels | `sync:votes-senat`           | Quotidienne  |
+| 9   | Votes AN             | ZIP JSON         | Aucune    | Scrutins, votes individuels | `sync:scrutins-an`           | Quotidienne  |
+| 10  | Votes Sénat          | HTML + JSON      | Aucune    | Scrutins, votes individuels | `sync:scrutins-senat`        | Quotidienne  |
 | 11  | Dossiers législatifs | ZIP JSON         | Aucune    | Projets/propositions de loi | `sync:legislation`           | Quotidienne  |
 | 12  | Presse (RSS)         | RSS/XML          | Aucune    | Articles, mentions          | `sync:press`                 | Quotidienne  |
 | 13  | Google Fact Check    | API REST         | API key   | Fact-checks, verdicts       | `sync:factchecks`            | Quotidienne  |
@@ -271,12 +271,12 @@ Wikidata est utilisé comme source d'enrichissement à travers plusieurs scripts
 - **Données** : Propriétés P39 (position occupée), P488 (dirigeant de parti), P112 (fondateur)
 - **Script** : `npm run sync:careers` (long ~10-20 min)
 
-### 8.5 Partis (`sync:parties`)
+### 8.5 Partis (`sync:partis`)
 
 - **URL** : `https://www.wikidata.org/w/api.php`
 - **Données** : Noms, abréviations, couleurs, logos, idéologies des partis
 - **Configuration** : Q-IDs des partis dans `src/config/wikidata.ts`
-- **Script** : `npm run sync:parties`
+- **Script** : `npm run sync:partis`
 
 ### 8.6 Dates de naissance (`sync:birthdates`)
 
@@ -308,9 +308,9 @@ CC0 (domaine public)
 ### Script
 
 ```bash
-npm run sync:votes-an          # Tous les scrutins (législature 17)
-npm run sync:votes-an:today    # Scrutins du jour uniquement
-npm run sync:votes-an --stats
+npm run sync:scrutins-an          # Tous les scrutins (législature 17)
+npm run sync:scrutins-an:today    # Scrutins du jour uniquement
+npm run sync:scrutins-an --stats
 ```
 
 ---
@@ -340,10 +340,10 @@ npm run sync:votes-an --stats
 ### Script
 
 ```bash
-npm run sync:votes-senat          # Dernière session
-npm run sync:votes-senat:today    # Scrutins du jour
-npm run sync:votes-senat:all      # Toutes les sessions (2006-2024)
-npm run sync:votes-senat --stats
+npm run sync:scrutins-senat          # Dernière session
+npm run sync:scrutins-senat:today    # Scrutins du jour
+npm run sync:scrutins-senat:all      # Toutes les sessions (2006-2024)
+npm run sync:scrutins-senat --stats
 ```
 
 ---
@@ -636,7 +636,7 @@ Le script `npm run sync:full` exécute toutes les étapes dans l'ordre de dépen
 
 ```
 6.  sync:wikidata-ids      # Associer les Q-IDs
-7.  sync:parties           # Partis politiques
+7.  sync:partis            # Partis politiques
 8.  sync:careers           # Carrières (P39, P488, P112), ~20 min
 9.  populate-party-leaders # Dirigeants de partis historiques
 ```
@@ -655,8 +655,8 @@ Le script `npm run sync:full` exécute toutes les étapes dans l'ordre de dépen
 ### Phase 4 : Votes et législation
 
 ```
-16. sync:votes-an          # Scrutins AN, ~20 min
-17. sync:votes-senat --all # Scrutins Sénat, ~20 min
+16. sync:scrutins-an          # Scrutins AN, ~20 min
+17. sync:scrutins-senat --all # Scrutins Sénat, ~20 min
 18. sync:legislation       # Dossiers législatifs, ~15 min
 19. sync:legislation:content # Exposés des motifs, ~15 min
 20. reconcile-scrutin-dossier # Liaison scrutins/dossiers

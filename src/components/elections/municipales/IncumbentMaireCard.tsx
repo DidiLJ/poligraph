@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PoligraphBadge } from "@/components/elections/PoligraphBadge";
 
 interface IncumbentMaireCardProps {
-  mayor: {
+  maire: {
     fullName: string;
     gender: string | null;
     mandateStart: Date | null;
@@ -19,19 +19,19 @@ interface IncumbentMaireCardProps {
   isRunningAgain: boolean;
 }
 
-export function IncumbentMaireCard({ mayor, isRunningAgain }: IncumbentMaireCardProps) {
-  const startYear = mayor.mandateStart?.getFullYear();
-  const partyName = mayor.party?.shortName ?? mayor.partyLabel;
+export function IncumbentMaireCard({ maire, isRunningAgain }: IncumbentMaireCardProps) {
+  const startYear = maire.mandateStart?.getFullYear();
+  const partyName = maire.party?.shortName ?? maire.partyLabel;
 
   return (
     <div className="border rounded-xl p-4 bg-card">
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-        Maire sortant{mayor.gender === "F" ? "e" : ""}
+        Maire sortant{maire.gender === "F" ? "e" : ""}
       </p>
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="font-semibold text-lg">
-            {mayor.fullName}
+            {maire.fullName}
             {partyName && <span className="text-muted-foreground font-normal"> ({partyName})</span>}
           </p>
           {startYear && (
@@ -46,9 +46,9 @@ export function IncumbentMaireCard({ mayor, isRunningAgain }: IncumbentMaireCard
           ) : (
             <Badge variant="secondary">Ne se représente pas</Badge>
           )}
-          {mayor.politician && (
+          {maire.politician && (
             <Link
-              href={`/politiques/${mayor.politician.slug}`}
+              href={`/politiques/${maire.politician.slug}`}
               prefetch={false}
               className="flex items-center gap-2"
             >

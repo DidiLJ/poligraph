@@ -167,8 +167,8 @@ npm run sync:senat             # Sénateurs (API senat.fr)
 npm run sync:gouvernement      # Ministres (corrections + data.gouv.fr)
 
 # Votes et législation
-npm run sync:votes-an          # Scrutins Assemblée nationale
-npm run sync:votes-senat       # Scrutins Sénat
+npm run sync:scrutins-an       # Scrutins Assemblée nationale
+npm run sync:scrutins-senat    # Scrutins Sénat
 npm run sync:legislation       # Dossiers législatifs
 
 # Transparence

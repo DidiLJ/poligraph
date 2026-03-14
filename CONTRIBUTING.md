@@ -96,6 +96,64 @@ Types : `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `ci`.
 - Toujours `npm run lint` avant de committer (le pre-commit hook le fait automatiquement)
 - `npm run build` doit passer sans erreur
 
+## Convention de nommage
+
+**Principe : le francais pour le domaine, l'anglais pour le code.**
+
+Ce projet suit la politique francaise. Les termes specifiques au domaine utilisent leur forme francaise canonique. Les patterns de programmation utilisent l'anglais.
+
+| Quoi                      | Langue                             | Exemple                                          |
+| ------------------------- | ---------------------------------- | ------------------------------------------------ |
+| Noms de domaine           | Francais                           | `depute`, `maire`, `scrutin`, `affaire`, `parti` |
+| Verbes de programmation   | Anglais                            | `sync*`, `get*`, `fetch*`, `create*`             |
+| Noms composes             | Verbe anglais + nom francais       | `syncDeputes()`, `getMaires()`                   |
+| Valeurs d'enum Prisma     | Francais SCREAMING_SNAKE_CASE      | `DEPUTE`, `MAIRE`, `FONDATEUR`                   |
+| Types de modele Prisma    | Geles tels quels                   | `Politician`, `PartyRole`                        |
+| Chemins URL               | Geles tels quels                   | Ne pas renommer les routes existantes            |
+| Noms de fichiers          | Noms de domaine francais           | `deputes.ts`, `scrutins.ts`                      |
+| Scripts npm               | Noms de domaine francais           | `sync:scrutins-an`, `maires:promote`             |
+| Composants React          | PascalCase anglais + noms francais | `MissingMairesTable`                             |
+| Repertoires de composants | Noms de domaine francais           | `components/partis/`                             |
+
+### Glossaire
+
+| Terme francais (utiliser dans le code) | Equivalent anglais     | Contexte                                                                                           |
+| -------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------- |
+| `depute`                               | deputy / MP            | Membre de l'Assemblee Nationale                                                                    |
+| `senateur`                             | senator                | Membre du Senat                                                                                    |
+| `maire`                                | mayor                  | Chef d'une commune                                                                                 |
+| `commune`                              | municipality           | Unite administrative francaise                                                                     |
+| `parti`                                | party                  | Parti politique                                                                                    |
+| `scrutin`                              | roll-call vote         | Session de vote parlementaire (PAS "vote" - un vote est une position individuelle dans un scrutin) |
+| `affaire`                              | judicial affair        | Procedure judiciaire impliquant un politique                                                       |
+| `dossier`                              | legislative dossier    | Un texte legislatif et son parcours                                                                |
+| `assemblee`                            | national assembly      | Chambre basse (AN)                                                                                 |
+| `senat`                                | senate                 | Chambre haute                                                                                      |
+| `gouvernement`                         | government             | Branche executive                                                                                  |
+| `candidature`                          | candidacy              | Candidature electorale                                                                             |
+| `nuance`                               | political leaning code | Classification electorale francaise                                                                |
+
+**Termes empruntes (gardes tels quels dans le code) :** `factcheck`, `election`, `declaration`, `legislation`, `photo`, `press`, `audit`, `newsletter`, `admin`.
+
+### Exemples
+
+```typescript
+// Bon : verbe anglais + nom de domaine francais
+async function syncDeputes() { ... }
+async function getMaires() { ... }
+async function getScrutinsByDate() { ... }
+
+// Mauvais : noms de domaine en anglais
+async function syncDeputies() { ... }
+async function getMayors() { ... }
+
+// Bon : valeurs d'enum francaises
+enum PartyRole { MEMBRE, FONDATEUR, PORTE_PAROLE }
+
+// Mauvais : valeurs d'enum anglaises pour un domaine francais
+enum PartyRole { MEMBER, FOUNDER, SPOKESPERSON }
+```
+
 ## Structure du projet
 
 ```

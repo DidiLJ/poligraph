@@ -136,7 +136,7 @@ async function queryPoliticians(
     conditions.push({
       OR: [
         { mandates: { some: { type: "PRESIDENT_PARTI", isCurrent: true } } },
-        { partyHistory: { some: { endDate: null, role: { not: "MEMBER" } } } },
+        { partyHistory: { some: { endDate: null, role: { not: "MEMBRE" } } } },
       ],
     });
   } else if (mandateFilter && MANDATE_GROUPS[mandateFilter]) {
@@ -190,7 +190,7 @@ async function queryPoliticians(
         partyHistory: {
           where: {
             endDate: null,
-            role: { not: "MEMBER" },
+            role: { not: "MEMBRE" },
           },
           take: 1,
           include: {
@@ -368,7 +368,7 @@ async function getFilterCounts() {
         )
         OR EXISTS (
           SELECT 1 FROM "PartyMembership" pm
-          WHERE pm."politicianId" = p.id AND pm."endDate" IS NULL AND pm.role != 'MEMBER'
+          WHERE pm."politicianId" = p.id AND pm."endDate" IS NULL AND pm.role != 'MEMBRE'
         )
       ) AS dirigeants,
       -- Maires

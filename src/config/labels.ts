@@ -1029,20 +1029,20 @@ export const NUANCE_POLITIQUE_MAPPING: Record<string, string> = {
 // ============================================
 
 export const PARTY_ROLE_LABELS: Record<PartyRole, string> = {
-  MEMBER: "Membre",
-  FOUNDER: "Fondateur",
-  SPOKESPERSON: "Porte-parole",
-  COORDINATOR: "Coordinateur",
-  HONORARY_PRESIDENT: "Président d'honneur",
-  SECRETARY_GENERAL: "Secrétaire général",
+  MEMBRE: "Membre",
+  FONDATEUR: "Fondateur",
+  PORTE_PAROLE: "Porte-parole",
+  COORDINATEUR: "Coordinateur",
+  PRESIDENT_HONNEUR: "Président d'honneur",
+  SECRETAIRE_GENERAL: "Secrétaire général",
 };
 
 export const SIGNIFICANT_PARTY_ROLES: PartyRole[] = [
-  "FOUNDER",
-  "SPOKESPERSON",
-  "COORDINATOR",
-  "HONORARY_PRESIDENT",
-  "SECRETARY_GENERAL",
+  "FONDATEUR",
+  "PORTE_PAROLE",
+  "COORDINATEUR",
+  "PRESIDENT_HONNEUR",
+  "SECRETAIRE_GENERAL",
 ];
 
 export function feminizePartyRole(label: string, civility?: string | null): string {

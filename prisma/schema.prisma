@@ -220,12 +220,12 @@ enum PoliticalPosition {
 }
 
 enum PartyRole {
-  MEMBER
-  FOUNDER
-  SPOKESPERSON
-  COORDINATOR
-  HONORARY_PRESIDENT
-  SECRETARY_GENERAL
+  MEMBRE
+  FONDATEUR
+  PORTE_PAROLE
+  COORDINATEUR
+  PRESIDENT_HONNEUR
+  SECRETAIRE_GENERAL
 }
 
 // Track party changes over time
@@ -235,7 +235,7 @@ model PartyMembership {
   politicianId String
   party        Party      @relation(fields: [partyId], references: [id])
   partyId      String
-  role         PartyRole  @default(MEMBER)
+  role         PartyRole  @default(MEMBRE)
   startDate    DateTime?
   endDate      DateTime?
 

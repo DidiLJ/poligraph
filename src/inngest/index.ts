@@ -137,9 +137,9 @@ const phase2Extracted = [
     return syncCareers({ limit, foundersOnly });
   }),
   createSyncFunction("sync-parties", async (data) => {
-    const { syncParties } = await import("@/services/sync/parties");
+    const { syncPartis } = await import("@/services/sync/partis");
     const configOnly = Boolean(data.flags && (data.flags as string).includes("--config"));
-    return syncParties({ configOnly });
+    return syncPartis({ configOnly });
   }),
   createSyncFunction("sync-mep-parties", async (data) => {
     const { syncMepParties } = await import("@/services/sync/mep-parties");

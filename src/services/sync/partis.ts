@@ -373,7 +373,7 @@ async function enrichFromWikidata(): Promise<{
   return { updated, created, skipped };
 }
 
-export async function syncParties(options?: { configOnly?: boolean }): Promise<PartiesSyncResult> {
+export async function syncPartis(options?: { configOnly?: boolean }): Promise<PartiesSyncResult> {
   const { configOnly = false } = options ?? {};
 
   const stats: PartiesSyncResult = {

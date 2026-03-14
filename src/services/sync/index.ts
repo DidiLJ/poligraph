@@ -1,6 +1,6 @@
-export { syncDeputies, getSyncStats, fetchDeputiesCSV } from "./deputies";
-export { syncSenators, getSenatStats } from "./senators";
-export { syncGovernment, getGovernmentStats } from "./government";
+export { syncDeputes, getSyncStats, fetchDeputesCSV } from "./deputes";
+export { syncSenateurs, getSenatStats } from "./senateurs";
+export { syncGouvernement, getGouvernementStats } from "./gouvernement";
 export { syncHATVP, getHATVPStats } from "./hatvp";
 export { syncPhotos, getPhotoStats } from "./photos";
 export { syncEuroparl, getEuroparlStats } from "./europarl";

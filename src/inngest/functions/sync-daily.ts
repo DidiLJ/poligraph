@@ -9,15 +9,15 @@ const DAILY_STEPS: DailyStep[] = [
   {
     name: "votes-an",
     run: async () => {
-      const { syncVotesAN } = await import("@/services/sync/votes-an");
-      return syncVotesAN(undefined, false, true);
+      const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
+      return syncScrutinsAN(undefined, false, true);
     },
   },
   {
     name: "votes-senat",
     run: async () => {
-      const { syncVotesSenat } = await import("@/services/sync/votes-senat");
-      return syncVotesSenat(null, false, true);
+      const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
+      return syncScrutinsSenat(null, false, true);
     },
   },
   {

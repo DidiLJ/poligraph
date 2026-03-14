@@ -2,13 +2,13 @@ import Link from "next/link";
 import { VoteCard } from "./VoteCard";
 import { DateNavigation } from "./DateNavigation";
 import { BreadcrumbJsonLd, CollectionPageJsonLd } from "@/components/seo/JsonLd";
-import { getScrutinsByDate, getAdjacentVoteDates } from "@/lib/data/votes";
+import { getScrutinsByDate, getAdjacentVoteDates } from "@/lib/data/scrutins";
 import { CHAMBER_LABELS } from "@/config/labels";
 import { SITE_URL } from "@/config/site";
 import { formatDateFrUTC } from "@/lib/utils";
 import { Vote, CheckCircle, XCircle, Building2, ArrowRight, Sparkles } from "lucide-react";
 import type { Chamber } from "@/generated/prisma";
-import type { DailyScrutin } from "@/lib/data/votes";
+import type { DailyScrutin } from "@/lib/data/scrutins";
 
 interface DailyVotesPageProps {
   date: string;

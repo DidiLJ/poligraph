@@ -15,7 +15,7 @@ import { HexPattern } from "@/components/ui/HexPattern";
 import { FadeIn } from "@/components/motion";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { SITE_URL } from "@/config/site";
-import { getTodayVotesSummary } from "@/lib/data/votes";
+import { getTodayVotesSummary } from "@/lib/data/scrutins";
 import { getWeeklyRecap, getWeekStart } from "@/lib/data/recap";
 import { getUpcomingElections } from "@/lib/data/elections";
 

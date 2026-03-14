@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { isFeatureEnabled } from "@/lib/feature-flags";
-import { getParty, getPartyLeadership, getPartyRoles } from "@/lib/data/parties";
+import { getParty, getPartyLeadership, getPartyRoles } from "@/lib/data/partis";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";

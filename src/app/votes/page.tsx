@@ -12,7 +12,7 @@ import {
   THEME_CATEGORY_ICONS,
   THEME_CATEGORY_COLORS,
 } from "@/config/labels";
-import { getScrutins, getLegislatures, getChambers, getThemeCounts } from "@/lib/data/votes";
+import { getScrutins, getLegislatures, getChambers, getThemeCounts } from "@/lib/data/scrutins";
 import type { VotingResult, Chamber, ThemeCategory } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR

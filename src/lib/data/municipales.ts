@@ -387,7 +387,7 @@ export const getCumulCandidates = cache(async function getCumulCandidates() {
   );
 });
 
-export const getMissingMayors = cache(async function getMissingMayors() {
+export const getMissingMaires = cache(async function getMissingMaires() {
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
     select: { id: true },

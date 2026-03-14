@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 // Department representatives data functions
 // ============================================
 
-export async function getDeputiesByDepartment(departmentCode: string) {
+export async function getDeputesByDepartment(departmentCode: string) {
   "use cache";
   cacheLife("minutes");
   cacheTag("politicians", "departments");
@@ -38,7 +38,7 @@ export async function getDeputiesByDepartment(departmentCode: string) {
   });
 }
 
-export async function getSenatorsByDepartment(departmentCode: string) {
+export async function getSenateursByDepartment(departmentCode: string) {
   "use cache";
   cacheLife("minutes");
   cacheTag("politicians", "departments");

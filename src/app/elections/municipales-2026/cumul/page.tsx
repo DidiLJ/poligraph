@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { getCumulCandidates, getMissingMayors } from "@/lib/data/municipales";
+import { getCumulCandidates, getMissingMaires } from "@/lib/data/municipales";
 import { CumulTable } from "@/components/elections/municipales/CumulTable";
 import { MissingMayorsTable } from "@/components/elections/municipales/MissingMayorsTable";
 
@@ -29,7 +29,7 @@ const MANDATE_STATS_LABELS: Record<string, string> = {
 export default async function CumulPage() {
   // Sequential queries to respect DB pool limit of 2
   const candidates = await getCumulCandidates();
-  const missingMayors = await getMissingMayors();
+  const missingMayors = await getMissingMaires();
 
   // Compute stats by mandate type
   const statsByType = new Map<string, number>();

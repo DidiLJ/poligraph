@@ -7,8 +7,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { PoliticalPositionBadge } from "@/components/parties/PoliticalPositionBadge";
 import { PartiesFilterBar } from "@/components/parties/PartiesFilterBar";
 import { SeoIntro } from "@/components/seo/SeoIntro";
-import { getParties, getPartiesStats } from "@/lib/data/parties";
-import type { SortOption, StatusFilter } from "@/lib/data/parties";
+import { getParties, getPartiesStats } from "@/lib/data/partis";
+import type { SortOption, StatusFilter } from "@/lib/data/partis";
 import type { PoliticalPosition } from "@/types";
 
 export const revalidate = 300; // 5 minutes, cohérent avec l'API

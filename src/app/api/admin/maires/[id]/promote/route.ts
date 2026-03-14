@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation, getRequestMeta } from "@/lib/security";
-import { promoteMayorSchema } from "@/lib/security/schemas/mayor";
-import { promoteMayor } from "@/services/admin/promote-mayor";
+import { promoteMaireSchema } from "@/lib/security/schemas/maire";
+import { promoteMaire } from "@/services/admin/promote-maire";
 import { db } from "@/lib/db";
 import type { z } from "zod/v4";
 
-type Body = z.infer<typeof promoteMayorSchema>;
+type Body = z.infer<typeof promoteMaireSchema>;
 
 export const POST = withAdminAuth(
-  withValidation(promoteMayorSchema, async (request: NextRequest, context, body: Body) => {
+  withValidation(promoteMaireSchema, async (request: NextRequest, context, body: Body) => {
     const { id } = await context.params;
     if (!id) return NextResponse.json({ error: "ID manquant" }, { status: 400 });
 
-    const result = await promoteMayor(id, {
+    const result = await promoteMaire(id, {
       wikidataId: body.wikidataId,
     });
 

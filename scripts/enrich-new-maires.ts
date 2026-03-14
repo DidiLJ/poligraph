@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { db } from "../src/lib/db.js";
 import { wikidataService, WIKIDATA_PROPS } from "../src/lib/api/wikidata.js";
-import { selectBestWikidataCandidate } from "../src/services/admin/promote-mayor.js";
+import { selectBestWikidataCandidate } from "../src/services/admin/promote-maire.js";
 import { setCurrentParty } from "../src/services/politician.js";
 import { parse } from "csv-parse/sync";
 import { DataSource, DeclarationType } from "../src/generated/prisma/index.js";

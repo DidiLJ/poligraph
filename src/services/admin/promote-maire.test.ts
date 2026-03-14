@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 
-import { selectBestWikidataCandidate } from "./promote-mayor";
-import type { WikidataCandidate } from "./promote-mayor";
+import { selectBestWikidataCandidate } from "./promote-maire";
+import type { WikidataCandidate } from "./promote-maire";
 
 describe("selectBestWikidataCandidate", () => {
   const candidate = (overrides: Partial<WikidataCandidate> = {}): WikidataCandidate => ({

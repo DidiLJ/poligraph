@@ -42,7 +42,7 @@ async function getLatestCsvUrl(): Promise<string> {
  * Fetch and parse deputies CSV from data.gouv.fr
  * Exported for reuse in cleanup scripts.
  */
-export async function fetchDeputiesCSV(): Promise<DeputeCSV[]> {
+export async function fetchDeputesCSV(): Promise<DeputeCSV[]> {
   const url = await getLatestCsvUrl();
   console.log(`Fetching deputies from: ${url}`);
 
@@ -391,7 +391,7 @@ async function deactivateStaleMandates(activeAnIds: Set<string>): Promise<number
 /**
  * Main sync function - imports/updates all deputies
  */
-export async function syncDeputies(): Promise<SyncResult> {
+export async function syncDeputes(): Promise<SyncResult> {
   const result: SyncResult = {
     success: false,
     partiesCreated: 0,
@@ -406,7 +406,7 @@ export async function syncDeputies(): Promise<SyncResult> {
     console.log("Starting deputies sync...");
 
     // 1. Fetch data
-    const deputies = await fetchDeputiesCSV();
+    const deputies = await fetchDeputesCSV();
 
     // 2. Sync parliamentary groups and resolve real parties
     console.log("Syncing parliamentary groups...");

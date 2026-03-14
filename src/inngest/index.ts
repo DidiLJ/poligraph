@@ -85,16 +85,16 @@ const migratedFunctions = [
 // Phase 2a: Migrated — services already exist, just wire them up
 const phase2Migrated = [
   createSyncFunction("sync-assemblee", async () => {
-    const { syncDeputies } = await import("@/services/sync/deputies");
-    return syncDeputies();
+    const { syncDeputes } = await import("@/services/sync/deputes");
+    return syncDeputes();
   }),
   createSyncFunction("sync-senat", async () => {
-    const { syncSenators } = await import("@/services/sync/senators");
-    return syncSenators();
+    const { syncSenateurs } = await import("@/services/sync/senateurs");
+    return syncSenateurs();
   }),
   createSyncFunction("sync-gouvernement", async () => {
-    const { syncGovernment } = await import("@/services/sync/government");
-    return syncGovernment();
+    const { syncGouvernement } = await import("@/services/sync/gouvernement");
+    return syncGouvernement();
   }),
   createSyncFunction("sync-europarl", async () => {
     const { syncEuroparl } = await import("@/services/sync/europarl");

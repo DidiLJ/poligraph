@@ -8,7 +8,7 @@
 
 import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
-import { syncSenators, getSenatStats, getSyncStats } from "../src/services/sync";
+import { syncSenateurs, getSenatStats, getSyncStats } from "../src/services/sync";
 
 const handler: SyncHandler = {
   name: "Politic Tracker - Senators Sync",
@@ -45,7 +45,7 @@ Data sources:
       return { success: true, duration: 0, stats: {}, errors: [] };
     }
 
-    const result = await syncSenators();
+    const result = await syncSenateurs();
 
     return {
       success: result.success,

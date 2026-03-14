@@ -359,7 +359,7 @@ async function upsertExternalIds(
 /**
  * Main sync function - imports/updates all senators
  */
-export async function syncSenators(): Promise<SenatSyncResult> {
+export async function syncSenateurs(): Promise<SenatSyncResult> {
   const result: SenatSyncResult = {
     success: false,
     partiesCreated: 0,

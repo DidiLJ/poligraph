@@ -9,7 +9,7 @@
 
 import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
-import { syncGovernment, getGovernmentStats, getSyncStats } from "../src/services/sync";
+import { syncGouvernement, getGouvernementStats, getSyncStats } from "../src/services/sync";
 
 const handler: SyncHandler = {
   name: "Politic Tracker - Government Sync",
@@ -32,7 +32,7 @@ Data source: data.gouv.fr - Historique des Gouvernements de la Ve République
   },
 
   async showStats() {
-    const [govStats, globalStats] = await Promise.all([getGovernmentStats(), getSyncStats()]);
+    const [govStats, globalStats] = await Promise.all([getGouvernementStats(), getSyncStats()]);
 
     console.log("\n" + "=".repeat(50));
     console.log("Government Stats");
@@ -54,7 +54,7 @@ Data source: data.gouv.fr - Historique des Gouvernements de la Ve République
 
     console.log(`Mode: ${all ? "All historical governments" : "Current government only"}`);
 
-    const result = await syncGovernment({ currentOnly: !all });
+    const result = await syncGouvernement({ currentOnly: !all });
 
     return {
       success: result.success,

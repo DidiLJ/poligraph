@@ -256,7 +256,7 @@ async function syncGovernmentMember(
 /**
  * Main sync function - imports current government members
  */
-export async function syncGovernment(
+export async function syncGouvernement(
   options: { currentOnly?: boolean } = {}
 ): Promise<GouvernementSyncResult> {
   const { currentOnly = true } = options;
@@ -524,7 +524,7 @@ async function applyLocalCorrections(): Promise<{ applied: number; errors: strin
 /**
  * Get government stats
  */
-export async function getGovernmentStats() {
+export async function getGouvernementStats() {
   const ministerTypes = [
     MandateType.PREMIER_MINISTRE,
     MandateType.MINISTRE,

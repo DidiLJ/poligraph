@@ -14,22 +14,22 @@ export const syncPoliticians = inngest.createFunction(
 
     try {
       const anStats = await step.run("assemblee", async () => {
-        const { syncDeputies } = await import("@/services/sync/deputies");
-        const result = await syncDeputies();
+        const { syncDeputes } = await import("@/services/sync/deputes");
+        const result = await syncDeputes();
         if (jobId) await updateJobProgress(jobId, 20);
         return result;
       });
 
       const senatStats = await step.run("senat", async () => {
-        const { syncSenators } = await import("@/services/sync/senators");
-        const result = await syncSenators();
+        const { syncSenateurs } = await import("@/services/sync/senateurs");
+        const result = await syncSenateurs();
         if (jobId) await updateJobProgress(jobId, 40);
         return result;
       });
 
       const gouvStats = await step.run("gouvernement", async () => {
-        const { syncGovernment } = await import("@/services/sync/government");
-        const result = await syncGovernment();
+        const { syncGouvernement } = await import("@/services/sync/gouvernement");
+        const result = await syncGouvernement();
         if (jobId) await updateJobProgress(jobId, 60);
         return result;
       });

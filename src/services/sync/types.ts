@@ -267,7 +267,7 @@ export const SENATE_GROUP_MAPPINGS: Record<string, PartyMapping> = {
 // ============================================
 
 // From data.europarl.europa.eu API
-export interface EuroparlMEP {
+export interface EuroparlDepute {
   id: string; // "person/97236"
   type: string; // "Person"
   identifier: string; // "97236"
@@ -284,7 +284,7 @@ export interface EuroparlMEP {
   hasGender?: string; // URI
 }
 
-export interface EuroparlMEPDetail extends EuroparlMEP {
+export interface EuroparlDeputeDetail extends EuroparlDepute {
   hasMembership?: EuroparlMembership[];
   image?: string; // Photo URL
 }

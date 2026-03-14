@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { generateSlug } from "@/lib/utils";
 import { MandateType, DataSource, PoliticalPosition } from "@/generated/prisma";
-import { EuroparlMEP, EuroparlSyncResult } from "./types";
+import { EuroparlDepute, EuroparlSyncResult } from "./types";
 import { EUROPEAN_GROUPS } from "@/config/parties";
 import { HTTPClient } from "@/lib/api/http-client";
 import { EUROPARL_RATE_LIMIT_MS } from "@/config/rate-limits";
@@ -60,10 +60,10 @@ async function syncEuropeanGroups(): Promise<Map<string, string>> {
 /**
  * Fetch current MEPs from European Parliament API
  */
-async function fetchCurrentMEPs(): Promise<EuroparlMEP[]> {
+async function fetchCurrentDeputes(): Promise<EuroparlDepute[]> {
   console.log("Fetching MEPs from European Parliament API...");
 
-  const { data } = await client.get<{ data: EuroparlMEP[] }>(
+  const { data } = await client.get<{ data: EuroparlDepute[] }>(
     `${EUROPARL_API_BASE}/meps/show-current`,
     { headers: { Accept: "application/ld+json" } }
   );
@@ -76,7 +76,7 @@ async function fetchCurrentMEPs(): Promise<EuroparlMEP[]> {
 /**
  * Filter French MEPs from the list
  */
-function filterFrenchMEPs(meps: EuroparlMEP[]): EuroparlMEP[] {
+function filterFrenchDeputes(meps: EuroparlDepute[]): EuroparlDepute[] {
   const frenchMEPs = meps.filter((mep) => mep["api:country-of-representation"] === "FR");
   console.log(`Found ${frenchMEPs.length} French MEPs`);
   return frenchMEPs;
@@ -111,7 +111,7 @@ function guessCivility(givenName: string): string | null {
  * Sync a single MEP
  */
 async function syncMEP(
-  mep: EuroparlMEP,
+  mep: EuroparlDepute,
   groupCodeToId: Map<string, string>
 ): Promise<{ result: "created" | "updated" | "error"; mandateResult?: "created" | "updated" }> {
   try {
@@ -288,10 +288,10 @@ export async function syncEuroparl(): Promise<EuroparlSyncResult> {
     const groupCodeToId = await syncEuropeanGroups();
 
     // Fetch all current MEPs
-    const allMEPs = await fetchCurrentMEPs();
+    const allMEPs = await fetchCurrentDeputes();
 
     // Filter French MEPs
-    const frenchMEPs = filterFrenchMEPs(allMEPs);
+    const frenchMEPs = filterFrenchDeputes(allMEPs);
 
     console.log(`\nSyncing ${frenchMEPs.length} French MEPs...`);
 

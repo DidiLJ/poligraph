@@ -1,33 +1,33 @@
 import { inngest } from "../client";
 import { markJobRunning, markJobCompleted, markJobFailed, updateJobProgress } from "../job-helper";
 
-export const syncVotes = inngest.createFunction(
+export const syncScrutins = inngest.createFunction(
   {
-    id: "sync-votes",
+    id: "sync-scrutins",
     retries: 2,
-    concurrency: { limit: 1, key: '"sync-votes"' },
+    concurrency: { limit: 1, key: '"sync-scrutins"' },
   },
-  { event: "sync/votes" },
+  { event: "sync/scrutins" },
   async ({ event, step }) => {
     const jobId = event.data.jobId as string | undefined;
     if (jobId) await markJobRunning(jobId);
 
     try {
-      const anStats = await step.run("votes-an", async () => {
+      const anStats = await step.run("scrutins-an", async () => {
         const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
         const stats = await syncScrutinsAN(undefined, false, true);
         if (jobId) await updateJobProgress(jobId, 50);
         return stats;
       });
 
-      const senatStats = await step.run("votes-senat", async () => {
+      const senatStats = await step.run("scrutins-senat", async () => {
         const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
         return syncScrutinsSenat(null, false, true);
       });
 
       if (jobId)
         await markJobCompleted(jobId, {
-          steps: ["votes-an", "votes-senat"],
+          steps: ["scrutins-an", "scrutins-senat"],
           anStats,
           senatStats,
         });

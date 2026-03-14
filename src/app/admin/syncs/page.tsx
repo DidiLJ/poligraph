@@ -82,17 +82,17 @@ const SCRIPT_CATALOG: ScriptCategory[] = [
       { id: "sync-photos", label: "Photos", description: "Photos officielles" },
       { id: "sync-birthdates", label: "Dates de naissance", description: "Via Wikidata" },
       { id: "sync-careers", label: "Carrières", description: "Parcours politiques" },
-      { id: "sync-parties", label: "Partis", description: "Partis politiques" },
+      { id: "sync-partis", label: "Partis", description: "Partis politiques" },
       { id: "sync-mep-parties", label: "Partis MEP", description: "Affiliations eurodéputés" },
       { id: "sync-hatvp", label: "HATVP", description: "Déclarations de patrimoine" },
       { id: "sync-deceased", label: "Décès", description: "Politiciens décédés" },
     ],
   },
   {
-    name: "Votes & Législation",
+    name: "Scrutins & Législation",
     scripts: [
-      { id: "sync-votes-an", label: "Votes AN", description: "Scrutins Assemblée nationale" },
-      { id: "sync-votes-senat", label: "Votes Sénat", description: "Scrutins Sénat" },
+      { id: "sync-scrutins-an", label: "Scrutins AN", description: "Scrutins Assemblée nationale" },
+      { id: "sync-scrutins-senat", label: "Scrutins Sénat", description: "Scrutins Sénat" },
       { id: "sync-legislation", label: "Législation", description: "Dossiers législatifs" },
       {
         id: "sync-legislation-content",

@@ -31,11 +31,11 @@ interface SyncStep {
 const steps: SyncStep[] = [
   {
     name: "Votes AN (today)",
-    command: `npx tsx scripts/sync-votes-an.ts --today${dryRunFlag}`,
+    command: `npx tsx scripts/sync-scrutins-an.ts --today${dryRunFlag}`,
   },
   {
     name: "Votes Sénat (today)",
-    command: `npx tsx scripts/sync-votes-senat.ts --today${dryRunFlag}`,
+    command: `npx tsx scripts/sync-scrutins-senat.ts --today${dryRunFlag}`,
   },
   {
     name: "Législation (active)",

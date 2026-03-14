@@ -2,10 +2,10 @@
  * CLI script to sync parliamentary votes from data.assemblee-nationale.fr
  *
  * Usage:
- *   npm run sync:votes-an              # Full sync (17th legislature)
- *   npm run sync:votes-an -- --leg=17  # Sync specific legislature
- *   npm run sync:votes-an -- --today   # Only process today's scrutins
- *   npm run sync:votes-an -- --stats   # Show current stats
+ *   npm run sync:scrutins-an              # Full sync (17th legislature)
+ *   npm run sync:scrutins-an -- --leg=17  # Sync specific legislature
+ *   npm run sync:scrutins-an -- --today   # Only process today's scrutins
+ *   npm run sync:scrutins-an -- --stats   # Show current stats
  *
  * Data source: data.assemblee-nationale.fr (official Open Data)
  */

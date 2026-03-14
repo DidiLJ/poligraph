@@ -6,9 +6,9 @@
  * - Wikidata enrichment (dates, ideologies, logos)
  *
  * Usage:
- *   npm run sync:parties              # Full sync
- *   npm run sync:parties -- --config  # Only apply local config
- *   npm run sync:parties -- --stats   # Show current stats
+ *   npm run sync:partis              # Full sync
+ *   npm run sync:partis -- --config  # Only apply local config
+ *   npm run sync:partis -- --stats   # Show current stats
  */
 
 import "dotenv/config";

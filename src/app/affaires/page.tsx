@@ -32,6 +32,8 @@ import {
   type AffairSuperCategory,
 } from "@/config/labels";
 import { AffairModeToggle } from "@/components/affairs/AffairModeToggle";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { SITE_URL } from "@/config/site";
 import type { AffairStatus, AffairSeverity, Involvement } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
@@ -154,298 +156,310 @@ export default async function AffairesPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
-            Affaires judiciaires
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {totalAffairs} affaire{totalAffairs !== 1 ? "s" : ""} documentée
-            {totalAffairs !== 1 ? "s" : ""} avec sources vérifiables
-          </p>
-          <div className="sr-only">
-            <SeoIntro
-              text={`${totalAffairs} affaires judiciaires impliquant des responsables politiques, documentées avec sources vérifiables. Mises en examen, procès, condamnations et relaxes.`}
-            />
-          </div>
-        </div>
-        <ExportButton
-          endpoint="/api/export/affaires"
-          label="Export CSV"
-          params={{
-            status: statusFilter || undefined,
-            category: categoryFilter || undefined,
-          }}
-        />
-      </div>
-
-      {/* Super-category cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        {(Object.keys(AFFAIR_SUPER_CATEGORY_LABELS) as AffairSuperCategory[]).map((superCat) => {
-          const count = superCounts[superCat] || 0;
-          const isActive = superCatFilter === superCat;
-          const accent = SUPER_CATEGORY_ACCENT[superCat];
-          return (
-            <StatCard
-              key={superCat}
-              count={count}
-              label={AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
-              description={AFFAIR_SUPER_CATEGORY_DESCRIPTIONS[superCat]}
-              accent={accent}
-              href={isActive ? "/affaires" : buildUrl({ supercat: superCat })}
-              isActive={isActive}
-            />
-          );
-        })}
-      </div>
-
-      {/* Mode toggle */}
-      <div className="mb-4">
-        <AffairModeToggle mode={mode} />
-      </div>
-
-      {/* Victim mode methodology note */}
-      {mode === "victime" && (
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            Affaires pour lesquelles un élu est victime ou plaignant, documentées par au moins une
-            source journalistique vérifiable.{" "}
-            <a href="/sources" className="underline hover:no-underline">
-              En savoir plus
-            </a>
-          </p>
-        </div>
-      )}
-
-      {/* Compact filter bar */}
-      <AffairesFilterBar
-        currentFilters={{
-          search: searchFilter,
-          sort: sortFilter,
-          severity: severityFilter,
-          parti: partiFilter,
-          status: statusFilter,
-          supercat: superCatFilter,
-        }}
-        parties={partiesWithAffairs.map((p) => ({
-          slug: p.slug as string,
-          shortName: p.shortName,
-          name: p.name,
-          count: p._count.affairsAtTime,
-        }))}
-        severityCounts={severityCounts}
-        statusCounts={statusCounts}
+    <>
+      <CollectionPageJsonLd
+        name="Affaires judiciaires des responsables politiques"
+        description="Affaires judiciaires impliquant des responsables politiques français, documentées avec sources vérifiables."
+        url={`${SITE_URL}/affaires`}
+        numberOfItems={totalAffairs}
       />
-
-      {/* Active filters summary */}
-      {(searchFilter || superCatFilter || statusFilter || severityFilter || partiFilter) && (
-        <div className="mb-6 flex items-center gap-2 text-sm flex-wrap">
-          <span className="text-muted-foreground">Filtres actifs :</span>
-          {searchFilter && <Badge variant="outline">Recherche : {searchFilter}</Badge>}
-          {partiFilter && (
-            <Badge variant="outline">
-              Parti :{" "}
-              {partiesWithAffairs.find((p) => p.slug === partiFilter)?.shortName || partiFilter}
-            </Badge>
-          )}
-          {superCatFilter && (
-            <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCatFilter]}>
-              {AFFAIR_SUPER_CATEGORY_LABELS[superCatFilter]}
-            </Badge>
-          )}
-          {severityFilter && (
-            <Badge className={AFFAIR_SEVERITY_COLORS[severityFilter as AffairSeverity]}>
-              {AFFAIR_SEVERITY_EDITORIAL[severityFilter as AffairSeverity]}
-            </Badge>
-          )}
-          {statusFilter && (
-            <Badge className={AFFAIR_STATUS_COLORS[statusFilter as AffairStatus]}>
-              {AFFAIR_STATUS_LABELS[statusFilter as AffairStatus]}
-            </Badge>
-          )}
-          <Link
-            href={mode === "victime" ? "/affaires?mode=victime" : "/affaires"}
-            scroll={false}
-            className="text-primary hover:underline ml-2"
-          >
-            Effacer les filtres
-          </Link>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
+              Affaires judiciaires
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {totalAffairs} affaire{totalAffairs !== 1 ? "s" : ""} documentée
+              {totalAffairs !== 1 ? "s" : ""} avec sources vérifiables
+            </p>
+            <div className="sr-only">
+              <SeoIntro
+                text={`${totalAffairs} affaires judiciaires impliquant des responsables politiques, documentées avec sources vérifiables. Mises en examen, procès, condamnations et relaxes.`}
+              />
+            </div>
+          </div>
+          <ExportButton
+            endpoint="/api/export/affaires"
+            label="Export CSV"
+            params={{
+              status: statusFilter || undefined,
+              category: categoryFilter || undefined,
+            }}
+          />
         </div>
-      )}
 
-      {/* Results count */}
-      <p className="text-sm text-muted-foreground mb-4">
-        {total} résultat{total !== 1 ? "s" : ""}
-      </p>
+        {/* Super-category cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          {(Object.keys(AFFAIR_SUPER_CATEGORY_LABELS) as AffairSuperCategory[]).map((superCat) => {
+            const count = superCounts[superCat] || 0;
+            const isActive = superCatFilter === superCat;
+            const accent = SUPER_CATEGORY_ACCENT[superCat];
+            return (
+              <StatCard
+                key={superCat}
+                count={count}
+                label={AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
+                description={AFFAIR_SUPER_CATEGORY_DESCRIPTIONS[superCat]}
+                accent={accent}
+                href={isActive ? "/affaires" : buildUrl({ supercat: superCat })}
+                isActive={isActive}
+              />
+            );
+          })}
+        </div>
 
-      {/* Results */}
-      {affairs.length > 0 ? (
-        <>
-          <div className="space-y-4">
-            {affairs.map((affair) => {
-              const superCat = CATEGORY_TO_SUPER[affair.category];
-              // Get the most relevant date for display
-              const relevantDate = affair.verdictDate || affair.startDate || affair.factsDate;
-              const dateLabel = affair.verdictDate
-                ? "Verdict"
-                : affair.startDate
-                  ? "Révélation"
-                  : affair.factsDate
-                    ? "Faits"
-                    : null;
-              return (
-                <Card
-                  key={affair.id}
-                  className="border-l-4 transition-shadow hover:shadow-md"
-                  style={{ borderLeftColor: SUPER_CATEGORY_ACCENT[superCat].border }}
-                >
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-start gap-2 mb-2 flex-wrap">
-                          {relevantDate && (
-                            <Badge variant="secondary" className="font-mono text-base">
-                              {new Date(relevantDate).getFullYear()}
-                              {dateLabel && (
-                                <span className="ml-1 text-xs opacity-70">({dateLabel})</span>
+        {/* Mode toggle */}
+        <div className="mb-4">
+          <AffairModeToggle mode={mode} />
+        </div>
+
+        {/* Victim mode methodology note */}
+        {mode === "victime" && (
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              Affaires pour lesquelles un élu est victime ou plaignant, documentées par au moins une
+              source journalistique vérifiable.{" "}
+              <a href="/sources" className="underline hover:no-underline">
+                En savoir plus
+              </a>
+            </p>
+          </div>
+        )}
+
+        {/* Compact filter bar */}
+        <AffairesFilterBar
+          currentFilters={{
+            search: searchFilter,
+            sort: sortFilter,
+            severity: severityFilter,
+            parti: partiFilter,
+            status: statusFilter,
+            supercat: superCatFilter,
+          }}
+          parties={partiesWithAffairs.map((p) => ({
+            slug: p.slug as string,
+            shortName: p.shortName,
+            name: p.name,
+            count: p._count.affairsAtTime,
+          }))}
+          severityCounts={severityCounts}
+          statusCounts={statusCounts}
+        />
+
+        {/* Active filters summary */}
+        {(searchFilter || superCatFilter || statusFilter || severityFilter || partiFilter) && (
+          <div className="mb-6 flex items-center gap-2 text-sm flex-wrap">
+            <span className="text-muted-foreground">Filtres actifs :</span>
+            {searchFilter && <Badge variant="outline">Recherche : {searchFilter}</Badge>}
+            {partiFilter && (
+              <Badge variant="outline">
+                Parti :{" "}
+                {partiesWithAffairs.find((p) => p.slug === partiFilter)?.shortName || partiFilter}
+              </Badge>
+            )}
+            {superCatFilter && (
+              <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCatFilter]}>
+                {AFFAIR_SUPER_CATEGORY_LABELS[superCatFilter]}
+              </Badge>
+            )}
+            {severityFilter && (
+              <Badge className={AFFAIR_SEVERITY_COLORS[severityFilter as AffairSeverity]}>
+                {AFFAIR_SEVERITY_EDITORIAL[severityFilter as AffairSeverity]}
+              </Badge>
+            )}
+            {statusFilter && (
+              <Badge className={AFFAIR_STATUS_COLORS[statusFilter as AffairStatus]}>
+                {AFFAIR_STATUS_LABELS[statusFilter as AffairStatus]}
+              </Badge>
+            )}
+            <Link
+              href={mode === "victime" ? "/affaires?mode=victime" : "/affaires"}
+              scroll={false}
+              className="text-primary hover:underline ml-2"
+            >
+              Effacer les filtres
+            </Link>
+          </div>
+        )}
+
+        {/* Results count */}
+        <p className="text-sm text-muted-foreground mb-4">
+          {total} résultat{total !== 1 ? "s" : ""}
+        </p>
+
+        {/* Results */}
+        {affairs.length > 0 ? (
+          <>
+            <div className="space-y-4">
+              {affairs.map((affair) => {
+                const superCat = CATEGORY_TO_SUPER[affair.category];
+                // Get the most relevant date for display
+                const relevantDate = affair.verdictDate || affair.startDate || affair.factsDate;
+                const dateLabel = affair.verdictDate
+                  ? "Verdict"
+                  : affair.startDate
+                    ? "Révélation"
+                    : affair.factsDate
+                      ? "Faits"
+                      : null;
+                return (
+                  <Card
+                    key={affair.id}
+                    className="border-l-4 transition-shadow hover:shadow-md"
+                    style={{ borderLeftColor: SUPER_CATEGORY_ACCENT[superCat].border }}
+                  >
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-start gap-2 mb-2 flex-wrap">
+                            {relevantDate && (
+                              <Badge variant="secondary" className="font-mono text-base">
+                                {new Date(relevantDate).getFullYear()}
+                                {dateLabel && (
+                                  <span className="ml-1 text-xs opacity-70">({dateLabel})</span>
+                                )}
+                              </Badge>
+                            )}
+                            <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCat]}>
+                              {AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
+                            </Badge>
+                            {affair.severity === "CRITIQUE" && (
+                              <Badge
+                                className={
+                                  AFFAIR_SEVERITY_COLORS[affair.severity as AffairSeverity]
+                                }
+                              >
+                                {AFFAIR_SEVERITY_EDITORIAL[affair.severity as AffairSeverity]}
+                              </Badge>
+                            )}
+                            {affair.status === "CONDAMNATION_DEFINITIVE" && (
+                              <Badge className={AFFAIR_STATUS_COLORS[affair.status]}>
+                                {AFFAIR_STATUS_LABELS[affair.status]}
+                              </Badge>
+                            )}
+                            <Badge variant="outline">
+                              {AFFAIR_CATEGORY_LABELS[affair.category]}
+                            </Badge>
+                            {affair.involvement !== "DIRECT" && (
+                              <Badge
+                                className={INVOLVEMENT_COLORS[affair.involvement as Involvement]}
+                              >
+                                {INVOLVEMENT_LABELS[affair.involvement as Involvement]}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <h2 className="text-lg font-semibold mb-1">{affair.title}</h2>
+
+                          <Link
+                            href={`/politiques/${affair.politician.slug}`}
+                            className="text-primary hover:underline text-sm"
+                          >
+                            {affair.politician.fullName}
+                          </Link>
+                          {(affair.partyAtTime || affair.politician.currentParty) && (
+                            <span className="text-sm text-muted-foreground">
+                              {" ("}
+                              {affair.partyAtTime?.slug ? (
+                                <Link
+                                  href={`/affaires/parti/${affair.partyAtTime.slug}`}
+                                  className="hover:underline hover:text-foreground"
+                                >
+                                  {affair.partyAtTime.shortName}
+                                </Link>
+                              ) : (
+                                affair.partyAtTime?.shortName ||
+                                affair.politician.currentParty?.shortName
                               )}
-                            </Badge>
+                              {affair.partyAtTime &&
+                                affair.partyAtTime.id !== affair.politician.currentParty?.id && (
+                                  <span className="text-xs"> à l&apos;époque</span>
+                                )}
+                              {")"}
+                            </span>
                           )}
-                          <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCat]}>
-                            {AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
-                          </Badge>
-                          {affair.severity === "CRITIQUE" && (
-                            <Badge
-                              className={AFFAIR_SEVERITY_COLORS[affair.severity as AffairSeverity]}
-                            >
-                              {AFFAIR_SEVERITY_EDITORIAL[affair.severity as AffairSeverity]}
-                            </Badge>
-                          )}
-                          {affair.status === "CONDAMNATION_DEFINITIVE" && (
-                            <Badge className={AFFAIR_STATUS_COLORS[affair.status]}>
-                              {AFFAIR_STATUS_LABELS[affair.status]}
-                            </Badge>
-                          )}
-                          <Badge variant="outline">{AFFAIR_CATEGORY_LABELS[affair.category]}</Badge>
-                          {affair.involvement !== "DIRECT" && (
-                            <Badge
-                              className={INVOLVEMENT_COLORS[affair.involvement as Involvement]}
-                            >
-                              {INVOLVEMENT_LABELS[affair.involvement as Involvement]}
-                            </Badge>
-                          )}
+
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                            {stripMarkdown(affair.description)}
+                          </p>
+
+                          {AFFAIR_STATUS_NEEDS_PRESUMPTION[affair.status] &&
+                            (affair.involvement === "DIRECT" ||
+                              affair.involvement === "INDIRECT") && (
+                              <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mt-3 inline-block">
+                                Présomption d&apos;innocence : affaire en cours
+                              </p>
+                            )}
                         </div>
 
-                        <h2 className="text-lg font-semibold mb-1">{affair.title}</h2>
-
-                        <Link
-                          href={`/politiques/${affair.politician.slug}`}
-                          className="text-primary hover:underline text-sm"
-                        >
-                          {affair.politician.fullName}
-                        </Link>
-                        {(affair.partyAtTime || affair.politician.currentParty) && (
-                          <span className="text-sm text-muted-foreground">
-                            {" ("}
-                            {affair.partyAtTime?.slug ? (
-                              <Link
-                                href={`/affaires/parti/${affair.partyAtTime.slug}`}
-                                className="hover:underline hover:text-foreground"
-                              >
-                                {affair.partyAtTime.shortName}
-                              </Link>
-                            ) : (
-                              affair.partyAtTime?.shortName ||
-                              affair.politician.currentParty?.shortName
-                            )}
-                            {affair.partyAtTime &&
-                              affair.partyAtTime.id !== affair.politician.currentParty?.id && (
-                                <span className="text-xs"> à l&apos;époque</span>
-                              )}
-                            {")"}
-                          </span>
-                        )}
-
-                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                          {stripMarkdown(affair.description)}
-                        </p>
-
-                        {AFFAIR_STATUS_NEEDS_PRESUMPTION[affair.status] &&
-                          (affair.involvement === "DIRECT" ||
-                            affair.involvement === "INDIRECT") && (
-                            <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mt-3 inline-block">
-                              Présomption d&apos;innocence : affaire en cours
-                            </p>
+                        <div className="text-sm text-muted-foreground md:text-right md:min-w-[150px]">
+                          {affair.sentence && (
+                            <p className="font-medium text-foreground mb-2">{affair.sentence}</p>
                           )}
+                          <p className="mb-2">
+                            {affair.sources.length} source
+                            {affair.sources.length !== 1 ? "s" : ""}
+                          </p>
+                          <Link
+                            href={`/affaires/${affair.slug}`}
+                            className="text-primary hover:underline text-xs"
+                          >
+                            Voir détails →
+                          </Link>
+                        </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
 
-                      <div className="text-sm text-muted-foreground md:text-right md:min-w-[150px]">
-                        {affair.sentence && (
-                          <p className="font-medium text-foreground mb-2">{affair.sentence}</p>
-                        )}
-                        <p className="mb-2">
-                          {affair.sources.length} source
-                          {affair.sources.length !== 1 ? "s" : ""}
-                        </p>
-                        <Link
-                          href={`/affaires/${affair.slug}`}
-                          className="text-primary hover:underline text-xs"
-                        >
-                          Voir détails →
-                        </Link>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+            {/* Pagination */}
+            <SimplePagination
+              page={page}
+              totalPages={totalPages}
+              buildUrl={(p) =>
+                buildUrl({
+                  search: searchFilter,
+                  page: String(p),
+                  sort: sortFilter,
+                  status: statusFilter,
+                  supercat: superCatFilter,
+                  severity: severityFilter,
+                  parti: partiFilter,
+                })
+              }
+            />
+          </>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground mb-2">
+                Aucune affaire documentée
+                {searchFilter || statusFilter || superCatFilter ? " avec ces filtres" : ""}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Les affaires sont ajoutées avec des sources vérifiables. Notre base est enrichie
+                régulièrement et ne prétend pas à l&apos;exhaustivité.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Pagination */}
-          <SimplePagination
-            page={page}
-            totalPages={totalPages}
-            buildUrl={(p) =>
-              buildUrl({
-                search: searchFilter,
-                page: String(p),
-                sort: sortFilter,
-                status: statusFilter,
-                supercat: superCatFilter,
-                severity: severityFilter,
-                parti: partiFilter,
-              })
-            }
-          />
-        </>
-      ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-2">
-              Aucune affaire documentée
-              {searchFilter || statusFilter || superCatFilter ? " avec ces filtres" : ""}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Les affaires sont ajoutées avec des sources vérifiables. Notre base est enrichie
-              régulièrement et ne prétend pas à l&apos;exhaustivité.
+        {/* Info box */}
+        <Card className="mt-8 bg-blue-50 border-blue-200">
+          <CardContent className="pt-6">
+            <h3 className="font-semibold text-blue-900 mb-2">À propos des données</h3>
+            <p className="text-sm text-blue-800">
+              Chaque affaire est documentée avec au minimum une source vérifiable (article de
+              presse, décision de justice). La présomption d&apos;innocence est systématiquement
+              rappelée pour les affaires en cours. Les informations proviennent de sources publiques
+              : Wikidata, articles de presse, décisions de justice publiées.
             </p>
           </CardContent>
         </Card>
-      )}
-
-      {/* Info box */}
-      <Card className="mt-8 bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <h3 className="font-semibold text-blue-900 mb-2">À propos des données</h3>
-          <p className="text-sm text-blue-800">
-            Chaque affaire est documentée avec au minimum une source vérifiable (article de presse,
-            décision de justice). La présomption d&apos;innocence est systématiquement rappelée pour
-            les affaires en cours. Les informations proviennent de sources publiques : Wikidata,
-            articles de presse, décisions de justice publiées.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+      </div>
+    </>
   );
 }

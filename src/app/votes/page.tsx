@@ -13,6 +13,8 @@ import {
   THEME_CATEGORY_COLORS,
 } from "@/config/labels";
 import { getScrutins, getLegislatures, getChambers, getThemeCounts } from "@/lib/data/scrutins";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { SITE_URL } from "@/config/site";
 import type { VotingResult, Chamber, ThemeCategory } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
@@ -83,308 +85,325 @@ export default async function VotesPage({ searchParams }: PageProps) {
   const hasMultipleChambers = chambers.length > 1;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Votes parlementaires</h1>
-          <p className="text-muted-foreground">
-            {total.toLocaleString("fr-FR")} scrutins analysés.{" "}
-            {stats.ADOPTED ? `${Math.round((stats.ADOPTED / total) * 100)}% adoptés.` : ""}{" "}
-            Découvrez comment votent vos représentants.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/statistiques?tab=votes"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-            Statistiques
-          </Link>
-          <ExportButton
-            endpoint="/api/export/votes"
-            label="Export CSV"
-            params={{
-              chamber: chamber,
-              result: result,
-              legislature: legislature?.toString(),
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-muted rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold">{total}</p>
-          <p className="text-sm text-muted-foreground">Scrutins</p>
-        </div>
-        <div className="bg-green-50 rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">{stats.ADOPTED || 0}</p>
-          <p className="text-sm text-muted-foreground">Adoptés</p>
-        </div>
-        <div className="bg-red-50 rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold text-red-600">{stats.REJECTED || 0}</p>
-          <p className="text-sm text-muted-foreground">Rejetés</p>
-        </div>
-        <div className="bg-blue-50 rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{legislatures.length}</p>
-          <p className="text-sm text-muted-foreground">Législatures</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        {/* Search */}
-        <VotesSearchInput value={search || ""} />
-
-        {/* Result filter */}
-        <div className="flex gap-2">
-          <Link
-            href={buildUrl({ result: undefined })}
-            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              !result ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-            }`}
-          >
-            Tous
-          </Link>
-          {(["ADOPTED", "REJECTED"] as VotingResult[]).map((r) => (
+    <>
+      <CollectionPageJsonLd
+        name="Votes parlementaires"
+        description="Scrutins de l'Assemblée nationale et du Sénat. Résultats, résumés et détails des votes parlementaires."
+        url={`${SITE_URL}/votes`}
+        numberOfItems={total}
+      />
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Votes parlementaires</h1>
+            <p className="text-muted-foreground">
+              {total.toLocaleString("fr-FR")} scrutins analysés.{" "}
+              {stats.ADOPTED ? `${Math.round((stats.ADOPTED / total) * 100)}% adoptés.` : ""}{" "}
+              Découvrez comment votent vos représentants.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             <Link
-              key={r}
-              href={buildUrl({ result: r })}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                result === r ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-              }`}
+              href="/statistiques?tab=votes"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium transition-colors"
             >
-              {VOTING_RESULT_LABELS[r]}
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              Statistiques
             </Link>
-          ))}
-        </div>
-
-        {/* Chamber filter */}
-        {hasMultipleChambers && (
-          <div className="flex gap-2">
-            <Link
-              href={buildUrl({ chamber: undefined })}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                !chamber ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              Toutes
-            </Link>
-            {chambers.map((c) => (
-              <Link
-                key={c.chamber}
-                href={buildUrl({
-                  chamber: chamber === c.chamber ? undefined : c.chamber,
-                })}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  chamber === c.chamber
-                    ? c.chamber === "AN"
-                      ? "bg-blue-600 text-white"
-                      : "bg-rose-600 text-white"
-                    : c.chamber === "AN"
-                      ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                      : "bg-rose-50 text-rose-700 hover:bg-rose-100"
-                }`}
-              >
-                {CHAMBER_LABELS[c.chamber]} ({c._count})
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* Legislature filter */}
-        {legislatures.length > 1 && (
-          <div className="flex gap-2">
-            {legislatures.map((leg) => (
-              <Link
-                key={leg.legislature}
-                href={buildUrl({
-                  legislature:
-                    legislature === leg.legislature ? undefined : String(leg.legislature),
-                })}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  legislature === leg.legislature
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted hover:bg-muted/80"
-                }`}
-              >
-                {leg.legislature}e ({leg._count})
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Theme filter */}
-      {themeCounts.length > 0 && (
-        <div className="mb-6">
-          <p className="text-sm font-medium mb-2">Filtrer par thème</p>
-          <div className="flex flex-wrap gap-2">
-            <Link href={buildUrl({ theme: undefined })}>
-              <Badge variant={!theme ? "default" : "outline"} className="cursor-pointer">
-                Tous
-              </Badge>
-            </Link>
-            {themeCounts.map((t) => {
-              const isActive = theme === t.theme;
-              const colorClass = THEME_CATEGORY_COLORS[t.theme];
-              const icon = THEME_CATEGORY_ICONS[t.theme];
-              const label = THEME_CATEGORY_LABELS[t.theme];
-
-              return (
-                <Link
-                  key={t.theme}
-                  href={buildUrl({
-                    theme: isActive ? undefined : t.theme,
-                  })}
-                >
-                  <Badge
-                    variant={isActive ? "default" : "outline"}
-                    className={`cursor-pointer ${isActive ? colorClass : ""}`}
-                  >
-                    {icon} {label} ({t._count})
-                  </Badge>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Active filters */}
-      {(result || legislature || chamber || theme || search) && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {search && (
-            <Badge variant="secondary" className="gap-1">
-              Recherche: {search}
-              <Link href={buildUrl({ search: undefined })} className="ml-1 hover:text-destructive">
-                ×
-              </Link>
-            </Badge>
-          )}
-          {chamber && (
-            <Badge variant="secondary" className="gap-1">
-              {CHAMBER_LABELS[chamber]}
-              <Link href={buildUrl({ chamber: undefined })} className="ml-1 hover:text-destructive">
-                ×
-              </Link>
-            </Badge>
-          )}
-          {result && (
-            <Badge variant="secondary" className="gap-1">
-              {VOTING_RESULT_LABELS[result]}
-              <Link href={buildUrl({ result: undefined })} className="ml-1 hover:text-destructive">
-                ×
-              </Link>
-            </Badge>
-          )}
-          {theme && (
-            <Badge variant="secondary" className="gap-1">
-              {THEME_CATEGORY_ICONS[theme]} {THEME_CATEGORY_LABELS[theme]}
-              <Link href={buildUrl({ theme: undefined })} className="ml-1 hover:text-destructive">
-                ×
-              </Link>
-            </Badge>
-          )}
-          {legislature && (
-            <Badge variant="secondary" className="gap-1">
-              {legislature}e législature
-              <Link
-                href={buildUrl({ legislature: undefined })}
-                className="ml-1 hover:text-destructive"
-              >
-                ×
-              </Link>
-            </Badge>
-          )}
-          <Link
-            href="/votes"
-            scroll={false}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Effacer tout
-          </Link>
-        </div>
-      )}
-
-      {/* List */}
-      {scrutins.length > 0 ? (
-        <div className="space-y-4">
-          {scrutins.map((scrutin) => (
-            <VoteCard
-              key={scrutin.id}
-              id={scrutin.id}
-              externalId={scrutin.externalId}
-              slug={scrutin.slug}
-              title={scrutin.title}
-              votingDate={scrutin.votingDate}
-              legislature={scrutin.legislature}
-              chamber={scrutin.chamber}
-              votesFor={scrutin.votesFor}
-              votesAgainst={scrutin.votesAgainst}
-              votesAbstain={scrutin.votesAbstain}
-              result={scrutin.result}
-              sourceUrl={scrutin.sourceUrl}
-              theme={scrutin.theme}
+            <ExportButton
+              endpoint="/api/export/votes"
+              label="Export CSV"
+              params={{
+                chamber: chamber,
+                result: result,
+                legislature: legislature?.toString(),
+              }}
             />
-          ))}
+          </div>
         </div>
-      ) : (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>Aucun scrutin trouvé</p>
-          {(result || legislature || search || theme) && (
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-muted rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold">{total}</p>
+            <p className="text-sm text-muted-foreground">Scrutins</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-green-600">{stats.ADOPTED || 0}</p>
+            <p className="text-sm text-muted-foreground">Adoptés</p>
+          </div>
+          <div className="bg-red-50 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-red-600">{stats.REJECTED || 0}</p>
+            <p className="text-sm text-muted-foreground">Rejetés</p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-primary">{legislatures.length}</p>
+            <p className="text-sm text-muted-foreground">Législatures</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-4 mb-6">
+          {/* Search */}
+          <VotesSearchInput value={search || ""} />
+
+          {/* Result filter */}
+          <div className="flex gap-2">
+            <Link
+              href={buildUrl({ result: undefined })}
+              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                !result ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+              }`}
+            >
+              Tous
+            </Link>
+            {(["ADOPTED", "REJECTED"] as VotingResult[]).map((r) => (
+              <Link
+                key={r}
+                href={buildUrl({ result: r })}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  result === r ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+                }`}
+              >
+                {VOTING_RESULT_LABELS[r]}
+              </Link>
+            ))}
+          </div>
+
+          {/* Chamber filter */}
+          {hasMultipleChambers && (
+            <div className="flex gap-2">
+              <Link
+                href={buildUrl({ chamber: undefined })}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  !chamber ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
+                }`}
+              >
+                Toutes
+              </Link>
+              {chambers.map((c) => (
+                <Link
+                  key={c.chamber}
+                  href={buildUrl({
+                    chamber: chamber === c.chamber ? undefined : c.chamber,
+                  })}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                    chamber === c.chamber
+                      ? c.chamber === "AN"
+                        ? "bg-blue-600 text-white"
+                        : "bg-rose-600 text-white"
+                      : c.chamber === "AN"
+                        ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                  }`}
+                >
+                  {CHAMBER_LABELS[c.chamber]} ({c._count})
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Legislature filter */}
+          {legislatures.length > 1 && (
+            <div className="flex gap-2">
+              {legislatures.map((leg) => (
+                <Link
+                  key={leg.legislature}
+                  href={buildUrl({
+                    legislature:
+                      legislature === leg.legislature ? undefined : String(leg.legislature),
+                  })}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                    legislature === leg.legislature
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/80"
+                  }`}
+                >
+                  {leg.legislature}e ({leg._count})
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Theme filter */}
+        {themeCounts.length > 0 && (
+          <div className="mb-6">
+            <p className="text-sm font-medium mb-2">Filtrer par thème</p>
+            <div className="flex flex-wrap gap-2">
+              <Link href={buildUrl({ theme: undefined })}>
+                <Badge variant={!theme ? "default" : "outline"} className="cursor-pointer">
+                  Tous
+                </Badge>
+              </Link>
+              {themeCounts.map((t) => {
+                const isActive = theme === t.theme;
+                const colorClass = THEME_CATEGORY_COLORS[t.theme];
+                const icon = THEME_CATEGORY_ICONS[t.theme];
+                const label = THEME_CATEGORY_LABELS[t.theme];
+
+                return (
+                  <Link
+                    key={t.theme}
+                    href={buildUrl({
+                      theme: isActive ? undefined : t.theme,
+                    })}
+                  >
+                    <Badge
+                      variant={isActive ? "default" : "outline"}
+                      className={`cursor-pointer ${isActive ? colorClass : ""}`}
+                    >
+                      {icon} {label} ({t._count})
+                    </Badge>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Active filters */}
+        {(result || legislature || chamber || theme || search) && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {search && (
+              <Badge variant="secondary" className="gap-1">
+                Recherche: {search}
+                <Link
+                  href={buildUrl({ search: undefined })}
+                  className="ml-1 hover:text-destructive"
+                >
+                  ×
+                </Link>
+              </Badge>
+            )}
+            {chamber && (
+              <Badge variant="secondary" className="gap-1">
+                {CHAMBER_LABELS[chamber]}
+                <Link
+                  href={buildUrl({ chamber: undefined })}
+                  className="ml-1 hover:text-destructive"
+                >
+                  ×
+                </Link>
+              </Badge>
+            )}
+            {result && (
+              <Badge variant="secondary" className="gap-1">
+                {VOTING_RESULT_LABELS[result]}
+                <Link
+                  href={buildUrl({ result: undefined })}
+                  className="ml-1 hover:text-destructive"
+                >
+                  ×
+                </Link>
+              </Badge>
+            )}
+            {theme && (
+              <Badge variant="secondary" className="gap-1">
+                {THEME_CATEGORY_ICONS[theme]} {THEME_CATEGORY_LABELS[theme]}
+                <Link href={buildUrl({ theme: undefined })} className="ml-1 hover:text-destructive">
+                  ×
+                </Link>
+              </Badge>
+            )}
+            {legislature && (
+              <Badge variant="secondary" className="gap-1">
+                {legislature}e législature
+                <Link
+                  href={buildUrl({ legislature: undefined })}
+                  className="ml-1 hover:text-destructive"
+                >
+                  ×
+                </Link>
+              </Badge>
+            )}
             <Link
               href="/votes"
               scroll={false}
-              className="text-primary hover:underline mt-2 inline-block"
+              className="text-sm text-muted-foreground hover:text-foreground"
             >
-              Effacer les filtres
+              Effacer tout
             </Link>
-          )}
+          </div>
+        )}
+
+        {/* List */}
+        {scrutins.length > 0 ? (
+          <div className="space-y-4">
+            {scrutins.map((scrutin) => (
+              <VoteCard
+                key={scrutin.id}
+                id={scrutin.id}
+                externalId={scrutin.externalId}
+                slug={scrutin.slug}
+                title={scrutin.title}
+                votingDate={scrutin.votingDate}
+                legislature={scrutin.legislature}
+                chamber={scrutin.chamber}
+                votesFor={scrutin.votesFor}
+                votesAgainst={scrutin.votesAgainst}
+                votesAbstain={scrutin.votesAbstain}
+                result={scrutin.result}
+                sourceUrl={scrutin.sourceUrl}
+                theme={scrutin.theme}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>Aucun scrutin trouvé</p>
+            {(result || legislature || search || theme) && (
+              <Link
+                href="/votes"
+                scroll={false}
+                className="text-primary hover:underline mt-2 inline-block"
+              >
+                Effacer les filtres
+              </Link>
+            )}
+          </div>
+        )}
+
+        {/* Pagination */}
+        <SimplePagination
+          page={page}
+          totalPages={totalPages}
+          buildUrl={(p) => buildUrl({ page: String(p) })}
+        />
+
+        {/* Source */}
+        <div className="mt-8 text-center text-sm text-muted-foreground">
+          <p>
+            Données issues de{" "}
+            <a
+              href="https://data.assemblee-nationale.fr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              data.assemblee-nationale.fr
+            </a>{" "}
+            et{" "}
+            <a
+              href="https://www.senat.fr/scrutin-public/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              senat.fr
+            </a>{" "}
+            (Open Data officiel)
+          </p>
         </div>
-      )}
-
-      {/* Pagination */}
-      <SimplePagination
-        page={page}
-        totalPages={totalPages}
-        buildUrl={(p) => buildUrl({ page: String(p) })}
-      />
-
-      {/* Source */}
-      <div className="mt-8 text-center text-sm text-muted-foreground">
-        <p>
-          Données issues de{" "}
-          <a
-            href="https://data.assemblee-nationale.fr"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            data.assemblee-nationale.fr
-          </a>{" "}
-          et{" "}
-          <a
-            href="https://www.senat.fr/scrutin-public/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            senat.fr
-          </a>{" "}
-          (Open Data officiel)
-        </p>
       </div>
-    </div>
+    </>
   );
 }

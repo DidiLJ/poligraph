@@ -13,7 +13,7 @@ import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
 import { ExternalLink, Calendar, Users, Sparkles, Lightbulb, FileText } from "lucide-react";
 import { StatusBadge } from "@/components/legislation";
 import { MarkdownText } from "@/components/ui/markdown";
-import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { BreadcrumbJsonLd, ArticleJsonLd } from "@/components/seo/JsonLd";
 import type { VotePosition } from "@/types";
 import { SITE_URL } from "@/config/site";
 
@@ -211,6 +211,14 @@ export default async function ScrutinPage({ params }: PageProps) {
           { name: scrutin.title, url: `${SITE_URL}/votes/${scrutin.slug || scrutin.externalId}` },
         ]}
       />
+      {scrutin.summary && (
+        <ArticleJsonLd
+          headline={scrutin.title}
+          description={scrutin.citizenImpact?.replace(/\*\*/g, "").split(/[.!?]\s/)[0] || undefined}
+          datePublished={scrutin.votingDate.toISOString()}
+          url={`${SITE_URL}/votes/${scrutin.slug}`}
+        />
+      )}
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="text-sm text-muted-foreground mb-6">

@@ -108,7 +108,7 @@ function getMandateType(code: string): MandateType {
 /**
  * Sync a single government member
  */
-async function syncGovernmentMember(
+async function syncGouvernementMember(
   member: GouvernementCSV
 ): Promise<{ status: "created" | "updated" | "error"; mandateCreated: boolean }> {
   try {
@@ -318,7 +318,7 @@ export async function syncGouvernement(
     // 4. Sync members
     console.log(`Syncing ${records.length} government members...`);
     for (const member of records) {
-      const { status, mandateCreated } = await syncGovernmentMember(member);
+      const { status, mandateCreated } = await syncGouvernementMember(member);
       if (status === "created") result.membersCreated++;
       else if (status === "updated") result.membersUpdated++;
       else result.errors.push(`${member.prenom} ${member.nom}`);

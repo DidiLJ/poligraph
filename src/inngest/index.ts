@@ -34,14 +34,14 @@ const groupedFunctions = [
 // Phase 1: Migrated — lazy dynamic imports to avoid loading heavy deps at route init
 const migratedFunctions = [
   createSyncFunction("sync-votes-an", async (data) => {
-    const { syncVotesAN } = await import("@/services/sync/votes-an");
+    const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
     const todayOnly = !data.flags || !(data.flags as string).includes("--all");
-    return syncVotesAN(undefined, false, todayOnly);
+    return syncScrutinsAN(undefined, false, todayOnly);
   }),
   createSyncFunction("sync-votes-senat", async (data) => {
-    const { syncVotesSenat } = await import("@/services/sync/votes-senat");
+    const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
     const todayOnly = !data.flags || !(data.flags as string).includes("--all");
-    return syncVotesSenat(null, false, todayOnly);
+    return syncScrutinsSenat(null, false, todayOnly);
   }),
   createSyncFunction("sync-press-analysis", async (data) => {
     const { syncPressAnalysis } = await import("@/services/sync/press-analysis");

@@ -83,7 +83,7 @@ interface ANVotant {
   mandatRef: string;
 }
 
-export interface VotesANSyncStats {
+export interface ScrutinsANSyncStats {
   scrutinsProcessed: number;
   scrutinsCreated: number;
   scrutinsUpdated: number;
@@ -230,13 +230,13 @@ async function generateUniqueScrutinSlug(date: Date, title: string): Promise<str
 /**
  * Sync votes from Assemblée nationale
  */
-export async function syncVotesAN(
+export async function syncScrutinsAN(
   legislature: number = LEGISLATURE,
   dryRun: boolean = false,
   todayOnly: boolean = false,
   force: boolean = false
-): Promise<VotesANSyncStats> {
-  const stats: VotesANSyncStats = {
+): Promise<ScrutinsANSyncStats> {
+  const stats: ScrutinsANSyncStats = {
     scrutinsProcessed: 0,
     scrutinsCreated: 0,
     scrutinsUpdated: 0,
@@ -473,7 +473,7 @@ export async function syncVotesAN(
 /**
  * Get statistics for AN votes in the database
  */
-export async function getVotesANStats(): Promise<{
+export async function getScrutinsANStats(): Promise<{
   scrutinsCount: number;
   votesCount: number;
   legislatures: Array<{ legislature: number; count: number }>;

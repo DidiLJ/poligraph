@@ -22,10 +22,10 @@ export type {
   CandidatureMunicipaleCSV,
   CandidaturesSyncResult,
 } from "./types";
-export { syncVotesAN, getVotesANStats } from "./votes-an";
-export type { VotesANSyncStats } from "./votes-an";
-export { syncVotesSenat, getVotesSenatStats, AVAILABLE_SESSIONS } from "./votes-senat";
-export type { VotesSenatSyncStats } from "./votes-senat";
+export { syncScrutinsAN, getScrutinsANStats } from "./scrutins-an";
+export type { ScrutinsANSyncStats } from "./scrutins-an";
+export { syncScrutinsSenat, getScrutinsSenatStats, AVAILABLE_SESSIONS } from "./scrutins-senat";
+export type { ScrutinsSenatSyncStats } from "./scrutins-senat";
 export { syncFactchecks } from "./factchecks";
 export type { FactcheckSyncOptions, FactcheckSyncStats } from "./factchecks";
 export { syncPress } from "./press";

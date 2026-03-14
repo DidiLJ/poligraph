@@ -14,15 +14,15 @@ export const syncVotes = inngest.createFunction(
 
     try {
       const anStats = await step.run("votes-an", async () => {
-        const { syncVotesAN } = await import("@/services/sync/votes-an");
-        const stats = await syncVotesAN(undefined, false, true);
+        const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
+        const stats = await syncScrutinsAN(undefined, false, true);
         if (jobId) await updateJobProgress(jobId, 50);
         return stats;
       });
 
       const senatStats = await step.run("votes-senat", async () => {
-        const { syncVotesSenat } = await import("@/services/sync/votes-senat");
-        return syncVotesSenat(null, false, true);
+        const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
+        return syncScrutinsSenat(null, false, true);
       });
 
       if (jobId)

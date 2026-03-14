@@ -53,7 +53,7 @@ interface SenatVote {
   siege: number;
 }
 
-export interface VotesSenatSyncStats {
+export interface ScrutinsSenatSyncStats {
   scrutinsProcessed: number;
   scrutinsCreated: number;
   scrutinsUpdated: number;
@@ -260,13 +260,13 @@ function sessionToLegislature(session: number): number {
 /**
  * Sync votes from Sénat
  */
-export async function syncVotesSenat(
+export async function syncScrutinsSenat(
   session: number | null = null,
   dryRun: boolean = false,
   todayOnly: boolean = false,
   force: boolean = false
-): Promise<VotesSenatSyncStats> {
-  const stats: VotesSenatSyncStats = {
+): Promise<ScrutinsSenatSyncStats> {
+  const stats: ScrutinsSenatSyncStats = {
     scrutinsProcessed: 0,
     scrutinsCreated: 0,
     scrutinsUpdated: 0,
@@ -506,7 +506,7 @@ export async function syncVotesSenat(
 /**
  * Get statistics for Senate votes in the database
  */
-export async function getVotesSenatStats(): Promise<{
+export async function getScrutinsSenatStats(): Promise<{
   scrutinsCount: number;
   votesCount: number;
   sessions: Array<{ legislature: number; count: number }>;

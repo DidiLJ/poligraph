@@ -14,10 +14,10 @@
 import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
 import {
-  syncVotesSenat,
-  getVotesSenatStats,
+  syncScrutinsSenat,
+  getScrutinsSenatStats,
   AVAILABLE_SESSIONS,
-} from "../src/services/sync/votes-senat";
+} from "../src/services/sync/scrutins-senat";
 
 const DEFAULT_SESSION = 2024;
 
@@ -58,7 +58,7 @@ Features:
   },
 
   async showStats() {
-    const stats = await getVotesSenatStats();
+    const stats = await getScrutinsSenatStats();
 
     console.log("\n" + "=".repeat(50));
     console.log("Senate Votes Stats");
@@ -114,7 +114,7 @@ Features:
     if (today) console.log("Filter: Today's scrutins only");
     if (force) console.log("Mode: Full sync (--force)");
 
-    const result = await syncVotesSenat(session, dryRun, today, force);
+    const result = await syncScrutinsSenat(session, dryRun, today, force);
 
     return {
       success: result.errors.length === 0,

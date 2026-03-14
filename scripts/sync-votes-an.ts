@@ -12,7 +12,7 @@
 
 import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
-import { syncVotesAN, getVotesANStats } from "../src/services/sync/votes-an";
+import { syncScrutinsAN, getScrutinsANStats } from "../src/services/sync/scrutins-an";
 
 const DEFAULT_LEGISLATURE = 17;
 
@@ -47,7 +47,7 @@ Features:
   },
 
   async showStats() {
-    const stats = await getVotesANStats();
+    const stats = await getScrutinsANStats();
 
     console.log("\n" + "=".repeat(50));
     console.log("AN Votes Stats");
@@ -90,7 +90,7 @@ Features:
     if (today) console.log("Filter: Today's scrutins only");
     if (force) console.log("Mode: Full sync (--force)");
 
-    const result = await syncVotesAN(legislature, dryRun, today, force);
+    const result = await syncScrutinsAN(legislature, dryRun, today, force);
 
     return {
       success: result.errors.length === 0,

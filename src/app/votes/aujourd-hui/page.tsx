@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { DailyVotesPage } from "@/components/votes/DailyVotesPage";
-import { getParisToday } from "@/lib/data/votes";
+import { getParisToday } from "@/lib/data/scrutins";
 
 export const revalidate = 300; // ISR 5 min
 

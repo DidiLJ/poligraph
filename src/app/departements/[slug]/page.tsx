@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { ensureContrast } from "@/lib/contrast";
 import { getDepartmentBySlug, DEPARTMENTS } from "@/config/departments";
-import { getDeputiesByDepartment, getSenatorsByDepartment } from "@/lib/data/departments";
+import { getDeputesByDepartment, getSenateursByDepartment } from "@/lib/data/departments";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -52,8 +52,8 @@ export default async function DepartmentPage({ params }: PageProps) {
   const departmentName = dept.name;
 
   const [deputies, senators] = await Promise.all([
-    getDeputiesByDepartment(dept.code),
-    getSenatorsByDepartment(dept.code),
+    getDeputesByDepartment(dept.code),
+    getSenateursByDepartment(dept.code),
   ]);
 
   if (deputies.length === 0 && senators.length === 0) {

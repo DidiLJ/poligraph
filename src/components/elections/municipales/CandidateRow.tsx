@@ -14,8 +14,8 @@ interface CandidateRowProps {
     currentParty: { shortName: string; color: string | null } | null;
     mandates: Array<{ type: string }>;
   } | null;
-  isIncumbentMayor?: boolean;
-  incumbentMayorGender?: string | null;
+  isIncumbentMaire?: boolean;
+  incumbentMaireGender?: string | null;
 }
 
 function GenderDot({ gender }: { gender: string | null }) {
@@ -35,8 +35,8 @@ export function CandidateRow({
   name,
   gender,
   politician,
-  isIncumbentMayor,
-  incumbentMayorGender,
+  isIncumbentMaire,
+  incumbentMaireGender,
 }: CandidateRowProps) {
   return (
     <div className="flex items-center gap-3 py-1.5 px-2 text-sm">
@@ -64,9 +64,9 @@ export function CandidateRow({
       </span>
 
       {/* Incumbent mayor badge */}
-      {isIncumbentMayor && (
+      {isIncumbentMaire && (
         <Badge variant="outline" className="shrink-0 text-xs">
-          Maire sortant{incumbentMayorGender === "F" ? "e" : ""}
+          Maire sortant{incumbentMaireGender === "F" ? "e" : ""}
         </Badge>
       )}
 

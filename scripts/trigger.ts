@@ -27,7 +27,7 @@ Usage: npm run trigger <event-name> [-- --flag=value]
 
 Grouped events (multi-step):
   sync:press           Presse RSS + analyse IA
-  sync:votes           Votes AN + Sénat
+  sync:scrutins        Scrutins AN + Sénat
   sync:legislation     Dossiers législatifs + contenu
   discover:affairs     Découverte affaires + réconciliation
   sync:factchecks      Fact-checks + Judilibre

@@ -51,8 +51,8 @@ interface ListCardProps {
     participationRate?: number | null;
     affairsCount?: number;
   }>;
-  incumbentMayorLastName?: string | null;
-  incumbentMayorGender?: string | null;
+  incumbentMaireLastName?: string | null;
+  incumbentMaireGender?: string | null;
 }
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
@@ -128,8 +128,8 @@ export function ListCard({
   femaleCount,
   teteDeListe,
   members,
-  incumbentMayorLastName,
-  incumbentMayorGender,
+  incumbentMaireLastName,
+  incumbentMaireGender,
 }: ListCardProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -177,11 +177,11 @@ export function ListCard({
                   name={member.candidateName}
                   gender={member.candidate?.gender ?? null}
                   politician={member.politician}
-                  isIncumbentMayor={
-                    !!incumbentMayorLastName &&
-                    matchesLastName(member.candidateName, incumbentMayorLastName)
+                  isIncumbentMaire={
+                    !!incumbentMaireLastName &&
+                    matchesLastName(member.candidateName, incumbentMaireLastName)
                   }
-                  incumbentMayorGender={incumbentMayorGender}
+                  incumbentMaireGender={incumbentMaireGender}
                 />
                 {member.politician && (
                   <PoliticianBridge

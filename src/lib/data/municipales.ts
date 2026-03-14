@@ -5,12 +5,12 @@ import { db } from "@/lib/db";
 import { primarySurname } from "@/lib/name-matching";
 
 // ============================================
-// Incumbent mayor helper
+// Incumbent maire helper
 // ============================================
 
-/** Fetch the incumbent mayor for a commune + check if they're running again in 2026. */
-async function getIncumbentMayor(communeId: string, electionId: string) {
-  const mayor = await db.localOfficial.findFirst({
+/** Fetch the incumbent maire for a commune + check if they're running again in 2026. */
+async function getIncumbentMaire(communeId: string, electionId: string) {
+  const maire = await db.localOfficial.findFirst({
     where: { role: "MAIRE", communeId, isCurrent: true },
     include: {
       politician: {
@@ -20,19 +20,19 @@ async function getIncumbentMayor(communeId: string, electionId: string) {
     },
   });
 
-  if (!mayor) return null;
+  if (!maire) return null;
 
   // Check if running again: match by lastName in candidacies for this commune.
   // For double surnames (e.g. "Libert Albanel"), also try the primary surname ("Libert")
   // since ballot names are often shorter than the full legal name in the RNE.
-  const primary = primarySurname(mayor.lastName.toLowerCase());
+  const primary = primarySurname(maire.lastName.toLowerCase());
 
   const candidacy = await db.candidacy.findFirst({
     where: {
       electionId,
       communeId,
       OR: [
-        { candidateName: { contains: mayor.lastName, mode: "insensitive" } },
+        { candidateName: { contains: maire.lastName, mode: "insensitive" } },
         ...(primary
           ? [
               {
@@ -49,7 +49,7 @@ async function getIncumbentMayor(communeId: string, electionId: string) {
   });
 
   return {
-    mayor,
+    maire,
     isRunningAgain: !!candidacy,
     candidacy,
   };
@@ -109,7 +109,7 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
       electionId: null,
       round1Date: null,
       lists: [],
-      incumbentMayor: null,
+      incumbentMaire: null,
       stats: {
         listCount: 0,
         candidateCount: 0,
@@ -170,8 +170,8 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
     }
   }
 
-  // Fetch incumbent mayor (sequential to respect pool limit of 2)
-  const incumbentMayor = await getIncumbentMayor(inseeCode, election.id);
+  // Fetch incumbent maire (sequential to respect pool limit of 2)
+  const incumbentMaire = await getIncumbentMaire(inseeCode, election.id);
 
   // Group candidacies by list
   type EnrichedCandidacy = (typeof candidacies)[number] & {
@@ -211,7 +211,7 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
     electionId: election.id,
     round1Date: election.round1Date,
     lists,
-    incumbentMayor,
+    incumbentMaire,
     stats: {
       listCount: lists.length,
       candidateCount: totalCandidates,

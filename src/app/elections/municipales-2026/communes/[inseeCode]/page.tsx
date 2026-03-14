@@ -154,11 +154,11 @@ export default async function CommuneDetailPage({ params }: PageProps) {
           })()}
 
         {/* Incumbent mayor */}
-        {commune.incumbentMayor && (
+        {commune.incumbentMaire && (
           <div className="mb-6">
             <IncumbentMaireCard
-              mayor={commune.incumbentMayor.mayor}
-              isRunningAgain={commune.incumbentMayor.isRunningAgain}
+              maire={commune.incumbentMaire.maire}
+              isRunningAgain={commune.incumbentMaire.isRunningAgain}
             />
           </div>
         )}
@@ -196,8 +196,8 @@ export default async function CommuneDetailPage({ params }: PageProps) {
                   femaleCount={list.femaleCount}
                   teteDeListe={list.teteDeListe}
                   members={list.members}
-                  incumbentMayorLastName={commune.incumbentMayor?.mayor.lastName ?? null}
-                  incumbentMayorGender={commune.incumbentMayor?.mayor.gender ?? null}
+                  incumbentMaireLastName={commune.incumbentMaire?.maire.lastName ?? null}
+                  incumbentMaireGender={commune.incumbentMaire?.maire.gender ?? null}
                 />
               ))}
             </div>

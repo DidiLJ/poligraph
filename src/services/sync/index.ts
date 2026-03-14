@@ -15,7 +15,7 @@ export type {
   GouvernementSyncResult,
   HATVPCSV,
   HATVPSyncResult,
-  EuroparlMEP,
+  EuroparlDepute,
   EuroparlSyncResult,
   MaireRNECSV,
   RNESyncResult,

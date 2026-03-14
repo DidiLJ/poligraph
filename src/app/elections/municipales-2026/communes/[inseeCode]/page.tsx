@@ -6,7 +6,7 @@ import { getCommune, getCommuneHistorique2020 } from "@/lib/data/municipales";
 import { CommuneRadiographie } from "@/components/elections/municipales/CommuneRadiographie";
 import { ListCard } from "@/components/elections/municipales/ListCard";
 import { AlerteCumul } from "@/components/elections/municipales/PoliticianBridge";
-import { IncumbentMayorCard } from "@/components/elections/municipales/IncumbentMayorCard";
+import { IncumbentMaireCard } from "@/components/elections/municipales/IncumbentMaireCard";
 import { HistoriqueSection2020 } from "@/components/elections/municipales/HistoriqueSection2020";
 import { EventJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
@@ -156,7 +156,7 @@ export default async function CommuneDetailPage({ params }: PageProps) {
         {/* Incumbent mayor */}
         {commune.incumbentMayor && (
           <div className="mb-6">
-            <IncumbentMayorCard
+            <IncumbentMaireCard
               mayor={commune.incumbentMayor.mayor}
               isRunningAgain={commune.incumbentMayor.isRunningAgain}
             />

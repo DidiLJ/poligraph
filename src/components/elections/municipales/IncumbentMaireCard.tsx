@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { PoligraphBadge } from "@/components/elections/PoligraphBadge";
 
-interface IncumbentMayorCardProps {
+interface IncumbentMaireCardProps {
   mayor: {
     fullName: string;
     gender: string | null;
@@ -19,7 +19,7 @@ interface IncumbentMayorCardProps {
   isRunningAgain: boolean;
 }
 
-export function IncumbentMayorCard({ mayor, isRunningAgain }: IncumbentMayorCardProps) {
+export function IncumbentMaireCard({ mayor, isRunningAgain }: IncumbentMaireCardProps) {
   const startYear = mayor.mandateStart?.getFullYear();
   const partyName = mayor.party?.shortName ?? mayor.partyLabel;
 

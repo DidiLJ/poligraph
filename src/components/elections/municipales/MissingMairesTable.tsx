@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 
-interface MissingMayor {
+interface MissingMaire {
   id: string;
   slug: string;
   fullName: string;
@@ -13,8 +13,8 @@ interface MissingMayor {
   mandateStartDate: string | null;
 }
 
-interface MissingMayorsTableProps {
-  mayors: MissingMayor[];
+interface MissingMairesTableProps {
+  maires: MissingMaire[];
 }
 
 function formatYear(dateStr: string | null): string {
@@ -24,8 +24,8 @@ function formatYear(dateStr: string | null): string {
   return year;
 }
 
-export function MissingMayorsTable({ mayors }: MissingMayorsTableProps) {
-  if (mayors.length === 0) {
+export function MissingMairesTable({ maires }: MissingMairesTableProps) {
+  if (maires.length === 0) {
     return (
       <p className="text-muted-foreground text-center py-8">
         Tous les maires en exercice se représentent.
@@ -53,7 +53,7 @@ export function MissingMayorsTable({ mayors }: MissingMayorsTableProps) {
             </tr>
           </thead>
           <tbody>
-            {mayors.map((m) => (
+            {maires.map((m) => (
               <tr
                 key={m.id}
                 className="border-b last:border-0 hover:bg-accent/50 transition-colors"
@@ -100,7 +100,7 @@ export function MissingMayorsTable({ mayors }: MissingMayorsTableProps) {
 
       {/* Mobile card layout */}
       <div className="md:hidden space-y-3">
-        {mayors.map((m) => (
+        {maires.map((m) => (
           <div key={m.id} className="border rounded-lg p-3 flex items-center gap-3">
             <PoliticianAvatar
               photoUrl={m.photoUrl}

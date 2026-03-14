@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { getCumulCandidates, getMissingMaires } from "@/lib/data/municipales";
 import { CumulTable } from "@/components/elections/municipales/CumulTable";
-import { MissingMayorsTable } from "@/components/elections/municipales/MissingMayorsTable";
+import { MissingMairesTable } from "@/components/elections/municipales/MissingMairesTable";
 
 export const revalidate = 300;
 
@@ -143,7 +143,7 @@ export default async function CumulPage() {
               {missingMayors.length} maire{missingMayors.length > 1 ? "s" : ""} absent
               {missingMayors.length > 1 ? "s" : ""} des listes
             </p>
-            <MissingMayorsTable mayors={missingMayors} />
+            <MissingMairesTable maires={missingMayors} />
           </>
         ) : (
           <p className="text-muted-foreground text-center py-8">

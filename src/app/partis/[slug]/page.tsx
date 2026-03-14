@@ -20,7 +20,7 @@ import {
 } from "@/config/labels";
 import type { AffairStatus, AffairSeverity } from "@/types";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
-import { PoliticalPositionBadge } from "@/components/parties/PoliticalPositionBadge";
+import { PoliticalPositionBadge } from "@/components/partis/PoliticalPositionBadge";
 import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
 import { OrganizationJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { ensureContrast } from "@/lib/contrast";

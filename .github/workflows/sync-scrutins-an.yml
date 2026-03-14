@@ -1,4 +1,4 @@
-name: Sync Votes (Official AN)
+name: Sync Scrutins (Official AN)
 
 on:
   schedule:
@@ -15,7 +15,7 @@ env:
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
 jobs:
-  sync-votes-an:
+  sync-scrutins-an:
     runs-on: ubuntu-latest
     timeout-minutes: 90 # Long job, can take up to 60 min
     environment: production
@@ -36,12 +36,12 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Sync Votes from Official AN API
+      - name: Sync Scrutins from Official AN API
         run: |
           if [ -n "${{ github.event.inputs.limit }}" ]; then
-            npm run sync:votes-an -- --limit=${{ github.event.inputs.limit }}
+            npm run sync:scrutins-an -- --limit=${{ github.event.inputs.limit }}
           else
-            npm run sync:votes-an
+            npm run sync:scrutins-an
           fi
         continue-on-error: true
 
@@ -51,7 +51,7 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## Sync Votes (AN) Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Sync Scrutins (AN) Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

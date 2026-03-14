@@ -334,7 +334,7 @@ Options:
         const label = partyLabels.get(wikidataId) || "?";
         console.log(`  ${label} (${wikidataId}) — ${info.count} MEP(s)`);
       }
-      console.log("\n  → Run sync:parties to import missing parties, then re-run this script.");
+      console.log("\n  → Run sync:partis to import missing parties, then re-run this script.");
     }
 
     return {

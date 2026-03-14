@@ -60,7 +60,7 @@ const steps: SyncStep[] = [
   },
   {
     name: "Partis (Wikidata)",
-    command: `npx tsx scripts/sync-parties.ts${dryRunFlag}`,
+    command: `npx tsx scripts/sync-partis.ts${dryRunFlag}`,
   },
   {
     name: "Carrières (Wikidata P39 + P488 + P112)",
@@ -101,12 +101,12 @@ const steps: SyncStep[] = [
   // ── Phase 4: Votes & Legislation ───────────────────────────
   {
     name: "Votes AN (complet)",
-    command: `npx tsx scripts/sync-votes-an.ts${dryRunFlag}`,
+    command: `npx tsx scripts/sync-scrutins-an.ts${dryRunFlag}`,
     timeout: 20 * 60 * 1000,
   },
   {
     name: "Votes Sénat (complet)",
-    command: `npx tsx scripts/sync-votes-senat.ts --all${dryRunFlag}`,
+    command: `npx tsx scripts/sync-scrutins-senat.ts --all${dryRunFlag}`,
     timeout: 20 * 60 * 1000,
   },
   {

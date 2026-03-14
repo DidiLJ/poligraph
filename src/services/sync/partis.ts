@@ -1,6 +1,6 @@
 /**
  * Service to sync French political parties from local config + Wikidata.
- * Extracted from scripts/sync-parties.ts for Inngest compatibility.
+ * Extracted from scripts/sync-partis.ts for Inngest compatibility.
  */
 
 import { db } from "@/lib/db";

@@ -2,11 +2,11 @@
  * CLI script to sync parliamentary votes from senat.fr
  *
  * Usage:
- *   npm run sync:votes-senat              # Sync current session
- *   npm run sync:votes-senat -- --all     # Sync all sessions
- *   npm run sync:votes-senat -- --session=2024  # Specific session
- *   npm run sync:votes-senat -- --today   # Only process today's scrutins
- *   npm run sync:votes-senat -- --stats   # Show current stats
+ *   npm run sync:scrutins-senat              # Sync current session
+ *   npm run sync:scrutins-senat -- --all     # Sync all sessions
+ *   npm run sync:scrutins-senat -- --session=2024  # Specific session
+ *   npm run sync:scrutins-senat -- --today   # Only process today's scrutins
+ *   npm run sync:scrutins-senat -- --stats   # Show current stats
  *
  * Data source: senat.fr (official Senate website)
  */

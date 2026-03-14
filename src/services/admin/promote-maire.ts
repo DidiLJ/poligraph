@@ -49,7 +49,7 @@ export interface PromoteResult {
   wikidataId: string | null;
 }
 
-export async function promoteMayor(
+export async function promoteMaire(
   localOfficialId: string,
   options?: { wikidataId?: string }
 ): Promise<PromoteResult> {

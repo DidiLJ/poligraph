@@ -1,10 +1,10 @@
 import { db } from "@/lib/db";
-import { promoteMayor } from "@/services/admin/promote-mayor";
+import { promoteMaire } from "@/services/admin/promote-maire";
 import { wikidataService, WIKIDATA_PROPS } from "@/lib/api/wikidata";
 import {
   selectBestWikidataCandidate,
   type WikidataCandidate,
-} from "@/services/admin/promote-mayor";
+} from "@/services/admin/promote-maire";
 import { DataSource } from "@/generated/prisma";
 
 const MIN_POPULATION = parseInt(process.argv[2] || "50000", 10);
@@ -47,7 +47,7 @@ async function promote() {
 
   for (const c of candidates) {
     try {
-      const result = await promoteMayor(c.id);
+      const result = await promoteMaire(c.id);
       console.log(
         `OK  ${c.fullName.padEnd(30)} -> ${result.slug} (Wikidata: ${result.wikidataId ?? "aucun"})`
       );

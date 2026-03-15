@@ -11,6 +11,7 @@ import { generateSocialDrafts, publishApprovedPost } from "./functions/post-soci
 import { sendNewsletter } from "./functions/send-newsletter";
 import { syncPress } from "./functions/sync-press";
 import { syncScrutins } from "./functions/sync-scrutins";
+import { syncPlatformUpdates } from "./functions/sync-platform-updates";
 
 // --- Grouped multi-step functions ---
 const groupedFunctions = [
@@ -27,6 +28,7 @@ const groupedFunctions = [
   generateSocialDrafts,
   publishApprovedPost,
   sendNewsletter,
+  syncPlatformUpdates,
 ];
 
 // --- Individual script wrappers (admin SCRIPT_CATALOG) ---

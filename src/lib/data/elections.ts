@@ -329,7 +329,7 @@ export async function getFeaturedElection() {
   cacheTag("elections", "homepage");
   cacheLife("minutes");
 
-  return db.election.findFirst({
+  const election = await db.election.findFirst({
     where: { featured: true, status: { not: "COMPLETED" } },
     select: {
       slug: true,
@@ -339,6 +339,21 @@ export async function getFeaturedElection() {
       round1Date: true,
     },
   });
+  if (!election) return null;
+
+  // Check if results are available
+  const resultatsSnapshot = await db.statsSnapshot.findUnique({
+    where: { key: `${election.slug}-resultats` },
+  });
+  const resultats = resultatsSnapshot?.data as {
+    communesDepouillees?: number;
+  } | null;
+
+  return {
+    ...election,
+    hasResults: (resultats?.communesDepouillees ?? 0) > 0,
+    communesDepouillees: resultats?.communesDepouillees ?? 0,
+  };
 }
 
 // ============================================

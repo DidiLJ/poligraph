@@ -128,7 +128,9 @@ export default async function HomePage() {
                       {featuredElection.shortTitle || featuredElection.title}
                     </span>
                     <span className="block text-xs text-amber-700/80 dark:text-amber-400/70">
-                      Consultez la page de l{"'"}élection
+                      {featuredElection.hasResults
+                        ? `Premiers résultats disponibles (${featuredElection.communesDepouillees.toLocaleString("fr-FR")} communes)`
+                        : "Consultez la page de l'élection"}
                     </span>
                   </span>
                   <span className="text-amber-500 transition-transform group-hover:translate-x-0.5">

@@ -38,7 +38,7 @@ export default async function DepartmentMunicipalesPage({ params, searchParams }
   const data = await getDepartmentMunicipales(code, page);
   if (!data) notFound();
 
-  const { communes, total, totalPages, stats } = data;
+  const { communes, total, totalPages, stats, participation } = data;
 
   function buildUrl(pageNum: number) {
     const p = new URLSearchParams();
@@ -125,6 +125,22 @@ export default async function DepartmentMunicipalesPage({ params, searchParams }
         </div>
       </section>
 
+      {/* Results participation */}
+      {participation && participation.communesDepouillees > 0 && (
+        <section className="mb-6">
+          <div className="flex items-center gap-4 text-sm">
+            <Badge variant="outline">
+              {participation.communesDepouillees} communes dépouillées
+            </Badge>
+            {participation.avgParticipation != null && (
+              <span className="text-muted-foreground">
+                Participation : {participation.avgParticipation.toFixed(1)} %
+              </span>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Commune search */}
       <section className="py-6">
         <CommuneSearch departmentFilter={code} />
@@ -159,6 +175,16 @@ export default async function DepartmentMunicipalesPage({ params, searchParams }
                     />
                   </div>
                 </div>
+                {commune.hasElected && (
+                  <Badge className="mt-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                    Élu T1 · {Number(commune.winnerPct).toFixed(1)} %
+                  </Badge>
+                )}
+                {!commune.hasElected && commune.topPct != null && (
+                  <Badge variant="outline" className="mt-2 text-xs">
+                    T2 · En tête : {Number(commune.topPct).toFixed(1)} %
+                  </Badge>
+                )}
                 {commune.maireName && (
                   <p className="text-xs text-muted-foreground mt-2">
                     Maire sortant{commune.maireGender === "F" ? "e" : ""} : {commune.maireName}

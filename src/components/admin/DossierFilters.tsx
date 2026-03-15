@@ -8,6 +8,12 @@ import { Select } from "@/components/ui/select";
 import { DOSSIER_STATUS_LABELS, THEME_CATEGORY_LABELS } from "@/config/labels";
 import type { DossierStatus, ThemeCategory } from "@/generated/prisma";
 
+const SORT_OPTIONS: Record<string, string> = {
+  "": "Date de dépôt",
+  updated: "Dernière mise à jour",
+  status: "Par statut",
+};
+
 interface DossierFiltersProps {
   categories: { name: string; count: number }[];
 }
@@ -47,7 +53,8 @@ export function DossierFilters({ categories }: DossierFiltersProps) {
     searchParams.has("category") ||
     searchParams.has("theme") ||
     searchParams.has("search") ||
-    searchParams.has("hasSummary");
+    searchParams.has("hasSummary") ||
+    searchParams.has("sort");
 
   return (
     <div className="space-y-4 p-4 bg-white rounded-lg border">
@@ -122,6 +129,20 @@ export function DossierFilters({ categories }: DossierFiltersProps) {
           <option value="">Résumé IA</option>
           <option value="true">Avec résumé</option>
           <option value="false">Sans résumé</option>
+        </Select>
+
+        {/* Sort */}
+        <Select
+          value={searchParams.get("sort") || ""}
+          onChange={(e) => updateParams("sort", e.target.value || null)}
+          className="w-[180px]"
+          aria-label="Trier par"
+        >
+          {Object.entries(SORT_OPTIONS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
         </Select>
 
         {/* Clear filters */}

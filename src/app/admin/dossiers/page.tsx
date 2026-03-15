@@ -21,6 +21,7 @@ interface PageProps {
     search?: string;
     page?: string;
     hasSummary?: string;
+    sort?: string;
   }>;
 }
 
@@ -33,6 +34,7 @@ async function getDossiers(params: {
   search?: string;
   page: number;
   hasSummary?: boolean;
+  sort?: string;
 }) {
   const where: Prisma.LegislativeDossierWhereInput = {};
 
@@ -65,7 +67,12 @@ async function getDossiers(params: {
   const [dossiers, total] = await Promise.all([
     db.legislativeDossier.findMany({
       where,
-      orderBy: [{ filingDate: "desc" }, { createdAt: "desc" }],
+      orderBy:
+        params.sort === "updated"
+          ? [{ updatedAt: "desc" as const }]
+          : params.sort === "status"
+            ? [{ status: "asc" as const }, { filingDate: "desc" as const }]
+            : [{ filingDate: "desc" as const }, { createdAt: "desc" as const }],
       skip: (params.page - 1) * ITEMS_PER_PAGE,
       take: ITEMS_PER_PAGE,
       select: {
@@ -133,6 +140,7 @@ export default async function AdminDossiersPage({ searchParams }: PageProps) {
       search: params.search,
       page,
       hasSummary,
+      sort: params.sort,
     }),
     getCategories(),
     getStats(),

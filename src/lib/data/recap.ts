@@ -1,6 +1,7 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import { Prisma } from "@/generated/prisma";
+import type { PlatformUpdateType } from "@/generated/prisma";
 import { FACTCHECK_ALLOWED_SOURCES } from "@/config/labels";
 
 // ---------------------------------------------------------------------------
@@ -38,7 +39,7 @@ interface WeeklyAffair {
 interface PlatformUpdateItem {
   id: string;
   title: string;
-  type: string;
+  type: PlatformUpdateType;
   date: Date;
   sourceUrl: string | null;
 }

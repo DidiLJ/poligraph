@@ -89,6 +89,20 @@ export const getMunicipalesStats = cache(async function getMunicipalesStats() {
   return snapshot?.data as MunicipalesStats | null;
 });
 
+export interface ResultatsStats {
+  communesDepouillees: number;
+  participationMoyenne: number;
+  eluesT1: number;
+  auSecondTour: number;
+}
+
+export const getResultatsStats = cache(async function getResultatsStats() {
+  const snapshot = await db.statsSnapshot.findUnique({
+    where: { key: "municipales-2026-resultats" },
+  });
+  return snapshot?.data as ResultatsStats | null;
+});
+
 export const getCommune = cache(async function getCommune(inseeCode: string) {
   // Get commune
   const commune = await db.commune.findUnique({
@@ -100,7 +114,7 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
   // Get election for municipales 2026 (sequential to respect pool limit of 2)
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
-    select: { id: true, round1Date: true },
+    select: { id: true, round1Date: true, round2Date: true },
   });
 
   if (!election) {
@@ -173,6 +187,17 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
   // Fetch incumbent maire (sequential to respect pool limit of 2)
   const incumbentMaire = await getIncumbentMaire(inseeCode, election.id);
 
+  // Fetch T1 participation (sequential to respect pool limit of 2)
+  const communeRound = await db.communeElectionRound.findUnique({
+    where: {
+      communeId_electionId_round: {
+        communeId: inseeCode,
+        electionId: election.id,
+        round: 1,
+      },
+    },
+  });
+
   // Group candidacies by list
   type EnrichedCandidacy = (typeof candidacies)[number] & {
     participationRate?: number | null;
@@ -192,14 +217,32 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
     listsMap.set(key, list);
   }
 
-  const lists = Array.from(listsMap.entries()).map(([name, members]) => ({
-    name,
-    partyLabel: members[0]?.partyLabel || null,
-    candidateCount: members.length,
-    femaleCount: members.filter((m) => m.candidate?.gender === "F").length,
-    teteDeListe: (members.find((m) => m.listPosition === 1) || members[0])!,
-    members,
-  }));
+  // Detect if results are available
+  const hasResults = candidacies.some((c) => c.round1Votes !== null);
+
+  const lists = Array.from(listsMap.entries())
+    .map(([name, members]) => {
+      // Results are per-list: all members share the same values
+      const firstWithResults = members.find((m) => m.round1Votes !== null);
+      return {
+        name,
+        partyLabel: members[0]?.partyLabel || null,
+        candidateCount: members.length,
+        femaleCount: members.filter((m) => m.candidate?.gender === "F").length,
+        teteDeListe: (members.find((m) => m.listPosition === 1) || members[0])!,
+        members,
+        // Results (null if not yet imported)
+        round1Pct: firstWithResults?.round1Pct ? Number(firstWithResults.round1Pct) : null,
+        round1Votes: firstWithResults?.round1Votes ?? null,
+        round1Qualified: firstWithResults?.round1Qualified ?? null,
+        isElected: firstWithResults?.isElected ?? false,
+      };
+    })
+    // Sort by score DESC when results exist, otherwise keep original order
+    .sort((a, b) => {
+      if (!hasResults) return 0;
+      return (b.round1Pct ?? -1) - (a.round1Pct ?? -1);
+    });
 
   const totalCandidates = candidacies.length;
   const femaleCount = candidacies.filter((c) => c.candidate?.gender === "F").length;
@@ -210,8 +253,17 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
     ...commune,
     electionId: election.id,
     round1Date: election.round1Date,
+    round2Date: election.round2Date ?? null,
     lists,
     incumbentMaire,
+    hasResults,
+    participation: communeRound
+      ? {
+          registeredVoters: communeRound.registeredVoters ?? 0,
+          actualVoters: communeRound.actualVoters ?? 0,
+          participationRate: Number(communeRound.participationRate ?? 0),
+        }
+      : null,
     stats: {
       listCount: lists.length,
       candidateCount: totalCandidates,

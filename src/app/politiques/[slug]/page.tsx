@@ -31,6 +31,7 @@ import { VotesSection } from "@/components/politicians/VotesSection";
 import { getPoliticianVotingStats, getPoliticianParliamentaryCard } from "@/services/voteStats";
 import { getPolitician } from "@/lib/data/politicians";
 import { FollowButton } from "@/components/politicians/FollowButton";
+import { CopyableId } from "@/components/politicians/CopyableId";
 import { SITE_URL } from "@/config/site";
 
 export const revalidate = 3600; // ISR: revalidate every hour
@@ -299,6 +300,11 @@ export default async function PoliticianPage({ params }: PageProps) {
                   </span>
                 )}
               </p>
+            )}
+            {politician.publicId && (
+              <div className="mt-1">
+                <CopyableId value={politician.publicId} />
+              </div>
             )}
           </div>
         </div>

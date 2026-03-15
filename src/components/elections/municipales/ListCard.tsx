@@ -146,7 +146,7 @@ export function ListCard({
         >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="font-bold truncate">{name}</span>
+              <span className="font-bold">{name}</span>
               {partyLabel && (
                 <Badge variant="outline" className="shrink-0">
                   {partyLabel}

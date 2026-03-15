@@ -53,6 +53,11 @@ interface ListCardProps {
   }>;
   incumbentMaireLastName?: string | null;
   incumbentMaireGender?: string | null;
+  // Round 1 results (optional - only present after import)
+  round1Pct?: number | null;
+  round1Votes?: number | null;
+  round1Qualified?: boolean | null;
+  isElected?: boolean;
 }
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
@@ -130,11 +135,15 @@ export function ListCard({
   members,
   incumbentMaireLastName,
   incumbentMaireGender,
+  round1Pct,
+  round1Votes,
+  round1Qualified,
+  isElected,
 }: ListCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Card>
+    <Card className={isElected ? "border-green-300 dark:border-green-800" : undefined}>
       <CardContent className="pt-6">
         {/* Header — always visible */}
         <button
@@ -166,6 +175,43 @@ export function ListCard({
             <ChevronIcon expanded={expanded} />
           </div>
         </button>
+
+        {/* Round 1 results (shown when available) */}
+        {round1Pct != null && (
+          <div className="mt-3 bg-muted/30 rounded-lg p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">1er tour</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-bold tabular-nums">{round1Pct.toFixed(2)} %</span>
+                  {round1Votes != null && (
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      {round1Votes.toLocaleString("fr-FR")} voix
+                    </span>
+                  )}
+                </div>
+              </div>
+              {isElected && (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 gap-1">
+                  Élue
+                </Badge>
+              )}
+              {!isElected && round1Qualified === true && (
+                <Badge
+                  className="text-sky-700 border-sky-300 dark:text-sky-400 dark:border-sky-800"
+                  variant="outline"
+                >
+                  Qualifiée T2
+                </Badge>
+              )}
+              {!isElected && round1Qualified === false && (
+                <Badge variant="outline" className="text-muted-foreground">
+                  Non qualifiée
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Expanded: full roster */}
         {expanded && (

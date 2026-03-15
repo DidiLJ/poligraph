@@ -488,6 +488,117 @@ export const getParityOutliers = cache(async function getParityOutliers() {
 });
 
 // ============================================
+// Department intermediate page
+// ============================================
+
+export async function getDepartmentMunicipales(
+  departmentCode: string,
+  page: number = 1,
+  pageSize: number = 50
+) {
+  "use cache";
+  cacheTag("elections");
+  cacheLife("minutes");
+
+  const election = await db.election.findUnique({
+    where: { slug: "municipales-2026" },
+    select: { id: true },
+  });
+  if (!election) return null;
+
+  const offset = (page - 1) * pageSize;
+
+  // Communes with list counts + candidate counts, sorted by most contested
+  const communes = await db.$queryRaw<
+    Array<{
+      id: string;
+      name: string;
+      population: number | null;
+      listCount: number;
+      candidateCount: number;
+      maireName: string | null;
+      maireGender: string | null;
+    }>
+  >(Prisma.sql`
+    SELECT
+      co.id,
+      co.name,
+      co.population,
+      COUNT(DISTINCT c."listName")::int AS "listCount",
+      COUNT(c.id)::int AS "candidateCount",
+      lo."fullName" AS "maireName",
+      lo.gender AS "maireGender"
+    FROM "Commune" co
+    INNER JOIN "Candidacy" c ON c."communeId" = co.id AND c."electionId" = ${election.id}
+    LEFT JOIN "LocalOfficial" lo ON lo."communeId" = co.id AND lo.role = 'MAIRE' AND lo."isCurrent" = true
+    WHERE co."departmentCode" = ${departmentCode}
+    GROUP BY co.id, co.name, co.population, lo."fullName", lo.gender
+    HAVING COUNT(DISTINCT c."listName") > 0
+    ORDER BY COUNT(DISTINCT c."listName") DESC, co.population DESC NULLS LAST
+    LIMIT ${pageSize} OFFSET ${offset}
+  `);
+
+  // Total communes with at least 1 list for pagination
+  const [{ total }] = await db.$queryRaw<[{ total: number }]>(Prisma.sql`
+    SELECT COUNT(*)::int AS total
+    FROM (
+      SELECT co.id
+      FROM "Commune" co
+      INNER JOIN "Candidacy" c ON c."communeId" = co.id AND c."electionId" = ${election.id}
+      WHERE co."departmentCode" = ${departmentCode}
+      GROUP BY co.id
+      HAVING COUNT(DISTINCT c."listName") > 0
+    ) sub
+  `);
+
+  // Department-level aggregate stats
+  const [stats] = await db.$queryRaw<
+    [{ totalCommunes: number; totalLists: number; avgCompetition: number; parityRate: number }]
+  >(Prisma.sql`
+    SELECT
+      dept.total_communes::int AS "totalCommunes",
+      dept.total_lists::int AS "totalLists",
+      ROUND(dept.avg_competition, 2)::float AS "avgCompetition",
+      parity.female_rate::float AS "parityRate"
+    FROM (
+      SELECT
+        COUNT(DISTINCT co.id) AS total_communes,
+        COUNT(DISTINCT c."listName") AS total_lists,
+        AVG(sub.list_count) AS avg_competition
+      FROM "Commune" co
+      INNER JOIN "Candidacy" c ON c."communeId" = co.id AND c."electionId" = ${election.id}
+      INNER JOIN (
+        SELECT c2."communeId", COUNT(DISTINCT c2."listName") AS list_count
+        FROM "Candidacy" c2
+        INNER JOIN "Commune" co2 ON c2."communeId" = co2.id
+        WHERE c2."electionId" = ${election.id} AND co2."departmentCode" = ${departmentCode}
+        GROUP BY c2."communeId"
+      ) sub ON sub."communeId" = co.id
+      WHERE co."departmentCode" = ${departmentCode}
+    ) dept,
+    (
+      SELECT
+        CASE WHEN COUNT(*) = 0 THEN 0
+        ELSE COUNT(*) FILTER (WHERE ca.gender = 'F')::float / COUNT(*)::float
+        END AS female_rate
+      FROM "Candidacy" c
+      INNER JOIN "Commune" co ON c."communeId" = co.id
+      INNER JOIN "Candidate" ca ON c."candidateId" = ca.id
+      WHERE c."electionId" = ${election.id}
+        AND co."departmentCode" = ${departmentCode}
+        AND ca.gender IS NOT NULL
+    ) parity
+  `);
+
+  return {
+    communes,
+    total,
+    totalPages: Math.ceil(total / pageSize),
+    stats,
+  };
+}
+
+// ============================================
 // Maires listing + stats
 // ============================================
 

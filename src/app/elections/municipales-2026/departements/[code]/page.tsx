@@ -119,7 +119,7 @@ export default async function DepartmentMunicipalesPage({ params, searchParams }
               <div className="text-3xl font-display font-extrabold tracking-tight text-primary tabular-nums">
                 {(stats.parityRate * 100).toFixed(1)}%
               </div>
-              <div className="text-sm font-medium mt-0.5">Candidates femmes</div>
+              <div className="text-sm font-medium mt-0.5">Candidates</div>
             </CardContent>
           </Card>
         </div>

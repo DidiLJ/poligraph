@@ -138,9 +138,9 @@ export async function GET(request: NextRequest) {
   const lon = searchParams.get("lon");
   const dept = searchParams.get("dept");
 
-  // Mode 1: Text search by name or postal code
+  // Mode 1: Text search by name or postal code (optionally scoped to a department)
   if (query !== null) {
-    return handleTextSearch(query);
+    return handleTextSearch(query, dept ?? undefined);
   }
 
   // Mode 2: Geolocation reverse geocode
@@ -158,11 +158,12 @@ export async function GET(request: NextRequest) {
 
 // ─── Mode 1: Text search ────────────────────────────────────────
 
-async function handleTextSearch(query: string): Promise<Response> {
+async function handleTextSearch(query: string, dept?: string): Promise<Response> {
   if (query.length < 2) {
     return NextResponse.json([]);
   }
 
+  const deptFilter = dept ? { departmentCode: dept.toUpperCase() } : {};
   const isPostalCode = /^\d{2,5}$/.test(query);
 
   let communes: CommuneRow[];
@@ -173,6 +174,7 @@ async function handleTextSearch(query: string): Promise<Response> {
       communes = await db.commune.findMany({
         where: {
           postalCodes: { has: query },
+          ...deptFilter,
         },
         select: {
           id: true,
@@ -188,7 +190,7 @@ async function handleTextSearch(query: string): Promise<Response> {
     } else if (query.length <= 3) {
       // 2-3 digits: interpret as department code prefix
       communes = await db.commune.findMany({
-        where: { departmentCode: query },
+        where: { departmentCode: query, ...deptFilter },
         select: {
           id: true,
           name: true,
@@ -205,6 +207,7 @@ async function handleTextSearch(query: string): Promise<Response> {
       communes = await db.commune.findMany({
         where: {
           name: { contains: query, mode: "insensitive" },
+          ...deptFilter,
         },
         select: {
           id: true,
@@ -223,6 +226,7 @@ async function handleTextSearch(query: string): Promise<Response> {
     communes = await db.commune.findMany({
       where: {
         name: { contains: query, mode: "insensitive" },
+        ...deptFilter,
       },
       select: {
         id: true,

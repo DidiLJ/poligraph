@@ -24,6 +24,8 @@ interface CommuneSearchProps {
   basePath?: string;
   /** Label above the search input. Default: "Qui se présente chez moi ?" */
   label?: string;
+  /** Optional department code to restrict results (e.g. "75", "2A") */
+  departmentFilter?: string;
 }
 
 function LocationIcon({ className }: { className?: string }) {
@@ -65,6 +67,7 @@ export function CommuneSearch({
   placeholder = "Rechercher une commune...",
   basePath = "/elections/municipales-2026",
   label = "Découvrez les candidats dans votre commune",
+  departmentFilter,
 }: CommuneSearchProps) {
   const mounted = useIsMounted();
   const [query, setQuery] = useState("");
@@ -90,7 +93,10 @@ export function CommuneSearch({
 
     const timeoutId = setTimeout(async () => {
       try {
-        const response = await fetch(`/api${basePath}/communes?q=${encodeURIComponent(query)}`);
+        const deptParam = departmentFilter ? `&dept=${encodeURIComponent(departmentFilter)}` : "";
+        const response = await fetch(
+          `/api${basePath}/communes?q=${encodeURIComponent(query)}${deptParam}`
+        );
         if (!response.ok) throw new Error("Erreur réseau");
         const data: CommuneResult[] = await response.json();
         const limited = data.slice(0, 8);
@@ -109,7 +115,7 @@ export function CommuneSearch({
       clearTimeout(timeoutId);
       setIsLoading(false);
     };
-  }, [query, basePath]);
+  }, [query, basePath, departmentFilter]);
 
   // Click outside to close
   useEffect(() => {

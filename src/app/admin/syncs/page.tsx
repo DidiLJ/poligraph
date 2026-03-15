@@ -17,6 +17,7 @@ import {
   Loader2,
   Zap,
   History,
+  ExternalLink,
 } from "lucide-react";
 import { SyncsPageSkeleton } from "./_components/SyncsPageSkeleton";
 
@@ -281,14 +282,25 @@ export default function SyncsPage() {
             Lancement et suivi des scripts d&apos;import de données
           </p>
         </div>
-        <Button onClick={() => launchScript("sync-daily")} disabled={launching !== null}>
-          {launching === "sync-daily" ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Zap className="w-4 h-4 mr-2" aria-hidden="true" />
-          )}
-          Sync quotidien
-        </Button>
+        <div className="flex items-center gap-2">
+          <a
+            href="https://app.inngest.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+            Inngest
+          </a>
+          <Button onClick={() => launchScript("sync-daily")} disabled={launching !== null}>
+            {launching === "sync-daily" ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4 mr-2" aria-hidden="true" />
+            )}
+            Sync quotidien
+          </Button>
+        </div>
       </div>
 
       {loading ? (

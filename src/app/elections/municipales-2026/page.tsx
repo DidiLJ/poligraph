@@ -107,30 +107,38 @@ export default async function MunicipalesLandingPage() {
           <p className="text-muted-foreground mb-6">Classées par nombre de listes déposées</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {stats.mostContestedCommunes.map((commune) => (
-              <Link
-                key={commune.id}
-                href={`/elections/municipales-2026/communes/${commune.id}`}
-                prefetch={false}
-              >
-                <Card className="hover:shadow-sm hover:border-primary/50 hover:-translate-y-0.5 transition-all h-full">
-                  <CardContent className="pt-5">
-                    <p className="font-semibold">{commune.name}</p>
-                    <p className="text-sm text-muted-foreground">{commune.departmentCode}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <Badge variant="outline">{commune.listCount} listes</Badge>
-                      <CompetitionIndex
-                        listCount={commune.listCount}
-                        population={commune.population}
-                      />
-                      {commune.population && (
-                        <span className="text-xs text-muted-foreground">
-                          {commune.population.toLocaleString("fr-FR")} hab.
-                        </span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <div key={commune.id} className="flex flex-col">
+                <Link
+                  href={`/elections/municipales-2026/communes/${commune.id}`}
+                  prefetch={false}
+                  className="flex-1"
+                >
+                  <Card className="hover:shadow-sm hover:border-primary/50 hover:-translate-y-0.5 transition-all h-full">
+                    <CardContent className="pt-5">
+                      <p className="font-semibold">{commune.name}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Badge variant="outline">{commune.listCount} listes</Badge>
+                        <CompetitionIndex
+                          listCount={commune.listCount}
+                          population={commune.population}
+                        />
+                        {commune.population && (
+                          <span className="text-xs text-muted-foreground">
+                            {commune.population.toLocaleString("fr-FR")} hab.
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+                <Link
+                  href={`/elections/municipales-2026/departements/${commune.departmentCode}`}
+                  prefetch={false}
+                  className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors mt-1 px-1"
+                >
+                  {commune.departmentCode}
+                </Link>
+              </div>
             ))}
           </div>
         </section>

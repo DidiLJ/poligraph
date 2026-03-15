@@ -7,6 +7,7 @@ interface MunicipalesHeroProps {
   totalCandidacies: number;
   totalCommunes: number;
   totalLists: number;
+  countdownLabel?: string;
 }
 
 const headlineStats = (props: MunicipalesHeroProps) => [
@@ -21,6 +22,7 @@ export function MunicipalesHero({
   totalCandidacies,
   totalCommunes,
   totalLists,
+  countdownLabel = "1er tour dans",
 }: MunicipalesHeroProps) {
   const stats = headlineStats({
     targetDate,
@@ -65,7 +67,7 @@ export function MunicipalesHero({
               electionIcon=""
               dateConfirmed={dateConfirmed}
               embedded
-              label="1er tour dans"
+              label={countdownLabel}
             />
           </div>
         )}

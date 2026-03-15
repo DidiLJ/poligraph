@@ -66,6 +66,27 @@ export const syncPlatformUpdates = inngest.createFunction(
       return count;
     });
 
-    return { releasesChecked: releases.length, created };
+    // Cleanup: remove analyzed press articles with no detected mentions
+    // (older than 7 days to allow for re-analysis)
+    const cleaned = await step.run("cleanup-unlinked-press", async () => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 7);
+
+      const { count } = await db.pressArticle.deleteMany({
+        where: {
+          aiAnalyzedAt: { not: null, lt: cutoff },
+          mentions: { none: {} },
+          partyMentions: { none: {} },
+        },
+      });
+
+      if (count > 0) {
+        console.log(`Cleaned up ${count} unlinked press articles`);
+      }
+
+      return count;
+    });
+
+    return { releasesChecked: releases.length, created, pressArticlesCleaned: cleaned };
   }
 );

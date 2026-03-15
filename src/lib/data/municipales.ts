@@ -495,7 +495,7 @@ export interface MaireStats {
   total: number;
   femaleRate: number;
   withParty: number;
-  withPolitician: number;
+  withNationalMandate: number;
   partyDistribution: Array<{ shortName: string; color: string | null; count: number }>;
   mandateDistribution: Array<{ bracket: string; count: number }>;
 }
@@ -507,13 +507,18 @@ export async function getMaireStats(): Promise<MaireStats> {
   cacheLife("minutes");
 
   const [counts] = await db.$queryRaw<
-    [{ total: number; female: number; with_party: number; with_politician: number }]
+    [{ total: number; female: number; with_party: number; with_national_mandate: number }]
   >(Prisma.sql`
     SELECT
       COUNT(*)::int as total,
       COUNT(*) FILTER (WHERE gender = 'F')::int as female,
       COUNT(*) FILTER (WHERE "partyId" IS NOT NULL)::int as with_party,
-      COUNT(*) FILTER (WHERE "politicianId" IS NOT NULL)::int as with_politician
+      COUNT(*) FILTER (WHERE EXISTS (
+        SELECT 1 FROM "Mandate" m
+        WHERE m."politicianId" = "LocalOfficial"."politicianId"
+          AND m."isCurrent" = true
+          AND m.type IN ('DEPUTE', 'SENATEUR', 'DEPUTE_EUROPEEN', 'MINISTRE', 'SECRETAIRE_ETAT', 'PREMIER_MINISTRE')
+      ))::int as with_national_mandate
     FROM "LocalOfficial"
     WHERE role = 'MAIRE' AND "isCurrent" = true
   `);
@@ -552,7 +557,7 @@ export async function getMaireStats(): Promise<MaireStats> {
     total: counts.total,
     femaleRate: counts.total > 0 ? counts.female / counts.total : 0,
     withParty: counts.with_party,
-    withPolitician: counts.with_politician,
+    withNationalMandate: counts.with_national_mandate,
     partyDistribution,
     mandateDistribution,
   };

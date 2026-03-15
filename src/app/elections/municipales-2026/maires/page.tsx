@@ -156,7 +156,7 @@ export default async function MairesPage({ searchParams }: PageProps) {
           <Card>
             <CardContent className="pt-5">
               <div className="text-3xl font-display font-extrabold tracking-tight text-primary tabular-nums">
-                {stats.withPolitician}
+                {stats.withNationalMandate}
               </div>
               <div className="text-sm font-medium mt-0.5">Aussi députés/sénateurs</div>
             </CardContent>

@@ -27,6 +27,7 @@ interface AuditEntry {
   action: string;
   entityType: string;
   entityId: string;
+  entityLabel: string | null;
   changes: Record<string, unknown> | null;
   userId: string | null;
   userEmail: string | null;
@@ -82,6 +83,10 @@ const ENTITY_TYPES = [
   { value: "Party", label: "Parti" },
   { value: "Mandate", label: "Mandat" },
   { value: "Vote", label: "Vote" },
+  { value: "FeatureFlag", label: "Feature Flag" },
+  { value: "Dossier", label: "Dossier" },
+  { value: "PressArticle", label: "Article presse" },
+  { value: "SocialPost", label: "Post social" },
 ];
 
 const ENTITY_ROUTES: Record<string, string> = {
@@ -90,6 +95,8 @@ const ENTITY_ROUTES: Record<string, string> = {
   Party: "/admin/partis",
   Mandate: "/admin/mandats",
   Vote: "/admin/votes",
+  FeatureFlag: "/admin/feature-toggles",
+  Dossier: "/admin/dossiers",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -99,6 +106,9 @@ const ENTITY_LABELS: Record<string, string> = {
   Mandate: "Mandat",
   Vote: "Vote",
   Dossier: "Dossier",
+  FeatureFlag: "Feature Flag",
+  PressArticle: "Article presse",
+  SocialPost: "Post social",
 };
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -391,14 +401,18 @@ export default function AuditLogPage() {
                               {entityRoute ? (
                                 <Link
                                   href={`${entityRoute}/${entry.entityId}`}
-                                  className="text-xs font-mono text-muted-foreground hover:text-foreground bg-muted px-1.5 py-0.5 rounded transition-colors truncate max-w-[160px]"
+                                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                  title={entry.entityId}
                                 >
-                                  {entry.entityId.slice(0, 12)}…
+                                  {entry.entityLabel || entry.entityId.slice(0, 12) + "…"}
                                 </Link>
                               ) : (
-                                <code className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded truncate max-w-[160px]">
-                                  {entry.entityId.slice(0, 12)}…
-                                </code>
+                                <span
+                                  className="text-sm text-muted-foreground"
+                                  title={entry.entityId}
+                                >
+                                  {entry.entityLabel || entry.entityId.slice(0, 12) + "…"}
+                                </span>
                               )}
                             </div>
 

@@ -148,7 +148,6 @@ export const CTA_ASSISTANT: NavItem = {
   href: "/chat",
   label: "Assistant IA",
   description: "Chatbot alimenté par nos données",
-  featureFlag: "CHATBOT_ENABLED",
 };
 
 // Legacy exports for backwards compatibility
@@ -214,7 +213,7 @@ export const FOOTER_SECTIONS: FooterSection[] = [
     title: "Le projet",
     links: [
       { href: "/comparer", label: "Comparer", featureFlag: "COMPARISON_TOOL" },
-      { href: "/chat", label: "Assistant IA", featureFlag: "CHATBOT_ENABLED" },
+      { href: "/chat", label: "Assistant IA" },
       { href: "/sources", label: "Sources et méthodologie" },
       { href: "/docs/api", label: "API" },
       { href: "/soutenir", label: "Nous soutenir" },

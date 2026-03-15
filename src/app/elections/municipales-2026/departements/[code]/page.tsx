@@ -10,10 +10,6 @@ import { getDepartmentMunicipales } from "@/lib/data/municipales";
 
 export const revalidate = 300;
 
-export function generateStaticParams() {
-  return []; // ISR-only, no pre-render (Vercel OOM constraint)
-}
-
 interface PageProps {
   params: Promise<{ code: string }>;
   searchParams: Promise<{ page?: string }>;

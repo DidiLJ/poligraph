@@ -35,7 +35,7 @@ async function getArticles(params: {
   }
 
   if (params.mention === "none") {
-    where.aiAnalyzedAt = { not: null };
+    where.aiAnalyzedAt = { not: null, lt: new Date(Date.now() - 60 * 60 * 1000) };
     where.mentions = { none: {} };
     where.partyMentions = { none: {} };
   }

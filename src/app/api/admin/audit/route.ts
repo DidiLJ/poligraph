@@ -104,6 +104,58 @@ async function resolveEntityLabels(
     );
   }
 
+  const factCheckIds = byType.get("FactCheck");
+  if (factCheckIds?.length) {
+    queries.push(
+      db.factCheck
+        .findMany({
+          where: { id: { in: factCheckIds } },
+          select: { id: true, title: true },
+        })
+        .then((rows) => rows.forEach((r) => labels.set(r.id, r.title)))
+    );
+  }
+
+  const pressIds = byType.get("PressArticle");
+  if (pressIds?.length) {
+    queries.push(
+      db.pressArticle
+        .findMany({
+          where: { id: { in: pressIds } },
+          select: { id: true, title: true },
+        })
+        .then((rows) => rows.forEach((r) => labels.set(r.id, r.title)))
+    );
+  }
+
+  const socialIds = byType.get("SocialPost");
+  if (socialIds?.length) {
+    queries.push(
+      db.socialPost
+        .findMany({
+          where: { id: { in: socialIds } },
+          select: { id: true, content: true },
+        })
+        .then((rows) =>
+          rows.forEach((r) =>
+            labels.set(r.id, r.content.slice(0, 60) + (r.content.length > 60 ? "…" : ""))
+          )
+        )
+    );
+  }
+
+  const scrutinIds = byType.get("Scrutin");
+  if (scrutinIds?.length) {
+    queries.push(
+      db.scrutin
+        .findMany({
+          where: { id: { in: scrutinIds } },
+          select: { id: true, title: true },
+        })
+        .then((rows) => rows.forEach((r) => labels.set(r.id, r.title)))
+    );
+  }
+
   await Promise.all(queries);
   return labels;
 }

@@ -55,7 +55,7 @@ async function getFactChecks(params: {
   const [factChecks, total] = await Promise.all([
     db.factCheck.findMany({
       where,
-      orderBy: { publishedAt: "desc" },
+      orderBy: { createdAt: "desc" },
       skip: (params.page - 1) * ITEMS_PER_PAGE,
       take: ITEMS_PER_PAGE,
       select: {

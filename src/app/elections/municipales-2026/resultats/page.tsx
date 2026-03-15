@@ -1,0 +1,292 @@
+import { Metadata } from "next";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle2, Clock } from "lucide-react";
+import { DEPARTMENTS } from "@/config/departments";
+import { getResultatsListing, getResultatsStats } from "@/lib/data/municipales";
+
+export const revalidate = 60;
+
+interface PageProps {
+  searchParams: Promise<{ page?: string; dept?: string; filtre?: string }>;
+}
+
+export const metadata: Metadata = {
+  title: "Resultats du 1er tour - Municipales 2026 | Poligraph",
+  description:
+    "Resultats du premier tour des elections municipales 2026. Participation, listes elues et communes au second tour.",
+  alternates: { canonical: "/elections/municipales-2026/resultats" },
+};
+
+function daysUntil(date: Date): number {
+  const now = new Date();
+  const diff = date.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+export default async function ResultatsPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const rawPage = parseInt(sp.page || "1", 10);
+  const page = Number.isFinite(rawPage) && rawPage >= 1 ? rawPage : 1;
+  const dept = sp.dept || undefined;
+  const electedOnly = sp.filtre === "elus-t1";
+
+  const [data, stats] = await Promise.all([
+    getResultatsListing({ page, dept, electedOnly }),
+    getResultatsStats(),
+  ]);
+
+  if (!data) {
+    return (
+      <main id="main-content" className="container mx-auto px-4 max-w-6xl py-12 text-center">
+        <p className="text-muted-foreground">Aucun resultat disponible pour le moment.</p>
+      </main>
+    );
+  }
+
+  const { communes, total, totalPages, round2Date } = data;
+  const daysLeft = round2Date ? daysUntil(round2Date) : null;
+
+  function buildUrl(params: { page?: number; dept?: string; filtre?: string }) {
+    const p = new URLSearchParams();
+    if (params.page && params.page > 1) p.set("page", String(params.page));
+    if (params.dept) p.set("dept", params.dept);
+    if (params.filtre) p.set("filtre", params.filtre);
+    const qs = p.toString();
+    return `/elections/municipales-2026/resultats${qs ? `?${qs}` : ""}`;
+  }
+
+  return (
+    <main id="main-content" className="container mx-auto px-4 max-w-6xl">
+      {/* Breadcrumb */}
+      <nav aria-label="Fil d'Ariane" className="py-4">
+        <ol className="flex items-center gap-2 text-sm text-muted-foreground">
+          <li>
+            <Link href="/" className="hover:text-foreground transition-colors">
+              Accueil
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link href="/elections" className="hover:text-foreground transition-colors">
+              Elections
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link
+              href="/elections/municipales-2026"
+              className="hover:text-foreground transition-colors"
+            >
+              Municipales 2026
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li className="text-foreground font-medium" aria-current="page">
+            Resultats T1
+          </li>
+        </ol>
+      </nav>
+
+      {/* Header */}
+      <section className="py-4">
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+          Resultats du 1er tour
+        </h1>
+        <p className="text-muted-foreground">
+          {total.toLocaleString("fr-FR")} commune{total > 1 ? "s" : ""} depouillees
+          {dept && DEPARTMENTS[dept] ? ` en ${DEPARTMENTS[dept].name}` : ""}
+          {electedOnly ? " (elues au T1 uniquement)" : ""}
+        </p>
+      </section>
+
+      {/* Stats bar */}
+      {stats && (
+        <section className="mb-6">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              {stats.eluesT1.toLocaleString("fr-FR")} elue{stats.eluesT1 > 1 ? "s" : ""} au T1
+            </Badge>
+            <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
+              <Clock className="h-3.5 w-3.5 text-sky-600" />
+              {stats.auSecondTour.toLocaleString("fr-FR")} au 2nd tour
+            </Badge>
+            <span className="text-muted-foreground">
+              Participation moy. : {stats.participationMoyenne.toFixed(1)} %
+            </span>
+            {daysLeft != null && daysLeft > 0 && (
+              <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200 ml-auto">
+                2nd tour dans {daysLeft} jour{daysLeft > 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Filters */}
+      <section className="flex flex-wrap items-center gap-2 mb-6">
+        <Link
+          href={buildUrl({ dept, filtre: undefined })}
+          prefetch={false}
+          className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm border transition-colors ${
+            !electedOnly
+              ? "bg-primary text-primary-foreground border-primary"
+              : "hover:bg-muted border-border"
+          }`}
+        >
+          Toutes
+        </Link>
+        <Link
+          href={buildUrl({ dept, filtre: "elus-t1" })}
+          prefetch={false}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+            electedOnly
+              ? "bg-emerald-600 text-white border-emerald-600"
+              : "hover:bg-muted border-border"
+          }`}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Elues au T1
+        </Link>
+
+        {/* Department filter */}
+        {dept && (
+          <>
+            <div className="h-6 border-l border-border mx-1" />
+            <div className="flex items-center gap-1.5">
+              <Badge variant="secondary">{DEPARTMENTS[dept]?.name ?? dept}</Badge>
+              <Link
+                href={buildUrl({ filtre: electedOnly ? "elus-t1" : undefined })}
+                prefetch={false}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                &times; Retirer
+              </Link>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Results grid */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-8">
+        {communes.map((commune) => (
+          <div key={commune.id}>
+            <Link href={`/elections/municipales-2026/communes/${commune.id}`} prefetch={false}>
+              <Card className="h-full hover:bg-muted/50 transition-colors">
+                <CardContent className="pt-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-semibold">{commune.name}</h2>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-muted-foreground">
+                          {DEPARTMENTS[commune.departmentCode]?.name ?? commune.departmentCode}
+                        </span>
+                        {commune.population != null && (
+                          <span className="text-xs text-muted-foreground">
+                            {commune.population.toLocaleString("fr-FR")} hab.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-bold tabular-nums">
+                        {commune.participationRate.toFixed(1)} %
+                      </p>
+                      <p className="text-xs text-muted-foreground">participation</p>
+                    </div>
+                  </div>
+
+                  {commune.topListName && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium leading-tight line-clamp-2">
+                            {commune.topListName}
+                          </p>
+                          {commune.topLeaderName && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {commune.topLeaderName}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold tabular-nums">
+                            {commune.topPct != null ? `${commune.topPct.toFixed(1)} %` : "-"}
+                          </p>
+                        </div>
+                      </div>
+                      {commune.hasElected ? (
+                        <Badge className="mt-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 text-xs">
+                          Elue au 1er tour
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="mt-2 text-xs text-sky-700 dark:text-sky-400"
+                        >
+                          2nd tour - {commune.listCount} listes
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        ))}
+      </section>
+
+      {communes.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          Aucun resultat trouve pour ces criteres.
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <nav className="mt-8 mb-12 flex justify-center items-center gap-2" aria-label="Pagination">
+          {page > 1 ? (
+            <Link
+              href={buildUrl({
+                page: page - 1,
+                dept,
+                filtre: electedOnly ? "elus-t1" : undefined,
+              })}
+              className="inline-flex items-center gap-1 px-4 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
+              prefetch={false}
+            >
+              Precedent
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-4 py-2 border rounded-md opacity-50 cursor-not-allowed text-sm">
+              Precedent
+            </span>
+          )}
+          <span className="px-4 py-2 text-sm text-muted-foreground tabular-nums">
+            Page <span className="font-medium text-foreground">{page}</span> sur{" "}
+            <span className="font-medium text-foreground">{totalPages}</span>
+          </span>
+          {page < totalPages ? (
+            <Link
+              href={buildUrl({
+                page: page + 1,
+                dept,
+                filtre: electedOnly ? "elus-t1" : undefined,
+              })}
+              className="inline-flex items-center gap-1 px-4 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
+              prefetch={false}
+            >
+              Suivant
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-4 py-2 border rounded-md opacity-50 cursor-not-allowed text-sm">
+              Suivant
+            </span>
+          )}
+        </nav>
+      )}
+    </main>
+  );
+}

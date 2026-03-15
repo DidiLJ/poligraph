@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { Vote } from "lucide-react";
 
 interface MunicipalesChiffresProps {
   communesWithCompetition: number;
@@ -8,6 +9,7 @@ interface MunicipalesChiffresProps {
   averageCompetitionIndex: number;
   parityRate: number; // 0-1
   nationalPoliticiansCandidates: number;
+  round2Date?: string | null;
   resultats?: {
     communesDepouillees: number;
     participationMoyenne: number;
@@ -28,54 +30,78 @@ function parityColor(rate: number): string {
   return "text-red-600 dark:text-red-400";
 }
 
+function daysUntil(isoDate: string): number {
+  const target = new Date(isoDate);
+  const now = new Date();
+  const diff = target.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
 export function MunicipalesChiffres({
   communesWithCompetition,
   totalCommunes,
   averageCompetitionIndex,
   parityRate,
   nationalPoliticiansCandidates,
+  round2Date,
   resultats,
 }: MunicipalesChiffresProps) {
   const competitionPct =
     totalCommunes > 0 ? ((communesWithCompetition / totalCommunes) * 100).toFixed(1) : "0";
+  const daysLeft = round2Date ? daysUntil(round2Date) : null;
 
   return (
     <div className="space-y-6">
-      {resultats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-5 text-center">
-              <p className="text-2xl font-bold tabular-nums">
-                {resultats.communesDepouillees.toLocaleString("fr-FR")}
-              </p>
-              <p className="text-sm text-muted-foreground">communes dépouillées</p>
+      {resultats && resultats.communesDepouillees > 0 && (
+        <Link href="/elections/municipales-2026/resultats" prefetch={false} className="block">
+          <Card className="overflow-hidden border-0 bg-gradient-to-r from-slate-800 to-slate-900 text-white dark:from-slate-900 dark:to-slate-950 hover:shadow-lg transition-shadow">
+            <CardContent className="p-0">
+              <div className="flex items-center gap-3 px-5 py-3 border-b border-white/10">
+                <Vote className="h-5 w-5 opacity-80" />
+                <h3 className="font-bold text-base">Resultats du 1er tour</h3>
+                {daysLeft != null && daysLeft > 0 && (
+                  <span className="ml-auto text-xs bg-sky-500/20 text-sky-200 px-2.5 py-1 rounded-full tabular-nums">
+                    2nd tour dans {daysLeft} jour{daysLeft > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-around py-4 px-4 text-center">
+                <div>
+                  <p className="text-2xl font-extrabold tabular-nums">
+                    {resultats.communesDepouillees.toLocaleString("fr-FR")}
+                  </p>
+                  <p className="text-xs text-white/60 mt-0.5">communes depouillees</p>
+                </div>
+                <div className="h-10 border-l border-white/15" />
+                <div>
+                  <p className="text-2xl font-extrabold tabular-nums">
+                    {resultats.participationMoyenne.toFixed(1)} %
+                  </p>
+                  <p className="text-xs text-white/60 mt-0.5">participation moy.</p>
+                </div>
+                <div className="h-10 border-l border-white/15" />
+                <div>
+                  <p className="text-2xl font-extrabold tabular-nums text-emerald-400">
+                    {resultats.eluesT1.toLocaleString("fr-FR")}
+                  </p>
+                  <p className="text-xs text-white/60 mt-0.5">elues au T1</p>
+                </div>
+                <div className="h-10 border-l border-white/15" />
+                <div>
+                  <p className="text-2xl font-extrabold tabular-nums text-sky-400">
+                    {resultats.auSecondTour.toLocaleString("fr-FR")}
+                  </p>
+                  <p className="text-xs text-white/60 mt-0.5">au 2nd tour</p>
+                </div>
+              </div>
+              <div className="bg-white/5 px-5 py-2.5 text-center">
+                <span className="text-sm text-white/70">
+                  Explorer les resultats par commune &rarr;
+                </span>
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-5 text-center">
-              <p className="text-2xl font-bold tabular-nums">
-                {resultats.participationMoyenne.toFixed(1)} %
-              </p>
-              <p className="text-sm text-muted-foreground">participation</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-5 text-center">
-              <p className="text-2xl font-bold tabular-nums text-emerald-600">
-                {resultats.eluesT1.toLocaleString("fr-FR")}
-              </p>
-              <p className="text-sm text-muted-foreground">élues au T1</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-5 text-center">
-              <p className="text-2xl font-bold tabular-nums text-sky-700">
-                {resultats.auSecondTour.toLocaleString("fr-FR")}
-              </p>
-              <p className="text-sm text-muted-foreground">au 2nd tour</p>
-            </CardContent>
-          </Card>
-        </div>
+        </Link>
       )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Communes avec compétition */}

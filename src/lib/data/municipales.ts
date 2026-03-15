@@ -103,6 +103,98 @@ export const getResultatsStats = cache(async function getResultatsStats() {
   return snapshot?.data as ResultatsStats | null;
 });
 
+// ============================================
+// Resultats listing (communes with T1 results)
+// ============================================
+
+export interface CommuneResultRow {
+  id: string;
+  name: string;
+  departmentCode: string;
+  population: number | null;
+  participationRate: number;
+  topListName: string | null;
+  topLeaderName: string | null;
+  topPct: number | null;
+  topVotes: number | null;
+  hasElected: boolean;
+  listCount: number;
+}
+
+export async function getResultatsListing(options: {
+  page?: number;
+  pageSize?: number;
+  dept?: string;
+  electedOnly?: boolean;
+}) {
+  "use cache";
+  cacheTag("elections");
+  cacheLife("minutes");
+
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? 50;
+  const offset = (page - 1) * pageSize;
+
+  const election = await db.election.findUnique({
+    where: { slug: "municipales-2026" },
+    select: { id: true, round2Date: true },
+  });
+  if (!election) return null;
+
+  const deptFilter = options.dept
+    ? Prisma.sql`AND co."departmentCode" = ${options.dept}`
+    : Prisma.empty;
+  const electedFilter = options.electedOnly
+    ? Prisma.sql`AND EXISTS (SELECT 1 FROM "Candidacy" ce WHERE ce."communeId" = co.id AND ce."electionId" = ${election.id} AND ce."isElected" = true)`
+    : Prisma.empty;
+
+  const communes = await db.$queryRaw<CommuneResultRow[]>(Prisma.sql`
+    SELECT
+      co.id,
+      co.name,
+      co."departmentCode",
+      co.population,
+      cer."participationRate"::float AS "participationRate",
+      top_list."listName" AS "topListName",
+      top_list."leaderName" AS "topLeaderName",
+      top_list."round1Pct"::float AS "topPct",
+      top_list."round1Votes"::int AS "topVotes",
+      COALESCE(top_list."isElected", false) AS "hasElected",
+      (SELECT COUNT(DISTINCT c2."listName")::int FROM "Candidacy" c2 WHERE c2."communeId" = co.id AND c2."electionId" = ${election.id}) AS "listCount"
+    FROM "Commune" co
+    INNER JOIN "CommuneElectionRound" cer
+      ON cer."communeId" = co.id AND cer."electionId" = ${election.id} AND cer.round = 1
+    LEFT JOIN LATERAL (
+      SELECT c."listName", c."round1Pct", c."round1Votes", c."isElected",
+             STRING_AGG(CASE WHEN c."position" = 1 THEN c."fullName" END, ', ') AS "leaderName"
+      FROM "Candidacy" c
+      WHERE c."communeId" = co.id AND c."electionId" = ${election.id} AND c."round1Pct" IS NOT NULL
+      GROUP BY c."listName", c."round1Pct", c."round1Votes", c."isElected"
+      ORDER BY c."round1Pct" DESC
+      LIMIT 1
+    ) top_list ON true
+    WHERE 1=1 ${deptFilter} ${electedFilter}
+    ORDER BY
+      co.population DESC NULLS LAST
+    LIMIT ${pageSize} OFFSET ${offset}
+  `);
+
+  const [{ total }] = await db.$queryRaw<[{ total: number }]>(Prisma.sql`
+    SELECT COUNT(*)::int AS total
+    FROM "Commune" co
+    INNER JOIN "CommuneElectionRound" cer
+      ON cer."communeId" = co.id AND cer."electionId" = ${election.id} AND cer.round = 1
+    WHERE 1=1 ${deptFilter} ${electedFilter}
+  `);
+
+  return {
+    communes,
+    total,
+    totalPages: Math.ceil(total / pageSize),
+    round2Date: election.round2Date,
+  };
+}
+
 export const getCommune = cache(async function getCommune(inseeCode: string) {
   // Get commune
   const commune = await db.commune.findUnique({

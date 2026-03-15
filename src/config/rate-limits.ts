@@ -23,6 +23,9 @@ export const JUDILIBRE_RATE_LIMIT_MS = 500; // PISTE OAuth API — politesse
 // --- Recherche web ---
 export const BRAVE_SEARCH_RATE_LIMIT_MS = 1100; // Free tier: 1 req/s
 
+// --- Elections (scraping ministere) ---
+export const INTERIEUR_RATE_LIMIT_MS = 500; // resultats-elections.interieur.gouv.fr
+
 // --- IA (Claude/OpenAI) ---
 export const AI_RATE_LIMIT_MS = 500; // Délai entre appels IA
 export const AI_429_BACKOFF_MS = 30_000; // Backoff sur rate limit 429

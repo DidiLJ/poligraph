@@ -1252,8 +1252,9 @@ model Election {
   sourceUrl String?
 
   // Relations
-  candidacies Candidacy[]
-  rounds      ElectionRound[]
+  candidacies           Candidacy[]
+  rounds                ElectionRound[]
+  communeElectionRounds CommuneElectionRound[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1524,12 +1525,34 @@ model Commune {
   constituencyNumber  Int? // Legislative constituency (CIRCO_LEG from INSEE COG)
   website             String?
 
-  candidacies    Candidacy[]
-  localOfficials LocalOfficial[]
+  candidacies           Candidacy[]
+  localOfficials        LocalOfficial[]
+  communeElectionRounds CommuneElectionRound[]
 
   @@index([departmentCode])
   @@index([departmentCode, constituencyNumber])
   @@index([name])
+}
+
+model CommuneElectionRound {
+  id                String   @id @default(cuid())
+  communeId         String
+  electionId        String
+  round             Int // 1 or 2
+  registeredVoters  Int?
+  actualVoters      Int?
+  participationRate Decimal? @db.Decimal(5, 2)
+  blankVotes        Int?
+  nullVotes         Int?
+  validVotes        Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  commune  Commune  @relation(fields: [communeId], references: [id])
+  election Election @relation(fields: [electionId], references: [id])
+
+  @@unique([communeId, electionId, round])
+  @@index([electionId, round])
 }
 
 // ============================================

@@ -23,7 +23,7 @@ export function MaireCard({ maire }: MaireCardProps) {
   const deptName = DEPARTMENTS[maire.departmentCode]?.name;
 
   const content = (
-    <Card className="h-full hover:shadow-sm transition-shadow">
+    <Card className="h-full hover:shadow-sm hover:border-primary/50 hover:-translate-y-0.5 transition-all cursor-pointer">
       <CardContent className="pt-5">
         <p className="font-semibold leading-tight">{maire.fullName}</p>
 

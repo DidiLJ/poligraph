@@ -47,7 +47,7 @@ export function IncumbentMaireCard({
         <div className="flex items-center gap-2 shrink-0">
           {resultStatus === "reelected" ? (
             <Badge variant="default" className="bg-emerald-600">
-              Reelu{maire.gender === "F" ? "e" : ""}
+              Réélu{maire.gender === "F" ? "e" : ""}
             </Badge>
           ) : resultStatus === "defeated" ? (
             <Badge variant="destructive">Battu{maire.gender === "F" ? "e" : ""}</Badge>
@@ -57,10 +57,10 @@ export function IncumbentMaireCard({
             </Badge>
           ) : isRunningAgain ? (
             <Badge variant="default" className="bg-emerald-600">
-              Se represente
+              Se représente
             </Badge>
           ) : (
-            <Badge variant="secondary">Ne se represente pas</Badge>
+            <Badge variant="secondary">Ne se représente pas</Badge>
           )}
           {maire.politician && (
             <Link

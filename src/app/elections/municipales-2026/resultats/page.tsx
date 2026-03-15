@@ -13,9 +13,9 @@ interface PageProps {
 }
 
 export const metadata: Metadata = {
-  title: "Resultats du 1er tour - Municipales 2026 | Poligraph",
+  title: "Résultats du 1er tour - Municipales 2026 | Poligraph",
   description:
-    "Resultats du premier tour des elections municipales 2026. Participation, listes elues et communes au second tour.",
+    "Résultats du premier tour des élections municipales 2026. Participation, listes élues et communes au second tour.",
   alternates: { canonical: "/elections/municipales-2026/resultats" },
 };
 
@@ -40,7 +40,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
   if (!data) {
     return (
       <main id="main-content" className="container mx-auto px-4 max-w-6xl py-12 text-center">
-        <p className="text-muted-foreground">Aucun resultat disponible pour le moment.</p>
+        <p className="text-muted-foreground">Aucun résultat disponible pour le moment.</p>
       </main>
     );
   }
@@ -70,7 +70,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           <li aria-hidden="true">/</li>
           <li>
             <Link href="/elections" className="hover:text-foreground transition-colors">
-              Elections
+              Élections
             </Link>
           </li>
           <li aria-hidden="true">/</li>
@@ -84,7 +84,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           </li>
           <li aria-hidden="true">/</li>
           <li className="text-foreground font-medium" aria-current="page">
-            Resultats T1
+            Résultats T1
           </li>
         </ol>
       </nav>
@@ -92,12 +92,12 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
       {/* Header */}
       <section className="py-4">
         <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
-          Resultats du 1er tour
+          Résultats du 1er tour
         </h1>
         <p className="text-muted-foreground">
-          {total.toLocaleString("fr-FR")} commune{total > 1 ? "s" : ""} depouillees
+          {total.toLocaleString("fr-FR")} commune{total > 1 ? "s" : ""} dépouillées
           {dept && DEPARTMENTS[dept] ? ` en ${DEPARTMENTS[dept].name}` : ""}
-          {electedOnly ? " (elues au T1 uniquement)" : ""}
+          {electedOnly ? " (élues au T1 uniquement)" : ""}
         </p>
       </section>
 
@@ -107,7 +107,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-              {stats.eluesT1.toLocaleString("fr-FR")} elue{stats.eluesT1 > 1 ? "s" : ""} au T1
+              {stats.eluesT1.toLocaleString("fr-FR")} élue{stats.eluesT1 > 1 ? "s" : ""} au T1
             </Badge>
             <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
               <Clock className="h-3.5 w-3.5 text-sky-600" />
@@ -148,7 +148,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           }`}
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
-          Elues au T1
+          Élues au T1
         </Link>
 
         {/* Department filter */}
@@ -219,7 +219,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
                       </div>
                       {commune.hasElected ? (
                         <Badge className="mt-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 text-xs">
-                          Elue au 1er tour
+                          Élue au 1er tour
                         </Badge>
                       ) : (
                         <Badge
@@ -240,7 +240,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
 
       {communes.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          Aucun resultat trouve pour ces criteres.
+          Aucun résultat trouvé pour ces critères.
         </div>
       )}
 
@@ -257,11 +257,11 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
               className="inline-flex items-center gap-1 px-4 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
               prefetch={false}
             >
-              Precedent
+              Précédent
             </Link>
           ) : (
             <span className="inline-flex items-center gap-1 px-4 py-2 border rounded-md opacity-50 cursor-not-allowed text-sm">
-              Precedent
+              Précédent
             </span>
           )}
           <span className="px-4 py-2 text-sm text-muted-foreground tabular-nums">

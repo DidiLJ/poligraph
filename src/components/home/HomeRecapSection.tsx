@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { CalendarDays, Vote, Newspaper, Scale, ShieldCheck, ArrowRight } from "lucide-react";
+import {
+  CalendarDays,
+  Vote,
+  Newspaper,
+  Scale,
+  ShieldCheck,
+  ArrowRight,
+  Rocket,
+} from "lucide-react";
 import type { WeeklyRecapData } from "@/lib/data/recap";
 
 interface HomeRecapSectionProps {
@@ -98,6 +106,27 @@ export function HomeRecapSection({ data }: HomeRecapSectionProps) {
             );
           })}
         </div>
+
+        {/* Platform updates bandeau */}
+        {data.platformUpdates.total > 0 && (
+          <Link
+            href="/recap"
+            prefetch={false}
+            className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-primary/10 bg-primary/5 hover:bg-primary/10 transition-colors mb-6"
+          >
+            <Rocket className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+            <p className="text-sm text-foreground">
+              <span className="font-medium">Cette semaine sur Poligraph</span>
+              <span className="text-muted-foreground">
+                {" : "}
+                {data.platformUpdates.updates
+                  .slice(0, 3)
+                  .map((u) => u.title)
+                  .join(", ")}
+              </span>
+            </p>
+          </Link>
+        )}
 
         {/* Mobile CTA */}
         <Link

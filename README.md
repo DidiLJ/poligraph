@@ -82,14 +82,25 @@ Poligraph centralise les informations publiques sur les responsables politiques 
 - Carte interactive des élus
 - Récap hebdomadaire
 
-### IA et automatisation
+### IA responsable
 
-- Chatbot avec RAG (pgvector + embeddings Voyage AI)
+L'IA est utilisée de manière ciblée et auditable, jamais pour produire du contenu éditorial libre.
+
+#### Assistant citoyen (RAG)
+
+Un assistant conversationnel permet d'interroger les données politiques en langage naturel : "Mon député a-t-il voté la réforme des retraites ?", "Quels sénateurs ont des affaires en cours ?". L'architecture RAG (pgvector + embeddings Voyage AI + reranking) garantit que les réponses sont ancrées dans les données vérifiées de la base, sans hallucination. Des garde-fous éditoriaux sont intégrés : présomption d'innocence automatique, refus de spéculer, sources traçables.
+
+#### Résolution d'identité multi-sources
+
+Le coeur technique de Poligraph : réconcilier les élus à travers 9+ bases de données officielles aux conventions de nommage incompatibles (nom de naissance, nom d'usage, nom de bulletin, accents, particules). Pour les 99,6% d'élus locaux sans identifiant Wikidata, un pipeline de matching flou avec scoring de confiance (SAME >= 0.95 auto-lié, UNDECIDED 0.70-0.95 revue humaine) permet de croiser les sources sans intervention manuelle à l'échelle.
+
+#### Autres usages IA
+
+- Impact citoyen généré pour chaque vote parlementaire (vulgarisation, neutralité stricte)
 - Résumés automatiques des scrutins et dossiers législatifs
-- Impact citoyen généré pour chaque vote
-- Biographies générées et vérifiées
-- Classification thématique des textes de loi
-- Découverte d'affaires judiciaires dans la presse (Claude Haiku)
+- Découverte d'affaires judiciaires dans la presse (classification + détection de mentions)
+- Biographies générées à partir de données structurées Wikidata, puis validées
+- Classification thématique des textes de loi (13 domaines)
 - Newsletter hebdomadaire "Alerte Vote" avec contenu éditorial IA
 - Auto-publication sur les réseaux sociaux (Twitter, Bluesky)
 

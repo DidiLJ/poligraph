@@ -15,6 +15,7 @@ import {
   findPartyMentions,
 } from "@/lib/name-matching";
 import { loadMentionBlocklist } from "@/lib/identity/mention-blocklist";
+import { isPoliticallyRelevant } from "@/config/press-keywords";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,6 +27,9 @@ export interface PressSyncOptions {
   feed?: string;
 }
 
+/** Max last-name-only matches per article before discarding them all (safety net) */
+const MAX_LASTNAME_ONLY_MENTIONS = 5;
+
 export interface PressSyncStats {
   feedsFetched: number;
   articlesTotal: number;
@@ -33,6 +37,8 @@ export interface PressSyncStats {
   articlesSkipped: number;
   mentionsCreated: number;
   mentionsBlocked: number;
+  mentionsFilteredNonPolitical: number;
+  mentionsFilteredCap: number;
   partyMentionsCreated: number;
   errors: string[];
 }
@@ -51,6 +57,8 @@ export async function syncPress(options: PressSyncOptions = {}): Promise<PressSy
     articlesSkipped: 0,
     mentionsCreated: 0,
     mentionsBlocked: 0,
+    mentionsFilteredNonPolitical: 0,
+    mentionsFilteredCap: 0,
     partyMentionsCreated: 0,
     errors: [],
   };
@@ -89,10 +97,28 @@ export async function syncPress(options: PressSyncOptions = {}): Promise<PressSy
           continue;
         }
 
-        // Find politician and party mentions, filtering out known false positives
+        // Find politician and party mentions with false-positive filtering
         const searchText = `${item.title} ${item.description || ""}`;
-        const rawMentions = findMentions(searchText, politicians);
-        const mentions = rawMentions.filter((m) => {
+        const politicalContext = isPoliticallyRelevant(searchText);
+
+        // Layer 1: non-political articles only get full-name matches
+        let detectedMentions = findMentions(searchText, politicians, {
+          fullNameOnly: !politicalContext,
+        });
+        if (!politicalContext) stats.mentionsFilteredNonPolitical++;
+
+        // Layer 2: cap last-name-only matches (safety net for pathological cases)
+        const lastnameOnlyCount = detectedMentions.filter(
+          (m) => !m.matchedName.includes(" ")
+        ).length;
+        if (lastnameOnlyCount > MAX_LASTNAME_ONLY_MENTIONS) {
+          const before = detectedMentions.length;
+          detectedMentions = detectedMentions.filter((m) => m.matchedName.includes(" "));
+          stats.mentionsFilteredCap += before - detectedMentions.length;
+        }
+
+        // Layer 3: blocklist (manual admin unlinks)
+        const mentions = detectedMentions.filter((m) => {
           if (blocklist.isBlocked(m.matchedName, m.politicianId)) {
             stats.mentionsBlocked++;
             return false;

@@ -1237,7 +1237,8 @@ model Election {
   suffrage   SuffrageType  @default(DIRECT)
 
   // Status
-  status ElectionStatus @default(UPCOMING)
+  status   ElectionStatus @default(UPCOMING)
+  featured Boolean        @default(false)
 
   // Sources
   decreeUrl String?

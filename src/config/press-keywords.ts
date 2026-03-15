@@ -76,6 +76,69 @@ export const JUDICIAL_KEYWORDS: string[] = [
   ...JURISDICTION_KEYWORDS,
 ];
 
+// ============================================
+// POLITICAL RELEVANCE (gates last-name-only matching in press sync)
+// ============================================
+
+const POLITICAL_ROLE_KEYWORDS = [
+  "depute",
+  "deputee",
+  "senateur",
+  "senatrice",
+  "ministre",
+  "secretaire d'etat",
+  "parlementaire",
+  "eurodepute",
+  "eurodeputee",
+  "premier ministre",
+  "maire",
+  "prefet",
+  "prefete",
+  "elu",
+  "elue",
+  "candidat",
+  "candidate",
+  "diplomate",
+];
+
+const POLITICAL_INSTITUTION_KEYWORDS = [
+  "assemblee nationale",
+  "assemblee",
+  "senat",
+  "gouvernement",
+  "parlement",
+  "elysee",
+  "matignon",
+  "hemicycle",
+];
+
+const POLITICAL_PROCESS_KEYWORDS = [
+  "election",
+  "scrutin",
+  "projet de loi",
+  "proposition de loi",
+  "amendement",
+  "motion de censure",
+  "referendum",
+  "remaniement",
+  "legislatives",
+  "municipales",
+  "presidentielles",
+  "europeennes",
+  "campagne electorale",
+];
+
+const POLITICAL_GENERAL_KEYWORDS = ["politique", "opposition", "majorite parlementaire"];
+
+/** All political keywords: judicial + roles + institutions + processes */
+export const POLITICAL_KEYWORDS: string[] = [
+  ...JUDICIAL_KEYWORDS,
+  ...POLITICAL_ROLE_KEYWORDS,
+  ...POLITICAL_INSTITUTION_KEYWORDS,
+  ...POLITICAL_PROCESS_KEYWORDS,
+  ...POLITICAL_GENERAL_KEYWORDS,
+];
+
 /**
  * Normalize text for keyword matching:
  * lowercase, strip accents, normalize whitespace
@@ -119,4 +182,14 @@ export function classifyArticleTier(title: string, description: string | null): 
   }
 
   return "TIER_2";
+}
+
+/**
+ * Check if article text contains political keywords.
+ * Used to gate last-name-only matching in press sync:
+ * non-political articles (sports, culture, etc.) only match full politician names.
+ */
+export function isPoliticallyRelevant(text: string): boolean {
+  const normalized = normalizeForMatching(text);
+  return POLITICAL_KEYWORDS.some((kw) => matchesKeyword(normalized, kw));
 }

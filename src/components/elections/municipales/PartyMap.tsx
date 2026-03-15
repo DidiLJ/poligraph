@@ -37,6 +37,16 @@ const DOMTOM_NAMES: Record<string, string> = {
   "974": "La Réunion",
   "976": "Mayotte",
 };
+const IDF_NAMES: Record<string, string> = {
+  "75": "Paris",
+  "77": "Seine-et-Marne",
+  "78": "Yvelines",
+  "91": "Essonne",
+  "92": "Hauts-de-Seine",
+  "93": "Seine-Saint-Denis",
+  "94": "Val-de-Marne",
+  "95": "Val-d'Oise",
+};
 
 export interface PartyMapDepartment {
   code: string;
@@ -184,10 +194,10 @@ function PartyMapComponent({ departments, mini = false }: PartyMapProps) {
             </Geographies>
           </ComposableMap>
 
-          {/* Île-de-France inset */}
+          {/* Île-de-France inset (hidden on mobile - too small for touch) */}
           <div
             aria-label="Carte de l'Île-de-France"
-            className="absolute top-2 right-2 border rounded-lg overflow-hidden bg-white/85 dark:bg-gray-900/85 backdrop-blur-sm"
+            className="hidden md:block absolute top-2 right-2 border rounded-lg overflow-hidden bg-white/85 dark:bg-gray-900/85 backdrop-blur-sm"
             style={{ width: 200, height: 180 }}
           >
             <div className="text-[10px] font-medium text-center py-1 text-muted-foreground border-b">
@@ -207,6 +217,40 @@ function PartyMapComponent({ departments, mini = false }: PartyMapProps) {
               </Geographies>
             </ComposableMap>
           </div>
+        </div>
+
+        {/* Île-de-France buttons (mobile only - replaces inset map) */}
+        <div
+          aria-label="Départements d'Île-de-France"
+          className="flex md:hidden flex-wrap justify-center gap-2 py-2 border-t border-border/50"
+        >
+          <span className="text-xs text-muted-foreground self-center mr-2">Île-de-France :</span>
+          {IDF_CODES.map((code) => {
+            const dept = deptMap.get(code);
+            const isSelected = selectedDept?.code === code;
+            const color = getColor(code);
+
+            return (
+              <button
+                key={code}
+                onClick={() => dept && handleClick(dept)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
+                  isSelected ? "ring-2 ring-primary" : ""
+                } ${dept ? "cursor-pointer hover:opacity-80" : "opacity-50 cursor-default"}`}
+                style={{ backgroundColor: color }}
+                disabled={!dept}
+                title={
+                  dept
+                    ? `${IDF_NAMES[code]} : ${dept.dominantParty ?? "aucun"} (${dept.totalLists} listes)`
+                    : IDF_NAMES[code]
+                }
+              >
+                <span className="text-white" style={{ textShadow: "0 0 2px rgba(0,0,0,0.5)" }}>
+                  {IDF_NAMES[code]}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* DOM-TOM buttons */}

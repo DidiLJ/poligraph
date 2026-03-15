@@ -296,7 +296,7 @@ export function CommuneSearch({
                 : "hover:bg-muted border-border text-muted-foreground"
             )}
           >
-            Resultats disponibles
+            Résultats disponibles
           </button>
         </div>
 

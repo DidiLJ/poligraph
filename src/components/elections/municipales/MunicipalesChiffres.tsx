@@ -70,7 +70,7 @@ export function MunicipalesChiffres({
                   <p className="text-2xl font-extrabold tabular-nums">
                     {resultats.communesDepouillees.toLocaleString("fr-FR")}
                   </p>
-                  <p className="text-xs text-white/60 mt-0.5">communes depouillees</p>
+                  <p className="text-xs text-white/60 mt-0.5">communes dépouillées</p>
                 </div>
                 <div className="h-10 border-l border-white/15" />
                 <div>
@@ -84,7 +84,7 @@ export function MunicipalesChiffres({
                   <p className="text-2xl font-extrabold tabular-nums text-emerald-400">
                     {resultats.eluesT1.toLocaleString("fr-FR")}
                   </p>
-                  <p className="text-xs text-white/60 mt-0.5">elues au T1</p>
+                  <p className="text-xs text-white/60 mt-0.5">élues au T1</p>
                 </div>
                 <div className="h-10 border-l border-white/15" />
                 <div>
@@ -96,7 +96,7 @@ export function MunicipalesChiffres({
               </div>
               <div className="bg-white/5 px-5 py-2.5 text-center">
                 <span className="text-sm text-white/70">
-                  Explorer les resultats par commune &rarr;
+                  Explorer les résultats par commune &rarr;
                 </span>
               </div>
             </CardContent>

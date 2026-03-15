@@ -47,7 +47,16 @@ export default async function MunicipalesLandingPage() {
   const [stats, resultats] = await Promise.all([getMunicipalesStats(), getResultatsStats()]);
   const departmentData = await getDepartmentPartyData();
 
-  const targetDate = election?.round1Date ? election.round1Date.toISOString() : null;
+  // After T1 has passed, countdown to T2 instead
+  const now = new Date();
+  const round1Passed = election?.round1Date && election.round1Date < now;
+  const targetDate =
+    round1Passed && election?.round2Date
+      ? election.round2Date.toISOString()
+      : election?.round1Date
+        ? election.round1Date.toISOString()
+        : null;
+  const countdownLabel = round1Passed ? "2nd tour dans" : "1er tour dans";
 
   const guides = ELECTION_GUIDES.MUNICIPALES;
 
@@ -80,6 +89,7 @@ export default async function MunicipalesLandingPage() {
           totalCandidacies={stats?.totalCandidacies ?? 0}
           totalCommunes={stats?.totalCommunes ?? 0}
           totalLists={stats?.totalLists ?? 0}
+          countdownLabel={countdownLabel}
         />
       </section>
 

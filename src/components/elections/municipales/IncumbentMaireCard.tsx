@@ -17,9 +17,15 @@ interface IncumbentMaireCardProps {
     } | null;
   };
   isRunningAgain: boolean;
+  /** Result status when T1 results are available */
+  resultStatus?: "reelected" | "runoff" | "defeated" | null;
 }
 
-export function IncumbentMaireCard({ maire, isRunningAgain }: IncumbentMaireCardProps) {
+export function IncumbentMaireCard({
+  maire,
+  isRunningAgain,
+  resultStatus,
+}: IncumbentMaireCardProps) {
   const startYear = maire.mandateStart?.getFullYear();
   const partyName = maire.party?.shortName ?? maire.partyLabel;
 
@@ -39,12 +45,22 @@ export function IncumbentMaireCard({ maire, isRunningAgain }: IncumbentMaireCard
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {isRunningAgain ? (
+          {resultStatus === "reelected" ? (
             <Badge variant="default" className="bg-emerald-600">
-              Se représente
+              Reelu{maire.gender === "F" ? "e" : ""}
+            </Badge>
+          ) : resultStatus === "defeated" ? (
+            <Badge variant="destructive">Battu{maire.gender === "F" ? "e" : ""}</Badge>
+          ) : resultStatus === "runoff" ? (
+            <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200">
+              2nd tour
+            </Badge>
+          ) : isRunningAgain ? (
+            <Badge variant="default" className="bg-emerald-600">
+              Se represente
             </Badge>
           ) : (
-            <Badge variant="secondary">Ne se représente pas</Badge>
+            <Badge variant="secondary">Ne se represente pas</Badge>
           )}
           {maire.politician && (
             <Link

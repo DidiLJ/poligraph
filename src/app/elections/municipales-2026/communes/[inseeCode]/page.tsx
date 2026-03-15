@@ -196,6 +196,21 @@ export default async function CommuneDetailPage({ params }: PageProps) {
             <IncumbentMaireCard
               maire={commune.incumbentMaire.maire}
               isRunningAgain={commune.incumbentMaire.isRunningAgain}
+              resultStatus={
+                commune.hasResults &&
+                commune.incumbentMaire.isRunningAgain &&
+                commune.incumbentMaire.candidacy
+                  ? (() => {
+                      const maireList = commune.lists.find(
+                        (l) => l.name === commune.incumbentMaire!.candidacy!.listName
+                      );
+                      if (!maireList || maireList.round1Pct == null) return null;
+                      if (maireList.isElected) return "reelected" as const;
+                      if (maireList.round1Qualified) return "runoff" as const;
+                      return "defeated" as const;
+                    })()
+                  : null
+              }
             />
           </div>
         )}

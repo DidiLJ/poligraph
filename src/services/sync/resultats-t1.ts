@@ -103,7 +103,6 @@ export function parseCommuneResultsHtml(
     const round1Votes = parseFrenchNumber(cells.eq(3).text().trim());
     // Skip % Inscrits (col 4), use % Exprimes (col 5)
     const round1Pct = parseFrenchNumber(cells.eq(5).text().trim());
-    // Seats won (col 6) > 0 means elected
     const seatsWon = parseFrenchNumber(cells.eq(6).text().trim());
 
     if (!listName) return;
@@ -115,7 +114,9 @@ export function parseCommuneResultsHtml(
       round1Votes,
       round1Pct,
       round1Qualified: round1Pct >= 10, // T2 qualification threshold
-      isElected: seatsWon > 0,
+      // seatsWon > 0 means the list got council seats (proportional),
+      // but only the absolute majority list (>50%) actually wins the commune in T1
+      isElected: seatsWon > 0 && round1Pct > 50,
     });
   });
 

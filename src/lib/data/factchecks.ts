@@ -74,7 +74,7 @@ export async function getFactchecks(params: {
   const [factChecks, total] = await Promise.all([
     db.factCheck.findMany({
       where,
-      orderBy: { publishedAt: "desc" },
+      orderBy: { createdAt: "desc" },
       skip,
       take: limit,
       include: {

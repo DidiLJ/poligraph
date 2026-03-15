@@ -188,7 +188,7 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
         db.factCheck.groupBy({
           by: ["verdictRating"],
           where: {
-            publishedAt: { gte: weekStart, lt: weekEnd },
+            createdAt: { gte: weekStart, lt: weekEnd },
             source: { in: FACTCHECK_ALLOWED_SOURCES },
           },
           _count: true,
@@ -214,8 +214,8 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
         JOIN "FactCheck" fc ON m."factCheckId" = fc.id
         JOIN "Politician" p ON m."politicianId" = p.id
         LEFT JOIN "Party" par ON p."currentPartyId" = par.id
-        WHERE fc."publishedAt" >= ${weekStart}
-          AND fc."publishedAt" < ${weekEnd}
+        WHERE fc."createdAt" >= ${weekStart}
+          AND fc."createdAt" < ${weekEnd}
           AND fc.source IN (${Prisma.join(FACTCHECK_ALLOWED_SOURCES)})
           AND m."isClaimant" = true
         GROUP BY p.id, p.slug, p."fullName", p."photoUrl", par."shortName", par.color

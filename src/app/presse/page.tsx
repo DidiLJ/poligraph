@@ -25,6 +25,7 @@ interface PageProps {
     source?: string;
     party?: string;
     search?: string;
+    sort?: string;
   }>;
 }
 
@@ -40,8 +41,9 @@ async function getArticles(params: {
   source?: string;
   partyId?: string;
   search?: string;
+  sort?: string;
 }) {
-  const { page, limit, source, partyId, search } = params;
+  const { page, limit, source, partyId, search, sort } = params;
   const skip = (page - 1) * limit;
 
   const where = {
@@ -61,10 +63,11 @@ async function getArticles(params: {
   const [articles, total] = await Promise.all([
     db.pressArticle.findMany({
       where,
-      orderBy: { publishedAt: "desc" },
+      orderBy: sort === "relevance" ? { mentions: { _count: "desc" } } : { publishedAt: "desc" },
       skip,
       take: limit,
       include: {
+        _count: { select: { mentions: true } },
         mentions: {
           include: {
             politician: {
@@ -166,9 +169,10 @@ export default async function PressePage({ searchParams }: PageProps) {
   const source = params.source;
   const partyId = params.party;
   const search = params.search;
+  const sort = params.sort === "relevance" ? "relevance" : "recent";
 
   const [{ articles, total, totalPages }, stats, partiesWithMentions] = await Promise.all([
-    getArticles({ page, limit, source, partyId, search }),
+    getArticles({ page, limit, source, partyId, search, sort }),
     getStats(),
     getPartiesWithMentions(),
   ]);
@@ -182,6 +186,7 @@ export default async function PressePage({ searchParams }: PageProps) {
     if (params.search) current.set("search", params.search);
     if (params.source) current.set("source", params.source);
     if (params.party) current.set("party", params.party);
+    if (params.sort) current.set("sort", params.sort);
 
     for (const [key, value] of Object.entries(newParams)) {
       if (value) {
@@ -259,6 +264,30 @@ export default async function PressePage({ searchParams }: PageProps) {
               {s.name} ({stats.bySource[s.id] || 0})
             </Link>
           ))}
+        </div>
+
+        {/* Sort toggle */}
+        <div className="flex gap-2">
+          <Link
+            href={buildUrl({ sort: undefined })}
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              sort === "recent"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted hover:bg-muted/80"
+            }`}
+          >
+            Récents
+          </Link>
+          <Link
+            href={buildUrl({ sort: "relevance" })}
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              sort === "relevance"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted hover:bg-muted/80"
+            }`}
+          >
+            Pertinence
+          </Link>
         </div>
 
         {/* Party filter dropdown */}
@@ -342,6 +371,7 @@ export default async function PressePage({ searchParams }: PageProps) {
               publishedAt={article.publishedAt}
               mentions={article.mentions}
               partyMentions={article.partyMentions}
+              mentionCount={article._count.mentions}
             />
           ))}
         </div>

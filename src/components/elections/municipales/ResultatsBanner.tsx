@@ -68,7 +68,7 @@ export function ResultatsBanner({
       className={`mb-6 overflow-hidden border-0 ${
         isElected
           ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white"
-          : "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+          : "bg-gradient-to-r from-sky-600 to-sky-700 text-white"
       }`}
     >
       <CardContent className="p-0">

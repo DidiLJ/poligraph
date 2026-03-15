@@ -552,7 +552,7 @@ export async function getDepartmentMunicipales(
   `);
 
   // Department-level aggregate stats
-  const [stats] = await db.$queryRaw<
+  const [rawStats] = await db.$queryRaw<
     [{ totalCommunes: number; totalLists: number; avgCompetition: number; parityRate: number }]
   >(Prisma.sql`
     SELECT
@@ -589,6 +589,13 @@ export async function getDepartmentMunicipales(
         AND ca.gender IS NOT NULL
     ) parity
   `);
+
+  const stats = rawStats ?? {
+    totalCommunes: 0,
+    totalLists: 0,
+    avgCompetition: 0,
+    parityRate: 0,
+  };
 
   return {
     communes,

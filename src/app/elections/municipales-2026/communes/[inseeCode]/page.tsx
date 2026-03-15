@@ -8,6 +8,7 @@ import { ListCard } from "@/components/elections/municipales/ListCard";
 import { AlerteCumul } from "@/components/elections/municipales/PoliticianBridge";
 import { IncumbentMaireCard } from "@/components/elections/municipales/IncumbentMaireCard";
 import { HistoriqueSection2020 } from "@/components/elections/municipales/HistoriqueSection2020";
+import { ResultatsBanner } from "@/components/elections/municipales/ResultatsBanner";
 import { EventJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import { db } from "@/lib/db";
@@ -131,6 +132,42 @@ export default async function CommuneDetailPage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* Results banner (only if results available) */}
+        {commune.hasResults &&
+          (() => {
+            const electedList = commune.lists.find((l) => l.isElected);
+            const topList = electedList || commune.lists[0];
+            const qualifiedCount = commune.lists.filter((l) => l.round1Qualified).length;
+
+            return (
+              <ResultatsBanner
+                topList={
+                  topList?.round1Pct != null
+                    ? {
+                        name: topList.name,
+                        leaderName: topList.teteDeListe.candidateName,
+                        partyLabel: topList.partyLabel,
+                        round1Pct: topList.round1Pct,
+                        round1Votes: topList.round1Votes!,
+                        isElected: topList.isElected,
+                      }
+                    : null
+                }
+                participation={commune.participation}
+                listCount={commune.stats.listCount}
+                qualifiedCount={qualifiedCount}
+                round2Date={
+                  !electedList && commune.round2Date
+                    ? new Date(commune.round2Date).toLocaleDateString("fr-FR", {
+                        day: "numeric",
+                        month: "long",
+                      })
+                    : null
+                }
+              />
+            );
+          })()}
+
         {/* Alerte cumul */}
         {commune.stats.nationalPoliticiansCount > 0 &&
           (() => {
@@ -172,6 +209,7 @@ export default async function CommuneDetailPage({ params }: PageProps) {
             totalSeats={commune.totalSeats}
             femaleRate={commune.stats.femaleRate}
             nationalPoliticiansCount={commune.stats.nationalPoliticiansCount}
+            participationRate={commune.participation?.participationRate}
           />
         </section>
 
@@ -184,7 +222,9 @@ export default async function CommuneDetailPage({ params }: PageProps) {
 
         {/* Lists & candidates */}
         <section>
-          <h2 className="text-lg font-semibold mb-4">Listes et candidats</h2>
+          <h2 className="text-lg font-semibold mb-4">
+            {commune.hasResults ? "Résultats par liste" : "Listes et candidats"}
+          </h2>
           {commune.lists.length > 0 ? (
             <div className="space-y-4">
               {commune.lists.map((list) => (
@@ -198,6 +238,10 @@ export default async function CommuneDetailPage({ params }: PageProps) {
                   members={list.members}
                   incumbentMaireLastName={commune.incumbentMaire?.maire.lastName ?? null}
                   incumbentMaireGender={commune.incumbentMaire?.maire.gender ?? null}
+                  round1Pct={list.round1Pct}
+                  round1Votes={list.round1Votes}
+                  round1Qualified={list.round1Qualified}
+                  isElected={list.isElected}
                 />
               ))}
             </div>

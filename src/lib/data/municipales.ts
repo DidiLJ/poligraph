@@ -166,7 +166,7 @@ export async function getResultatsListing(options: {
       ON cer."communeId" = co.id AND cer."electionId" = ${election.id} AND cer.round = 1
     LEFT JOIN LATERAL (
       SELECT c."listName", c."round1Pct", c."round1Votes", c."isElected",
-             STRING_AGG(CASE WHEN c."position" = 1 THEN c."fullName" END, ', ') AS "leaderName"
+             STRING_AGG(CASE WHEN c."listPosition" = 1 THEN c."candidateName" END, ', ') AS "leaderName"
       FROM "Candidacy" c
       WHERE c."communeId" = co.id AND c."electionId" = ${election.id} AND c."round1Pct" IS NOT NULL
       GROUP BY c."listName", c."round1Pct", c."round1Votes", c."isElected"

@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { NO_DATA_COLOR, getPartyColor } from "@/config/party-colors";
 
 // Dynamic imports to avoid SSR issues with react-simple-maps
@@ -283,6 +284,13 @@ function PartyMapComponent({ departments, mini = false }: PartyMapProps) {
               );
             })}
           </div>
+          <Link
+            href={`/elections/municipales-2026/departements/${selectedDept.code}`}
+            prefetch={false}
+            className="block mt-4 text-sm text-primary hover:underline"
+          >
+            Voir les communes de ce département →
+          </Link>
         </aside>
       )}
 

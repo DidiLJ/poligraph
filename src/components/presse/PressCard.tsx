@@ -25,6 +25,7 @@ interface PressCardProps {
       color: string | null;
     };
   }>;
+  mentionCount?: number;
 }
 
 const SOURCE_NAMES: Record<string, string> = {
@@ -48,6 +49,7 @@ export function PressCard({
   publishedAt,
   mentions,
   partyMentions,
+  mentionCount,
 }: PressCardProps) {
   const sourceName = SOURCE_NAMES[feedSource] || feedSource;
   const sourceColor = SOURCE_COLORS[feedSource] || "bg-gray-100 text-gray-800";
@@ -98,8 +100,15 @@ export function PressCard({
           <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{description}</p>
         )}
 
-        {/* Date */}
-        <p className="text-xs text-muted-foreground mt-2">{formatDate(publishedAt)}</p>
+        {/* Date + mention count */}
+        <div className="flex items-center gap-2 mt-2">
+          <p className="text-xs text-muted-foreground">{formatDate(publishedAt)}</p>
+          {mentionCount != null && mentionCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              {mentionCount} mention{mentionCount > 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
 
         {/* Politicians mentioned */}
         {mentions.length > 0 && (

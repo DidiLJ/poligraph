@@ -6,8 +6,10 @@ import { INTERIEUR_RATE_LIMIT_MS } from "@/config/rate-limits";
 
 // --- Configuration ---
 
-// Ministry results base URL (to be confirmed on election night)
-const BASE_URL = "https://www.resultats-elections.interieur.gouv.fr";
+// Ministry results URL structure:
+// /municipales2026/ensemble_geographique/{regionCode}/{deptCode}/{inseeCode}/
+const BASE_URL =
+  "https://www.resultats-elections.interieur.gouv.fr/municipales2026/ensemble_geographique";
 
 // All French department codes
 const DEPARTMENT_CODES = [
@@ -50,28 +52,87 @@ interface ParsedListResult {
 
 // --- Parsing ---
 
+/** Parse a French formatted number: "12 345" → 12345, "28,97" → 28.97 */
+function parseFrenchNumber(raw: string): number {
+  return parseFloat(raw.replace(/\s/g, "").replace(",", ".")) || 0;
+}
+
 /**
- * Parse a commune results page HTML.
- * NOTE: The exact selectors depend on the ministry site structure.
- * This will need adaptation once we see the actual HTML on election night.
+ * Parse a commune results page HTML from the ministry site.
+ * Structure: "Mentions 1er tour" table for participation,
+ * "Résultats au 1er tour" table for list results.
  */
 export function parseCommuneResultsHtml(
   html: string,
-  _inseeCode: string
+  inseeCode: string
 ): ParsedCommuneResult | null {
   const $ = cheerio.load(html);
 
-  // TODO: Adapt selectors to actual ministry HTML structure
-  // The structure typically includes:
-  // - A participation table (inscrits, votants, blancs, nuls, exprimes)
-  // - A results table per list (nom, nuance, voix, %, elu/qualifie)
-  //
-  // For now, this is a skeleton that will be filled once we see the HTML.
-  // Use Claude Code terminal to inspect a page and fill in selectors.
+  // Check if results are available
+  if (html.includes("résultats non parvenus")) return null;
 
-  void $; // suppress unused warning
+  // --- Parse participation table (caption contains "Mentions 1er tour") ---
+  const mentionsTable = $('table caption:contains("Mentions 1")').closest("table").find("tbody tr");
 
-  return null; // Placeholder - fill during recon
+  if (mentionsTable.length === 0) return null;
+
+  const participationData: Record<string, number> = {};
+  mentionsTable.each((_, row) => {
+    const cells = $(row).find("td");
+    const label = cells.eq(0).text().trim();
+    const value = parseFrenchNumber(cells.eq(1).text().trim());
+    participationData[label] = value;
+  });
+
+  const registeredVoters = participationData["Inscrits"] || 0;
+  const actualVoters = participationData["Votants"] || 0;
+  const blankVotes = participationData["Blancs"] || 0;
+  const nullVotes = participationData["Nuls"] || 0;
+  const validVotes = participationData["Exprimés"] || 0;
+  const participationRate = registeredVoters > 0 ? (actualVoters / registeredVoters) * 100 : 0;
+
+  // --- Parse results table (caption contains "Résultats") ---
+  const resultsTable = $('table caption:contains("Résultats")').closest("table").find("tbody tr");
+
+  const lists: ParsedListResult[] = [];
+  resultsTable.each((_, row) => {
+    const cells = $(row).find("td");
+    const listName = cells.eq(0).text().trim();
+    const leaderName = cells.eq(1).text().trim();
+    const nuance = cells.eq(2).text().trim();
+    const round1Votes = parseFrenchNumber(cells.eq(3).text().trim());
+    // Skip % Inscrits (col 4), use % Exprimes (col 5)
+    const round1Pct = parseFrenchNumber(cells.eq(5).text().trim());
+    // Seats won (col 6) > 0 means elected
+    const seatsWon = parseFrenchNumber(cells.eq(6).text().trim());
+
+    if (!listName) return;
+
+    lists.push({
+      listName,
+      leaderName,
+      nuance,
+      round1Votes,
+      round1Pct,
+      round1Qualified: round1Pct >= 10, // T2 qualification threshold
+      isElected: seatsWon > 0,
+    });
+  });
+
+  // Extract commune name from page title
+  const communeName = $("h5.fr-h2").text().trim().split("(")[0]?.trim() || inseeCode;
+
+  return {
+    inseeCode,
+    communeName,
+    registeredVoters,
+    actualVoters,
+    blankVotes,
+    nullVotes,
+    validVotes,
+    participationRate: Math.round(participationRate * 100) / 100,
+    lists,
+  };
 }
 
 /**
@@ -235,48 +296,77 @@ export async function syncResultatsT1({ dryRun = false, dept }: SyncOptions = {}
   }
 
   const departments = dept ? [dept] : DEPARTMENT_CODES;
-  const totalCommunesProcessed = 0;
-  const totalCommunesNoResults = 0;
-  const totalWarnings = 0;
-  const totalEluesT1 = 0;
-  const totalSecondTour = 0;
-  const participationSum = 0;
-  const participationCount = 0;
+  let totalCommunesProcessed = 0;
+  let totalCommunesNoResults = 0;
+  let totalCommunesSkipped = 0;
+  let totalWarnings = 0;
+  let totalEluesT1 = 0;
+  let totalSecondTour = 0;
+  let participationSum = 0;
+  let participationCount = 0;
 
   for (const deptCode of departments) {
     console.log(`\n--- Department ${deptCode} ---`);
 
-    // TODO: Fetch department index page to get list of commune URLs
-    // Then for each commune, fetch + parse + upsert
-    // This is the main loop to fill once we see the ministry URL structure.
+    // Get communes in this department that have candidacies for this election
+    const communes = await db.commune.findMany({
+      where: {
+        departmentCode: deptCode,
+        candidacies: { some: { electionId: election.id } },
+      },
+      select: { id: true, name: true, regionCode: true },
+    });
 
-    // Placeholder structure:
-    // const communeUrls = await fetchDepartmentCommuneList(deptCode);
-    // for (const { inseeCode, url } of communeUrls) {
-    //   await sleep(INTERIEUR_RATE_LIMIT_MS);
-    //   const html = await httpClient.getText(url);
-    //   const result = parseCommuneResultsHtml(html.data, inseeCode);
-    //   if (!result) { totalCommunesNoResults++; continue; }
-    //
-    //   if (!dryRun) {
-    //     await upsertCommuneParticipation(inseeCode, election.id, result);
-    //     for (const list of result.lists) {
-    //       const count = await updateCandidacyResults(election.id, inseeCode, list);
-    //       if (count === 0) totalWarnings++;
-    //     }
-    //   }
-    //
-    //   const hasElected = result.lists.some(l => l.isElected);
-    //   if (hasElected) totalEluesT1++;
-    //   else totalSecondTour++;
-    //   participationSum += result.participationRate;
-    //   participationCount++;
-    //   totalCommunesProcessed++;
-    //
-    //   console.log(`  ${result.communeName}: ${result.lists.length} listes, ${result.participationRate}% participation`);
-    // }
+    console.log(`  ${communes.length} communes with candidacies`);
 
-    void deptCode; // suppress unused warning for placeholder
+    for (const commune of communes) {
+      if (!commune.regionCode) {
+        console.warn(`  [SKIP] ${commune.name} (${commune.id}): no regionCode`);
+        totalCommunesSkipped++;
+        continue;
+      }
+
+      const url = `${BASE_URL}/${commune.regionCode}/${deptCode}/${commune.id}/`;
+
+      await sleep(INTERIEUR_RATE_LIMIT_MS);
+
+      let html: string;
+      try {
+        const response = await httpClient.getText(url);
+        html = response.data;
+      } catch (err) {
+        console.warn(
+          `  [ERR] ${commune.name} (${commune.id}): fetch failed - ${err instanceof Error ? err.message : err}`
+        );
+        totalCommunesSkipped++;
+        continue;
+      }
+
+      const result = parseCommuneResultsHtml(html, commune.id);
+      if (!result) {
+        totalCommunesNoResults++;
+        continue;
+      }
+
+      if (!dryRun) {
+        await upsertCommuneParticipation(commune.id, election.id, result);
+        for (const list of result.lists) {
+          const count = await updateCandidacyResults(election.id, commune.id, list);
+          if (count === 0) totalWarnings++;
+        }
+      }
+
+      const hasElected = result.lists.some((l) => l.isElected);
+      if (hasElected) totalEluesT1++;
+      else totalSecondTour++;
+      participationSum += result.participationRate;
+      participationCount++;
+      totalCommunesProcessed++;
+
+      console.log(
+        `  ${result.communeName}: ${result.lists.length} listes, ${result.participationRate}% participation${hasElected ? " [ELU T1]" : ""}`
+      );
+    }
   }
 
   // Update stats snapshot
@@ -292,18 +382,11 @@ export async function syncResultatsT1({ dryRun = false, dept }: SyncOptions = {}
   console.log(`\n=== Summary ===`);
   console.log(`Communes processed: ${totalCommunesProcessed}`);
   console.log(`Communes no results: ${totalCommunesNoResults}`);
+  console.log(`Communes skipped: ${totalCommunesSkipped}`);
   console.log(`Warnings (matching): ${totalWarnings}`);
   console.log(`Elected T1: ${totalEluesT1}`);
   console.log(`Second tour: ${totalSecondTour}`);
   if (participationCount > 0) {
     console.log(`Avg participation: ${(participationSum / participationCount).toFixed(2)}%`);
   }
-
-  // Suppress unused references in skeleton mode
-  void httpClient;
-  void sleep;
-  void INTERIEUR_RATE_LIMIT_MS;
-  void BASE_URL;
-  void upsertCommuneParticipation;
-  void updateCandidacyResults;
 }

@@ -361,6 +361,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                       href={`/politiques/${politician.slug}?tab=affaires`}
                       prefetch={false}
                       scroll={false}
+                      className="block"
                     >
                       <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors cursor-pointer group">
                         <CardContent className="py-4 flex items-center gap-4">

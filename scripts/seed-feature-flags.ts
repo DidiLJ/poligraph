@@ -18,7 +18,7 @@ const db = new PrismaClient({ adapter: new PrismaPg(pool) });
 const FLAGS = [
   // Disabled for launch — non-core features
   { name: "CHATBOT_ENABLED", label: "Assistant IA", enabled: false },
-  { name: "PRESS_SECTION", label: "Revue de presse", enabled: false },
+  { name: "PRESS_SECTION", label: "Revue de presse", enabled: true },
   { name: "COMPARISON_TOOL", label: "Outil de comparaison", enabled: false },
   { name: "STATISTIQUES_SECTION", label: "Statistiques", enabled: true },
   { name: "INSTITUTIONS_SECTION", label: "Institutions", enabled: false },

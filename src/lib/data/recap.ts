@@ -210,10 +210,13 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
       `,
     ]),
 
-    // 5. Press mentions this week
+    // 5. Press mentions this week (only articles with at least one mention)
     Promise.all([
       db.pressArticle.count({
-        where: { publishedAt: { gte: weekStart, lt: weekEnd } },
+        where: {
+          publishedAt: { gte: weekStart, lt: weekEnd },
+          OR: [{ mentions: { some: {} } }, { partyMentions: { some: {} } }],
+        },
       }),
       db.$queryRaw<
         Array<{

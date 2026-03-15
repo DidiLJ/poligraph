@@ -77,6 +77,7 @@ export function CommuneSearch({
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [resultatsOnly, setResultatsOnly] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -94,8 +95,9 @@ export function CommuneSearch({
     const timeoutId = setTimeout(async () => {
       try {
         const deptParam = departmentFilter ? `&dept=${encodeURIComponent(departmentFilter)}` : "";
+        const resultatsParam = resultatsOnly ? "&resultats=1" : "";
         const response = await fetch(
-          `/api${basePath}/communes?q=${encodeURIComponent(query)}${deptParam}`
+          `/api${basePath}/communes?q=${encodeURIComponent(query)}${deptParam}${resultatsParam}`
         );
         if (!response.ok) throw new Error("Erreur réseau");
         const data: CommuneResult[] = await response.json();
@@ -115,7 +117,7 @@ export function CommuneSearch({
       clearTimeout(timeoutId);
       setIsLoading(false);
     };
-  }, [query, basePath, departmentFilter]);
+  }, [query, basePath, departmentFilter, resultatsOnly]);
 
   // Click outside to close
   useEffect(() => {
@@ -280,6 +282,22 @@ export function CommuneSearch({
               )}
             </button>
           )}
+        </div>
+
+        {/* Filter toggle */}
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            type="button"
+            onClick={() => setResultatsOnly(!resultatsOnly)}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs border transition-colors",
+              resultatsOnly
+                ? "bg-primary text-primary-foreground border-primary"
+                : "hover:bg-muted border-border text-muted-foreground"
+            )}
+          >
+            Resultats disponibles
+          </button>
         </div>
 
         {geoError && (

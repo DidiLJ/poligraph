@@ -79,7 +79,7 @@ export function MunicipalesChiffres({
           <p className="tabular-nums text-2xl font-bold">
             {nationalPoliticiansCandidates.toLocaleString("fr-FR")}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">Politiciens nationaux candidats</p>
+          <p className="text-sm text-muted-foreground mt-1">Représentants nationaux candidats</p>
           <Link
             href="/elections/municipales-2026/cumul"
             prefetch={false}

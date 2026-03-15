@@ -49,7 +49,9 @@ async function getDossiers(status?: string, theme?: string, sort?: string, page 
   const orderBy =
     sort === "updated"
       ? [{ updatedAt: "desc" as const }]
-      : [{ status: "asc" as const }, { filingDate: "desc" as const }];
+      : sort === "status"
+        ? [{ status: "asc" as const }, { filingDate: "desc" as const }]
+        : [{ filingDate: "desc" as const }];
 
   const [dossiers, total] = await Promise.all([
     db.legislativeDossier.findMany({

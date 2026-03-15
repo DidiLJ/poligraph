@@ -19,6 +19,7 @@ interface DossierFilterBarProps {
 const SORT_OPTIONS: Record<string, string> = {
   "": "Date de dépôt",
   updated: "Dernière mise à jour",
+  status: "Par statut",
 };
 
 export function DossierFilterBar({

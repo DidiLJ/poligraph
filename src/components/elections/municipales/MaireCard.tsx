@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DEPARTMENTS } from "@/config/departments";
 import { PoligraphBadge } from "@/components/elections/PoligraphBadge";
+import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 
 interface MaireCardProps {
   maire: {
@@ -25,36 +26,48 @@ export function MaireCard({ maire }: MaireCardProps) {
   const content = (
     <Card className="h-full hover:shadow-sm hover:border-primary/50 hover:-translate-y-0.5 transition-all cursor-pointer">
       <CardContent className="pt-5">
-        <p className="font-semibold leading-tight">{maire.fullName}</p>
-
-        {maire.commune && (
-          <p className="text-sm text-muted-foreground mt-0.5">{maire.commune.name}</p>
-        )}
-
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {deptName && (
-            <Badge variant="outline" className="text-xs">
-              {deptName} ({maire.departmentCode})
-            </Badge>
+        <div className="flex items-start gap-3">
+          {maire.politician?.photoUrl && (
+            <PoliticianAvatar
+              photoUrl={maire.politician.photoUrl}
+              fullName={maire.fullName}
+              size="sm"
+              className="shrink-0"
+            />
           )}
-          {maire.party && (
-            <Badge
-              variant="secondary"
-              className="text-xs"
-              style={{
-                backgroundColor: maire.party.color ? `${maire.party.color}20` : undefined,
-                color: maire.party.color || undefined,
-                borderColor: maire.party.color ? `${maire.party.color}40` : undefined,
-              }}
-            >
-              {maire.party.shortName}
-            </Badge>
-          )}
-        </div>
+          <div className="min-w-0">
+            <p className="font-semibold leading-tight">{maire.fullName}</p>
 
-        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-          {startYear && <span>En poste depuis {startYear}</span>}
-          {maire.politician && <PoligraphBadge />}
+            {maire.commune && (
+              <p className="text-sm text-muted-foreground mt-0.5">{maire.commune.name}</p>
+            )}
+
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {deptName && (
+                <Badge variant="outline" className="text-xs">
+                  {deptName} ({maire.departmentCode})
+                </Badge>
+              )}
+              {maire.party && (
+                <Badge
+                  variant="secondary"
+                  className="text-xs"
+                  style={{
+                    backgroundColor: maire.party.color ? `${maire.party.color}20` : undefined,
+                    color: maire.party.color || undefined,
+                    borderColor: maire.party.color ? `${maire.party.color}40` : undefined,
+                  }}
+                >
+                  {maire.party.shortName}
+                </Badge>
+              )}
+            </div>
+
+            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+              {startYear && <span>En poste depuis {startYear}</span>}
+              {maire.politician && <PoligraphBadge />}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

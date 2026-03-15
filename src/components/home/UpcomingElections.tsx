@@ -14,12 +14,14 @@ import type { Election } from "@/types";
 
 interface UpcomingElectionsProps {
   elections: Election[];
+  showCountdown?: boolean;
 }
 
-export function UpcomingElections({ elections }: UpcomingElectionsProps) {
+export function UpcomingElections({ elections, showCountdown = false }: UpcomingElectionsProps) {
   if (elections.length === 0) return null;
 
   const [nextElection, ...otherElections] = elections;
+  const allElections = showCountdown ? otherElections : elections;
 
   return (
     <section className="py-16">
@@ -27,17 +29,15 @@ export function UpcomingElections({ elections }: UpcomingElectionsProps) {
         <div className="flex justify-between items-end mb-8">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Prochaines élections</h2>
-            <p className="text-muted-foreground">
-              Calendrier et compte à rebours des scrutins à venir
-            </p>
+            <p className="text-muted-foreground">Calendrier des scrutins à venir</p>
           </div>
           <Button variant="ghost" asChild className="text-primary">
             <Link href="/elections">Voir tout &rarr;</Link>
           </Button>
         </div>
 
-        {/* Countdown for the next election */}
-        {nextElection!.round1Date && (
+        {/* Countdown for the next election (feature-toggled) */}
+        {showCountdown && nextElection!.round1Date && (
           <ElectionCountdown
             targetDate={nextElection!.round1Date.toISOString()}
             electionTitle={nextElection!.title}
@@ -46,34 +46,10 @@ export function UpcomingElections({ elections }: UpcomingElectionsProps) {
           />
         )}
 
-        {/* Municipales 2026 portal CTA */}
-        <div className="my-8">
-          <Link href="/elections/municipales-2026" className="block">
-            <Card className="bg-gradient-to-r from-primary/10 via-background to-accent/10 border-primary/20 hover:shadow-lg transition-all">
-              <CardContent className="py-6">
-                <div className="flex items-center gap-4">
-                  <span className="text-3xl" aria-hidden="true">
-                    🏛️
-                  </span>
-                  <div className="flex-1">
-                    <p className="font-bold text-lg">Municipales 2026</p>
-                    <p className="text-muted-foreground text-sm">
-                      Explorer les candidats dans votre commune &rarr;
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="shrink-0">
-                    Nouveau
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-
-        {/* Compact cards for other upcoming elections */}
-        {otherElections.length > 0 && (
+        {/* Election cards */}
+        {allElections.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {otherElections.map((election) => (
+            {allElections.map((election) => (
               <Link key={election.id} href={`/elections/${election.slug}`} className="block">
                 <Card className="h-full hover:shadow-lg transition-all hover:border-primary/20">
                   <CardContent>

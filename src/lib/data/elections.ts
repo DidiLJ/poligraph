@@ -321,6 +321,27 @@ export async function getUpcomingElections() {
 }
 
 // ============================================
+// 5b. getFeaturedElection — for homepage hero CTA
+// ============================================
+
+export async function getFeaturedElection() {
+  "use cache";
+  cacheTag("elections", "homepage");
+  cacheLife("minutes");
+
+  return db.election.findFirst({
+    where: { featured: true, status: { not: "COMPLETED" } },
+    select: {
+      slug: true,
+      title: true,
+      shortTitle: true,
+      type: true,
+      round1Date: true,
+    },
+  });
+}
+
+// ============================================
 // 6. getElections (listing with optional type filter)
 // ============================================
 

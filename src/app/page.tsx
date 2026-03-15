@@ -17,7 +17,8 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { SITE_URL } from "@/config/site";
 import { getTodayVotesSummary } from "@/lib/data/scrutins";
 import { getWeeklyRecap, getWeekStart } from "@/lib/data/recap";
-import { getUpcomingElections } from "@/lib/data/elections";
+import { getUpcomingElections, getFeaturedElection } from "@/lib/data/elections";
+import { ELECTION_TYPE_ICONS } from "@/config/labels";
 
 export const metadata: Metadata = {
   title: "Poligraph — Observatoire citoyen de la politique française",
@@ -33,13 +34,17 @@ export default async function HomePage() {
   const prevWeekStart = new Date(currentWeekStart);
   prevWeekStart.setUTCDate(prevWeekStart.getUTCDate() - 7);
 
-  const [upcomingElections, todayVotes, weeklyRecap] = await Promise.all([
+  const [upcomingElections, todayVotes, weeklyRecap, featuredElection] = await Promise.all([
     getUpcomingElections(),
     getTodayVotesSummary(),
     getWeeklyRecap(prevWeekStart),
+    getFeaturedElection(),
   ]);
 
-  const statsEnabled = await isFeatureEnabled("STATISTIQUES_SECTION");
+  const [statsEnabled, countdownEnabled] = await Promise.all([
+    isFeatureEnabled("STATISTIQUES_SECTION"),
+    isFeatureEnabled("ELECTION_COUNTDOWN"),
+  ]);
 
   return (
     <>
@@ -107,6 +112,30 @@ export default async function HomePage() {
                   </Link>
                 </Button>
               </div>
+
+              {/* Featured election CTA (data-driven via Election.featured) */}
+              {featuredElection && (
+                <Link
+                  href={`/elections/${featuredElection.slug}`}
+                  prefetch={false}
+                  className="group mt-8 mx-auto flex items-center gap-3 max-w-md rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-3.5 shadow-sm transition-all hover:shadow-md hover:border-amber-400/60 dark:from-amber-950/30 dark:to-orange-950/30 dark:border-amber-700/40 dark:hover:border-amber-600/60"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-xl">
+                    {ELECTION_TYPE_ICONS[featuredElection.type]}
+                  </span>
+                  <span className="flex-1 text-left">
+                    <span className="block text-sm font-bold text-amber-900 dark:text-amber-200">
+                      {featuredElection.shortTitle || featuredElection.title}
+                    </span>
+                    <span className="block text-xs text-amber-700/80 dark:text-amber-400/70">
+                      Consultez la page de l{"'"}élection
+                    </span>
+                  </span>
+                  <span className="text-amber-500 transition-transform group-hover:translate-x-0.5">
+                    &rarr;
+                  </span>
+                </Link>
+              )}
             </div>
           </div>
           <HexPattern className="absolute inset-0 text-primary opacity-[0.03] dark:opacity-[0.05] pointer-events-none" />
@@ -114,7 +143,7 @@ export default async function HomePage() {
 
         {/* Upcoming Elections (conditional — renders null when no elections) */}
         <FadeIn>
-          <UpcomingElections elections={upcomingElections} />
+          <UpcomingElections elections={upcomingElections} showCountdown={countdownEnabled} />
         </FadeIn>
 
         {/* Today's Votes (conditional — renders null when no votes today) */}

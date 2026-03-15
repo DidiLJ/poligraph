@@ -127,7 +127,7 @@ export default async function AdminPoliticiansPage({ searchParams }: PageProps) 
                   <tr key={politician.id} className="border-b last:border-0">
                     <td className="py-3 pr-4">
                       <Link
-                        href={`/politiques/${politician.slug}`}
+                        href={`/admin/politiques/${politician.id}`}
                         className="font-medium hover:underline"
                       >
                         {politician.fullName}

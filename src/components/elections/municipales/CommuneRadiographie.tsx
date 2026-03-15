@@ -8,6 +8,7 @@ interface CommuneRadiographieProps {
   totalSeats: number | null;
   femaleRate: number;
   nationalPoliticiansCount: number;
+  participationRate?: number | null;
 }
 
 function getParityInfo(femaleRate: number): {
@@ -31,6 +32,7 @@ export function CommuneRadiographie({
   totalSeats,
   femaleRate,
   nationalPoliticiansCount,
+  participationRate,
 }: CommuneRadiographieProps) {
   const parity = getParityInfo(femaleRate);
 
@@ -66,6 +68,16 @@ export function CommuneRadiographie({
               {parity.label}
             </dd>
           </div>
+
+          {/* Participation */}
+          {participationRate != null && (
+            <div>
+              <dt className="text-muted-foreground text-sm">Participation</dt>
+              <dd className="text-2xl md:text-3xl font-bold tabular-nums">
+                {participationRate.toFixed(1)} %
+              </dd>
+            </div>
+          )}
 
           {/* Seats */}
           {totalSeats != null && (

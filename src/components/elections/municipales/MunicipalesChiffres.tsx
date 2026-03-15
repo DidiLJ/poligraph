@@ -84,7 +84,7 @@ export function MunicipalesChiffres({
                   <p className="text-2xl font-extrabold tabular-nums text-emerald-400">
                     {resultats.eluesT1.toLocaleString("fr-FR")}
                   </p>
-                  <p className="text-xs text-white/60 mt-0.5">élues au T1</p>
+                  <p className="text-xs text-white/60 mt-0.5">listes élues au T1</p>
                 </div>
                 <div className="h-10 border-l border-white/15" />
                 <div>

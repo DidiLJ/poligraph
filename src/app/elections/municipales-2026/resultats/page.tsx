@@ -97,7 +97,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
         <p className="text-muted-foreground">
           {total.toLocaleString("fr-FR")} commune{total > 1 ? "s" : ""} dépouillées
           {dept && DEPARTMENTS[dept] ? ` en ${DEPARTMENTS[dept].name}` : ""}
-          {electedOnly ? " (élues au T1 uniquement)" : ""}
+          {electedOnly ? " (avec une liste élue au T1)" : ""}
         </p>
       </section>
 
@@ -107,7 +107,8 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-              {stats.eluesT1.toLocaleString("fr-FR")} élue{stats.eluesT1 > 1 ? "s" : ""} au T1
+              {stats.eluesT1.toLocaleString("fr-FR")} liste{stats.eluesT1 > 1 ? "s" : ""} élue
+              {stats.eluesT1 > 1 ? "s" : ""} au T1
             </Badge>
             <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
               <Clock className="h-3.5 w-3.5 text-sky-600" />
@@ -148,7 +149,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           }`}
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
-          Élues au T1
+          Listes élues au T1
         </Link>
 
         {/* Department filter */}
@@ -219,7 +220,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
                       </div>
                       {commune.hasElected ? (
                         <Badge className="mt-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 text-xs">
-                          Élue au 1er tour
+                          Liste élue au 1er tour
                         </Badge>
                       ) : (
                         <Badge

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Outfit, Atkinson_Hyperlegible } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import { WebSiteJsonLd } from "@/components/seo/JsonLd";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { GlobalSearchProvider } from "@/components/search";
@@ -124,6 +126,9 @@ export default async function RootLayout({
         <ThemeProvider>
           <TooltipProvider>
             <GlobalSearchProvider>
+              <Suspense fallback={null}>
+                <NavigationProgress />
+              </Suspense>
               {/* Skip to main content link for keyboard navigation */}
               <a href="#main-content" className="skip-link">
                 Aller au contenu principal

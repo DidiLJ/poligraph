@@ -611,6 +611,13 @@ enum SourceType {
   MANUAL
 }
 
+enum PlatformUpdateType {
+  DATA_IMPORT
+  NEW_FEATURE
+  IMPROVEMENT
+  RELEASE
+}
+
 // Sources for affairs (mandatory for credibility)
 model Source {
   id       String @id @default(cuid())
@@ -1613,4 +1620,22 @@ model NewsletterEdition {
   createdAt      DateTime   @default(now())
 
   @@index([politicianId])
+}
+
+// ---------------------------------------------------------------------------
+// Platform Updates (changelog for citizens)
+// ---------------------------------------------------------------------------
+
+model PlatformUpdate {
+  id          String             @id @default(cuid())
+  title       String
+  description String?            @db.Text
+  type        PlatformUpdateType
+  date        DateTime           @default(now())
+  metadata    Json?
+  sourceUrl   String?
+
+  createdAt   DateTime           @default(now())
+
+  @@index([date])
 }

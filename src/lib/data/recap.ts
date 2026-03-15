@@ -35,6 +35,14 @@ interface WeeklyAffair {
   politicianSlug: string;
 }
 
+interface PlatformUpdateItem {
+  id: string;
+  title: string;
+  type: string;
+  date: Date;
+  sourceUrl: string | null;
+}
+
 export interface WeeklyRecapData {
   weekStart: Date;
   weekEnd: Date;
@@ -61,6 +69,10 @@ export interface WeeklyRecapData {
   press: {
     articleCount: number;
     topPoliticians: TopPolitician[];
+  };
+  platformUpdates: {
+    updates: PlatformUpdateItem[];
+    total: number;
   };
 }
 
@@ -97,34 +109,35 @@ export function getISOWeekNumber(date: Date): number {
 // ---------------------------------------------------------------------------
 
 async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyRecapData> {
-  const [scrutins, topVoters, affairs, factCheckData, pressData] = await Promise.all([
-    // 1. Weekly scrutins
-    db.scrutin.findMany({
-      where: { votingDate: { gte: weekStart, lt: weekEnd } },
-      select: {
-        slug: true,
-        title: true,
-        chamber: true,
-        result: true,
-        votesFor: true,
-        votesAgainst: true,
-        votesAbstain: true,
-        votingDate: true,
-      },
-      orderBy: { votingDate: "desc" },
-    }),
+  const [scrutins, topVoters, affairs, factCheckData, pressData, platformUpdates] =
+    await Promise.all([
+      // 1. Weekly scrutins
+      db.scrutin.findMany({
+        where: { votingDate: { gte: weekStart, lt: weekEnd } },
+        select: {
+          slug: true,
+          title: true,
+          chamber: true,
+          result: true,
+          votesFor: true,
+          votesAgainst: true,
+          votesAbstain: true,
+          votingDate: true,
+        },
+        orderBy: { votingDate: "desc" },
+      }),
 
-    // 2. Most active voters this week
-    db.$queryRaw<
-      Array<{
-        slug: string;
-        fullName: string;
-        photoUrl: string | null;
-        partyShortName: string | null;
-        partyColor: string | null;
-        count: bigint;
-      }>
-    >`
+      // 2. Most active voters this week
+      db.$queryRaw<
+        Array<{
+          slug: string;
+          fullName: string;
+          photoUrl: string | null;
+          partyShortName: string | null;
+          partyColor: string | null;
+          count: bigint;
+        }>
+      >`
       SELECT
         p.slug,
         p."fullName" as "fullName",
@@ -144,16 +157,16 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
       LIMIT 5
     `,
 
-    // 3. New affairs this week — use revelation/facts date, not import date
-    db.$queryRaw<
-      Array<{
-        slug: string;
-        title: string;
-        severity: string;
-        politicianName: string;
-        politicianSlug: string;
-      }>
-    >`
+      // 3. New affairs this week — use revelation/facts date, not import date
+      db.$queryRaw<
+        Array<{
+          slug: string;
+          title: string;
+          severity: string;
+          politicianName: string;
+          politicianSlug: string;
+        }>
+      >`
       SELECT
         a.slug,
         a.title,
@@ -169,26 +182,26 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
       LIMIT 10
     `,
 
-    // 4. Fact-checks this week
-    Promise.all([
-      db.factCheck.groupBy({
-        by: ["verdictRating"],
-        where: {
-          publishedAt: { gte: weekStart, lt: weekEnd },
-          source: { in: FACTCHECK_ALLOWED_SOURCES },
-        },
-        _count: true,
-      }),
-      db.$queryRaw<
-        Array<{
-          slug: string;
-          fullName: string;
-          photoUrl: string | null;
-          partyShortName: string | null;
-          partyColor: string | null;
-          count: bigint;
-        }>
-      >`
+      // 4. Fact-checks this week
+      Promise.all([
+        db.factCheck.groupBy({
+          by: ["verdictRating"],
+          where: {
+            publishedAt: { gte: weekStart, lt: weekEnd },
+            source: { in: FACTCHECK_ALLOWED_SOURCES },
+          },
+          _count: true,
+        }),
+        db.$queryRaw<
+          Array<{
+            slug: string;
+            fullName: string;
+            photoUrl: string | null;
+            partyShortName: string | null;
+            partyColor: string | null;
+            count: bigint;
+          }>
+        >`
         SELECT
           p.slug,
           p."fullName" as "fullName",
@@ -208,26 +221,26 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
         ORDER BY count DESC
         LIMIT 5
       `,
-    ]),
+      ]),
 
-    // 5. Press mentions this week (only articles with at least one mention)
-    Promise.all([
-      db.pressArticle.count({
-        where: {
-          publishedAt: { gte: weekStart, lt: weekEnd },
-          OR: [{ mentions: { some: {} } }, { partyMentions: { some: {} } }],
-        },
-      }),
-      db.$queryRaw<
-        Array<{
-          slug: string;
-          fullName: string;
-          photoUrl: string | null;
-          partyShortName: string | null;
-          partyColor: string | null;
-          count: bigint;
-        }>
-      >`
+      // 5. Press mentions this week (only articles with at least one mention)
+      Promise.all([
+        db.pressArticle.count({
+          where: {
+            publishedAt: { gte: weekStart, lt: weekEnd },
+            OR: [{ mentions: { some: {} } }, { partyMentions: { some: {} } }],
+          },
+        }),
+        db.$queryRaw<
+          Array<{
+            slug: string;
+            fullName: string;
+            photoUrl: string | null;
+            partyShortName: string | null;
+            partyColor: string | null;
+            count: bigint;
+          }>
+        >`
         SELECT
           p.slug,
           p."fullName" as "fullName",
@@ -245,8 +258,16 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
         ORDER BY count DESC
         LIMIT 5
       `,
-    ]),
-  ]);
+      ]),
+
+      // 6. Platform updates this week
+      db.platformUpdate.findMany({
+        where: { date: { gte: weekStart, lt: weekEnd } },
+        orderBy: { date: "desc" },
+        select: { id: true, title: true, type: true, date: true, sourceUrl: true },
+        take: 5,
+      }),
+    ]);
 
   // Process fact-check verdicts
   const [verdictGroups, fcTopPoliticians] = factCheckData;
@@ -304,6 +325,10 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
     press: {
       articleCount,
       topPoliticians: toBigintSafe(pressTopPoliticians),
+    },
+    platformUpdates: {
+      updates: platformUpdates,
+      total: platformUpdates.length,
     },
   };
 }

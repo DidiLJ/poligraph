@@ -7,9 +7,13 @@ import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { FadeIn } from "@/components/motion/FadeIn";
 import { HexPattern } from "@/components/ui/HexPattern";
 import { getWeeklyRecap, getWeekStart, getWeekEnd, getISOWeekNumber } from "@/lib/data/recap";
-import { AFFAIR_SEVERITY_LABELS } from "@/config/labels";
+import {
+  AFFAIR_SEVERITY_LABELS,
+  PLATFORM_UPDATE_TYPE_LABELS,
+  PLATFORM_UPDATE_TYPE_ICONS,
+} from "@/config/labels";
 import { NewsletterCTA } from "./NewsletterCTA";
-import type { AffairSeverity } from "@/types";
+import type { AffairSeverity, PlatformUpdateType } from "@/types";
 
 export const revalidate = 300;
 
@@ -465,6 +469,45 @@ export default async function RecapPage({ searchParams }: PageProps) {
                   >
                     Voir la revue de presse →
                   </Link>
+                </RecapSection>
+              </FadeIn>
+            )}
+
+            {/* ── Évolutions Poligraph ───────────────── */}
+            {data.platformUpdates.total > 0 && (
+              <FadeIn delay={0.38}>
+                <RecapSection title="Évolutions Poligraph" emoji="🚀">
+                  <div className="space-y-3">
+                    {data.platformUpdates.updates.map((update) => (
+                      <div
+                        key={update.id}
+                        className="flex items-start gap-3 py-2 border-b last:border-0"
+                      >
+                        <span className="text-lg shrink-0" aria-hidden="true">
+                          {PLATFORM_UPDATE_TYPE_ICONS[update.type as PlatformUpdateType]}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          {update.sourceUrl ? (
+                            <a
+                              href={update.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium hover:underline"
+                            >
+                              {update.title}
+                            </a>
+                          ) : (
+                            <span className="text-sm font-medium">{update.title}</span>
+                          )}
+                          <div className="mt-0.5">
+                            <Badge variant="outline" className="text-xs">
+                              {PLATFORM_UPDATE_TYPE_LABELS[update.type as PlatformUpdateType]}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </RecapSection>
               </FadeIn>
             )}

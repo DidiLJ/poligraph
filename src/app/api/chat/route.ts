@@ -418,13 +418,38 @@ export async function POST(request: Request) {
     ];
 
     // Stream response using Vercel AI SDK
+    // Manual stream to catch API errors gracefully (toTextStreamResponse swallows them)
     const result = streamText({
       model: anthropic("claude-haiku-4-5-20251001"),
       system: getSystemPrompt(),
       messages: messagesWithContext,
     });
 
-    return result.toTextStreamResponse();
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        let hasContent = false;
+        try {
+          for await (const chunk of result.textStream) {
+            hasContent = true;
+            controller.enqueue(encoder.encode(chunk));
+          }
+        } catch (streamError) {
+          const status = (streamError as { statusCode?: number })?.statusCode;
+          console.error("Chat stream error:", { status, message: String(streamError) });
+          const errorMsg = hasContent
+            ? "\n\n[Réponse interrompue. Veuillez réessayer.]"
+            : "L'assistant Poligraph est temporairement indisponible. Cette fonctionnalité sera de nouveau accessible prochainement.";
+          controller.enqueue(encoder.encode(errorMsg));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   } catch (error) {
     console.error("Chat API error:", error);
 

@@ -155,12 +155,20 @@ export function ChatInterface() {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
+          const chunk = decoder.decode(value, { stream: true });
           assistantContent += chunk;
 
           // Update message content
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantId ? { ...m, content: assistantContent } : m))
+          );
+        }
+
+        // Safety net: server injects error text on API failure, but guards against
+        // edge cases where stream is empty (e.g., proxy stripping response body)
+        if (!assistantContent.trim()) {
+          throw new Error(
+            "L'assistant est temporairement indisponible. Veuillez réessayer plus tard."
           );
         }
       } catch (err) {

@@ -122,8 +122,11 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
       ...commune,
       electionId: null,
       round1Date: null,
-      lists: [],
+      round2Date: null,
+      lists: [] as never[],
       incumbentMaire: null,
+      hasResults: false,
+      participation: null,
       stats: {
         listCount: 0,
         candidateCount: 0,

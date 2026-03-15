@@ -4,6 +4,12 @@ import { SITE_URL, SITE_HOSTNAME } from "./src/config/site";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["jsdom"],
   staticPageGenerationTimeout: 120,
+  outputFileTracingIncludes: {
+    "/departements/[slug]/opengraph-image": ["./public/data/departements.geojson"],
+    "/elections/municipales-2026/communes/[inseeCode]/opengraph-image": [
+      "./public/data/departements.geojson",
+    ],
+  },
   experimental: {
     useCache: true,
     webpackMemoryOptimizations: true,

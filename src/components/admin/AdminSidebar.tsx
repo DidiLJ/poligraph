@@ -21,6 +21,8 @@ import {
   ShieldX,
   Newspaper,
   ShieldCheck,
+  Crown,
+  Share2,
 } from "lucide-react";
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
@@ -35,12 +37,17 @@ interface NavItem {
 const contentItems: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/affaires", label: "Affaires", icon: Scale },
-  { href: "/admin/press/rejections", label: "Rejets presse", icon: ShieldX },
-  { href: "/admin/presse", label: "Presse", icon: Newspaper },
-  { href: "/admin/factchecks", label: "Fact-checks", icon: ShieldCheck },
   { href: "/admin/politiques", label: "Politiques", icon: Users },
   { href: "/admin/partis", label: "Partis", icon: Building2 },
+  { href: "/admin/maires", label: "Maires", icon: Crown },
   { href: "/admin/dossiers", label: "Dossiers", icon: FileText },
+];
+
+const mediaItems: NavItem[] = [
+  { href: "/admin/presse", label: "Presse", icon: Newspaper },
+  { href: "/admin/press/rejections", label: "Rejets presse", icon: ShieldX },
+  { href: "/admin/factchecks", label: "Fact-checks", icon: ShieldCheck },
+  { href: "/admin/social", label: "Social", icon: Share2 },
 ];
 
 const systemItems: NavItem[] = [
@@ -127,6 +134,20 @@ export function AdminSidebar() {
       >
         <ul className="space-y-0.5">
           {itemsWithBadges.map((item) => (
+            <NavLink
+              key={item.href}
+              item={item}
+              active={isActive(pathname, item.href)}
+              collapsed={collapsed}
+            />
+          ))}
+        </ul>
+
+        {/* Separator */}
+        <div className="my-3 mx-2 border-t border-white/10" role="separator" />
+
+        <ul className="space-y-0.5">
+          {mediaItems.map((item) => (
             <NavLink
               key={item.href}
               item={item}

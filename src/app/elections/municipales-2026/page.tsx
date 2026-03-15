@@ -112,7 +112,7 @@ export default async function MunicipalesLandingPage() {
                 href={`/elections/municipales-2026/communes/${commune.id}`}
                 prefetch={false}
               >
-                <Card className="hover:shadow-sm transition-shadow h-full">
+                <Card className="hover:shadow-sm hover:border-primary/50 hover:-translate-y-0.5 transition-all h-full">
                   <CardContent className="pt-5">
                     <p className="font-semibold">{commune.name}</p>
                     <p className="text-sm text-muted-foreground">{commune.departmentCode}</p>
@@ -140,7 +140,7 @@ export default async function MunicipalesLandingPage() {
       <section className="py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link href="/elections/municipales-2026/maires" prefetch={false}>
-            <Card className="hover:shadow-sm transition-shadow h-full">
+            <Card className="hover:shadow-sm hover:border-primary/50 hover:-translate-y-0.5 transition-all h-full">
               <CardContent className="pt-5">
                 <h3 className="font-semibold mb-1">Annuaire des maires</h3>
                 <p className="text-sm text-muted-foreground">
@@ -150,7 +150,7 @@ export default async function MunicipalesLandingPage() {
             </Card>
           </Link>
           <Link href="/elections/municipales-2026/cumul" prefetch={false}>
-            <Card className="hover:shadow-sm transition-shadow h-full">
+            <Card className="hover:shadow-sm hover:border-primary/50 hover:-translate-y-0.5 transition-all h-full">
               <CardContent className="pt-5">
                 <h3 className="font-semibold mb-1">Cumul des mandats</h3>
                 <p className="text-sm text-muted-foreground">

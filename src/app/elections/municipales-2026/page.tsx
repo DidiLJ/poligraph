@@ -98,6 +98,7 @@ export default async function MunicipalesLandingPage() {
             averageCompetitionIndex={stats.averageCompetitionIndex}
             parityRate={stats.parityRate}
             nationalPoliticiansCandidates={stats.nationalPoliticiansCandidates}
+            round2Date={election?.round2Date?.toISOString() ?? null}
             resultats={resultats}
           />
         </section>

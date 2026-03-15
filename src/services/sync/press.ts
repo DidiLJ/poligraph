@@ -28,7 +28,7 @@ export interface PressSyncOptions {
 }
 
 /** Max last-name-only matches per article before discarding them all (safety net) */
-const MAX_LASTNAME_ONLY_MENTIONS = 5;
+const MAX_LASTNAME_ONLY_MENTIONS = 8;
 
 export interface PressSyncStats {
   feedsFetched: number;
@@ -37,7 +37,7 @@ export interface PressSyncStats {
   articlesSkipped: number;
   mentionsCreated: number;
   mentionsBlocked: number;
-  mentionsFilteredNonPolitical: number;
+  articlesFullNameOnly: number;
   mentionsFilteredCap: number;
   partyMentionsCreated: number;
   errors: string[];
@@ -57,7 +57,7 @@ export async function syncPress(options: PressSyncOptions = {}): Promise<PressSy
     articlesSkipped: 0,
     mentionsCreated: 0,
     mentionsBlocked: 0,
-    mentionsFilteredNonPolitical: 0,
+    articlesFullNameOnly: 0,
     mentionsFilteredCap: 0,
     partyMentionsCreated: 0,
     errors: [],
@@ -105,7 +105,7 @@ export async function syncPress(options: PressSyncOptions = {}): Promise<PressSy
         let detectedMentions = findMentions(searchText, politicians, {
           fullNameOnly: !politicalContext,
         });
-        if (!politicalContext) stats.mentionsFilteredNonPolitical++;
+        if (!politicalContext) stats.articlesFullNameOnly++;
 
         // Layer 2: cap last-name-only matches (safety net for pathological cases)
         const lastnameOnlyCount = detectedMentions.filter(

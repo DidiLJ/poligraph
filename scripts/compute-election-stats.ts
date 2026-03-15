@@ -153,9 +153,13 @@ async function main() {
   const [{ count: nationalPoliticiansCandidates }] = await db.$queryRaw<
     [{ count: number }]
   >(Prisma.sql`
-    SELECT COUNT(*)::int as count
-    FROM "Candidacy"
-    WHERE "electionId" = ${electionId} AND "politicianId" IS NOT NULL
+    SELECT COUNT(DISTINCT c."politicianId")::int as count
+    FROM "Candidacy" c
+    JOIN "Mandate" m ON m."politicianId" = c."politicianId"
+    WHERE c."electionId" = ${electionId}
+      AND c."politicianId" IS NOT NULL
+      AND m."isCurrent" = true
+      AND m."type" IN ('DEPUTE', 'SENATEUR', 'DEPUTE_EUROPEEN', 'MINISTRE', 'SECRETAIRE_ETAT', 'PREMIER_MINISTRE')
   `);
   console.log(`  National politicians as candidates: ${nationalPoliticiansCandidates}\n`);
 

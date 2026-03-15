@@ -4,19 +4,26 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateShort } from "@/lib/utils";
 import { AdminDeleteButton } from "@/components/admin/AdminDeleteButton";
+import { PressPurgeButton } from "@/components/admin/PressPurgeButton";
 import type { Prisma } from "@/generated/prisma";
 
 interface PageProps {
   searchParams: Promise<{
     search?: string;
     source?: string;
+    mention?: string;
     page?: string;
   }>;
 }
 
 const ITEMS_PER_PAGE = 20;
 
-async function getArticles(params: { search?: string; source?: string; page: number }) {
+async function getArticles(params: {
+  search?: string;
+  source?: string;
+  mention?: string;
+  page: number;
+}) {
   const where: Prisma.PressArticleWhereInput = {};
 
   if (params.search) {
@@ -25,6 +32,12 @@ async function getArticles(params: { search?: string; source?: string; page: num
 
   if (params.source) {
     where.feedSource = params.source;
+  }
+
+  if (params.mention === "none") {
+    where.aiAnalyzedAt = { not: null };
+    where.mentions = { none: {} };
+    where.partyMentions = { none: {} };
   }
 
   const [articles, total] = await Promise.all([
@@ -55,7 +68,7 @@ async function getArticles(params: { search?: string; source?: string; page: num
 }
 
 async function getStats() {
-  const [total, totalMentions, topSources] = await Promise.all([
+  const [total, totalMentions, topSources, purgeableCount] = await Promise.all([
     db.pressArticle.count(),
     db.pressArticleMention.count(),
     db.pressArticle.groupBy({
@@ -64,9 +77,16 @@ async function getStats() {
       orderBy: { _count: { feedSource: "desc" } },
       take: 5,
     }),
+    db.pressArticle.count({
+      where: {
+        aiAnalyzedAt: { not: null, lt: new Date(Date.now() - 60 * 60 * 1000) },
+        mentions: { none: {} },
+        partyMentions: { none: {} },
+      },
+    }),
   ]);
 
-  return { total, totalMentions, topSources };
+  return { total, totalMentions, topSources, purgeableCount };
 }
 
 async function getSources() {
@@ -83,12 +103,12 @@ export default async function AdminPressePage({ searchParams }: PageProps) {
   const page = parseInt(params.page || "1", 10);
 
   const [{ articles, total, totalPages }, stats, sources] = await Promise.all([
-    getArticles({ search: params.search, source: params.source, page }),
+    getArticles({ search: params.search, source: params.source, mention: params.mention, page }),
     getStats(),
     getSources(),
   ]);
 
-  const hasFilters = !!(params.search || params.source);
+  const hasFilters = !!(params.search || params.source || params.mention);
 
   return (
     <div className="space-y-6">
@@ -98,6 +118,7 @@ export default async function AdminPressePage({ searchParams }: PageProps) {
         <p className="text-sm text-muted-foreground mt-1">
           {stats.total} articles — {stats.totalMentions} mentions
         </p>
+        {stats.purgeableCount > 0 && <PressPurgeButton count={stats.purgeableCount} />}
       </div>
 
       {/* Stats */}
@@ -171,6 +192,23 @@ export default async function AdminPressePage({ searchParams }: PageProps) {
                   {s.name} ({s.count})
                 </Link>
               ))}
+              <Link
+                href={{
+                  pathname: "/admin/presse",
+                  query: {
+                    ...params,
+                    mention: params.mention === "none" ? undefined : "none",
+                    page: undefined,
+                  },
+                }}
+                className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                  params.mention === "none"
+                    ? "bg-amber-100 text-amber-800 border-amber-300"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                Sans mention ({stats.purgeableCount})
+              </Link>
             </div>
           )}
         </div>

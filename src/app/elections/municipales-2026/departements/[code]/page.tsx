@@ -146,7 +146,7 @@ export default async function DepartmentMunicipalesPage({ params, searchParams }
               <CardContent className="pt-5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <h2 className="font-semibold truncate">{commune.name}</h2>
+                    <h2 className="font-semibold">{commune.name}</h2>
                     {commune.population != null && (
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {commune.population.toLocaleString("fr-FR")} hab.
@@ -164,7 +164,7 @@ export default async function DepartmentMunicipalesPage({ params, searchParams }
                   </div>
                 </div>
                 {commune.maireName && (
-                  <p className="text-xs text-muted-foreground mt-2 truncate">
+                  <p className="text-xs text-muted-foreground mt-2">
                     Maire sortant{commune.maireGender === "F" ? "e" : ""} : {commune.maireName}
                   </p>
                 )}

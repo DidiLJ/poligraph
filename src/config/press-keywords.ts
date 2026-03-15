@@ -110,6 +110,9 @@ const POLITICAL_INSTITUTION_KEYWORDS = [
   "elysee",
   "matignon",
   "hemicycle",
+  "conseil municipal",
+  "conseil regional",
+  "conseil departemental",
 ];
 
 const POLITICAL_PROCESS_KEYWORDS = [

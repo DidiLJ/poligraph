@@ -13,7 +13,7 @@
 import { db } from "@/lib/db";
 import { isPoliticallyRelevant } from "@/config/press-keywords";
 
-const MAX_LASTNAME_ONLY = 5;
+const MAX_LASTNAME_ONLY = 8;
 const apply = process.argv.includes("--apply");
 
 async function main() {
@@ -43,7 +43,9 @@ async function main() {
   for (const article of articles) {
     articlesScanned++;
     const searchText = `${article.title} ${article.description || ""}`;
-    const lastnameOnly = article.mentions.filter((m) => !m.matchedName.includes(" "));
+    const lastnameOnly = article.mentions.filter(
+      (m) => m.matchedName && !m.matchedName.includes(" ")
+    );
 
     if (lastnameOnly.length === 0) continue;
 

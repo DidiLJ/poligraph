@@ -53,3 +53,15 @@ export function getPartyColor(label: string | null): string {
   if (!label) return NO_DATA_COLOR;
   return PARTY_COLORS[label] ?? hashColor(label);
 }
+
+/** Returns "white" or a dark color based on perceived brightness of a hex background */
+export function getContrastTextColor(hex: string): string {
+  const cleaned = hex.replace("#", "");
+  if (cleaned.length !== 6) return "white";
+  const r = parseInt(cleaned.slice(0, 2), 16);
+  const g = parseInt(cleaned.slice(2, 4), 16);
+  const b = parseInt(cleaned.slice(4, 6), 16);
+  // Perceived brightness (ITU-R BT.601)
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 150 ? "#1a1a2e" : "white";
+}

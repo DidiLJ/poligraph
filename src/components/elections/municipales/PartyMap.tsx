@@ -3,7 +3,7 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { NO_DATA_COLOR, getPartyColor } from "@/config/party-colors";
+import { NO_DATA_COLOR, getContrastTextColor, getPartyColor } from "@/config/party-colors";
 
 // Dynamic imports to avoid SSR issues with react-simple-maps
 const MapSpinner = () => (
@@ -245,9 +245,7 @@ function PartyMapComponent({ departments, mini = false }: PartyMapProps) {
                     : IDF_NAMES[code]
                 }
               >
-                <span className="text-white" style={{ textShadow: "0 0 2px rgba(0,0,0,0.5)" }}>
-                  {IDF_NAMES[code]}
-                </span>
+                <span style={{ color: getContrastTextColor(color) }}>{IDF_NAMES[code]}</span>
               </button>
             );
           })}
@@ -282,7 +280,7 @@ function PartyMapComponent({ departments, mini = false }: PartyMapProps) {
                       : DOMTOM_NAMES[code]
                   }
                 >
-                  <span className="text-white" style={{ textShadow: "0 0 2px rgba(0,0,0,0.5)" }}>
+                  <span style={{ color: getContrastTextColor(color) }}>
                     {DOMTOM_NAMES[code]} &middot; {dept?.dominantParty ?? "—"}
                   </span>
                 </button>

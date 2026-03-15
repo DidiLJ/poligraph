@@ -1638,4 +1638,5 @@ model PlatformUpdate {
   createdAt   DateTime           @default(now())
 
   @@index([date])
+  @@index([sourceUrl])
 }

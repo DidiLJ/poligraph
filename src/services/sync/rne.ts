@@ -515,13 +515,14 @@ export async function syncRNEMaires(
   console.log(`  Errors: ${errors.length}`);
 
   // Record platform update if significant import
-  if (officialsCreated > 100) {
+  // Note: officialsCreated is only set in dry-run; use officialsUpdated (total upserted rows)
+  if (officialsUpdated > 100) {
     try {
       await db.platformUpdate.create({
         data: {
-          title: `${officialsCreated.toLocaleString("fr-FR")} maires importés depuis le RNE`,
+          title: `${officialsUpdated.toLocaleString("fr-FR")} maires mis à jour depuis le RNE`,
           type: "DATA_IMPORT",
-          metadata: { count: officialsCreated, entity: "maires" },
+          metadata: { count: officialsUpdated, entity: "maires" },
         },
       });
     } catch {

@@ -13,7 +13,7 @@ import {
   PLATFORM_UPDATE_TYPE_ICONS,
 } from "@/config/labels";
 import { NewsletterCTA } from "./NewsletterCTA";
-import type { AffairSeverity, PlatformUpdateType } from "@/types";
+import type { AffairSeverity } from "@/types";
 
 export const revalidate = 300;
 
@@ -89,7 +89,8 @@ export default async function RecapPage({ searchParams }: PageProps) {
     data.votes.total === 0 &&
     data.affairs.total === 0 &&
     data.factChecks.total === 0 &&
-    data.press.articleCount === 0;
+    data.press.articleCount === 0 &&
+    data.platformUpdates.total === 0;
 
   return (
     <>
@@ -484,7 +485,7 @@ export default async function RecapPage({ searchParams }: PageProps) {
                         className="flex items-start gap-3 py-2 border-b last:border-0"
                       >
                         <span className="text-lg shrink-0" aria-hidden="true">
-                          {PLATFORM_UPDATE_TYPE_ICONS[update.type as PlatformUpdateType]}
+                          {PLATFORM_UPDATE_TYPE_ICONS[update.type]}
                         </span>
                         <div className="min-w-0 flex-1">
                           {update.sourceUrl ? (
@@ -501,7 +502,7 @@ export default async function RecapPage({ searchParams }: PageProps) {
                           )}
                           <div className="mt-0.5">
                             <Badge variant="outline" className="text-xs">
-                              {PLATFORM_UPDATE_TYPE_LABELS[update.type as PlatformUpdateType]}
+                              {PLATFORM_UPDATE_TYPE_LABELS[update.type]}
                             </Badge>
                           </div>
                         </div>

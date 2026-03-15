@@ -64,7 +64,7 @@ export function CommuneSearch({
   className,
   placeholder = "Rechercher une commune...",
   basePath = "/elections/municipales-2026",
-  label = "Qui se présente chez moi ?",
+  label = "Découvrez les candidats dans votre commune",
 }: CommuneSearchProps) {
   const mounted = useIsMounted();
   const [query, setQuery] = useState("");

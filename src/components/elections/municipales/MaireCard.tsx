@@ -43,11 +43,21 @@ export function MaireCard({ maire }: MaireCardProps) {
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {deptName && (
-                <Badge variant="outline" className="text-xs">
-                  {deptName} ({maire.departmentCode})
-                </Badge>
-              )}
+              {deptName &&
+                (maire.politician ? (
+                  <Badge variant="outline" className="text-xs">
+                    {deptName} ({maire.departmentCode})
+                  </Badge>
+                ) : (
+                  <Link
+                    href={`/elections/municipales-2026/departements/${maire.departmentCode}`}
+                    prefetch={false}
+                  >
+                    <Badge variant="outline" className="text-xs hover:bg-muted transition-colors">
+                      {deptName} ({maire.departmentCode})
+                    </Badge>
+                  </Link>
+                ))}
               {maire.party && (
                 <Badge
                   variant="secondary"

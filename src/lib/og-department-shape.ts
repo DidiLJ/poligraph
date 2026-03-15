@@ -11,7 +11,6 @@ interface GeoJsonFeature {
 }
 
 interface GeoJsonCollection {
-  type: "FeatureCollection";
   features: GeoJsonFeature[];
 }
 
@@ -23,6 +22,12 @@ function loadGeoJson(): GeoJsonCollection {
   geojsonCache = JSON.parse(readFileSync(filePath, "utf-8")) as GeoJsonCollection;
   return geojsonCache;
 }
+
+const geojson = {
+  get features() {
+    return loadGeoJson().features;
+  },
+};
 
 type Coord = [number, number];
 
@@ -87,8 +92,8 @@ export function getDepartmentSvgPath(
   code: string,
   size: { width: number; height: number } = { width: 200, height: 200 }
 ): string | null {
-  const geojson = loadGeoJson();
-  const feature = geojson.features.find((f) => f.properties.code === code);
+  const { features } = geojson;
+  const feature = features.find((f) => f.properties.code === code);
   if (!feature) return null;
 
   const ring = getLargestRing(feature);
@@ -101,8 +106,8 @@ export function getDepartmentShapeDataUri(
   size: { width: number; height: number } = { width: 200, height: 200 },
   fill: string = "#3b82f6"
 ): string | null {
-  const geojson = loadGeoJson();
-  const feature = geojson.features.find((f) => f.properties.code === code);
+  const { features } = geojson;
+  const feature = features.find((f) => f.properties.code === code);
   if (!feature) return null;
 
   const ring = getLargestRing(feature);
@@ -122,8 +127,8 @@ export function getDepartmentShapeWithDot(
 ): string | null {
   const { shapeFill = "#3b82f6", dotFill = "#f97316", dotRadius = 6 } = options;
 
-  const geojson = loadGeoJson();
-  const feature = geojson.features.find((f) => f.properties.code === departmentCode);
+  const { features } = geojson;
+  const feature = features.find((f) => f.properties.code === departmentCode);
   if (!feature) return null;
 
   const ring = getLargestRing(feature);

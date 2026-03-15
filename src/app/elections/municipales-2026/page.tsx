@@ -101,10 +101,10 @@ export default async function MunicipalesLandingPage() {
       {/* Most contested communes */}
       {stats && stats.mostContestedCommunes.length > 0 && (
         <section className="py-8">
-          <h2 className="text-xl font-bold mb-4">Les courses à suivre</h2>
-          <p className="text-muted-foreground mb-6">
-            Les communes avec le plus de listes en compétition
-          </p>
+          <h2 className="text-xl font-bold mb-4">
+            Les communes où la compétition est la plus forte
+          </h2>
+          <p className="text-muted-foreground mb-6">Classées par nombre de listes déposées</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {stats.mostContestedCommunes.map((commune) => (
               <Link

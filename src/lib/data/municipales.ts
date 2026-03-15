@@ -563,7 +563,7 @@ export async function getDepartmentMunicipales(
 
   const offset = (page - 1) * pageSize;
 
-  // Communes with list counts + candidate counts, sorted by most contested
+  // Communes with list counts + candidate counts + results, sorted by most contested
   const communes = await db.$queryRaw<
     Array<{
       id: string;
@@ -573,6 +573,10 @@ export async function getDepartmentMunicipales(
       candidateCount: number;
       maireName: string | null;
       maireGender: string | null;
+      topPct: number | null;
+      hasElected: boolean;
+      winnerListName: string | null;
+      winnerPct: number | null;
     }>
   >(Prisma.sql`
     SELECT
@@ -582,14 +586,21 @@ export async function getDepartmentMunicipales(
       COUNT(DISTINCT c."listName")::int AS "listCount",
       COUNT(c.id)::int AS "candidateCount",
       lo."fullName" AS "maireName",
-      lo.gender AS "maireGender"
+      lo.gender AS "maireGender",
+      MAX(c."round1Pct")::float AS "topPct",
+      MAX(c."isElected"::int)::boolean AS "hasElected",
+      MAX(CASE WHEN c."isElected" THEN c."listName" END) AS "winnerListName",
+      MAX(CASE WHEN c."isElected" THEN c."round1Pct" END)::float AS "winnerPct"
     FROM "Commune" co
     INNER JOIN "Candidacy" c ON c."communeId" = co.id AND c."electionId" = ${election.id}
     LEFT JOIN "LocalOfficial" lo ON lo."communeId" = co.id AND lo.role = 'MAIRE' AND lo."isCurrent" = true
     WHERE co."departmentCode" = ${departmentCode}
     GROUP BY co.id, co.name, co.population, lo."fullName", lo.gender
     HAVING COUNT(DISTINCT c."listName") > 0
-    ORDER BY COUNT(DISTINCT c."listName") DESC, co.population DESC NULLS LAST
+    ORDER BY
+      MAX(c."round1Votes") IS NOT NULL DESC,
+      COUNT(DISTINCT c."listName") DESC,
+      co.population DESC NULLS LAST
     LIMIT ${pageSize} OFFSET ${offset}
   `);
 
@@ -652,11 +663,26 @@ export async function getDepartmentMunicipales(
     parityRate: 0,
   };
 
+  // Department participation (from CommuneElectionRound)
+  const [deptParticipation] = await db.$queryRaw<
+    [{ communesDepouillees: number; avgParticipation: number | null }]
+  >(Prisma.sql`
+    SELECT
+      COUNT(*)::int AS "communesDepouillees",
+      ROUND(AVG(cer."participationRate"), 2)::float AS "avgParticipation"
+    FROM "CommuneElectionRound" cer
+    INNER JOIN "Commune" co ON cer."communeId" = co.id
+    WHERE cer."electionId" = ${election.id}
+      AND cer.round = 1
+      AND co."departmentCode" = ${departmentCode}
+  `);
+
   return {
     communes,
     total,
     totalPages: Math.ceil(total / pageSize),
     stats,
+    participation: deptParticipation ?? null,
   };
 }
 

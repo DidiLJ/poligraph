@@ -9,7 +9,11 @@ import { MunicipalesHero } from "@/components/elections/municipales/MunicipalesH
 import { MunicipalesChiffres } from "@/components/elections/municipales/MunicipalesChiffres";
 import { CommuneSearch } from "@/components/elections/municipales/CommuneSearch";
 import { ELECTION_GUIDES } from "@/config/election-guides";
-import { getDepartmentPartyData, getMunicipalesStats } from "@/lib/data/municipales";
+import {
+  getDepartmentPartyData,
+  getMunicipalesStats,
+  getResultatsStats,
+} from "@/lib/data/municipales";
 import { PartyMap } from "@/components/elections/municipales/PartyMap";
 
 export const revalidate = 300; // ISR: 5 minutes
@@ -40,7 +44,7 @@ export const metadata: Metadata = {
 
 export default async function MunicipalesLandingPage() {
   const election = await getElection();
-  const stats = await getMunicipalesStats();
+  const [stats, resultats] = await Promise.all([getMunicipalesStats(), getResultatsStats()]);
   const departmentData = await getDepartmentPartyData();
 
   const targetDate = election?.round1Date ? election.round1Date.toISOString() : null;
@@ -94,6 +98,7 @@ export default async function MunicipalesLandingPage() {
             averageCompetitionIndex={stats.averageCompetitionIndex}
             parityRate={stats.parityRate}
             nationalPoliticiansCandidates={stats.nationalPoliticiansCandidates}
+            resultats={resultats}
           />
         </section>
       )}

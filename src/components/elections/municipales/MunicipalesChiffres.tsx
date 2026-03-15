@@ -8,6 +8,12 @@ interface MunicipalesChiffresProps {
   averageCompetitionIndex: number;
   parityRate: number; // 0-1
   nationalPoliticiansCandidates: number;
+  resultats?: {
+    communesDepouillees: number;
+    participationMoyenne: number;
+    eluesT1: number;
+    auSecondTour: number;
+  } | null;
 }
 
 function competitionColor(index: number): string {
@@ -28,67 +34,106 @@ export function MunicipalesChiffres({
   averageCompetitionIndex,
   parityRate,
   nationalPoliticiansCandidates,
+  resultats,
 }: MunicipalesChiffresProps) {
   const competitionPct =
     totalCommunes > 0 ? ((communesWithCompetition / totalCommunes) * 100).toFixed(1) : "0";
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Communes avec compétition */}
-      <Card>
-        <CardContent className="pt-5">
-          <p className="tabular-nums text-2xl font-bold">
-            {communesWithCompetition.toLocaleString("fr-FR")}{" "}
-            <span className="text-base font-normal text-muted-foreground">
-              / {totalCommunes.toLocaleString("fr-FR")}
-            </span>
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">Communes avec compétition</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{competitionPct}%</p>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      {resultats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-5 text-center">
+              <p className="text-2xl font-bold tabular-nums">
+                {resultats.communesDepouillees.toLocaleString("fr-FR")}
+              </p>
+              <p className="text-sm text-muted-foreground">communes dépouillées</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-5 text-center">
+              <p className="text-2xl font-bold tabular-nums">
+                {resultats.participationMoyenne.toFixed(1)} %
+              </p>
+              <p className="text-sm text-muted-foreground">participation</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-5 text-center">
+              <p className="text-2xl font-bold tabular-nums text-emerald-600">
+                {resultats.eluesT1.toLocaleString("fr-FR")}
+              </p>
+              <p className="text-sm text-muted-foreground">élues au T1</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-5 text-center">
+              <p className="text-2xl font-bold tabular-nums text-sky-700">
+                {resultats.auSecondTour.toLocaleString("fr-FR")}
+              </p>
+              <p className="text-sm text-muted-foreground">au 2nd tour</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Communes avec compétition */}
+        <Card>
+          <CardContent className="pt-5">
+            <p className="tabular-nums text-2xl font-bold">
+              {communesWithCompetition.toLocaleString("fr-FR")}{" "}
+              <span className="text-base font-normal text-muted-foreground">
+                / {totalCommunes.toLocaleString("fr-FR")}
+              </span>
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">Communes avec compétition</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{competitionPct}%</p>
+          </CardContent>
+        </Card>
 
-      {/* Indice de compétition moyen */}
-      <Card>
-        <CardContent className="pt-5">
-          <p
-            className={`tabular-nums text-2xl font-bold ${competitionColor(averageCompetitionIndex)}`}
-          >
-            {averageCompetitionIndex.toFixed(2)}
-          </p>
-          <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1">
-            Indice de compétition moyen
-            <InfoTooltip text="Rapport entre le nombre de listes déposées et le nombre attendu selon la taille de la commune. Au-dessus de 1,5 : forte compétition. En dessous de 1 : faible compétition." />
-          </p>
-        </CardContent>
-      </Card>
+        {/* Indice de compétition moyen */}
+        <Card>
+          <CardContent className="pt-5">
+            <p
+              className={`tabular-nums text-2xl font-bold ${competitionColor(averageCompetitionIndex)}`}
+            >
+              {averageCompetitionIndex.toFixed(2)}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1">
+              Indice de compétition moyen
+              <InfoTooltip text="Rapport entre le nombre de listes déposées et le nombre attendu selon la taille de la commune. Au-dessus de 1,5 : forte compétition. En dessous de 1 : faible compétition." />
+            </p>
+          </CardContent>
+        </Card>
 
-      {/* Taux de parité */}
-      <Card>
-        <CardContent className="pt-5">
-          <p className={`tabular-nums text-2xl font-bold ${parityColor(parityRate)}`}>
-            {(parityRate * 100).toFixed(1)}%
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">Taux de parité</p>
-        </CardContent>
-      </Card>
+        {/* Taux de parité */}
+        <Card>
+          <CardContent className="pt-5">
+            <p className={`tabular-nums text-2xl font-bold ${parityColor(parityRate)}`}>
+              {(parityRate * 100).toFixed(1)}%
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">Taux de parité</p>
+          </CardContent>
+        </Card>
 
-      {/* Politiciens nationaux candidats */}
-      <Card>
-        <CardContent className="pt-5">
-          <p className="tabular-nums text-2xl font-bold">
-            {nationalPoliticiansCandidates.toLocaleString("fr-FR")}
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">Représentants nationaux candidats</p>
-          <Link
-            href="/elections/municipales-2026/cumul"
-            prefetch={false}
-            className="text-xs text-primary hover:underline mt-1 inline-block"
-          >
-            Voir les détails &rarr;
-          </Link>
-        </CardContent>
-      </Card>
+        {/* Politiciens nationaux candidats */}
+        <Card>
+          <CardContent className="pt-5">
+            <p className="tabular-nums text-2xl font-bold">
+              {nationalPoliticiansCandidates.toLocaleString("fr-FR")}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">Représentants nationaux candidats</p>
+            <Link
+              href="/elections/municipales-2026/cumul"
+              prefetch={false}
+              className="text-xs text-primary hover:underline mt-1 inline-block"
+            >
+              Voir les détails &rarr;
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

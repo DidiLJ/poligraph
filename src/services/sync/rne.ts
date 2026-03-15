@@ -514,6 +514,22 @@ export async function syncRNEMaires(
   console.log(`  Politicians not found: ${politiciansNotFound}`);
   console.log(`  Errors: ${errors.length}`);
 
+  // Record platform update if significant import
+  if (officialsCreated > 100) {
+    try {
+      await db.platformUpdate.create({
+        data: {
+          title: `${officialsCreated.toLocaleString("fr-FR")} maires importés depuis le RNE`,
+          type: "DATA_IMPORT",
+          metadata: { count: officialsCreated, entity: "maires" },
+        },
+      });
+    } catch {
+      // Non-critical - don't fail the sync
+      console.warn("Failed to create platform update entry");
+    }
+  }
+
   return {
     success: errors.length === 0,
     officialsCreated,

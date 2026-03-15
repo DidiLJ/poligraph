@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface MunicipalesChiffresProps {
   communesWithCompetition: number;
@@ -55,7 +56,10 @@ export function MunicipalesChiffres({
           >
             {averageCompetitionIndex.toFixed(2)}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">Indice de compétition moyen</p>
+          <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1">
+            Indice de compétition moyen
+            <InfoTooltip text="Rapport entre le nombre de listes déposées et le nombre attendu selon la taille de la commune. Au-dessus de 1,5 : forte compétition. En dessous de 1 : faible compétition." />
+          </p>
         </CardContent>
       </Card>
 

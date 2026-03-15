@@ -16,6 +16,98 @@ const VALID_ENTITY_TYPES = new Set([
 ]);
 const VALID_ACTIONS = new Set(["CREATE", "UPDATE", "DELETE", "PUBLISH", "REJECT", "ARCHIVE"]);
 
+async function resolveEntityLabels(
+  entries: Array<{ entityType: string; entityId: string }>
+): Promise<Map<string, string>> {
+  const labels = new Map<string, string>();
+  const byType = new Map<string, string[]>();
+
+  for (const e of entries) {
+    const ids = byType.get(e.entityType) || [];
+    ids.push(e.entityId);
+    byType.set(e.entityType, ids);
+  }
+
+  const queries: Promise<void>[] = [];
+
+  const politicianIds = byType.get("Politician");
+  if (politicianIds?.length) {
+    queries.push(
+      db.politician
+        .findMany({
+          where: { id: { in: politicianIds } },
+          select: { id: true, fullName: true },
+        })
+        .then((rows) => rows.forEach((r) => labels.set(r.id, r.fullName)))
+    );
+  }
+
+  const affairIds = byType.get("Affair");
+  if (affairIds?.length) {
+    queries.push(
+      db.affair
+        .findMany({
+          where: { id: { in: affairIds } },
+          select: { id: true, title: true },
+        })
+        .then((rows) => rows.forEach((r) => labels.set(r.id, r.title)))
+    );
+  }
+
+  const partyIds = byType.get("Party");
+  if (partyIds?.length) {
+    queries.push(
+      db.party
+        .findMany({
+          where: { id: { in: partyIds } },
+          select: { id: true, name: true },
+        })
+        .then((rows) => rows.forEach((r) => labels.set(r.id, r.name)))
+    );
+  }
+
+  const flagIds = byType.get("FeatureFlag");
+  if (flagIds?.length) {
+    queries.push(
+      db.featureFlag
+        .findMany({
+          where: { id: { in: flagIds } },
+          select: { id: true, name: true, label: true },
+        })
+        .then((rows) => rows.forEach((r) => labels.set(r.id, r.label || r.name)))
+    );
+  }
+
+  const dossierIds = byType.get("Dossier");
+  if (dossierIds?.length) {
+    queries.push(
+      db.legislativeDossier
+        .findMany({
+          where: { id: { in: dossierIds } },
+          select: { id: true, title: true },
+        })
+        .then((rows) => rows.forEach((r) => labels.set(r.id, r.title)))
+    );
+  }
+
+  const mandateIds = byType.get("Mandate");
+  if (mandateIds?.length) {
+    queries.push(
+      db.mandate
+        .findMany({
+          where: { id: { in: mandateIds } },
+          select: { id: true, type: true, politician: { select: { fullName: true } } },
+        })
+        .then((rows) =>
+          rows.forEach((r) => labels.set(r.id, `${r.type} - ${r.politician.fullName}`))
+        )
+    );
+  }
+
+  await Promise.all(queries);
+  return labels;
+}
+
 export const GET = withAdminAuth(async (request) => {
   const { searchParams } = new URL(request.url);
   const entityTypeParam = searchParams.get("entityType");
@@ -56,8 +148,15 @@ export const GET = withAdminAuth(async (request) => {
     db.auditLog.count({ where }),
   ]);
 
+  const labels = await resolveEntityLabels(entries);
+
+  const enrichedEntries = entries.map((e) => ({
+    ...e,
+    entityLabel: labels.get(e.entityId) || null,
+  }));
+
   return NextResponse.json({
-    data: entries,
+    data: enrichedEntries,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   });
 });

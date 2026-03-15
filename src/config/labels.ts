@@ -19,6 +19,7 @@ import type {
   SuffrageType,
   SourceType,
   PublicationStatus,
+  PlatformUpdateType,
 } from "@/types";
 
 export const AFFAIR_STATUS_LABELS: Record<AffairStatus, string> = {
@@ -1206,3 +1207,21 @@ export const PUBLICATION_STATUS_OPTIONS: { value: PublicationStatus; label: stri
   { value: "EXCLUDED", label: "Exclu" },
   { value: "REJECTED", label: "Rejeté" },
 ];
+
+// ---------------------------------------------------------------------------
+// Platform Update Types
+// ---------------------------------------------------------------------------
+
+export const PLATFORM_UPDATE_TYPE_LABELS: Record<PlatformUpdateType, string> = {
+  DATA_IMPORT: "Import de données",
+  NEW_FEATURE: "Nouveauté",
+  IMPROVEMENT: "Amélioration",
+  RELEASE: "Mise à jour",
+};
+
+export const PLATFORM_UPDATE_TYPE_ICONS: Record<PlatformUpdateType, string> = {
+  DATA_IMPORT: "📦",
+  NEW_FEATURE: "✨",
+  IMPROVEMENT: "🔧",
+  RELEASE: "🚀",
+};

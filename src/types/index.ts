@@ -34,6 +34,7 @@ import type {
   ElectionStatus,
   SourceType,
   PublicationStatus,
+  PlatformUpdateType,
 } from "@/generated/prisma";
 
 // Compare types
@@ -82,6 +83,7 @@ export type {
   ElectionStatus,
   SourceType,
   PublicationStatus,
+  PlatformUpdateType,
 };
 
 // Serialized types (with Decimal converted to number for client components)

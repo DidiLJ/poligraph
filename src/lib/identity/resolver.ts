@@ -10,13 +10,34 @@ import {
   BatchResolveInput,
   BatchResolveResult,
   IDENTITY_THRESHOLDS,
-  BIRTHDATE_TOLERANCE_MS,
-  PROMINENCE_THRESHOLD,
 } from "./types";
+import { BirthdateSignal } from "./signals/birthdate";
+import { DepartmentSignal } from "./signals/department";
+import { FirstNameSignal } from "./signals/first-name";
+import { GenderSignal } from "./signals/gender";
+import { LegacyCombiner } from "./combiner";
+import { getDefaultAdapter } from "./adapters/registry";
+import type {
+  SignalScoringInput,
+  SignalCandidateRecord,
+  SignalScoringContext,
+} from "./signals/types";
+
+// Signal instances (stateless, reusable)
+const birthdateSignal = new BirthdateSignal();
+const departmentSignal = new DepartmentSignal();
+const firstNameSignal = new FirstNameSignal();
+const genderSignal = new GenderSignal();
+const legacyCombiner = new LegacyCombiner();
 
 /**
  * Pure scoring function — no DB, no side effects.
  * Shared between resolve() (single) and resolveBatch() (bulk).
+ *
+ * Evaluates signals (birthdate, department, firstName, gender) and passes
+ * them to LegacyCombiner which reproduces the exact same additive/multiplicative
+ * arithmetic as the original implementation. Signal logLR values are available
+ * in the combiner result for Phase 2 evidence storage.
  */
 export function scoreCandidate(
   input: ScoringInput,
@@ -24,64 +45,51 @@ export function scoreCandidate(
   blockedIds: Set<string>
 ): CandidateMatch {
   const isBlocked = blockedIds.has(candidate.id);
-  let score = 0.5;
-  let method: MatchMethod = MatchMethod.NAME_ONLY;
 
-  // First name comparison (normalized: lowercase, no accents, hyphens → spaces)
-  const inputFirst = normalizeText(input.firstName);
-  const candidateFirst = normalizeText(candidate.firstName);
-  const firstNameExact = inputFirst === candidateFirst;
-  const firstNamePartial =
-    !firstNameExact && (inputFirst.includes(candidateFirst) || candidateFirst.includes(inputFirst));
+  // Build signal inputs from legacy types
+  const signalInput: SignalScoringInput = {
+    firstName: input.firstName,
+    lastName: input.lastName,
+    birthDate: input.birthDate,
+    department: input.department,
+    gender: input.gender,
+  };
 
-  if (input.birthDate && candidate.birthDate) {
-    const diff = Math.abs(candidate.birthDate.getTime() - input.birthDate.getTime());
-    if (diff <= BIRTHDATE_TOLERANCE_MS) {
-      score = 0.9;
-      method = MatchMethod.BIRTHDATE;
-    } else {
-      score = 0.1;
-    }
-  }
+  const signalCandidate: SignalCandidateRecord = {
+    id: candidate.id,
+    firstName: candidate.firstName,
+    lastName: candidate.lastName,
+    birthDate: candidate.birthDate,
+    departments: candidate.departments,
+    gender: candidate.gender ?? null,
+    prominenceScore: candidate.prominenceScore,
+  };
 
-  if (input.department && candidate.departments.includes(input.department) && score < 0.7) {
-    score = 0.7;
-    method = MatchMethod.DEPARTMENT;
-  }
+  const context: SignalScoringContext = {
+    adapter: getDefaultAdapter(),
+    mode: "legacy",
+  };
 
-  // Apply first name modifier after base scoring
-  if (firstNameExact) {
-    score = Math.min(score + 0.15, 0.98);
-  } else if (!firstNamePartial) {
-    // Complete mismatch — heavy penalty
-    score = score * 0.4;
-  }
-  // Partial match: no change (inconclusive)
+  // Evaluate all Phase 1 signals
+  const signals = [
+    birthdateSignal.evaluate(signalInput, signalCandidate, context),
+    departmentSignal.evaluate(signalInput, signalCandidate, context),
+    firstNameSignal.evaluate(signalInput, signalCandidate, context),
+    genderSignal.evaluate(signalInput, signalCandidate, context),
+  ];
 
-  // Prominence boost: well-known politicians with exact firstName match
-  // but no other signal (no birthdate/department match) get a small nudge
-  // into REVIEW zone. Prevents prominent national-only politicians from
-  // falling below the 0.70 threshold.
-  if (
-    candidate.prominenceScore >= PROMINENCE_THRESHOLD &&
-    firstNameExact &&
-    method === MatchMethod.NAME_ONLY
-  ) {
-    score = Math.min(score + 0.06, 0.98);
-  }
-
-  // Gender mismatch penalty (after first name modifier)
-  if (input.gender && candidate.gender && input.gender !== candidate.gender) {
-    score = score * 0.3;
-  }
+  // Combine using legacy arithmetic (identical to previous scoreCandidate)
+  const combined = legacyCombiner.combine(signals, {
+    prominenceScore: candidate.prominenceScore,
+  });
 
   return {
     politicianId: candidate.id,
     firstName: candidate.firstName,
     lastName: candidate.lastName,
     birthDate: candidate.birthDate,
-    score,
-    method,
+    score: combined.confidence,
+    method: combined.primaryMethod,
     blocked: isBlocked,
   };
 }

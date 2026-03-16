@@ -14,6 +14,7 @@ function makePolitician(overrides: Partial<CachedPolitician> = {}): CachedPoliti
     lastName: "Dufour",
     birthDate: null,
     departments: ["76"],
+    prominenceScore: 0,
     ...overrides,
   };
 }
@@ -239,6 +240,50 @@ describe("scoreCandidate", () => {
       );
       expect(result.score).toBeCloseTo(0.294, 2);
       expect(result.score).toBeLessThan(IDENTITY_THRESHOLDS.REVIEW);
+    });
+  });
+
+  describe("prominence boost", () => {
+    it("prominent politician with NAME_ONLY gets boosted above REVIEW", () => {
+      const result = scoreCandidate(
+        makeInput({ firstName: "Rachida", department: undefined }),
+        makePolitician({
+          firstName: "Rachida",
+          departments: [],
+          prominenceScore: 470,
+        }),
+        noBlocked
+      );
+      // 0.5 + 0.15 (firstName) + 0.06 (prominence) = 0.71
+      expect(result.score).toBeCloseTo(0.71, 2);
+      expect(result.score).toBeGreaterThanOrEqual(IDENTITY_THRESHOLDS.REVIEW);
+      expect(result.method).toBe(MatchMethod.NAME_ONLY);
+    });
+
+    it("low-prominence politician stays below REVIEW", () => {
+      const result = scoreCandidate(
+        makeInput({ firstName: "Rachida", department: undefined }),
+        makePolitician({
+          firstName: "Rachida",
+          departments: [],
+          prominenceScore: 100,
+        }),
+        noBlocked
+      );
+      // 0.5 + 0.15 = 0.65, no prominence boost
+      expect(result.score).toBeCloseTo(0.65, 2);
+      expect(result.score).toBeLessThan(IDENTITY_THRESHOLDS.REVIEW);
+    });
+
+    it("prominence does not stack with department match", () => {
+      const result = scoreCandidate(
+        makeInput({ firstName: "Alma" }),
+        makePolitician({ prominenceScore: 800 }),
+        noBlocked
+      );
+      // Department match → method DEPARTMENT → prominence skipped
+      // 0.7 + 0.15 = 0.85
+      expect(result.score).toBeCloseTo(0.85, 2);
     });
   });
 

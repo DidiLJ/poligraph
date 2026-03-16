@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Telescope, Vote, Newspaper, Scale, Building2 } from "lucide-react";
+import { Telescope, Vote, Scale, Building2 } from "lucide-react";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { Badge } from "@/components/ui/badge";
@@ -30,13 +30,11 @@ const TABS: { id: TabId; label: string }[] = [
 
 const ACTIVITY_ICONS: Record<string, typeof Vote> = {
   vote: Vote,
-  press: Newspaper,
   affair: Scale,
 };
 
 const ACTIVITY_LABELS: Record<string, string> = {
   vote: "Vote",
-  press: "Presse",
   affair: "Affaire",
   "party-update": "Parti",
 };
@@ -194,8 +192,8 @@ export function WatchlistContent() {
           </div>
           <h2 className="text-lg font-semibold mb-2">Aucun représentant suivi</h2>
           <p className="text-sm text-muted-foreground mb-6">
-            Ajoutez des politiques ou des partis à votre observatoire pour suivre leurs votes, leurs
-            mentions dans la presse et leurs affaires judiciaires.
+            Ajoutez des politiques ou des partis à votre observatoire pour suivre leurs votes et
+            leurs affaires judiciaires.
           </p>
           <div className="max-w-md mx-auto">
             <WatchlistSearch />
@@ -480,26 +478,6 @@ function ActivityDetail({ item }: { item: ActivityItem }) {
           ) : (
             <span>{title}</span>
           )}
-        </p>
-      );
-    }
-    case "press": {
-      const title = item.data.title as string;
-      const url = item.data.url as string;
-      const source = item.data.source as string;
-
-      return (
-        <p className="text-sm text-muted-foreground">
-          Mentionné dans{" "}
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            {title}
-          </a>
-          <span className="text-xs ml-1">({source})</span>
         </p>
       );
     }

@@ -47,7 +47,7 @@ export const POST = withPublicRoute(async (request: NextRequest) => {
         activity: [],
         politicians: [],
         parties: [],
-        stats: { votesCount: 0, pressCount: 0, activeAffairsCount: 0 },
+        stats: { votesCount: 0, activeAffairsCount: 0 },
       }),
       "daily"
     );
@@ -67,7 +67,7 @@ export const POST = withPublicRoute(async (request: NextRequest) => {
   );
   const politicianIds = [...infoById.keys()];
 
-  // 3 parallel queries for politician activity — within pool limits with take caps
+  // 2 parallel queries for politician activity — within pool limits with take caps
   const politicianActivityPromise =
     politicianIds.length > 0
       ? Promise.all([
@@ -84,20 +84,6 @@ export const POST = withPublicRoute(async (request: NextRequest) => {
               },
             },
             orderBy: { scrutin: { votingDate: "desc" } },
-            take: MAX_ITEMS_PER_TYPE,
-          }),
-          db.pressArticleMention.findMany({
-            where: {
-              politicianId: { in: politicianIds },
-              article: { publishedAt: { gte: since } },
-            },
-            select: {
-              politicianId: true,
-              article: {
-                select: { title: true, url: true, feedSource: true, publishedAt: true },
-              },
-            },
-            orderBy: { article: { publishedAt: "desc" } },
             take: MAX_ITEMS_PER_TYPE,
           }),
           db.affair.findMany({
@@ -118,7 +104,7 @@ export const POST = withPublicRoute(async (request: NextRequest) => {
             take: MAX_ITEMS_PER_TYPE,
           }),
         ])
-      : Promise.resolve([[], [], []] as const);
+      : Promise.resolve([[], []] as const);
 
   // Party resolution — parallel with politician queries
   const partyPromise =
@@ -140,7 +126,7 @@ export const POST = withPublicRoute(async (request: NextRequest) => {
     politicianActivityPromise,
     partyPromise,
   ]);
-  const [votes, pressMentions, affairs] = politicianActivity;
+  const [votes, affairs] = politicianActivity;
 
   // Build party info map (filter out parties without a slug)
   const partyInfoMap = new Map<string, WatchlistParty>();
@@ -195,17 +181,6 @@ export const POST = withPublicRoute(async (request: NextRequest) => {
       result: v.scrutin.result,
     },
   }));
-  const pressItems: ActivityItem[] = pressMentions.map((m) => ({
-    type: "press" as const,
-    date: m.article.publishedAt.toISOString(),
-    politician: infoById.get(m.politicianId)!,
-    party: null,
-    data: {
-      title: m.article.title,
-      url: m.article.url,
-      source: m.article.feedSource,
-    },
-  }));
   const affairItems: ActivityItem[] = affairs.map((a) => ({
     type: "affair" as const,
     date: a.createdAt.toISOString(),
@@ -219,19 +194,13 @@ export const POST = withPublicRoute(async (request: NextRequest) => {
     },
   }));
 
-  const activity: ActivityItem[] = [
-    ...voteItems,
-    ...pressItems,
-    ...affairItems,
-    ...partyActivityItems,
-  ];
+  const activity: ActivityItem[] = [...voteItems, ...affairItems, ...partyActivityItems];
 
   activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Aggregated stats from fetched data
   const stats: ActivityStats = {
     votesCount: voteItems.length,
-    pressCount: pressItems.length,
     activeAffairsCount: affairItems.length,
   };
 

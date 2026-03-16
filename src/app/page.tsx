@@ -15,6 +15,8 @@ import { HexPattern } from "@/components/ui/HexPattern";
 import { FadeIn } from "@/components/motion";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { SITE_URL } from "@/config/site";
+
+export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 import { getTodayVotesSummary } from "@/lib/data/scrutins";
 import { getWeeklyRecap, getWeekStart } from "@/lib/data/recap";
 import { getUpcomingElections, getFeaturedElection } from "@/lib/data/elections";

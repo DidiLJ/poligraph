@@ -37,9 +37,54 @@ function buildDirectClaimFilter() {
 
 /**
  * Fetch paginated fact-checks with filters.
- * Free-text search param — no cache (unbounded key space).
+ * Routes to cached path (bounded params) or uncached (free-text search).
  */
 export async function getFactchecks(params: {
+  page: number;
+  limit: number;
+  source?: string;
+  verdict?: string;
+  politicianSlug?: string;
+  search?: string;
+  directOnly?: boolean;
+}) {
+  if (params.search) {
+    return queryFactchecks(params);
+  }
+  return getFactchecksFiltered(
+    params.page,
+    params.limit,
+    params.source ?? "",
+    params.verdict ?? "",
+    params.politicianSlug ?? "",
+    params.directOnly ?? false
+  );
+}
+
+/** Cached path — bounded params only (no free-text search). */
+async function getFactchecksFiltered(
+  page: number,
+  limit: number,
+  source: string,
+  verdict: string,
+  politicianSlug: string,
+  directOnly: boolean
+) {
+  "use cache";
+  cacheTag("factchecks");
+  cacheLife("minutes");
+  return queryFactchecks({
+    page,
+    limit,
+    source: source || undefined,
+    verdict: verdict || undefined,
+    politicianSlug: politicianSlug || undefined,
+    directOnly: directOnly || undefined,
+  });
+}
+
+/** Uncached query — shared implementation. */
+async function queryFactchecks(params: {
   page: number;
   limit: number;
   source?: string;

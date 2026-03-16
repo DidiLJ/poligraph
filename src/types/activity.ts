@@ -15,7 +15,7 @@ export interface WatchlistParty {
 }
 
 export interface ActivityItem {
-  type: "vote" | "press" | "affair" | "party-update";
+  type: "vote" | "affair" | "party-update";
   date: string;
   politician: WatchlistPolitician | null;
   party: WatchlistParty | null;
@@ -24,7 +24,6 @@ export interface ActivityItem {
 
 export interface ActivityStats {
   votesCount: number;
-  pressCount: number;
   activeAffairsCount: number;
 }
 

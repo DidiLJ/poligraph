@@ -12,14 +12,12 @@ import type {
 
 const STAT_ACCENTS = {
   votes: { border: "#2563eb", bg: "#2563eb0a" },
-  press: { border: "#16a34a", bg: "#16a34a0a" },
   affairs: { border: "#d97706", bg: "#d9770610" },
 };
 
 const FILTERS = [
   { key: "all", label: "Tous" },
   { key: "vote", label: "Votes" },
-  { key: "press", label: "Presse" },
   { key: "affair", label: "Affaires" },
 ] as const;
 
@@ -53,7 +51,6 @@ export function WatchlistDashboard({
     if (!hasPersonFilter || !stats) return stats;
     return {
       votesCount: filteredActivity.filter((a) => a.type === "vote").length,
-      pressCount: filteredActivity.filter((a) => a.type === "press").length,
       activeAffairsCount: filteredActivity.filter((a) => a.type === "affair").length,
     };
   }, [stats, hasPersonFilter, filteredActivity]);
@@ -81,9 +78,8 @@ export function WatchlistDashboard({
       {displayStats && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">30 derniers jours</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <StatCard count={displayStats.votesCount} label="Votes" accent={STAT_ACCENTS.votes} />
-            <StatCard count={displayStats.pressCount} label="Presse" accent={STAT_ACCENTS.press} />
             <StatCard
               count={displayStats.activeAffairsCount}
               label="Affaires"

@@ -417,6 +417,16 @@ export const SEVERITY_SORT_ORDER: Record<AffairSeverity, number> = {
   SIGNIFICATIF: 2,
 };
 
+export const NATIONAL_MANDATE_TYPES: MandateType[] = [
+  "DEPUTE",
+  "SENATEUR",
+  "DEPUTE_EUROPEEN",
+  "MINISTRE",
+  "SECRETAIRE_ETAT",
+  "PREMIER_MINISTRE",
+  "PRESIDENT_REPUBLIQUE",
+];
+
 export const MANDATE_TYPE_LABELS: Record<MandateType, string> = {
   DEPUTE: "Député",
   SENATEUR: "Sénateur",

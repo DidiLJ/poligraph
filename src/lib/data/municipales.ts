@@ -3,6 +3,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { primarySurname } from "@/lib/name-matching";
+import { NATIONAL_MANDATE_TYPES } from "@/config/labels";
 
 // ============================================
 // Incumbent maire helper
@@ -243,7 +244,6 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
           mandates: {
             where: { isCurrent: true },
             select: { type: true },
-            take: 1,
           },
         },
       },
@@ -342,7 +342,10 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
   const totalCandidates = candidacies.length;
   const femaleCount = candidacies.filter((c) => c.candidate?.gender === "F").length;
   const femaleRate = totalCandidates > 0 ? femaleCount / totalCandidates : 0;
-  const nationalPoliticiansCount = candidacies.filter((c) => c.politicianId != null).length;
+  const nationalMandateSet = new Set<string>(NATIONAL_MANDATE_TYPES);
+  const nationalPoliticiansCount = candidacies.filter(
+    (c) => c.politician?.mandates?.some((m) => nationalMandateSet.has(m.type)) ?? false
+  ).length;
 
   return {
     ...commune,
@@ -476,16 +479,7 @@ export const getCumulCandidates = cache(async function getCumulCandidates() {
         mandates: {
           some: {
             isCurrent: true,
-            type: {
-              in: [
-                "DEPUTE",
-                "SENATEUR",
-                "DEPUTE_EUROPEEN",
-                "MINISTRE",
-                "SECRETAIRE_ETAT",
-                "PREMIER_MINISTRE",
-              ],
-            },
+            type: { in: NATIONAL_MANDATE_TYPES },
           },
         },
       },

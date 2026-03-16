@@ -7,6 +7,7 @@ import { CommuneRadiographie } from "@/components/elections/municipales/CommuneR
 import { ListCard } from "@/components/elections/municipales/ListCard";
 import { AlerteCumul } from "@/components/elections/municipales/PoliticianBridge";
 import { IncumbentMaireCard } from "@/components/elections/municipales/IncumbentMaireCard";
+import { NATIONAL_MANDATE_TYPES } from "@/config/labels";
 import { HistoriqueSection2020 } from "@/components/elections/municipales/HistoriqueSection2020";
 import { ResultatsBanner } from "@/components/elections/municipales/ResultatsBanner";
 import { EventJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
@@ -171,13 +172,14 @@ export default async function CommuneDetailPage({ params }: PageProps) {
         {/* Alerte cumul */}
         {commune.stats.nationalPoliticiansCount > 0 &&
           (() => {
-            // Extract unique mandate types from candidates with linked politicians
+            const nationalSet = new Set<string>(NATIONAL_MANDATE_TYPES);
             const mandateTypes = [
               ...new Set(
                 commune.lists
                   .flatMap((l) => l.members)
                   .filter((m) => m.politician?.mandates?.length)
                   .flatMap((m) => m.politician!.mandates.map((md) => md.type))
+                  .filter((t) => nationalSet.has(t))
               ),
             ];
             return (

@@ -57,6 +57,8 @@
     "sync:gouvernement:stats": "tsx scripts/sync-gouvernement.ts --stats",
     "sync:wikidata-ids": "tsx scripts/sync-wikidata-ids.ts",
     "sync:wikidata-ids:stats": "tsx scripts/sync-wikidata-ids.ts --stats",
+    "sync:wikidata-politicians": "tsx scripts/sync-wikidata-politicians.ts",
+    "sync:wikidata-politicians:stats": "tsx scripts/sync-wikidata-politicians.ts --stats",
     "import:wikidata-parties": "tsx scripts/import-wikidata-parties.ts",
     "import:wikidata-memberships": "tsx scripts/import-wikidata-memberships.ts",
     "wikidata:lookup": "tsx scripts/wikidata-lookup.ts",

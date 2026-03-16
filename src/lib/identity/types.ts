@@ -44,14 +44,19 @@ export const BIRTHDATE_TOLERANCE_MS = 86_400_000;
 /** Minimum prominenceScore for the prominence boost (0-1000 scale) */
 export const PROMINENCE_THRESHOLD = 400;
 
-/** Input for the pure scoring function (no DB, no side effects) */
-export interface ScoringInput {
+/** Input for the legacy pure scoring function (no DB, no side effects) */
+export interface LegacyScoringInput {
   firstName: string;
   lastName: string;
   birthDate?: Date | null;
   department?: string;
   gender?: string | null;
 }
+
+/**
+ * @deprecated Use LegacyScoringInput. Will be replaced by v2 ScoringInput in Phase 2.
+ */
+export type ScoringInput = LegacyScoringInput;
 
 /** Politician data needed for in-memory scoring */
 export interface CachedPolitician {

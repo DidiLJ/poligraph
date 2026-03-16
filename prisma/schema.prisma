@@ -50,6 +50,10 @@ model Politician {
   statusOverride    Boolean           @default(false) // true = don't auto-reassign status
   prominenceScore   Int               @default(0) // 0-1000, higher = more prominent
 
+  // Identity resolution v2 (Phase 3 backfill)
+  normalizedLastName String? // Lowercase, accent-stripped, particle-removed last name
+  phoneticCode       String? // Phonetic code for sound-based blocking
+
   // Current party (nullable if independent)
   currentParty   Party?  @relation(fields: [currentPartyId], references: [id])
   currentPartyId String?

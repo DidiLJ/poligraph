@@ -324,6 +324,201 @@ describe("IdentityResolver", () => {
     });
   });
 
+  describe("Prominence boost", () => {
+    it("pushes prominent NAME_ONLY match into REVIEW zone", async () => {
+      mockPoliticianFindMany.mockResolvedValue([
+        {
+          id: "pol-1",
+          firstName: "Rachida",
+          lastName: "Dati",
+          birthDate: null,
+          mandates: [],
+          prominenceScore: 470,
+        },
+      ]);
+
+      const result = await resolve({
+        firstName: "Rachida",
+        lastName: "Dati",
+        source: DataSource.MUNICIPALES,
+        sourceId: "75056-DATI",
+      });
+
+      // 0.5 (base) + 0.15 (firstName exact) + 0.06 (prominence) + 0.05 (sole candidate) = 0.76
+      expect(result.politicianId).toBe("pol-1");
+      expect(result.decision).toBe(Judgement.UNDECIDED);
+      expect(result.confidence).toBeCloseTo(0.76, 2);
+    });
+
+    it("does not apply to low-prominence politicians", async () => {
+      mockPoliticianFindMany.mockResolvedValue([
+        {
+          id: "pol-1",
+          firstName: "Jean",
+          lastName: "Martin",
+          birthDate: null,
+          mandates: [],
+          prominenceScore: 50,
+        },
+        {
+          id: "pol-2",
+          firstName: "Pierre",
+          lastName: "Martin",
+          birthDate: null,
+          mandates: [],
+          prominenceScore: 0,
+        },
+      ]);
+
+      const result = await resolve({
+        firstName: "Jean",
+        lastName: "Martin",
+        source: DataSource.MUNICIPALES,
+        sourceId: "99001-MARTIN",
+      });
+
+      // 0.5 + 0.15 = 0.65, no prominence boost (50 < 400), no sole-candidate (2 candidates)
+      expect(result.politicianId).toBeNull();
+      expect(result.decision).toBe("NEW");
+    });
+
+    it("does not apply when method is not NAME_ONLY", async () => {
+      mockPoliticianFindMany.mockResolvedValue([
+        {
+          id: "pol-1",
+          firstName: "Jean",
+          lastName: "Martin",
+          birthDate: null,
+          mandates: [{ departmentCode: "75" }],
+          prominenceScore: 800,
+        },
+      ]);
+
+      const result = await resolve({
+        firstName: "Jean",
+        lastName: "Martin",
+        department: "75",
+        source: DataSource.MUNICIPALES,
+        sourceId: "75056-MARTIN",
+      });
+
+      // Department match → method is DEPARTMENT, prominence boost skipped
+      // 0.7 (dept) + 0.15 (firstName) = 0.85
+      expect(result.confidence).toBeCloseTo(0.85, 2);
+      expect(result.decision).toBe(Judgement.UNDECIDED);
+    });
+  });
+
+  describe("Sole-candidate boost", () => {
+    it("boosts single NAME_ONLY candidate into REVIEW zone", async () => {
+      mockPoliticianFindMany.mockResolvedValue([
+        {
+          id: "pol-1",
+          firstName: "Jean",
+          lastName: "Martin",
+          birthDate: null,
+          mandates: [],
+          prominenceScore: 0,
+        },
+      ]);
+
+      const result = await resolve({
+        firstName: "Jean",
+        lastName: "Martin",
+        source: DataSource.RNE,
+        sourceId: "99001",
+      });
+
+      // 0.5 + 0.15 (firstName) + 0.05 (sole candidate) = 0.70 → UNDECIDED
+      expect(result.politicianId).toBe("pol-1");
+      expect(result.decision).toBe(Judgement.UNDECIDED);
+      expect(result.confidence).toBeCloseTo(0.7, 2);
+    });
+
+    it("does not apply with multiple candidates", async () => {
+      mockPoliticianFindMany.mockResolvedValue([
+        {
+          id: "pol-1",
+          firstName: "Jean",
+          lastName: "Martin",
+          birthDate: null,
+          mandates: [],
+          prominenceScore: 0,
+        },
+        {
+          id: "pol-2",
+          firstName: "Jean",
+          lastName: "Martin",
+          birthDate: null,
+          mandates: [],
+          prominenceScore: 0,
+        },
+      ]);
+
+      const result = await resolve({
+        firstName: "Jean",
+        lastName: "Martin",
+        source: DataSource.RNE,
+        sourceId: "99001",
+      });
+
+      // Two candidates with same score → no sole-candidate boost → 0.65 → NEW
+      expect(result.politicianId).toBeNull();
+      expect(result.decision).toBe("NEW");
+    });
+
+    it("does not apply to non-NAME_ONLY matches", async () => {
+      mockPoliticianFindMany.mockResolvedValue([
+        {
+          id: "pol-1",
+          firstName: "Jean",
+          lastName: "Martin",
+          birthDate: new Date("1970-01-01"),
+          mandates: [],
+          prominenceScore: 0,
+        },
+      ]);
+
+      const result = await resolve({
+        firstName: "Jean",
+        lastName: "Martin",
+        birthDate: new Date("1970-01-01"),
+        source: DataSource.RNE,
+        sourceId: "12345",
+      });
+
+      // Birthdate match → method BIRTHDATE → sole-candidate boost skipped
+      // 0.9 + 0.15 = 0.98 (capped)
+      expect(result.confidence).toBeCloseTo(0.98, 2);
+      expect(result.decision).toBe(Judgement.SAME);
+    });
+
+    it("caps score below AUTO_MATCH threshold", async () => {
+      mockPoliticianFindMany.mockResolvedValue([
+        {
+          id: "pol-1",
+          firstName: "Rachida",
+          lastName: "Dati",
+          birthDate: null,
+          mandates: [],
+          prominenceScore: 800,
+        },
+      ]);
+
+      const result = await resolve({
+        firstName: "Rachida",
+        lastName: "Dati",
+        source: DataSource.MUNICIPALES,
+        sourceId: "75056-DATI",
+      });
+
+      // 0.5 + 0.15 + 0.06 (prominence) + 0.05 (sole) = 0.76
+      // Even with both boosts, stays well below AUTO_MATCH (0.95)
+      expect(result.confidence).toBeLessThan(0.95);
+      expect(result.decision).toBe(Judgement.UNDECIDED);
+    });
+  });
+
   describe("Step 6: Threshold decisions", () => {
     it("returns UNDECIDED for candidate in review zone (0.70-0.94)", async () => {
       mockPoliticianFindMany.mockResolvedValue([
@@ -349,7 +544,7 @@ describe("IdentityResolver", () => {
       expect(result.politicianId).toBe("pol-1");
     });
 
-    it("returns NEW for candidate below REVIEW threshold", async () => {
+    it("returns NEW for candidate below REVIEW threshold (multiple candidates)", async () => {
       mockPoliticianFindMany.mockResolvedValue([
         {
           id: "pol-1",
@@ -357,6 +552,15 @@ describe("IdentityResolver", () => {
           lastName: "Martin",
           birthDate: null,
           mandates: [],
+          prominenceScore: 0,
+        },
+        {
+          id: "pol-2",
+          firstName: "Pierre",
+          lastName: "Martin",
+          birthDate: null,
+          mandates: [],
+          prominenceScore: 0,
         },
       ]);
 
@@ -367,7 +571,7 @@ describe("IdentityResolver", () => {
         sourceId: "99001",
       });
 
-      // Name-only match: 0.5 confidence → below REVIEW threshold (0.70)
+      // Two candidates → no sole-candidate boost → 0.65 (NAME_ONLY + firstName) → below REVIEW
       expect(result.politicianId).toBeNull();
       expect(result.decision).toBe("NEW");
     });

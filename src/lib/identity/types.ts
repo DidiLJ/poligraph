@@ -41,6 +41,9 @@ export const IDENTITY_THRESHOLDS = {
 /** Birthdate tolerance: 1 day in ms */
 export const BIRTHDATE_TOLERANCE_MS = 86_400_000;
 
+/** Minimum prominenceScore for the prominence boost (0-1000 scale) */
+export const PROMINENCE_THRESHOLD = 400;
+
 /** Input for the pure scoring function (no DB, no side effects) */
 export interface ScoringInput {
   firstName: string;
@@ -58,6 +61,7 @@ export interface CachedPolitician {
   birthDate: Date | null;
   departments: string[];
   gender?: string | null;
+  prominenceScore: number;
 }
 
 export interface BatchResolveInput {

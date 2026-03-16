@@ -11,6 +11,7 @@ import {
   BatchResolveResult,
   IDENTITY_THRESHOLDS,
   BIRTHDATE_TOLERANCE_MS,
+  PROMINENCE_THRESHOLD,
 } from "./types";
 
 /**
@@ -57,6 +58,18 @@ export function scoreCandidate(
   }
   // Partial match: no change (inconclusive)
 
+  // Prominence boost: well-known politicians with exact firstName match
+  // but no other signal (no birthdate/department match) get a small nudge
+  // into REVIEW zone. Prevents prominent national-only politicians from
+  // falling below the 0.70 threshold.
+  if (
+    candidate.prominenceScore >= PROMINENCE_THRESHOLD &&
+    firstNameExact &&
+    method === MatchMethod.NAME_ONLY
+  ) {
+    score = Math.min(score + 0.06, 0.98);
+  }
+
   // Gender mismatch penalty (after first name modifier)
   if (input.gender && candidate.gender && input.gender !== candidate.gender) {
     score = score * 0.3;
@@ -96,6 +109,7 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
         lastName: true,
         birthDate: true,
         civility: true,
+        prominenceScore: true,
         mandates: {
           where: { departmentCode: { not: null } },
           select: { departmentCode: true },
@@ -119,6 +133,7 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
       birthDate: p.birthDate,
       departments: p.mandates.map((m) => m.departmentCode).filter((d): d is string => d !== null),
       gender: p.civility === "Mme" ? "F" : p.civility === "M." ? "M" : null,
+      prominenceScore: p.prominenceScore,
     };
     const existing = politicianMap.get(key);
     if (existing) existing.push(cached);
@@ -190,6 +205,12 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
 
     // Sort by score descending, filter blocked
     const activeCandidates = scored.filter((c) => !c.blocked).sort((a, b) => b.score - a.score);
+
+    // Sole-candidate boost: when exactly one politician matches by lastName
+    // and the match is NAME_ONLY, the uniqueness itself is a signal
+    if (activeCandidates.length === 1 && activeCandidates[0]!.method === MatchMethod.NAME_ONLY) {
+      activeCandidates[0]!.score = Math.min(activeCandidates[0]!.score + 0.05, 0.94);
+    }
 
     const allBlocked = scored.length > 0 && activeCandidates.length === 0;
     const bestMatch = activeCandidates[0];
@@ -354,6 +375,7 @@ export async function resolve(input: ResolveInput): Promise<ResolveResult> {
       lastName: true,
       birthDate: true,
       civility: true,
+      prominenceScore: true,
       mandates: {
         where: { departmentCode: { not: null } },
         select: { departmentCode: true },
@@ -369,12 +391,19 @@ export async function resolve(input: ResolveInput): Promise<ResolveResult> {
       birthDate: p.birthDate,
       departments: p.mandates.map((m) => m.departmentCode).filter((d): d is string => d !== null),
       gender: p.civility === "Mme" ? "F" : p.civility === "M." ? "M" : null,
+      prominenceScore: p.prominenceScore,
     };
     return scoreCandidate(input, cached, blockedIds);
   });
 
   // Sort by score descending, filter blocked
   const activeCandidates = candidates.filter((c) => !c.blocked).sort((a, b) => b.score - a.score);
+
+  // Sole-candidate boost: when exactly one politician matches by name
+  // and the match is NAME_ONLY, the uniqueness itself is a signal
+  if (activeCandidates.length === 1 && activeCandidates[0]!.method === MatchMethod.NAME_ONLY) {
+    activeCandidates[0]!.score = Math.min(activeCandidates[0]!.score + 0.05, 0.94);
+  }
 
   // ── Step 6: Threshold decision ─────────────────────────────────
   const allBlocked = candidates.length > 0 && activeCandidates.length === 0;

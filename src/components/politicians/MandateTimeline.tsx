@@ -1,8 +1,26 @@
 "use client";
 
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { MANDATE_TYPE_LABELS, feminizeRole } from "@/config/labels";
 import type { SerializedMandate, MandateType } from "@/types";
+
+const MAIRE_TYPES: MandateType[] = ["MAIRE", "ADJOINT_MAIRE", "CONSEILLER_MUNICIPAL"];
+
+function extractInseeCode(constituency: string | null): string | null {
+  if (!constituency) return null;
+  const match = constituency.match(/\((\d{5})\)$/);
+  return match?.[1] ?? null;
+}
+
+function getCommuneElectionUrl(mandate: {
+  type: MandateType;
+  constituency: string | null;
+}): string | null {
+  if (!MAIRE_TYPES.includes(mandate.type)) return null;
+  const inseeCode = extractInseeCode(mandate.constituency);
+  return inseeCode ? `/elections/municipales-2026/communes/${inseeCode}` : null;
+}
 
 interface MandateWithGroup extends SerializedMandate {
   parliamentaryGroup?: { code: string; name: string; color: string | null } | null;
@@ -183,16 +201,30 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
                     <p className="text-xs text-muted-foreground mt-2">
                       {formatDuration(mandate.startDate)} en poste
                     </p>
-                    {mandate.officialUrl && (
-                      <a
-                        href={mandate.officialUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline mt-2 inline-block"
-                      >
-                        Voir sur le site officiel →
-                      </a>
-                    )}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                      {mandate.officialUrl && (
+                        <a
+                          href={mandate.officialUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline inline-block"
+                        >
+                          Voir sur le site officiel →
+                        </a>
+                      )}
+                      {(() => {
+                        const url = getCommuneElectionUrl(mandate);
+                        return url ? (
+                          <Link
+                            href={url}
+                            className="text-xs text-primary hover:underline inline-block"
+                            prefetch={false}
+                          >
+                            Municipales 2026 →
+                          </Link>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
                 </div>
               );

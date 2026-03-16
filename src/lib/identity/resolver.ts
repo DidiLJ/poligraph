@@ -265,6 +265,8 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
       method: bestMatch.method,
       evidence: JSON.parse(
         JSON.stringify({
+          version: 2,
+          mode: "legacy",
           firstName: input.firstName,
           lastName: input.lastName,
           birthDate: input.birthDate?.toISOString() ?? null,
@@ -474,6 +476,8 @@ async function logDecision(input: ResolveInput, result: ResolveResult): Promise<
         confidence: result.confidence,
         method: result.method,
         evidence: {
+          version: 2,
+          mode: "legacy",
           firstName: input.firstName,
           lastName: input.lastName,
           birthDate: input.birthDate?.toISOString() ?? null,

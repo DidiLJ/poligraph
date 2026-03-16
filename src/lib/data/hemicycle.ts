@@ -54,7 +54,7 @@ const CONDAMNATION_STATUSES = new Set([
 export async function getHemicycleData(): Promise<HemicycleGroup[]> {
   "use cache";
   cacheTag("statistics", "affairs", "politicians");
-  cacheLife("minutes");
+  cacheLife("hours");
 
   const groups = await db.parliamentaryGroup.findMany({
     where: {

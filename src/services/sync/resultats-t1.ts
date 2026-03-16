@@ -92,18 +92,41 @@ export function parseCommuneResultsHtml(
   const participationRate = registeredVoters > 0 ? (actualVoters / registeredVoters) * 100 : 0;
 
   // --- Parse results table (caption contains "Résultats") ---
-  const resultsTable = $('table caption:contains("Résultats")').closest("table").find("tbody tr");
+  const resultsTableEl = $('table caption:contains("Résultats")').closest("table");
+  const resultsTable = resultsTableEl.find("tbody tr");
+
+  // Detect column layout: small communes (<1000 hab) omit the "Nuance" column
+  // 7 cols: listName, leaderName, nuance, votes, %inscrits, %exprimes, seats
+  // 6 cols: listName, leaderName, votes, %inscrits, %exprimes, seats
+  const headerCols = resultsTableEl.find("thead th").length;
+  const hasNuance = headerCols >= 7;
+  const colOffset = hasNuance ? 0 : -1;
 
   const lists: ParsedListResult[] = [];
   resultsTable.each((_, row) => {
     const cells = $(row).find("td");
     const listName = cells.eq(0).text().trim();
     const leaderName = cells.eq(1).text().trim();
-    const nuance = cells.eq(2).text().trim();
-    const round1Votes = parseFrenchNumber(cells.eq(3).text().trim());
-    // Skip % Inscrits (col 4), use % Exprimes (col 5)
-    const round1Pct = parseFrenchNumber(cells.eq(5).text().trim());
-    const seatsWon = parseFrenchNumber(cells.eq(6).text().trim());
+    const nuance = hasNuance ? cells.eq(2).text().trim() : "";
+    const round1Votes = parseFrenchNumber(
+      cells
+        .eq(3 + colOffset)
+        .text()
+        .trim()
+    );
+    // Skip % Inscrits, use % Exprimes
+    const round1Pct = parseFrenchNumber(
+      cells
+        .eq(5 + colOffset)
+        .text()
+        .trim()
+    );
+    const seatsWon = parseFrenchNumber(
+      cells
+        .eq(6 + colOffset)
+        .text()
+        .trim()
+    );
 
     if (!listName) return;
 

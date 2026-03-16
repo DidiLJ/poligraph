@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DEPARTMENTS, getDepartmentSlug } from "@/config/departments";
 
+export const revalidate = 3600; // 1 hour — static department listing
+
 export const metadata: Metadata = {
   title: "Départements",
   description:

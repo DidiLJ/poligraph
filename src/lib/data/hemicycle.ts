@@ -69,6 +69,7 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
       politicalPosition: true,
       mandates: {
         where: { isCurrent: true, type: "DEPUTE" },
+        take: 1000,
         select: {
           politician: {
             select: {

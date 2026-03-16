@@ -1,5 +1,5 @@
 // Navigation configuration
-// 3 top-level links + 2 thematic dropdowns + icon tool rail
+// 4 top-level links + 2 thematic dropdowns + icon tool rail
 
 export interface NavItem {
   href: string;
@@ -35,6 +35,13 @@ export const NAV_TOP_LEVEL: NavItem[] = [
     label: "Fact-checks",
     icon: "shieldCheck",
     description: "Vérification des déclarations politiques",
+  },
+  {
+    href: "/presse",
+    label: "Presse",
+    icon: "newspaper",
+    description: "Articles Le Monde, Politico, Mediapart",
+    featureFlag: "PRESS_SECTION",
   },
 ];
 
@@ -73,18 +80,18 @@ export const NAV_GROUPS: NavGroup[] = [
         featureFlag: "MUNICIPALES_2026",
       },
       {
-        href: "/elections/municipales-2026/maires",
-        label: "Maires de France",
-        icon: "landmark",
-        description: "Annuaire des maires sortants",
-        featureFlag: "MUNICIPALES_2026",
-      },
-      {
         href: "/mon-depute",
         label: "Mon député",
         icon: "mapPin",
         description: "Trouvez votre député par code postal",
         featureFlag: "MON_DEPUTE_SECTION",
+      },
+      {
+        href: "/comparer",
+        label: "Comparer",
+        icon: "arrowLeftRight",
+        description: "Comparez des représentants, partis ou groupes",
+        featureFlag: "COMPARISON_TOOL",
       },
     ],
   },
@@ -116,31 +123,10 @@ export const NAV_GROUPS: NavGroup[] = [
 // Icon-only tool buttons in the header utility rail
 export const NAV_TOOLS: NavItem[] = [
   {
-    href: "/carte",
-    label: "Carte de France",
-    icon: "map",
-    description: "Visualisez les élus par département",
-    featureFlag: "CARTE_SECTION",
-  },
-  {
-    href: "/presse",
-    label: "Revue de presse",
-    icon: "newspaper",
-    description: "Articles Le Monde, Politico, Mediapart",
-    featureFlag: "PRESS_SECTION",
-  },
-  {
     href: "/mon-observatoire",
     label: "Mon Observatoire",
     icon: "telescope",
     description: "Suivez l'activité de vos représentants",
-  },
-  {
-    href: "/comparer",
-    label: "Comparer",
-    icon: "arrowLeftRight",
-    description: "Comparez des représentants, partis ou groupes parlementaires",
-    featureFlag: "COMPARISON_TOOL",
   },
 ];
 
@@ -186,6 +172,7 @@ export const FOOTER_SECTIONS: FooterSection[] = [
         featureFlag: "MUNICIPALES_2026",
       },
       { href: "/mon-depute", label: "Mon député", featureFlag: "MON_DEPUTE_SECTION" },
+      { href: "/comparer", label: "Comparer", featureFlag: "COMPARISON_TOOL" },
     ],
   },
   {
@@ -202,7 +189,6 @@ export const FOOTER_SECTIONS: FooterSection[] = [
     title: "Explorer",
     links: [
       { href: "/recap", label: "Le Recap" },
-      { href: "/carte", label: "Carte de France", featureFlag: "CARTE_SECTION" },
       { href: "/presse", label: "Revue de presse", featureFlag: "PRESS_SECTION" },
       { href: "/departements", label: "Départements" },
       { href: "/recherche", label: "Recherche" },
@@ -212,7 +198,6 @@ export const FOOTER_SECTIONS: FooterSection[] = [
   {
     title: "Le projet",
     links: [
-      { href: "/comparer", label: "Comparer", featureFlag: "COMPARISON_TOOL" },
       { href: "/chat", label: "Assistant IA" },
       { href: "/sources", label: "Sources et méthodologie" },
       { href: "/docs/api", label: "API" },

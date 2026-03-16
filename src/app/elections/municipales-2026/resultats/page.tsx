@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Clock } from "lucide-react";
 import { DEPARTMENTS } from "@/config/departments";
 import { getResultatsListing, getResultatsStats } from "@/lib/data/municipales";
+import { CommuneSearch } from "@/components/elections/municipales/CommuneSearch";
 
 export const revalidate = 60;
 
@@ -125,6 +126,15 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           </div>
         </section>
       )}
+
+      {/* Commune search */}
+      <section className="mb-6">
+        <CommuneSearch
+          placeholder="Rechercher une commune..."
+          label="Trouver les résultats de ma commune"
+          className="max-w-lg"
+        />
+      </section>
 
       {/* Filters */}
       <section className="flex flex-wrap items-center gap-2 mb-6">

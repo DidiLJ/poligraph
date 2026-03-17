@@ -20,6 +20,28 @@ export interface CandidateMatch {
   score: number;
   method: MatchMethod;
   blocked: boolean; // true if NOT_SAME decision exists
+  /** Phase 2: Fellegi-Sunter dual-run result (stored in evidence, not used for decisions) */
+  fellegiSunter?: {
+    compositeLogRatio: number;
+    confidence: number;
+    judgement: string | null;
+    primaryMethod: string;
+    signals: Array<{ id: string; logLR: number }>;
+  };
+}
+
+/** Mandate period for TemporalSignal */
+export interface MandatePeriod {
+  start: Date;
+  end: Date | null;
+  type: string;
+}
+
+/** Party membership for PartyContextSignal */
+export interface PartyMembershipRecord {
+  partyId: string;
+  partyName: string;
+  current: boolean;
 }
 
 export interface ResolveResult {

@@ -13,12 +13,22 @@ interface PageProps {
   searchParams: Promise<{ page?: string; dept?: string; filtre?: string }>;
 }
 
-export const metadata: Metadata = {
-  title: "Résultats du 1er tour - Municipales 2026 | Poligraph",
-  description:
-    "Résultats du premier tour des élections municipales 2026. Participation, listes élues et communes au second tour.",
-  alternates: { canonical: "/elections/municipales-2026/resultats" },
-};
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const cp = new URLSearchParams();
+  if (params.dept) cp.set("dept", params.dept);
+  if (params.filtre) cp.set("filtre", params.filtre);
+  const qs = cp.toString();
+
+  return {
+    title: "Résultats du 1er tour - Municipales 2026 | Poligraph",
+    description:
+      "Résultats du premier tour des élections municipales 2026. Participation, listes élues et communes au second tour.",
+    alternates: {
+      canonical: `/elections/municipales-2026/resultats${qs ? `?${qs}` : ""}`,
+    },
+  };
+}
 
 function daysUntil(date: Date): number {
   const now = new Date();

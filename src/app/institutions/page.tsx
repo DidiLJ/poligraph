@@ -62,7 +62,7 @@ const FRENCH_EXECUTIVE: Institution[] = [
     election: "Nommés par le Président sur proposition du PM",
     color: "#000091",
     icon: <Building2 className="h-5 w-5" />,
-    link: "/politiques?mandateType=MINISTRE",
+    link: "/politiques?mandate=gouvernement",
   },
 ];
 
@@ -85,7 +85,7 @@ const FRENCH_LEGISLATIVE: Institution[] = [
     election: "Suffrage universel indirect (grands électeurs)",
     color: "#8B0000",
     icon: <Users className="h-5 w-5" />,
-    link: "/politiques?mandateType=SENATEUR",
+    link: "/politiques?mandate=senateur",
   },
 ];
 
@@ -128,7 +128,7 @@ const EU_INSTITUTIONS: Institution[] = [
     election: "Suffrage universel direct dans chaque État membre",
     color: "#003399",
     icon: <Globe className="h-5 w-5" />,
-    link: "/politiques?mandateType=DEPUTE_EUROPEEN",
+    link: "/politiques?mandate=depute_europeen",
   },
   {
     name: "Conseil de l'Union européenne",

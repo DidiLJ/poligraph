@@ -95,7 +95,19 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
       title: `${title} | Poligraph`,
       description,
     },
-    alternates: { canonical: "/affaires" },
+    alternates: {
+      canonical: (() => {
+        const cp = new URLSearchParams();
+        if (partiSlug) cp.set("parti", partiSlug);
+        if (statusKey) cp.set("status", statusKey);
+        if (superCatKey) cp.set("supercat", superCatKey);
+        if (params.category) cp.set("category", params.category);
+        if (params.severity) cp.set("severity", params.severity);
+        if (params.mode && params.mode !== "mise-en-cause") cp.set("mode", params.mode);
+        const qs = cp.toString();
+        return `/affaires${qs ? `?${qs}` : ""}`;
+      })(),
+    },
   };
 }
 

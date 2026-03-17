@@ -36,13 +36,6 @@ export const NAV_TOP_LEVEL: NavItem[] = [
     icon: "shieldCheck",
     description: "Vérification des déclarations politiques",
   },
-  {
-    href: "/presse",
-    label: "Presse",
-    icon: "newspaper",
-    description: "Articles Le Monde, Politico, Mediapart",
-    featureFlag: "PRESS_SECTION",
-  },
 ];
 
 // Main navigation groups (2 thematic dropdowns)

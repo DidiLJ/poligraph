@@ -39,3 +39,10 @@ export { getAdapter, getDefaultAdapter, registerAdapter } from "./adapters/regis
 // Combiner
 export { LegacyCombiner } from "./combiner";
 export type { CombinerResult } from "./combiner";
+
+// Comparators
+export { JaroWinklerComparator } from "./comparators/jaro-winkler";
+export { DamerauLevenshteinComparator } from "./comparators/damerau-levenshtein";
+export { MongeElkanComparator } from "./comparators/monge-elkan";
+export { PhoneticComparator } from "./comparators/phonetic";
+export type { NameComparator } from "./comparators/types";

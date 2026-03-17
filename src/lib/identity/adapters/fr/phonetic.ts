@@ -57,8 +57,8 @@ export class FrenchPhoneticEncoder implements PhoneticEncoder {
     // Double consonants -> single
     v = v.replace(/([bcdfghjklmnpqrstvwxyz])\1+/gi, "$1");
 
-    // Silent final consonant rule (CaReFuL: keep c, r, f, l)
-    v = v.replace(/[bdgjkmnpqstvwxyz]$/i, (ch) => (/[crfl]/i.test(ch) ? ch : ""));
+    // Silent final consonant rule (CaReFuL: c, r, f, l are excluded from the char class)
+    v = v.replace(/[bdgjkmnpqstvwxyz]$/i, "");
 
     // Strip remaining lowercase vowels (uppercase substitution markers A/E/O/U are kept)
     // Preserve a leading vowel as an anchor character

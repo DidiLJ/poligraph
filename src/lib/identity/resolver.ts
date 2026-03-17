@@ -73,6 +73,8 @@ export function scoreCandidate(
     gender: input.gender,
   };
 
+  // Phase 2: mandatePeriods/partyMemberships not wired yet (signals return neutral).
+  // Phase 3 will extend CachedPolitician + ResolveInput with these fields.
   const signalCandidate: SignalCandidateRecord = {
     id: candidate.id,
     firstName: candidate.firstName,
@@ -158,8 +160,8 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
   let frequencyCache: NameFrequencyCache | undefined;
   try {
     frequencyCache = await NameFrequencyCache.loadFromDb();
-  } catch {
-    // Non-blocking: F-S runs without frequency data if cache fails
+  } catch (err) {
+    console.error("Failed to load name frequency cache for F-S dual-run:", err);
   }
 
   const fsContext = frequencyCache
@@ -437,12 +439,13 @@ export async function resolve(input: ResolveInput): Promise<ResolveResult> {
     return result;
   }
 
-  // Phase 2: Load frequency cache for F-S dual-run (non-blocking)
+  // Phase 2: Load frequency cache for F-S dual-run (non-blocking).
+  // TODO(phase3): cache at module level with TTL to avoid per-call DB query
   let resolveFrequencyCache: NameFrequencyCache | undefined;
   try {
     resolveFrequencyCache = await NameFrequencyCache.loadFromDb();
-  } catch {
-    // Non-blocking
+  } catch (err) {
+    console.error("Failed to load name frequency cache for F-S resolve:", err);
   }
   const resolveFsContext = resolveFrequencyCache
     ? {

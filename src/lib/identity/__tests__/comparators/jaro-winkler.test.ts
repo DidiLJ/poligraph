@@ -30,7 +30,7 @@ describe("JaroWinklerComparator", () => {
       expect(comparator.compare("dupont", "")).toBe(0.0);
     });
 
-    it("returns 0.0 when both strings are empty", () => {
+    it("returns 1.0 when both strings are empty", () => {
       expect(comparator.compare("", "")).toBe(1.0);
     });
 

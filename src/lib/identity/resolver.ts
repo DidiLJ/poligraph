@@ -15,7 +15,12 @@ import { BirthdateSignal } from "./signals/birthdate";
 import { DepartmentSignal } from "./signals/department";
 import { FirstNameSignal } from "./signals/first-name";
 import { GenderSignal } from "./signals/gender";
+import { NameFrequencySignal } from "./signals/name-frequency";
+import { TemporalSignal } from "./signals/temporal";
+import { PartyContextSignal } from "./signals/party-context";
 import { LegacyCombiner } from "./combiner";
+import { FellegiSunterCombiner } from "./fellegi-sunter-combiner";
+import { NameFrequencyCache } from "./frequency";
 import { getDefaultAdapter } from "./adapters/registry";
 import type {
   SignalScoringInput,
@@ -28,7 +33,11 @@ const birthdateSignal = new BirthdateSignal();
 const departmentSignal = new DepartmentSignal();
 const firstNameSignal = new FirstNameSignal();
 const genderSignal = new GenderSignal();
+const nameFrequencySignal = new NameFrequencySignal();
+const temporalSignal = new TemporalSignal();
+const partyContextSignal = new PartyContextSignal();
 const legacyCombiner = new LegacyCombiner();
+const fsCombiner = new FellegiSunterCombiner();
 
 /**
  * Pure scoring function — no DB, no side effects.
@@ -38,11 +47,20 @@ const legacyCombiner = new LegacyCombiner();
  * them to LegacyCombiner which reproduces the exact same additive/multiplicative
  * arithmetic as the original implementation. Signal logLR values are available
  * in the combiner result for Phase 2 evidence storage.
+ *
+ * When fsContext is provided, also evaluates Phase 2 signals and runs the
+ * FellegiSunterCombiner. The F-S result is stored in the returned match for
+ * inclusion in evidence JSON — it does NOT influence the decision.
  */
 export function scoreCandidate(
   input: ScoringInput,
   candidate: CachedPolitician,
-  blockedIds: Set<string>
+  blockedIds: Set<string>,
+  fsContext?: {
+    nameFrequency?: NameFrequencyCache;
+    totalRecords?: number;
+    uniqueNames?: number;
+  }
 ): CandidateMatch {
   const isBlocked = blockedIds.has(candidate.id);
 
@@ -55,6 +73,8 @@ export function scoreCandidate(
     gender: input.gender,
   };
 
+  // Phase 2: mandatePeriods/partyMemberships not wired yet (signals return neutral).
+  // Phase 3 will extend CachedPolitician + ResolveInput with these fields.
   const signalCandidate: SignalCandidateRecord = {
     id: candidate.id,
     firstName: candidate.firstName,
@@ -83,14 +103,41 @@ export function scoreCandidate(
     prominenceScore: candidate.prominenceScore,
   });
 
+  // Phase 2: Evaluate new signals + F-S combiner (stored in evidence only)
+  const allSignals = [...signals];
+
+  if (fsContext?.nameFrequency) {
+    const fsSignalContext: SignalScoringContext = {
+      adapter: getDefaultAdapter(),
+      mode: "fellegi-sunter",
+      nameFrequency: fsContext.nameFrequency,
+      totalRecords: fsContext.totalRecords,
+      uniqueNames: fsContext.uniqueNames,
+    };
+    allSignals.push(
+      nameFrequencySignal.evaluate(signalInput, signalCandidate, fsSignalContext),
+      temporalSignal.evaluate(signalInput, signalCandidate, fsSignalContext),
+      partyContextSignal.evaluate(signalInput, signalCandidate, fsSignalContext)
+    );
+  }
+
+  const fsResult = fsCombiner.combine(allSignals);
+
   return {
     politicianId: candidate.id,
     firstName: candidate.firstName,
     lastName: candidate.lastName,
     birthDate: candidate.birthDate,
-    score: combined.confidence,
+    score: combined.confidence, // STILL uses legacy score for decisions
     method: combined.primaryMethod,
     blocked: isBlocked,
+    fellegiSunter: {
+      compositeLogRatio: fsResult.compositeLogRatio,
+      confidence: fsResult.confidence,
+      judgement: fsResult.judgement,
+      primaryMethod: fsResult.primaryMethod,
+      signals: fsResult.signals.map((s) => ({ id: s.signalId, logLR: s.logLikelihoodRatio })),
+    },
   };
 }
 
@@ -109,6 +156,22 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
   }
 
   // ── Phase A: Preload all politicians + decisions in 2 parallel queries ──
+  // Phase 2: Also load frequency cache for F-S dual-run (non-blocking)
+  let frequencyCache: NameFrequencyCache | undefined;
+  try {
+    frequencyCache = await NameFrequencyCache.loadFromDb();
+  } catch (err) {
+    console.error("Failed to load name frequency cache for F-S dual-run:", err);
+  }
+
+  const fsContext = frequencyCache
+    ? {
+        nameFrequency: frequencyCache,
+        totalRecords: frequencyCache.totalRecords,
+        uniqueNames: frequencyCache.uniqueNames,
+      }
+    : undefined;
+
   const [allPoliticians, allDecisions] = await Promise.all([
     db.politician.findMany({
       select: {
@@ -209,7 +272,9 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
     }
 
     // Score all candidates
-    const scored: CandidateMatch[] = candidates.map((c) => scoreCandidate(input, c, blockedIds));
+    const scored: CandidateMatch[] = candidates.map((c) =>
+      scoreCandidate(input, c, blockedIds, fsContext)
+    );
 
     // Sort by score descending, filter blocked
     const activeCandidates = scored.filter((c) => !c.blocked).sort((a, b) => b.score - a.score);
@@ -274,6 +339,7 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
           gender: input.gender ?? null,
           candidateCount: scored.length,
           context: input.context ?? null,
+          fellegiSunter: bestMatch.fellegiSunter ?? null,
         })
       ) as Prisma.InputJsonValue,
       decidedBy: `system:sync-${input.source.toLowerCase()}`,
@@ -373,6 +439,22 @@ export async function resolve(input: ResolveInput): Promise<ResolveResult> {
     return result;
   }
 
+  // Phase 2: Load frequency cache for F-S dual-run (non-blocking).
+  // TODO(phase3): cache at module level with TTL to avoid per-call DB query
+  let resolveFrequencyCache: NameFrequencyCache | undefined;
+  try {
+    resolveFrequencyCache = await NameFrequencyCache.loadFromDb();
+  } catch (err) {
+    console.error("Failed to load name frequency cache for F-S resolve:", err);
+  }
+  const resolveFsContext = resolveFrequencyCache
+    ? {
+        nameFrequency: resolveFrequencyCache,
+        totalRecords: resolveFrequencyCache.totalRecords,
+        uniqueNames: resolveFrequencyCache.uniqueNames,
+      }
+    : undefined;
+
   // ── Steps 3-5: Candidate matching ─────────────────────────────
   const nameCandidates = await db.politician.findMany({
     where: {
@@ -403,7 +485,7 @@ export async function resolve(input: ResolveInput): Promise<ResolveResult> {
       gender: p.civility === "Mme" ? "F" : p.civility === "M." ? "M" : null,
       prominenceScore: p.prominenceScore,
     };
-    return scoreCandidate(input, cached, blockedIds);
+    return scoreCandidate(input, cached, blockedIds, resolveFsContext);
   });
 
   // Sort by score descending, filter blocked
@@ -487,6 +569,8 @@ async function logDecision(input: ResolveInput, result: ResolveResult): Promise<
           context: input.context
             ? (JSON.parse(JSON.stringify(input.context)) as Prisma.InputJsonValue)
             : null,
+          fellegiSunter:
+            result.candidates.find((c) => c.politicianId === politicianId)?.fellegiSunter ?? null,
         },
         decidedBy: `system:sync-${input.source.toLowerCase()}`,
       },

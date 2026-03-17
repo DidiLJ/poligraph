@@ -15,6 +15,7 @@ vi.mock("@/lib/db", () => ({
       create: vi.fn(),
       createMany: vi.fn(),
     },
+    $queryRaw: vi.fn(),
   },
 }));
 
@@ -29,6 +30,7 @@ const mockExternalIdFindFirst = db.externalId.findFirst as Mock;
 const mockDecisionFindMany = db.identityDecision.findMany as Mock;
 const mockDecisionCreate = db.identityDecision.create as Mock;
 const mockDecisionCreateMany = db.identityDecision.createMany as Mock;
+const mockQueryRaw = db.$queryRaw as Mock;
 
 describe("IdentityResolver", () => {
   beforeEach(() => {
@@ -42,6 +44,8 @@ describe("IdentityResolver", () => {
     // Default: log decision succeeds
     mockDecisionCreate.mockResolvedValue({} as never);
     mockDecisionCreateMany.mockResolvedValue({ count: 0 } as never);
+    // Default: empty frequency cache (NameFrequencyCache.loadFromDb uses $queryRaw)
+    mockQueryRaw.mockResolvedValue([]);
   });
 
   describe("Step 1: Check prior decisions", () => {
@@ -683,6 +687,36 @@ describe("IdentityResolver", () => {
       });
 
       expect(result.politicianId).toBe("pol-1");
+    });
+
+    it("stores fellegiSunter result in evidence JSON", async () => {
+      mockPoliticianFindMany.mockResolvedValue([
+        {
+          id: "pol-1",
+          firstName: "Marie",
+          lastName: "Durand",
+          birthDate: new Date("1970-01-01"),
+          mandates: [],
+        },
+      ]);
+
+      await resolve({
+        firstName: "Marie",
+        lastName: "Durand",
+        birthDate: new Date("1970-01-01"),
+        source: DataSource.RNE,
+        sourceId: "12345",
+      });
+
+      const createCall = mockDecisionCreate.mock.calls[0]![0] as {
+        data: { evidence: Record<string, unknown> };
+      };
+      const evidence = createCall.data.evidence;
+      expect(evidence).toHaveProperty("fellegiSunter");
+      const fs = evidence.fellegiSunter as { compositeLogRatio: number; signals: unknown[] };
+      expect(fs.compositeLogRatio).toBeTypeOf("number");
+      expect(fs.signals).toBeInstanceOf(Array);
+      expect(fs.signals.length).toBeGreaterThanOrEqual(4); // At least 4 legacy signals
     });
   });
 

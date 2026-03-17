@@ -72,6 +72,10 @@ export interface SignalCandidateRecord {
   departments: string[];
   gender: string | null;
   prominenceScore: number;
+  /** Mandate periods for TemporalSignal */
+  mandatePeriods?: Array<{ start: Date; end: Date | null; type: string }> | null;
+  /** Party memberships for PartyContextSignal */
+  partyMemberships?: Array<{ partyId: string; partyName: string; current: boolean }> | null;
 }
 
 /** Pre-loaded context available to all signal evaluators */

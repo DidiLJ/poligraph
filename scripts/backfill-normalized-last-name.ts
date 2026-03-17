@@ -6,12 +6,12 @@
  *   npx dotenv -e .env -- npx tsx scripts/backfill-normalized-last-name.ts
  */
 
+/* eslint-disable no-console */
 import "dotenv/config";
 import { db } from "@/lib/db";
-import { Prisma } from "@/generated/prisma";
 import { FrenchNormalizer } from "@/lib/identity/adapters/fr/normalizer";
 
-const BATCH_SIZE = 500;
+const CONCURRENCY = 10;
 
 async function main() {
   const normalizer = new FrenchNormalizer();
@@ -30,24 +30,22 @@ async function main() {
 
   let updated = 0;
 
-  for (let i = 0; i < politicians.length; i += BATCH_SIZE) {
-    const chunk = politicians.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < politicians.length; i += CONCURRENCY) {
+    const chunk = politicians.slice(i, i + CONCURRENCY);
 
-    const values = Prisma.join(
-      chunk.map(
-        (p) => Prisma.sql`(${p.id}::uuid, ${normalizer.normalizeLastName(p.lastName)}::text)`
+    await Promise.all(
+      chunk.map((p) =>
+        db.politician.update({
+          where: { id: p.id },
+          data: { normalizedLastName: normalizer.normalizeLastName(p.lastName) },
+        })
       )
     );
 
-    await db.$executeRaw`
-      UPDATE "Politician" p
-      SET "normalizedLastName" = c.normalized
-      FROM (VALUES ${values}) AS c(id, normalized)
-      WHERE p.id = c.id
-    `;
-
     updated += chunk.length;
-    console.log(`  Updated ${updated}/${politicians.length}...`);
+    if (updated % 1000 === 0 || updated === politicians.length) {
+      console.log(`  Updated ${updated}/${politicians.length}...`);
+    }
   }
 
   console.log(`Done. Backfilled ${updated} politicians.`);

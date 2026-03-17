@@ -98,12 +98,12 @@ export function scoreCandidate(
     genderSignal.evaluate(signalInput, signalCandidate, context),
   ];
 
-  // Combine using legacy arithmetic (identical to previous scoreCandidate)
-  const combined = legacyCombiner.combine(signals, {
+  // Legacy combiner (kept for evidence/comparison)
+  const legacyResult = legacyCombiner.combine(signals, {
     prominenceScore: candidate.prominenceScore,
   });
 
-  // Phase 2: Evaluate new signals + F-S combiner (stored in evidence only)
+  // F-S combiner: evaluate all signals including Phase 2 additions
   const allSignals = [...signals];
 
   if (fsContext?.nameFrequency) {
@@ -121,23 +121,27 @@ export function scoreCandidate(
     );
   }
 
-  const fsResult = fsCombiner.combine(allSignals);
+  // Phase 3: F-S drives decisions when frequency data is meaningful, legacy as fallback
+  const useFS = !!fsContext?.nameFrequency && (fsContext.totalRecords ?? 0) > 0;
+  const fsResult = useFS ? fsCombiner.combine(allSignals) : null;
 
   return {
     politicianId: candidate.id,
     firstName: candidate.firstName,
     lastName: candidate.lastName,
     birthDate: candidate.birthDate,
-    score: combined.confidence, // STILL uses legacy score for decisions
-    method: combined.primaryMethod,
+    score: fsResult ? fsResult.confidence : legacyResult.confidence,
+    method: fsResult ? fsResult.primaryMethod : legacyResult.primaryMethod,
     blocked: isBlocked,
-    fellegiSunter: {
-      compositeLogRatio: fsResult.compositeLogRatio,
-      confidence: fsResult.confidence,
-      judgement: fsResult.judgement,
-      primaryMethod: fsResult.primaryMethod,
-      signals: fsResult.signals.map((s) => ({ id: s.signalId, logLR: s.logLikelihoodRatio })),
-    },
+    fellegiSunter: fsResult
+      ? {
+          compositeLogRatio: fsResult.compositeLogRatio,
+          confidence: fsResult.confidence,
+          judgement: fsResult.judgement,
+          primaryMethod: fsResult.primaryMethod,
+          signals: fsResult.signals.map((s) => ({ id: s.signalId, logLR: s.logLikelihoodRatio })),
+        }
+      : undefined,
   };
 }
 
@@ -300,9 +304,21 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
       continue;
     }
 
-    // Determine judgement
+    // Determine judgement: use F-S judgement when available, legacy thresholds as fallback
     let judgement: Judgement;
-    if (bestMatch.score >= IDENTITY_THRESHOLDS.AUTO_MATCH) {
+    const fsJudgement = bestMatch.fellegiSunter?.judgement;
+    if (fsJudgement === Judgement.SAME) {
+      judgement = Judgement.SAME;
+      stats.matched++;
+    } else if (fsJudgement === Judgement.NOT_SAME) {
+      stats.notFound++;
+      if (onProgress && (i + 1) % 10000 === 0) onProgress(i + 1, inputs.length);
+      continue;
+    } else if (fsJudgement === Judgement.UNDECIDED) {
+      judgement = Judgement.UNDECIDED;
+      stats.review++;
+    } else if (bestMatch.score >= IDENTITY_THRESHOLDS.AUTO_MATCH) {
+      // Legacy fallback (no F-S data)
       judgement = Judgement.SAME;
       stats.matched++;
     } else {
@@ -330,8 +346,8 @@ export async function resolveBatch(batchInput: BatchResolveInput): Promise<Batch
       method: bestMatch.method,
       evidence: JSON.parse(
         JSON.stringify({
-          version: 2,
-          mode: "legacy",
+          version: 3,
+          mode: bestMatch.fellegiSunter ? "fellegi-sunter" : "legacy",
           firstName: input.firstName,
           lastName: input.lastName,
           birthDate: input.birthDate?.toISOString() ?? null,
@@ -503,6 +519,9 @@ export async function resolve(input: ResolveInput): Promise<ResolveResult> {
 
   let result: ResolveResult;
 
+  // Use F-S judgement when available, legacy thresholds as fallback
+  const fsJudgement = bestMatch?.fellegiSunter?.judgement;
+
   if (!bestMatch || bestMatch.score < IDENTITY_THRESHOLDS.REVIEW) {
     result = {
       sourceId,
@@ -513,7 +532,38 @@ export async function resolve(input: ResolveInput): Promise<ResolveResult> {
       candidates,
       blocked: allBlocked,
     };
+  } else if (fsJudgement === Judgement.SAME) {
+    result = {
+      sourceId,
+      politicianId: bestMatch.politicianId,
+      confidence: bestMatch.score,
+      method: bestMatch.method,
+      decision: Judgement.SAME,
+      candidates,
+      blocked: false,
+    };
+  } else if (fsJudgement === Judgement.NOT_SAME) {
+    result = {
+      sourceId,
+      politicianId: null,
+      confidence: bestMatch.score,
+      method: bestMatch.method,
+      decision: "NEW",
+      candidates,
+      blocked: false,
+    };
+  } else if (fsJudgement === Judgement.UNDECIDED) {
+    result = {
+      sourceId,
+      politicianId: bestMatch.politicianId,
+      confidence: bestMatch.score,
+      method: bestMatch.method,
+      decision: Judgement.UNDECIDED,
+      candidates,
+      blocked: false,
+    };
   } else if (bestMatch.score >= IDENTITY_THRESHOLDS.AUTO_MATCH) {
+    // Legacy fallback (no F-S data)
     result = {
       sourceId,
       politicianId: bestMatch.politicianId,
@@ -524,7 +574,6 @@ export async function resolve(input: ResolveInput): Promise<ResolveResult> {
       blocked: false,
     };
   } else {
-    // Review zone: 0.70–0.94
     result = {
       sourceId,
       politicianId: bestMatch.politicianId,
@@ -558,8 +607,10 @@ async function logDecision(input: ResolveInput, result: ResolveResult): Promise<
         confidence: result.confidence,
         method: result.method,
         evidence: {
-          version: 2,
-          mode: "legacy",
+          version: 3,
+          mode: result.candidates.find((c) => c.politicianId === politicianId)?.fellegiSunter
+            ? "fellegi-sunter"
+            : "legacy",
           firstName: input.firstName,
           lastName: input.lastName,
           birthDate: input.birthDate?.toISOString() ?? null,

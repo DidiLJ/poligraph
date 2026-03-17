@@ -181,10 +181,26 @@ prisma/            # Schéma Prisma
 | `src/lib/data/`        | Élevé  | Couche de données (nécessite connaissance caching) |
 | `scripts/`             | Élevé  | Scripts de synchronisation (nécessite accès API)   |
 
+## Storybook
+
+Le projet dispose d'un catalogue de composants UI avec [Storybook](https://storybook.js.org/). C'est le meilleur point de depart pour comprendre et modifier les composants visuels.
+
+```bash
+npm run storybook        # Lancer Storybook sur http://localhost:6006
+npm run storybook:build  # Build statique (CI, deploiement)
+```
+
+Les stories se trouvent dans `src/components/ui/*.stories.tsx`. Pour ajouter une story a un nouveau composant :
+
+1. Creer un fichier `MonComposant.stories.tsx` a cote du composant
+2. Utiliser des donnees politiques realistes en francais (pas de lorem ipsum)
+3. Documenter les variantes principales (tailles, etats, dark mode)
+
 ## Commandes utiles
 
 ```bash
 npm run dev              # Serveur de développement
+npm run storybook        # Catalogue de composants (localhost:6006)
 npm run lint             # Vérifier le code
 npm run typecheck        # Vérifier les types TypeScript
 npm run test:run         # Lancer les tests

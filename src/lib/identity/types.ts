@@ -20,7 +20,7 @@ export interface CandidateMatch {
   score: number;
   method: MatchMethod;
   blocked: boolean; // true if NOT_SAME decision exists
-  /** Phase 2: Fellegi-Sunter dual-run result (stored in evidence, not used for decisions) */
+  /** Fellegi-Sunter combiner result (drives decisions since Phase 3) */
   fellegiSunter?: {
     compositeLogRatio: number;
     confidence: number;

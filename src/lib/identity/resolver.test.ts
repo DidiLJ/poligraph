@@ -689,7 +689,13 @@ describe("IdentityResolver", () => {
       expect(result.politicianId).toBe("pol-1");
     });
 
-    it("stores fellegiSunter result in evidence JSON", async () => {
+    it("stores fellegiSunter result in evidence JSON when frequency data available", async () => {
+      // Provide frequency data so F-S combiner activates
+      mockQueryRaw.mockResolvedValue([
+        { name: "durand", count: BigInt(50) },
+        { name: "martin", count: BigInt(200) },
+      ]);
+
       mockPoliticianFindMany.mockResolvedValue([
         {
           id: "pol-1",
@@ -716,7 +722,7 @@ describe("IdentityResolver", () => {
       const fs = evidence.fellegiSunter as { compositeLogRatio: number; signals: unknown[] };
       expect(fs.compositeLogRatio).toBeTypeOf("number");
       expect(fs.signals).toBeInstanceOf(Array);
-      expect(fs.signals.length).toBeGreaterThanOrEqual(4); // At least 4 legacy signals
+      expect(fs.signals.length).toBeGreaterThanOrEqual(4); // At least 4 legacy signals + name-frequency
     });
   });
 

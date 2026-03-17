@@ -121,7 +121,12 @@ function ResultIcon({
   // Politician with photo
   if (result.icon === "user" && result.photoUrl) {
     return (
-      <img src={result.photoUrl} alt="" className={`${dim} rounded-full object-cover shrink-0`} />
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={result.photoUrl}
+        alt={result.label || "Photo du politicien"}
+        className={`${dim} rounded-full object-cover shrink-0`}
+      />
     );
   }
 

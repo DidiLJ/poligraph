@@ -63,8 +63,10 @@ export function OgLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Owl watermark — bottom right */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={OWL_DATA_URI}
+        alt=""
         width={180}
         height={180}
         style={{
@@ -84,7 +86,8 @@ export function OgLayout({ children }: { children: React.ReactNode }) {
           padding: "0 60px 20px",
         }}
       >
-        <img src={OWL_DATA_URI} width={24} height={24} style={{ opacity: 0.5 }} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={OWL_DATA_URI} alt="" width={24} height={24} style={{ opacity: 0.5 }} />
         <span style={{ fontSize: 18, color: "#64748b" }}>poligraph.fr</span>
       </div>
     </div>

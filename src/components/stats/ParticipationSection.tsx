@@ -174,7 +174,11 @@ export function ParticipationSection({
                           {entry.photoUrl ? (
                             <Image
                               src={entry.photoUrl}
-                              alt=""
+                              alt={
+                                entry.firstName && entry.lastName
+                                  ? `${entry.firstName} ${entry.lastName}`
+                                  : entry.firstName || entry.lastName || "Photo du politicien"
+                              }
                               width={28}
                               height={28}
                               className="rounded-full object-cover"

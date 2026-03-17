@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { describe, it, expect, vi } from "vitest";
 
 // Must mock db before importing NameFrequencyCache

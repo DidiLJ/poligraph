@@ -23,7 +23,7 @@ export class MongeElkanComparator implements NameComparator {
 
     // Single-token on both sides: delegate directly to inner comparator
     if (tokA.length === 1 && tokB.length === 1) {
-      return this.inner.compare(tokA[0], tokB[0]);
+      return this.inner.compare(tokA[0]!, tokB[0]!);
     }
 
     return Math.max(this.directed(tokA, tokB), this.directed(tokB, tokA));

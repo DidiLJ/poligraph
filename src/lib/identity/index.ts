@@ -36,9 +36,26 @@ export type {
 // Adapter registry
 export { getAdapter, getDefaultAdapter, registerAdapter } from "./adapters/registry";
 
-// Combiner
+// Combiners
 export { LegacyCombiner } from "./combiner";
 export type { CombinerResult } from "./combiner";
+export { FellegiSunterCombiner } from "./fellegi-sunter-combiner";
+export type {
+  FellegiSunterResult,
+  FellegiSunterConfig,
+  HardPenalty,
+} from "./fellegi-sunter-combiner";
+
+// Phase 2 signals
+export { NameFrequencySignal } from "./signals/name-frequency";
+export { TemporalSignal } from "./signals/temporal";
+export { PartyContextSignal } from "./signals/party-context";
+
+// Frequency cache
+export { NameFrequencyCache } from "./frequency";
+
+// Phase 2 types
+export type { MandatePeriod, PartyMembershipRecord } from "./types";
 
 // Comparators
 export { JaroWinklerComparator } from "./comparators/jaro-winkler";

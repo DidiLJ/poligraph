@@ -101,7 +101,7 @@ describe("DamerauLevenshteinComparator", () => {
         ["jean", "jeanne"],
       ];
       for (const [a, b] of pairs) {
-        expect(comparator.compare(a, b)).toBeCloseTo(comparator.compare(b, a), 10);
+        expect(comparator.compare(a!, b!)).toBeCloseTo(comparator.compare(b!, a!), 10);
       }
     });
   });
@@ -118,7 +118,7 @@ describe("DamerauLevenshteinComparator", () => {
         ["dupont", "dupontt"],
       ];
       for (const [a, b] of pairs) {
-        const score = comparator.compare(a, b);
+        const score = comparator.compare(a!, b!);
         expect(score).toBeGreaterThanOrEqual(0);
         expect(score).toBeLessThanOrEqual(1);
       }

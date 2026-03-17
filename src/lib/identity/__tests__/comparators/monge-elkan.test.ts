@@ -93,7 +93,7 @@ describe("MongeElkanComparator", () => {
         ["jean dupont", "marie martin"],
       ];
       for (const [a, b] of pairs) {
-        expect(meJW.compare(a, b)).toBeCloseTo(meJW.compare(b, a), 10);
+        expect(meJW.compare(a!, b!)).toBeCloseTo(meJW.compare(b!, a!), 10);
       }
     });
   });

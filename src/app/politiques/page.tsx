@@ -17,12 +17,6 @@ const MIN_PARTY_MEMBERS = 2;
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 
-export const metadata: Metadata = {
-  title: "Représentants politiques",
-  description: "Liste des représentants politiques français - députés, sénateurs, ministres",
-  alternates: { canonical: "/politiques" },
-};
-
 interface PageProps {
   searchParams: Promise<{
     search?: string;
@@ -33,6 +27,22 @@ interface PageProps {
     sort?: string;
     page?: string;
   }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const cp = new URLSearchParams();
+  if (params.mandate) cp.set("mandate", params.mandate);
+  if (params.party) cp.set("party", params.party);
+  if (params.conviction === "true") cp.set("conviction", "true");
+  if (params.sort && params.sort !== "prominence") cp.set("sort", params.sort);
+  const qs = cp.toString();
+
+  return {
+    title: "Représentants politiques",
+    description: "Liste des représentants politiques français - députés, sénateurs, ministres",
+    alternates: { canonical: `/politiques${qs ? `?${qs}` : ""}` },
+  };
 }
 
 // Badge triggers on severity=CRITIQUE (atteintes à la probité)
@@ -80,6 +90,7 @@ const MANDATE_GROUPS: Record<string, MandateType[]> = {
   gouvernement: ["MINISTRE", "PREMIER_MINISTRE", "MINISTRE_DELEGUE", "SECRETAIRE_ETAT"],
   dirigeants: ["PRESIDENT_PARTI"], // Also includes significant party roles (handled separately)
   maire: ["MAIRE"],
+  depute_europeen: ["DEPUTE_EUROPEEN"],
 };
 
 // Sort configurations - using 'any' to handle complex Prisma orderBy types

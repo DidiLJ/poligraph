@@ -19,13 +19,6 @@ import type { VotingResult, Chamber, ThemeCategory } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 
-export const metadata: Metadata = {
-  title: "Votes parlementaires",
-  description:
-    "Suivez les votes de l'Assemblée nationale et du Sénat. Consultez les scrutins et découvrez comment votent vos représentants.",
-  alternates: { canonical: "/votes" },
-};
-
 interface PageProps {
   searchParams: Promise<{
     page?: string;
@@ -37,15 +30,35 @@ interface PageProps {
   }>;
 }
 
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+
+  // Build canonical with meaningful filter params (exclude page, search)
+  const canonicalParams = new URLSearchParams();
+  if (params.theme) canonicalParams.set("theme", params.theme);
+  if (params.legislature) canonicalParams.set("legislature", params.legislature);
+  if (params.chamber) canonicalParams.set("chamber", params.chamber);
+  if (params.result) canonicalParams.set("result", params.result);
+  const qs = canonicalParams.toString();
+  const canonical = `/votes${qs ? `?${qs}` : ""}`;
+
+  return {
+    title: "Votes parlementaires",
+    description:
+      "Suivez les votes de l'Assemblée nationale et du Sénat. Consultez les scrutins et découvrez comment votent vos représentants.",
+    alternates: { canonical },
+  };
+}
+
 export default async function VotesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1", 10));
   const limit = 20;
-  const result = params.result as VotingResult | undefined;
+  const result = (params.result || undefined) as VotingResult | undefined;
   const legislature = params.legislature ? parseInt(params.legislature, 10) : undefined;
-  const chamber = params.chamber as Chamber | undefined;
-  const theme = params.theme as ThemeCategory | undefined;
-  const search = params.search;
+  const chamber = (params.chamber || undefined) as Chamber | undefined;
+  const theme = (params.theme || undefined) as ThemeCategory | undefined;
+  const search = params.search || undefined;
 
   const [{ scrutins, total, totalPages, stats }, legislatures, chambers, themeCounts] =
     await Promise.all([
@@ -58,11 +71,11 @@ export default async function VotesPage({ searchParams }: PageProps) {
   // Build filter URL helper
   const buildUrl = (newParams: Record<string, string | undefined>) => {
     const current = new URLSearchParams();
-    if (params.search) current.set("search", params.search);
-    if (params.result) current.set("result", params.result);
-    if (params.legislature) current.set("legislature", params.legislature);
-    if (params.chamber) current.set("chamber", params.chamber);
-    if (params.theme) current.set("theme", params.theme);
+    if (search) current.set("search", search);
+    if (result) current.set("result", result);
+    if (legislature) current.set("legislature", String(legislature));
+    if (chamber) current.set("chamber", chamber);
+    if (theme) current.set("theme", theme);
 
     for (const [key, value] of Object.entries(newParams)) {
       if (value) {

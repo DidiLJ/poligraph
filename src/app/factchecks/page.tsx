@@ -22,13 +22,6 @@ import type { FactCheckRating } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 
-export const metadata: Metadata = {
-  title: "Fact-checks",
-  description:
-    "Vérification des déclarations des responsables politiques français. Fact-checks d'AFP Factuel, Les Décodeurs et autres sources reconnues.",
-  alternates: { canonical: "/factchecks" },
-};
-
 interface PageProps {
   searchParams: Promise<{
     page?: string;
@@ -38,6 +31,23 @@ interface PageProps {
     search?: string;
     type?: string; // "direct" = propos de politicien only
   }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const cp = new URLSearchParams();
+  if (params.source) cp.set("source", params.source);
+  if (params.verdict) cp.set("verdict", params.verdict);
+  if (params.politician) cp.set("politician", params.politician);
+  if (params.type) cp.set("type", params.type);
+  const qs = cp.toString();
+
+  return {
+    title: "Fact-checks",
+    description:
+      "Vérification des déclarations des responsables politiques français. Fact-checks d'AFP Factuel, Les Décodeurs et autres sources reconnues.",
+    alternates: { canonical: `/factchecks${qs ? `?${qs}` : ""}` },
+  };
 }
 
 const RATING_OPTIONS: FactCheckRating[] = [

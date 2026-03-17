@@ -51,36 +51,21 @@ Before designing our solution, we researched how others solve entity resolution 
 
 **W3C Reconciliation API v0.2:** a standard specification for entity matching services. Wikidata implements it. Enables interop with tools like OpenRefine for batch reconciliation.
 
-**Splink / Dedupe:** production ER libraries in Python. Powerful for large-scale probabilistic matching, but complete overkill for our 2,000 politicians. Different language stack, too.
+**Key insight:** at our scale, deterministic matching (shared institutional IDs) covers 80%+ of cases. The critical missing pieces were **audit trail + negative decisions** (Phase 1), then **probabilistic scoring with name frequency weighting** (Phase 2).
 
-**Key insight:** at our scale, deterministic matching (shared institutional IDs) covers 80%+ of cases. The critical missing piece wasn't a more sophisticated matching algorithm, it was **audit trail + negative decisions**.
+## Phase 1: The Foundation
 
-## The Design: Three Building Blocks
+### The Resolver: One Pipeline to Rule Them All
 
-### 1. The Resolver: One Pipeline to Rule Them All
-
-Instead of 10 sync services each implementing their own matching, we built a single `IdentityResolver` with a 7-step pipeline:
+Instead of 10 sync services each implementing their own matching, we built a single `IdentityResolver` with a centralized pipeline:
 
 ```
-Prior decisions → ExternalId match → Birthdate → Department → Name-only → Threshold → Log
+Prior decisions -> ExternalId match -> Signal evaluation -> Combiner -> Threshold -> Log
 ```
 
-Each step either produces a result or hands off to the next. The scoring is graduated:
+Each step either produces a result or hands off to the next. We introduced a **signal-based architecture**: composable evaluators that each assess one dimension of a match (birthdate, department, first name, gender).
 
-| Signal                  | Confidence | Rationale                                     |
-| ----------------------- | ---------- | --------------------------------------------- |
-| Shared institutional ID | 1.0        | Deterministic: same PA code = same deputy     |
-| Name + birthdate match  | 0.9        | Strong but not infallible (data entry errors) |
-| Name + department match | 0.7        | Medium: multiple politicians per department   |
-| Name only               | 0.5        | Unreliable: below auto-match threshold        |
-
-Three decision zones:
-
-- **>= 0.95**: Auto-match. The system is confident enough to proceed.
-- **0.70 - 0.94**: Review queue. A human needs to confirm.
-- **< 0.70**: Reject. Treat as a new, unmatched person.
-
-### 2. The Decision Log: The System Remembers
+### The Decision Log: The System Remembers
 
 Every matching decision is recorded in an `IdentityDecision` table:
 
@@ -102,24 +87,84 @@ This serves three purposes:
 
 3. **Auditability.** Every match can be traced back to its evidence. When something looks wrong, we can find exactly when, how, and why the match was made, and supersede it with a corrected decision.
 
-### 3. The Confidence Score: Not All Matches Are Equal
+## Phase 2: Fellegi-Sunter Probabilistic Scoring
 
-Every ExternalId link now carries metadata:
+Phase 1 solved the architecture problem, but the scoring was still simplistic: birthdate match = 0.9, department match = 0.7, name only = 0.5. This meant "Jean-Pierre Martin" (one of France's most common names) got the same confidence as "Jean-Luc Melenchon" (essentially unique). We were treating all names as equally informative, which they clearly aren't.
+
+### The Signal Pipeline
+
+We expanded the resolver to evaluate **7 independent signals**, each producing a **log-likelihood ratio** (logLR): positive values support a match, negative values support a non-match.
 
 ```
-source: RNE
-externalId: "45321"
-confidence: 0.9
-matchedBy: BIRTHDATE
-verifiedAt: null
-verifiedBy: null
+                        +------------------------------+
+  ResolveInput -------->|     Signal Pipeline (7)       |
+  (name, date,          |                               |
+   department,          |  birthdate    -- logLR --+    |
+   gender, ...)         |  department   -- logLR --+    |
+                        |  first-name   -- logLR --+    |
+                        |  gender       -- logLR --+--> Fellegi-Sunter
+  CachedPolitician ---->|  name-freq    -- logLR --+    Combiner
+  (candidate from DB)   |  temporal     -- logLR --+    |
+                        |  party-ctx    -- logLR --+    |
+                        +------------------------------+
 ```
 
-This tells us not just _that_ a link exists, but _how reliable_ it is and _how it was established_. An AN deputy matched by institutional ID (confidence 1.0) is qualitatively different from an RNE mayor matched by name + department (confidence 0.7).
+The signals:
+
+| Signal         | What it measures                    | Typical logLR                      |
+| -------------- | ----------------------------------- | ---------------------------------- |
+| birthdate      | Exact or approximate date match     | +6.0 (exact), -6.0 (mismatch)      |
+| department     | Mandate in same department          | +3.0                               |
+| first-name     | Phonetic + fuzzy first name match   | +3.0 (exact), -5.0 (mismatch)      |
+| gender         | Gender correspondence               | +1.0 (match), -6.0 (hard penalty)  |
+| name-frequency | Rarity of the last name             | +6.9 (Martin) to +16.6 (Melenchon) |
+| temporal       | Active mandate overlap              | +2.5 (overlap), -0.5 (old gap)     |
+| party-context  | Same party mentioned in source text | +2.0                               |
+
+### Name Frequency Weighting
+
+This is the key innovation. Instead of treating all last names equally, the `name-frequency` signal uses the actual distribution of names across our 36,000+ politician database:
+
+- **Rare name** (e.g. "Melenchon", frequency ~0.001%): `logLR = log2(1/0.00001) = 16.6`. A rare name match is strong evidence.
+- **Common name** (e.g. "Martin", frequency ~0.8%): `logLR = log2(1/0.008) = 6.9`. A common name match is weaker evidence.
+
+The matching also supports **fuzzy matching**: if the Jaro-Winkler score between names is >= 0.92 (e.g. "Lefebvre"/"Lefevbre"), a 20%-discounted logLR is assigned.
+
+### The Fellegi-Sunter Combiner
+
+The combiner sums all signal logLRs and converts to a confidence via sigmoid: `confidence = 1 / (1 + 2^(-compositeLogLR))`.
+
+Decision thresholds are based on the composite logLR:
+
+- **SAME**: logLR >= 12.0 (confidence >= 99.97%)
+- **UNDECIDED**: logLR between 4.0 and 12.0 (human review queue)
+- **NOT_SAME**: logLR < 4.0
+
+The combiner also supports **hard penalties**: certain signals (e.g. gender mismatch) can cap the judgement to UNDECIDED or NOT_SAME regardless of the overall score.
+
+### String Comparators for French Names
+
+French names require specialized algorithms:
+
+- **Jaro-Winkler**: prefix bonus, good for typographic variants
+- **Damerau-Levenshtein**: edit distance with transpositions (common OCR errors)
+- **Monge-Elkan**: multi-token alignment, handles compound names ("Jean-Pierre Dupont" vs "Dupont Jean Pierre")
+- **French phonetic encoder**: nasal vowels, b/v ambiguity, silent final consonants (CaReFuL rule), digraphs
+
+### Benchmark Results
+
+We validated the engine against a corpus of **217 real French politician pairs** covering 9 difficulty categories: exact matches, birthdate disambiguation, common surnames, phonetic variants, fuzzy typos, political dynasties, compound names, marriage names, and true negatives.
+
+| Combiner       | Precision | Recall | F1    |
+| -------------- | --------- | ------ | ----- |
+| Legacy         | 100%      | 36.8%  | 53.8% |
+| Fellegi-Sunter | 100%      | 76.8%  | 86.9% |
+
+The F-S combiner doubles recall while maintaining 100% precision (zero false positives).
 
 ## The poligraphId and the Reconciliation API
 
-Each politician receives a stable public identifier: `PG-000001` through `PG-001781` (and growing). Unlike slugs (which can change with name corrections) or database IDs (which are internal), the poligraphId is designed for external use.
+Each politician receives a stable public identifier: `PG-000001` through `PG-036419` (and growing). Unlike slugs (which can change with name corrections) or database IDs (which are internal), the poligraphId is designed for external use.
 
 We also implemented the W3C Reconciliation Service API, allowing external tools to match their datasets against Poligraph:
 
@@ -172,25 +217,28 @@ Most of our politicians come from institutional sources with proper IDs (AN, Sen
 
 The NOT_SAME decision is arguably the most important feature. Without it, every sync run could re-create the Thierry Cousin bug. With it, a single manual intervention permanently blocks wrong matches.
 
-**4. Don't build EveryPolitician.**
+**4. Not all names are created equal.**
 
-mySociety's EveryPolitician was an ambitious attempt to maintain data on every politician worldwide. It failed because multi-source reconciliation at scale is a maintenance nightmare. We scoped ruthlessly: French politicians only, 10 curated sources, automated pipeline with human review for edge cases.
+Treating "Martin" the same as "Melenchon" in a matching score is fundamentally wrong. Name frequency weighting was the single biggest improvement to our recall. A match on a rare name is strong evidence; a match on a common name needs corroboration from other signals.
 
 **5. Name normalization is necessary but not sufficient.**
 
 Accent removal and case folding solve surface-level spelling variations. But structural differences between data sources (double surnames, ballot names vs. legal names, maiden names vs. married names) require dedicated handling. Each new data source brings its own naming conventions, and you'll keep discovering edge cases.
 
+**6. Ship in phases, validate before switching.**
+
+We rolled out the F-S combiner as a shadow-run first: legacy scoring still made all decisions while F-S results were stored in evidence for analysis. An impact analysis script re-scored all 506 existing SAME decisions with the new combiner. Only after confirming 100% agreement did we switch. This zero-risk migration path is worth the extra engineering.
+
 ## What's Next
 
-The Identity Resolution Engine is live for the RNE sync (35,000+ mayors). Next steps:
+The Identity Resolution Engine v2 is live in production with the Fellegi-Sunter combiner handling all matching decisions across 10+ data sources.
 
-- **Migrate remaining 9 sync services** to the centralized resolver.
-- **Build an admin UI** for the review queue (UNDECIDED decisions).
-- **LLM-assisted reconciliation:** using Claude to analyze ambiguous cases with contextual clues from Wikipedia/press.
-- **Bidirectional Wikidata sync:** publishing poligraphIds as Wikidata external identifiers, closing the interoperability loop.
+- **Wire temporal and party signals**: these signals exist but await mandate/party data in the resolver input. Once connected, they'll improve disambiguation for politicians who share names but served in different eras or different parties.
+- **Bidirectional Wikidata sync**: publishing poligraphIds as Wikidata external identifiers, closing the interoperability loop.
+- **Admin review UI**: a dashboard for the UNDECIDED decision queue, letting moderators confirm or reject matches with full signal visibility.
 
 The goal is a system where every politician in Poligraph has a clear, auditable chain from source data to profile, and where mistakes like Thierry Cousin's are caught before they ever reach production.
 
 ---
 
-_Poligraph is an open-source civic observatory tracking French politicians. The code is available on [GitHub](https://github.com/ldiaby/politic-tracker)._
+_Poligraph is an open-source civic observatory tracking French politicians. The code is available on [GitHub](https://github.com/ironlam/poligraph)._

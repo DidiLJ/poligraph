@@ -22,6 +22,8 @@ const mockPolitician = {
   publicationStatus: "PUBLISHED" as const,
   statusOverride: false,
   prominenceScore: 0,
+  normalizedLastName: null,
+  phoneticCode: null,
   currentPartyId: "party-1",
   createdAt: new Date(),
   updatedAt: new Date(),

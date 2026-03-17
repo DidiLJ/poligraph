@@ -76,16 +76,40 @@ function getClientIp(request: NextRequest): string {
   );
 }
 
+// ─── CORS for public v1 API ──────────────────────────────────────
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
+
+function isV1Route(pathname: string): boolean {
+  return pathname.startsWith("/api/v1/");
+}
+
 // ─── Middleware ───────────────────────────────────────────────────
 
 export async function middleware(request: NextRequest) {
-  const tier = getTier(request.nextUrl.pathname);
+  const pathname = request.nextUrl.pathname;
+
+  // CORS preflight for v1 API
+  if (isV1Route(pathname) && request.method === "OPTIONS") {
+    return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const tier = getTier(pathname);
   if (!tier) return NextResponse.next();
 
   const limiter = getLimiter(tier);
   if (!limiter) {
     // Upstash not configured — allow through
-    return NextResponse.next();
+    const response = NextResponse.next();
+    if (isV1Route(pathname)) {
+      Object.entries(CORS_HEADERS).forEach(([k, v]) => response.headers.set(k, v));
+    }
+    return response;
   }
 
   const ip = getClientIp(request);
@@ -93,17 +117,16 @@ export async function middleware(request: NextRequest) {
 
   if (!success) {
     const retryAfter = Math.ceil((reset - Date.now()) / 1000);
+    const headers: Record<string, string> = {
+      "Retry-After": String(retryAfter),
+      "X-RateLimit-Limit": String(limit),
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Reset": String(reset),
+      ...(isV1Route(pathname) ? CORS_HEADERS : {}),
+    };
     return NextResponse.json(
       { error: "Trop de requêtes. Réessayez plus tard." },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(retryAfter),
-          "X-RateLimit-Limit": String(limit),
-          "X-RateLimit-Remaining": "0",
-          "X-RateLimit-Reset": String(reset),
-        },
-      }
+      { status: 429, headers }
     );
   }
 
@@ -111,6 +134,9 @@ export async function middleware(request: NextRequest) {
   response.headers.set("X-RateLimit-Limit", String(limit));
   response.headers.set("X-RateLimit-Remaining", String(remaining));
   response.headers.set("X-RateLimit-Reset", String(reset));
+  if (isV1Route(pathname)) {
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => response.headers.set(k, v));
+  }
   return response;
 }
 

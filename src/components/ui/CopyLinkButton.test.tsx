@@ -81,6 +81,26 @@ describe("CopyLinkButton", () => {
     expect(screen.getByRole("button", { name: /copier le lien/i })).toBeInTheDocument();
   });
 
+  it("should fall back to window.location.href when url is an empty string", async () => {
+    render(<CopyLinkButton url="" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /copier le lien/i }));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith("https://example.com/politiques/jean-dupont");
+  });
+
+  it("should fall back to window.location.href when url is whitespace-only", async () => {
+    render(<CopyLinkButton url="   " />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /copier le lien/i }));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith("https://example.com/politiques/jean-dupont");
+  });
+
   it("should not set copied state when clipboard.writeText rejects", async () => {
     mockWriteText.mockRejectedValueOnce(new Error("Denied"));
 

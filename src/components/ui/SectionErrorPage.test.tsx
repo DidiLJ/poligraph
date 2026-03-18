@@ -73,7 +73,7 @@ describe("SectionErrorPage", () => {
       />
     );
 
-    expect(screen.getByText("Code : abc123xyz")).toBeInTheDocument();
+    expect(screen.getByText("abc123xyz")).toBeInTheDocument();
   });
 
   it("does not show the admin digest when absent", () => {

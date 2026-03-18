@@ -18,7 +18,11 @@ export default function AdminError({
   return (
     <SectionErrorPage
       title="Cette page d'administration est momentanément indisponible"
-      description="Réessayez ou revenez au tableau de bord. Si le problème persiste, utilisez le code ci-dessous pour le diagnostic."
+      description={
+        error.digest
+          ? "Réessayez ou revenez au tableau de bord. Si le problème persiste, utilisez le code ci-dessous pour le diagnostic."
+          : "Réessayez ou revenez au tableau de bord."
+      }
       backHref="/admin"
       backLabel="Retour au tableau de bord"
       variant="admin"

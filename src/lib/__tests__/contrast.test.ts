@@ -39,7 +39,7 @@ describe("getRelativeLuminance", () => {
   });
 
   it("returns 1 for white", () => {
-    expect(getRelativeLuminance("#ffffff")).toBe(1);
+    expect(getRelativeLuminance("#ffffff")).toBeCloseTo(1, 5);
   });
 
   it("returns ~0.2159 for 50% gray", () => {

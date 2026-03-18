@@ -6,7 +6,8 @@ const meta: Meta<typeof CopyLinkButton> = {
   component: CopyLinkButton,
   argTypes: {
     url: { control: "text" },
-    initialCopied: { control: "boolean" },
+    // initialCopied is one-time initialization only — not reactive, excluded from controls
+    initialCopied: { table: { disable: true } },
   },
 };
 

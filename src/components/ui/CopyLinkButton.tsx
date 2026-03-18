@@ -15,9 +15,12 @@ interface CopyLinkButtonProps {
 export function CopyLinkButton({ url, className, initialCopied }: CopyLinkButtonProps) {
   const [copied, setCopied] = useState(initialCopied ?? false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
@@ -35,12 +38,15 @@ export function CopyLinkButton({ url, className, initialCopied }: CopyLinkButton
             : "";
       if (!textToCopy) return;
       await navigator.clipboard.writeText(textToCopy);
+      if (!isMountedRef.current) return;
       setCopied(true);
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
       timeoutRef.current = setTimeout(() => {
-        setCopied(false);
+        if (isMountedRef.current) {
+          setCopied(false);
+        }
         timeoutRef.current = null;
       }, 2000);
     } catch {

@@ -48,12 +48,12 @@ describe("getRelativeLuminance", () => {
 });
 
 describe("getContrastRatio", () => {
-  it("returns ~21 for black on white", () => {
-    expect(getContrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 0);
+  it("returns 21 for black on white", () => {
+    expect(getContrastRatio("#000000", "#ffffff")).toBe(21);
   });
 
   it("returns 1 for identical colors", () => {
-    expect(getContrastRatio("#ff0000", "#ff0000")).toBeCloseTo(1, 1);
+    expect(getContrastRatio("#ff0000", "#ff0000")).toBe(1);
   });
 
   it("is symmetric regardless of argument order", () => {
@@ -95,14 +95,13 @@ describe("ensureContrast", () => {
     expect(ensureContrast("#000000")).toBe("#000000");
   });
 
-  it("darkens white until it meets 4.5:1 ratio on white background", () => {
+  it("adjusts a non-compliant foreground to meet 4.5:1 on white", () => {
     const adjusted = ensureContrast("#ffffff");
     const ratio = getContrastRatio(adjusted, "#ffffff");
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("falls back to black when 20 iterations are exhausted", () => {
-    // Requesting a 21:1 ratio is impossible by darkening alone
+  it("falls back to black when it cannot reach minRatio within the iteration limit", () => {
     expect(ensureContrast("#ffffff", "#ffffff", 21)).toBe("#000000");
   });
 

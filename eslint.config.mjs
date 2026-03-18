@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
     "scripts/**",
     // Git worktrees (contain their own .next/build artifacts):
     ".worktrees/**",
+    // Storybook static build output:
+    "storybook-static/**",
   ]),
   {
     rules: {

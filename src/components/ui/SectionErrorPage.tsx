@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { HexPattern } from "@/components/ui/HexPattern";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface SectionErrorPageProps {
   title: string;
@@ -30,12 +31,12 @@ export function SectionErrorPage({
 }: SectionErrorPageProps) {
   return (
     <div
-      className={[
+      className={cn(
         "flex min-h-[70vh] flex-col items-center justify-center px-4 py-16 text-center",
         variant === "public"
           ? "relative bg-gradient-to-br from-primary/5 via-background to-accent/10"
-          : "bg-background",
-      ].join(" ")}
+          : "bg-background"
+      )}
     >
       {variant === "public" ? (
         <HexPattern className="pointer-events-none absolute inset-0 text-primary opacity-[0.03] dark:opacity-[0.05]" />

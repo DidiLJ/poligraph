@@ -15,30 +15,34 @@ export default function MentionsLegalesPage() {
         <section>
           <h2 className="text-xl font-semibold mb-4">Éditeur du site</h2>
           <p className="text-muted-foreground">
-            <strong>Nom / Raison sociale :</strong> LD Engineering
+            <strong>Nom / Raison sociale :</strong> Association Sankofa (loi 1901, RNA W931031256)
             <br />
-            <strong>Adresse :</strong> 200 rue de la Croix Nivert, 75015 Paris, France
+            <strong>Adresse :</strong> 93800 Épinay-sur-Seine, France
             <br />
             <strong>Email :</strong>{" "}
             <a href="mailto:contact@poligraph.fr" className="underline">
               contact@poligraph.fr
             </a>
             <br />
-            <strong>Directeur de la publication :</strong> LD Engineering
+            <strong>Directeur de la publication :</strong> Lamine Diaby, Président
           </p>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold mb-4">Hébergement</h2>
           <p className="text-muted-foreground">
-            LD Engineering
+            Vercel Inc.
             <br />
-            200 rue de la Croix Nivert
+            440 N Barranca Ave #4133, Covina, CA 91723, États-Unis
             <br />
-            75015 Paris, France
-            <br />
-            <br />
-            Infrastructure technique : Vercel Inc., San Francisco, États-Unis
+            <a
+              href="https://vercel.com"
+              className="underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              vercel.com
+            </a>
           </p>
         </section>
 
@@ -141,6 +145,30 @@ export default function MentionsLegalesPage() {
               </a>
               ) — activité parlementaire
             </li>
+            <li>
+              Répertoire National des Élus (
+              <a
+                href="https://www.data.gouv.fr/fr/datasets/repertoire-national-des-elus-1/"
+                className="underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                data.gouv.fr
+              </a>
+              ) — maires et élus locaux
+            </li>
+            <li>
+              Judilibre (
+              <a
+                href="https://www.courdecassation.fr/acces-rapide-judilibre"
+                className="underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                courdecassation.fr
+              </a>
+              ) — décisions de justice publiées
+            </li>
             <li>Google Fact Check Tools API — vérification des faits (fact-checking)</li>
             <li>Articles de presse (sources citées pour chaque information)</li>
           </ul>
@@ -200,8 +228,18 @@ export default function MentionsLegalesPage() {
               Aucune donnée personnelle n&apos;est collectée (pas d&apos;adresse IP, pas de
               fingerprinting)
             </li>
-            <li>Les données de fréquentation sont hébergées sur notre propre infrastructure</li>
-            <li>Aucune donnée n&apos;est transmise à des tiers</li>
+            <li>
+              Les données de fréquentation sont hébergées sur{" "}
+              <a
+                href="https://umami.is/privacy"
+                className="underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Umami Cloud
+              </a>
+              , conforme au RGPD (données anonymisées, pas de tracking individuel)
+            </li>
           </ul>
           <p className="text-muted-foreground mt-2">
             Les seules données traitées sont des informations publiques concernant des personnalités
@@ -227,6 +265,14 @@ export default function MentionsLegalesPage() {
             </a>
             .
           </p>
+          <p className="text-muted-foreground mt-2">
+            Une{" "}
+            <a href="/docs/api" className="underline">
+              API publique
+            </a>{" "}
+            permet la réutilisation des données. L&apos;accès est gratuit et ouvert, sous réserve de
+            mention de la source (Poligraph).
+          </p>
         </section>
 
         <section>
@@ -240,7 +286,7 @@ export default function MentionsLegalesPage() {
         </section>
       </div>
 
-      <p className="text-sm text-muted-foreground mt-12">Dernière mise à jour : Février 2026</p>
+      <p className="text-sm text-muted-foreground mt-12">Dernière mise à jour : Mars 2026</p>
     </main>
   );
 }

@@ -26,7 +26,14 @@ export function CopyLinkButton({ url, className, initialCopied }: CopyLinkButton
 
   async function handleCopy() {
     try {
-      const textToCopy = url ?? (typeof window !== "undefined" ? window.location.href : "");
+      const trimmedUrl = url?.trim();
+      const textToCopy =
+        trimmedUrl && trimmedUrl.length > 0
+          ? trimmedUrl
+          : typeof window !== "undefined"
+            ? window.location.href
+            : "";
+      if (!textToCopy) return;
       await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       if (timeoutRef.current) {

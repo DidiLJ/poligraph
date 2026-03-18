@@ -13,10 +13,9 @@ const meta: Meta<typeof CopyLinkButton> = {
 export default meta;
 type Story = StoryObj<typeof CopyLinkButton>;
 
+// Default story: no url prop — demonstrates window.location.href fallback
 export const Default: Story = {
-  args: {
-    url: "https://poligraph.fr/politiques/marine-le-pen",
-  },
+  args: {},
 };
 
 export const Copied: Story = {

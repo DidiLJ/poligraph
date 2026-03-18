@@ -113,8 +113,9 @@ describe("ensureContrast", () => {
   });
 
   it("uses white as default background when none is provided", () => {
-    // Should not throw and should return a valid hex string
-    const result = ensureContrast("#000000");
-    expect(result).toMatch(/^#[0-9a-f]{6}$/);
+    const foreground = "#ffffff";
+    const withDefault = ensureContrast(foreground);
+    const withExplicitWhite = ensureContrast(foreground, "#ffffff");
+    expect(withDefault).toBe(withExplicitWhite);
   });
 });

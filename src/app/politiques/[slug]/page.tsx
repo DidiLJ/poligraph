@@ -31,6 +31,7 @@ import { VotesSection } from "@/components/politicians/VotesSection";
 import { getPoliticianVotingStats, getPoliticianParliamentaryCard } from "@/services/voteStats";
 import { getPolitician } from "@/lib/data/politicians";
 import { FollowButton } from "@/components/politicians/FollowButton";
+import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import { CopyableId } from "@/components/politicians/CopyableId";
 import { SITE_URL } from "@/config/site";
 
@@ -239,6 +240,7 @@ export default async function PoliticianPage({ params }: PageProps) {
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold">{politician.fullName}</h1>
               <FollowButton slug={politician.slug} />
+              <CopyLinkButton />
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {politician.currentParty && (

@@ -22,6 +22,9 @@ const eslintConfig = defineConfig([
     ".worktrees/**",
     // Storybook static build output:
     "storybook-static/**",
+    // Local AI/editor tool configs (Claude Code, Cursor, etc.) — not application code:
+    ".claude/**",
+    ".cursor/**",
   ]),
   {
     rules: {

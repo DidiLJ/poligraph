@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Outfit, Atkinson_Hyperlegible } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -12,21 +11,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { UmamiAnalytics } from "@/components/analytics/UmamiAnalytics";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { SITE_URL } from "@/config/site";
+import { atkinson, outfit } from "./fonts";
 import "./globals.css";
-
-const outfit = Outfit({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["700", "800"],
-  display: "swap",
-});
-
-const atkinson = Atkinson_Hyperlegible({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

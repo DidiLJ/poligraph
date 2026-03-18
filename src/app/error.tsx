@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { HexPattern } from "@/components/ui/HexPattern";
+import { usePathname } from "next/navigation";
+import { SectionErrorPage } from "@/components/ui/SectionErrorPage";
 
 export default function Error({
   error,
@@ -14,29 +11,31 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const pathname = usePathname();
+  const isAdminPath = pathname.startsWith("/admin");
+
   useEffect(() => {
+    // eslint-disable-next-line no-console -- Next.js error boundaries should log the captured error.
     console.error(error);
   }, [error]);
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-[70vh] px-4 text-center bg-gradient-to-br from-primary/5 via-background to-accent/10">
-      <HexPattern className="absolute inset-0 text-primary opacity-[0.03] dark:opacity-[0.05] pointer-events-none" />
-      <div className="relative z-10 flex flex-col items-center">
-        <Image src="/logo.svg" alt="Poligraph" width={80} height={80} className="mb-6" />
-        <h1 className="text-4xl font-display font-bold mb-3">Une erreur est survenue</h1>
-        <p className="text-muted-foreground max-w-md mb-8">
-          Quelque chose s&apos;est mal passé. Vous pouvez réessayer ou revenir à l&apos;accueil.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 items-center">
-          <Button onClick={reset}>
-            <RotateCcw className="h-4 w-4 mr-2" aria-hidden="true" />
-            Réessayer
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/">Retour à l&apos;accueil</Link>
-          </Button>
-        </div>
-      </div>
-    </div>
+    <SectionErrorPage
+      title={
+        isAdminPath
+          ? "Cette page d'administration est momentanément indisponible"
+          : "Une erreur est survenue"
+      }
+      description={
+        isAdminPath
+          ? "Réessayez ou revenez au tableau de bord. Si le problème persiste, utilisez le code ci-dessous pour le diagnostic."
+          : "Quelque chose s'est mal passé. Vous pouvez réessayer ou revenir à l'accueil."
+      }
+      backHref={isAdminPath ? "/admin" : "/"}
+      backLabel={isAdminPath ? "Retour au tableau de bord" : "Retour à l'accueil"}
+      variant={isAdminPath ? "admin" : "public"}
+      errorDigest={isAdminPath ? error.digest : undefined}
+      onReset={reset}
+    />
   );
 }

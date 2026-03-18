@@ -27,6 +27,10 @@ describe("hexToRgb", () => {
   it("parses hex without # prefix", () => {
     expect(hexToRgb("FF0000")).toEqual({ r: 255, g: 0, b: 0 });
   });
+
+  it("expands a 3-digit shorthand hex without # prefix", () => {
+    expect(hexToRgb("F00")).toEqual({ r: 255, g: 0, b: 0 });
+  });
 });
 
 describe("getRelativeLuminance", () => {
@@ -49,11 +53,11 @@ describe("getRelativeLuminance", () => {
 
 describe("getContrastRatio", () => {
   it("returns 21 for black on white", () => {
-    expect(getContrastRatio("#000000", "#ffffff")).toBe(21);
+    expect(getContrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 5);
   });
 
   it("returns 1 for identical colors", () => {
-    expect(getContrastRatio("#ff0000", "#ff0000")).toBe(1);
+    expect(getContrastRatio("#ff0000", "#ff0000")).toBeCloseTo(1, 5);
   });
 
   it("is symmetric regardless of argument order", () => {

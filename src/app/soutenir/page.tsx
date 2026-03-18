@@ -102,9 +102,9 @@ export default function SoutenirPage() {
         <Card>
           <CardContent className="pt-6 prose prose-sm max-w-none">
             <p className="text-base leading-relaxed">
-              <strong>Poligraph</strong> est un projet 100% indépendant. Nous ne recevons aucune
-              subvention publique, aucun financement partisan, et nous refusons la publicité pour
-              garantir notre neutralité.
+              <strong>Poligraph</strong> est un projet citoyen porté par l&apos;
+              <strong>association Sankofa</strong> (loi 1901). Indépendant et sans financement
+              partisan, nous refusons la publicité pour garantir notre neutralité.
             </p>
             <p className="text-base leading-relaxed mt-4">
               Notre mission : rendre accessible à tous les citoyens l&apos;information sur leurs

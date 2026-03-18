@@ -4,14 +4,9 @@ import ErrorPage from "./error";
 
 const usePathnameMock = vi.fn();
 
-vi.mock("next/navigation", async () => {
-  const actual = await vi.importActual<typeof import("next/navigation")>("next/navigation");
-
-  return {
-    ...actual,
-    usePathname: () => usePathnameMock(),
-  };
-});
+vi.mock("next/navigation", () => ({
+  usePathname: () => usePathnameMock(),
+}));
 
 describe("app/error", () => {
   beforeEach(() => {

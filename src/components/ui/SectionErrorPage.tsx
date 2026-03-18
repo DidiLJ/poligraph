@@ -50,7 +50,9 @@ export function SectionErrorPage({
         <h1 className="mb-4 text-balance font-display text-4xl font-bold">{title}</h1>
         <p className="mb-3 max-w-2xl text-balance text-muted-foreground">{description}</p>
         {variant === "admin" && errorDigest ? (
-          <p className="mb-8 font-mono text-xs text-muted-foreground">Code : {errorDigest}</p>
+          <p className="mb-8 text-xs text-muted-foreground">
+            Code : <code className="font-mono">{errorDigest}</code>
+          </p>
         ) : (
           <div className="mb-8 h-[18px]" aria-hidden="true" />
         )}

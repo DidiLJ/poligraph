@@ -28,7 +28,9 @@ export default function Error({
       }
       description={
         isAdminPath
-          ? "Réessayez ou revenez au tableau de bord. Si le problème persiste, utilisez le code ci-dessous pour le diagnostic."
+          ? error.digest
+            ? "Réessayez ou revenez au tableau de bord. Si le problème persiste, utilisez le code ci-dessous pour le diagnostic."
+            : "Réessayez ou revenez au tableau de bord."
           : "Quelque chose s'est mal passé. Vous pouvez réessayer ou revenir à l'accueil."
       }
       backHref={isAdminPath ? "/admin" : "/"}

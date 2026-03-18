@@ -32,7 +32,7 @@ describe("app/error", () => {
         name: "Cette page d'administration est momentanément indisponible",
       })
     ).toBeInTheDocument();
-    expect(screen.getByText("Code : digest-123")).toBeInTheDocument();
+    expect(screen.getByText("digest-123")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Retour au tableau de bord" })).toHaveAttribute(
       "href",
       "/admin"

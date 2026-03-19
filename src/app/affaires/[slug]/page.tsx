@@ -19,6 +19,12 @@ import {
   INVOLVEMENT_LABELS,
   INVOLVEMENT_COLORS,
 } from "@/config/labels";
+import {
+  getCertaintyLevel,
+  CERTAINTY_LABELS,
+  CERTAINTY_COLORS,
+  CERTAINTY_DESCRIPTIONS,
+} from "@/config/certainty";
 import { LinkedAffairBanner } from "@/components/affairs/LinkedAffairBanner";
 import { SentenceDetails } from "@/components/affairs/SentenceDetails";
 import { StatusTooltip } from "@/components/affairs/StatusTooltip";
@@ -87,8 +93,10 @@ const affairInclude = {
   },
 };
 
-function findAffair(where: Prisma.AffairWhereInput) {
-  return db.affair.findFirst({ where, include: affairInclude });
+async function findAffair(where: Prisma.AffairWhereInput) {
+  const affair = await db.affair.findFirst({ where, include: affairInclude });
+  if (!affair) return null;
+  return { ...affair, fineAmount: affair.fineAmount ? Number(affair.fineAmount) : null };
 }
 
 type AffairResult = NonNullable<Awaited<ReturnType<typeof findAffair>>>;
@@ -105,10 +113,7 @@ const getAffairWithRedirect = cache(async function getAffairWithRedirect(
   if (affair) return { affair, redirect: affair.slug };
 
   // 3. Try by ID (CUID)
-  affair = await db.affair.findFirst({
-    where: { id: slugOrId },
-    include: affairInclude,
-  });
+  affair = await findAffair({ id: slugOrId });
   if (affair) return { affair, redirect: affair.slug };
 
   return { affair: null, redirect: null };
@@ -147,6 +152,7 @@ export default async function AffairDetailPage({ params }: PageProps) {
   }
 
   const superCategory = CATEGORY_TO_SUPER[affair.category as AffairCategory];
+  const certainty = getCertaintyLevel(affair.status);
   const partyToShow = affair.partyAtTime || affair.politician.currentParty;
   const linked = affair.linkedAffair || affair.linkedBy?.[0];
 
@@ -192,58 +198,64 @@ export default async function AffairDetailPage({ params }: PageProps) {
 
         {/* Header */}
         <div className="mb-8">
-          <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Badge className={`${CERTAINTY_COLORS[certainty]} text-sm px-3 py-1`}>
+              {CERTAINTY_LABELS[certainty]}
+            </Badge>
             <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCategory]}>
               {AFFAIR_SUPER_CATEGORY_LABELS[superCategory]}
             </Badge>
+            <Badge variant="outline">{AFFAIR_CATEGORY_LABELS[affair.category]}</Badge>
             <StatusTooltip
               status={affair.status}
               label={AFFAIR_STATUS_LABELS[affair.status]}
               description={AFFAIR_STATUS_DESCRIPTIONS[affair.status]}
               colorClass={AFFAIR_STATUS_COLORS[affair.status]}
             />
-            <Badge variant="outline">{AFFAIR_CATEGORY_LABELS[affair.category]}</Badge>
             {affair.involvement !== "DIRECT" && (
               <Badge className={INVOLVEMENT_COLORS[affair.involvement as Involvement]}>
                 {INVOLVEMENT_LABELS[affair.involvement as Involvement]}
               </Badge>
             )}
           </div>
+          <p className="text-sm text-muted-foreground mb-4">{CERTAINTY_DESCRIPTIONS[certainty]}</p>
 
           <h1 className="text-3xl font-bold mb-4">{affair.title}</h1>
 
           {/* Politician card */}
-          <Link
-            href={`/politiques/${affair.politician.slug}`}
-            className="inline-flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
-          >
-            <PoliticianAvatar
-              fullName={affair.politician.fullName}
-              photoUrl={affair.politician.photoUrl}
-              size="md"
-            />
-            <div>
-              <p className="font-semibold">{affair.politician.fullName}</p>
-              {partyToShow && (
-                <p className="text-sm text-muted-foreground">
-                  {affair.partyAtTime?.slug ? (
-                    <Link
-                      href={`/affaires/parti/${affair.partyAtTime.slug}`}
-                      className="hover:underline hover:text-foreground"
-                    >
-                      {partyToShow.name}
-                    </Link>
-                  ) : (
-                    partyToShow.name
+          <div className="inline-flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+            <Link
+              href={`/politiques/${affair.politician.slug}`}
+              className="inline-flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <PoliticianAvatar
+                fullName={affair.politician.fullName}
+                photoUrl={affair.politician.photoUrl}
+                size="md"
+              />
+              <div>
+                <p className="font-semibold">{affair.politician.fullName}</p>
+              </div>
+            </Link>
+            {partyToShow && (
+              <p className="text-sm text-muted-foreground">
+                {affair.partyAtTime?.slug ? (
+                  <Link
+                    href={`/affaires/parti/${affair.partyAtTime.slug}`}
+                    className="hover:underline hover:text-foreground"
+                  >
+                    {partyToShow.name}
+                  </Link>
+                ) : (
+                  partyToShow.name
+                )}
+                {affair.partyAtTime &&
+                  affair.partyAtTime.id !== affair.politician.currentParty?.id && (
+                    <span className="text-xs"> (à l&apos;époque)</span>
                   )}
-                  {affair.partyAtTime &&
-                    affair.partyAtTime.id !== affair.politician.currentParty?.id && (
-                      <span className="text-xs"> (à l&apos;époque)</span>
-                    )}
-                </p>
-              )}
-            </div>
-          </Link>
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Presumption of innocence — only for accused, not victims */}

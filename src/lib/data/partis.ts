@@ -1,8 +1,9 @@
 import { cache } from "react";
 import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
-import { CONVICTION_BADGE_WHERE, AFFAIR_STATUS_NEEDS_PRESUMPTION } from "@/config/labels";
-import type { AffairStatus, PoliticalPosition } from "@/types";
+import { CONVICTION_BADGE_WHERE } from "@/config/labels";
+import { getCertaintyLevel } from "@/config/certainty";
+import type { PoliticalPosition } from "@/types";
 
 export const getParty = cache(async function getParty(slug: string) {
   "use cache";
@@ -176,10 +177,11 @@ async function queryParties(
     .filter((p) => p.slug)
     .map((party) => {
       const affairs = party.affairsAtTime;
-      const condamnations = affairs.filter((a) => a.status === "CONDAMNATION_DEFINITIVE").length;
-      const enCours = affairs.filter(
-        (a) => AFFAIR_STATUS_NEEDS_PRESUMPTION[a.status as AffairStatus]
-      ).length;
+      const condamnations = affairs.filter((a) => getCertaintyLevel(a.status) === "ETABLI").length;
+      const enCours = affairs.filter((a) => {
+        const level = getCertaintyLevel(a.status);
+        return level === "EN_COURS" || level === "PRONONCE";
+      }).length;
       const total = affairs.length;
 
       return {

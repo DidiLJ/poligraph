@@ -33,6 +33,7 @@ import { getPolitician } from "@/lib/data/politicians";
 import { FollowButton } from "@/components/politicians/FollowButton";
 import { CopyableId } from "@/components/politicians/CopyableId";
 import { SITE_URL } from "@/config/site";
+import { getCertaintyLevel, isActiveCertainty } from "@/config/certainty";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -174,6 +175,23 @@ export default async function PoliticianPage({ params }: PageProps) {
 
   // Split affairs by involvement for sidebar stats and timeline
   const directAffairs = politician.affairs.filter((a) => a.involvement === "DIRECT");
+
+  // Active affairs count: DIRECT + INDIRECT, excluding clos favorable and MENTIONED_ONLY
+  const activeAffairsCount = politician.affairs.filter((a) => {
+    if (
+      a.involvement === "VICTIM" ||
+      a.involvement === "PLAINTIFF" ||
+      a.involvement === "MENTIONED_ONLY"
+    )
+      return false;
+    return isActiveCertainty(getCertaintyLevel(a.status));
+  }).length;
+
+  // Encart: only Etabli + Prononce (condemnations)
+  const encartAffairs = directAffairs.filter((a) => {
+    const level = getCertaintyLevel(a.status);
+    return level === "ETABLI" || level === "PRONONCE";
+  });
   const mentionAffairs = politician.affairs.filter(
     (a) => a.involvement === "INDIRECT" || a.involvement === "MENTIONED_ONLY"
   );
@@ -313,7 +331,7 @@ export default async function PoliticianPage({ params }: PageProps) {
           {/* Main content */}
           <div className="lg:col-span-2">
             <ProfileTabs
-              affairsCount={directAffairs.length}
+              affairsCount={activeAffairsCount}
               profileContent={
                 <div className="space-y-8">
                   {/* Interactive Timeline - Desktop only */}
@@ -355,8 +373,8 @@ export default async function PoliticianPage({ params }: PageProps) {
                     </Card>
                   )}
 
-                  {/* Affairs summary card — links to Affaires tab */}
-                  {directAffairs.length > 0 && (
+                  {/* Affairs summary card — only shows condemnations (Etabli + Prononce) */}
+                  {encartAffairs.length > 0 && (
                     <Link
                       href={`/politiques/${politician.slug}?tab=affaires`}
                       prefetch={false}
@@ -370,14 +388,14 @@ export default async function PoliticianPage({ params }: PageProps) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm">
-                              {`${directAffairs.length} affaire${directAffairs.length > 1 ? "s" : ""} judiciaire${directAffairs.length > 1 ? "s" : ""}`}
+                              {`${encartAffairs.length} condamnation${encartAffairs.length > 1 ? "s" : ""}`}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
-                              {directAffairs
+                              {encartAffairs
                                 .slice(0, 2)
                                 .map((a) => a.title)
                                 .join(", ")}
-                              {directAffairs.length > 2 && "..."}
+                              {encartAffairs.length > 2 && "..."}
                             </p>
                           </div>
                           <svg

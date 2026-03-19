@@ -7,27 +7,17 @@ import {
   INVOLVEMENT_LABELS,
   INVOLVEMENT_COLORS,
   AFFAIR_CATEGORY_LABELS,
-  SEVERITY_SORT_ORDER,
 } from "@/config/labels";
+import {
+  getCertaintyLevel,
+  CERTAINTY_LABELS,
+  CERTAINTY_COLORS,
+  CERTAINTY_DESCRIPTIONS,
+  type CertaintyLevel,
+} from "@/config/certainty";
 import { formatDate, stripMarkdown } from "@/lib/utils";
-import type { AffairSeverity, AffairStatus, AffairCategory, Involvement } from "@/types";
+import type { AffairStatus, AffairCategory, Involvement } from "@/types";
 import { AffairCard } from "./AffairCard";
-
-const STATUS_SEVERITY: Record<string, number> = {
-  CONDAMNATION_DEFINITIVE: 0,
-  CONDAMNATION_PREMIERE_INSTANCE: 1,
-  APPEL_EN_COURS: 2,
-  PROCES_EN_COURS: 3,
-  RENVOI_TRIBUNAL: 4,
-  MISE_EN_EXAMEN: 5,
-  INSTRUCTION: 6,
-  ENQUETE_PRELIMINAIRE: 7,
-  RELAXE: 8,
-  ACQUITTEMENT: 9,
-  NON_LIEU: 10,
-  PRESCRIPTION: 11,
-  CLASSEMENT_SANS_SUITE: 12,
-};
 
 interface AffairsSectionProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,29 +25,39 @@ interface AffairsSectionProps {
   civility: string | null;
 }
 
+const CERTAINTY_LEVELS: CertaintyLevel[] = ["ETABLI", "PRONONCE", "EN_COURS", "CLOS_FAVORABLE"];
+
 export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
   // Split affairs by involvement: direct (mis en cause) vs mentions vs victim
-  const directAffairs = affairs
-    .filter((a) => a.involvement === "DIRECT")
-    .sort((a, b) => {
-      // Primary: severity (CRITIQUE first)
-      const sevDiff =
-        (SEVERITY_SORT_ORDER[a.severity as AffairSeverity] ?? 2) -
-        (SEVERITY_SORT_ORDER[b.severity as AffairSeverity] ?? 2);
-      if (sevDiff !== 0) return sevDiff;
-      // Secondary: status severity
-      return (STATUS_SEVERITY[a.status] ?? 99) - (STATUS_SEVERITY[b.status] ?? 99);
-    });
-
-  // Group direct affairs into editorial sections
-  const critiqueAffairs = directAffairs.filter((a) => a.severity === "CRITIQUE");
-  const otherDirectAffairs = directAffairs.filter((a) => a.severity !== "CRITIQUE");
-  const mentionAffairs = affairs.filter(
-    (a) => a.involvement === "INDIRECT" || a.involvement === "MENTIONED_ONLY"
+  const directAffairs = affairs.filter(
+    (a) => a.involvement === "DIRECT" || a.involvement === "INDIRECT"
   );
+  const mentionAffairs = affairs.filter((a) => a.involvement === "MENTIONED_ONLY");
   const victimAffairs = affairs.filter(
     (a) => a.involvement === "VICTIM" || a.involvement === "PLAINTIFF"
   );
+
+  // Group direct affairs by certainty level
+  const groupedByLevel: Record<CertaintyLevel, typeof directAffairs> = {
+    ETABLI: [],
+    PRONONCE: [],
+    EN_COURS: [],
+    CLOS_FAVORABLE: [],
+  };
+
+  for (const affair of directAffairs) {
+    const level = getCertaintyLevel(affair.status);
+    groupedByLevel[level].push(affair);
+  }
+
+  // Sort within each group by date (most recent first)
+  for (const level of CERTAINTY_LEVELS) {
+    groupedByLevel[level].sort((a, b) => {
+      const dateA = a.verdictDate || a.startDate || a.factsDate || a.createdAt;
+      const dateB = b.verdictDate || b.startDate || b.factsDate || b.createdAt;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
+  }
 
   return (
     <div className="space-y-8">
@@ -69,88 +69,60 @@ export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
         <CardContent>
           {directAffairs.length > 0 ? (
             <div className="space-y-8">
-              {/* Atteintes a la probite (CRITIQUE) */}
-              {critiqueAffairs.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-1">
-                    Atteintes à la probité ({critiqueAffairs.length})
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Infractions liées à l&apos;exercice du mandat public
-                  </p>
-                  <div className="space-y-6">
-                    {critiqueAffairs.map((affair) => {
-                      const linked = affair.linkedAffair || affair.linkedBy?.[0];
-                      return (
-                        <div key={affair.id}>
-                          <AffairCard affair={affair} variant="critique" />
-                          {linked && (
-                            <p className="mt-2 text-sm text-blue-700 dark:text-blue-400">
-                              Implique également{" "}
-                              <Link
-                                href={`/politiques/${linked.politician.slug}`}
-                                className="font-medium underline hover:no-underline"
-                                prefetch={false}
-                              >
-                                {linked.politician.fullName}
-                              </Link>
-                              {" - "}
-                              <Link
-                                href={`/affaires/${linked.slug}`}
-                                className="underline hover:no-underline"
-                                prefetch={false}
-                              >
-                                voir sa fiche
-                              </Link>
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {CERTAINTY_LEVELS.map((level) => {
+                const levelAffairs = groupedByLevel[level];
+                if (levelAffairs.length === 0) return null;
 
-              {/* Autres affaires judiciaires (GRAVE + SIGNIFICATIF) */}
-              {otherDirectAffairs.length > 0 && (
-                <div>
-                  {critiqueAffairs.length > 0 && (
-                    <h3 className="text-lg font-semibold text-muted-foreground mb-4">
-                      Autres affaires judiciaires ({otherDirectAffairs.length})
-                    </h3>
-                  )}
-                  <div className="space-y-6">
-                    {otherDirectAffairs.map((affair) => {
-                      const linked = affair.linkedAffair || affair.linkedBy?.[0];
-                      return (
-                        <div key={affair.id}>
-                          <AffairCard affair={affair} variant="other" />
-                          {linked && (
-                            <p className="mt-2 text-sm text-blue-700 dark:text-blue-400">
-                              Implique également{" "}
-                              <Link
-                                href={`/politiques/${linked.politician.slug}`}
-                                className="font-medium underline hover:no-underline"
-                                prefetch={false}
-                              >
-                                {linked.politician.fullName}
-                              </Link>
-                              {" - "}
-                              <Link
-                                href={`/affaires/${linked.slug}`}
-                                className="underline hover:no-underline"
-                                prefetch={false}
-                              >
-                                voir sa fiche
-                              </Link>
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
+                return (
+                  <div
+                    key={level}
+                    className={
+                      level === "CLOS_FAVORABLE" ? "opacity-75 border-t border-dashed pt-6" : ""
+                    }
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge className={CERTAINTY_COLORS[level]}>{CERTAINTY_LABELS[level]}</Badge>
+                      <span className="text-sm text-muted-foreground">({levelAffairs.length})</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      {CERTAINTY_DESCRIPTIONS[level]}
+                    </p>
+                    <div className="space-y-6">
+                      {levelAffairs.map((affair) => {
+                        const linked = affair.linkedAffair || affair.linkedBy?.[0];
+                        return (
+                          <div key={affair.id}>
+                            <AffairCard
+                              affair={affair}
+                              variant={level === "ETABLI" ? "critique" : "other"}
+                            />
+                            {linked && (
+                              <p className="mt-2 text-sm text-blue-700 dark:text-blue-400">
+                                Implique également{" "}
+                                <Link
+                                  href={`/politiques/${linked.politician.slug}`}
+                                  className="font-medium underline hover:no-underline"
+                                  prefetch={false}
+                                >
+                                  {linked.politician.fullName}
+                                </Link>
+                                {" - "}
+                                <Link
+                                  href={`/affaires/${linked.slug}`}
+                                  className="underline hover:no-underline"
+                                  prefetch={false}
+                                >
+                                  voir sa fiche
+                                </Link>
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           ) : (
             <div>
@@ -166,7 +138,7 @@ export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
         </CardContent>
       </Card>
 
-      {/* Affairs -- Mentions (INDIRECT / MENTIONED_ONLY / PLAINTIFF) */}
+      {/* Affairs -- Mentions (MENTIONED_ONLY) */}
       {mentionAffairs.length > 0 && (
         <Card className="border-dashed border-gray-300 dark:border-gray-700">
           <CardHeader>

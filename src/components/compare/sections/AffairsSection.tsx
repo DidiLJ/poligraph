@@ -1,14 +1,11 @@
-import {
-  AFFAIR_STATUS_LABELS,
-  AFFAIR_SEVERITY_LABELS,
-  AFFAIR_SEVERITY_COLORS,
-} from "@/config/labels";
-import type { AffairStatus, AffairSeverity } from "@/types";
+import { AFFAIR_STATUS_LABELS } from "@/config/labels";
+import { CERTAINTY_LABELS, CERTAINTY_COLORS, type CertaintyLevel } from "@/config/certainty";
+import type { AffairStatus } from "@/types";
 
 interface AffairsSideData {
   count: number;
   byStatus: Record<string, number>;
-  bySeverity: Record<string, number>;
+  byCertainty: Record<string, number>;
 }
 
 interface AffairsSectionProps {
@@ -43,7 +40,7 @@ function AffairsSide({ data, label }: { data: AffairsSideData; label: string }) 
   }
 
   const statusEntries = Object.entries(data.byStatus).filter(([, count]) => count > 0);
-  const severityEntries = Object.entries(data.bySeverity).filter(([, count]) => count > 0);
+  const certaintyEntries = Object.entries(data.byCertainty).filter(([, count]) => count > 0);
 
   return (
     <div className="bg-muted rounded-lg p-4">
@@ -52,17 +49,17 @@ function AffairsSide({ data, label }: { data: AffairsSideData; label: string }) 
         {data.count} affaire{data.count > 1 ? "s" : ""}
       </p>
 
-      {/* Severity breakdown */}
-      {severityEntries.length > 0 && (
+      {/* Certainty breakdown */}
+      {certaintyEntries.length > 0 && (
         <div className="mb-3">
-          <p className="text-xs font-medium text-muted-foreground mb-1.5">Par gravité</p>
+          <p className="text-xs font-medium text-muted-foreground mb-1.5">Par certitude</p>
           <div className="flex flex-wrap gap-1.5">
-            {severityEntries.map(([severity, count]) => (
+            {certaintyEntries.map(([certainty, count]) => (
               <span
-                key={severity}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${AFFAIR_SEVERITY_COLORS[severity as AffairSeverity] || ""}`}
+                key={certainty}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${CERTAINTY_COLORS[certainty as CertaintyLevel] || ""}`}
               >
-                {AFFAIR_SEVERITY_LABELS[severity as AffairSeverity] || severity}
+                {CERTAINTY_LABELS[certainty as CertaintyLevel] || certainty}
                 <span className="font-bold">{count}</span>
               </span>
             ))}

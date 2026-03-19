@@ -12,13 +12,17 @@ import {
   feminizePartyRole,
   AFFAIR_STATUS_LABELS,
   AFFAIR_STATUS_COLORS,
-  AFFAIR_SEVERITY_LABELS,
-  AFFAIR_SEVERITY_COLORS,
-  AFFAIR_SEVERITY_EDITORIAL,
-  SEVERITY_SORT_ORDER,
   POLITICAL_POSITION_LABELS,
 } from "@/config/labels";
-import type { AffairStatus, AffairSeverity } from "@/types";
+import {
+  getCertaintyLevel,
+  isActiveCertainty,
+  CERTAINTY_LABELS,
+  CERTAINTY_COLORS,
+  CERTAINTY_SORT_ORDER,
+  type CertaintyLevel,
+} from "@/config/certainty";
+import type { AffairStatus } from "@/types";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { PoliticalPositionBadge } from "@/components/partis/PoliticalPositionBadge";
 import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
@@ -421,107 +425,122 @@ export default async function PartyPage({ params }: PageProps) {
             )}
 
             {/* Affairs */}
-            {party.affairsAtTime.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Affaires judiciaires ({party.affairsAtTime.length})</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Affaires impliquant des membres du parti au moment des faits
-                  </p>
+            {party.affairsAtTime.length > 0 &&
+              (() => {
+                const affairsWithCertainty = party.affairsAtTime.map((a) => ({
+                  ...a,
+                  certainty: getCertaintyLevel(a.status as AffairStatus),
+                }));
+                const activeCount = affairsWithCertainty.filter((a) =>
+                  isActiveCertainty(a.certainty)
+                ).length;
+                return (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        Affaires judiciaires ({activeCount} active{activeCount > 1 ? "s" : ""})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Affaires impliquant des membres du parti au moment des faits
+                      </p>
 
-                  {/* Severity breakdown badges */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {(Object.keys(AFFAIR_SEVERITY_LABELS) as AffairSeverity[]).map((sev) => {
-                      const count = party.affairsAtTime.filter((a) => a.severity === sev).length;
-                      if (count === 0) return null;
-                      return (
-                        <Badge key={sev} variant="outline" className={AFFAIR_SEVERITY_COLORS[sev]}>
-                          {AFFAIR_SEVERITY_EDITORIAL[sev]} ({count})
-                        </Badge>
-                      );
-                    })}
-                  </div>
+                      {/* Certainty level breakdown badges */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {(Object.keys(CERTAINTY_LABELS) as CertaintyLevel[]).map((level) => {
+                          const count = affairsWithCertainty.filter(
+                            (a) => a.certainty === level
+                          ).length;
+                          if (count === 0) return null;
+                          return (
+                            <Badge
+                              key={level}
+                              variant="outline"
+                              className={CERTAINTY_COLORS[level]}
+                            >
+                              {CERTAINTY_LABELS[level]} ({count})
+                            </Badge>
+                          );
+                        })}
+                      </div>
 
-                  {/* Top 5 affairs sorted by severity */}
-                  <div className="space-y-3">
-                    {[...party.affairsAtTime]
-                      .sort(
-                        (a, b) =>
-                          (SEVERITY_SORT_ORDER[a.severity as AffairSeverity] ?? 2) -
-                          (SEVERITY_SORT_ORDER[b.severity as AffairSeverity] ?? 2)
-                      )
-                      .slice(0, 5)
-                      .map((affair) => (
-                        <Link
-                          key={affair.id}
-                          href={`/affaires/${affair.slug}`}
-                          className={`block p-3 rounded-lg border hover:bg-muted transition-colors ${
-                            affair.severity === "CRITIQUE"
-                              ? "border-red-200 dark:border-red-900/50"
-                              : ""
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <Badge
-                                  className={
-                                    AFFAIR_SEVERITY_COLORS[affair.severity as AffairSeverity]
-                                  }
-                                >
-                                  {AFFAIR_SEVERITY_EDITORIAL[affair.severity as AffairSeverity]}
-                                </Badge>
-                                <Badge
-                                  variant="outline"
-                                  className={AFFAIR_STATUS_COLORS[affair.status as AffairStatus]}
-                                >
-                                  {AFFAIR_STATUS_LABELS[affair.status as AffairStatus]}
-                                </Badge>
-                                <span className="text-sm font-medium truncate">
-                                  {affair.politician.fullName}
-                                </span>
+                      {/* Top 5 affairs sorted by certainty */}
+                      <div className="space-y-3">
+                        {[...affairsWithCertainty]
+                          .sort(
+                            (a, b) =>
+                              CERTAINTY_SORT_ORDER[a.certainty] - CERTAINTY_SORT_ORDER[b.certainty]
+                          )
+                          .slice(0, 5)
+                          .map((affair) => (
+                            <Link
+                              key={affair.id}
+                              href={`/affaires/${affair.slug}`}
+                              className={`block p-3 rounded-lg border hover:bg-muted transition-colors ${
+                                affair.certainty === "ETABLI"
+                                  ? "border-red-200 dark:border-red-900/50"
+                                  : ""
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <Badge className={CERTAINTY_COLORS[affair.certainty]}>
+                                      {CERTAINTY_LABELS[affair.certainty]}
+                                    </Badge>
+                                    <Badge
+                                      variant="outline"
+                                      className={
+                                        AFFAIR_STATUS_COLORS[affair.status as AffairStatus]
+                                      }
+                                    >
+                                      {AFFAIR_STATUS_LABELS[affair.status as AffairStatus]}
+                                    </Badge>
+                                    <span className="text-sm font-medium truncate">
+                                      {affair.politician.fullName}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground line-clamp-1">
+                                    {affair.title}
+                                  </p>
+                                </div>
+                                {affair.verdictDate && (
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                    {formatDate(affair.verdictDate)}
+                                  </span>
+                                )}
                               </div>
-                              <p className="text-sm text-muted-foreground line-clamp-1">
-                                {affair.title}
-                              </p>
-                            </div>
-                            {affair.verdictDate && (
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {formatDate(affair.verdictDate)}
-                              </span>
-                            )}
-                          </div>
-                        </Link>
-                      ))}
-                  </div>
+                            </Link>
+                          ))}
+                      </div>
 
-                  {/* CTA to satellite page */}
-                  {party.slug && (
-                    <Link
-                      href={`/affaires/parti/${party.slug}`}
-                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-4"
-                    >
-                      Voir toutes les affaires ({party.affairsAtTime.length})
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </Link>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                      {/* CTA to satellite page */}
+                      {party.slug && (
+                        <Link
+                          href={`/affaires/parti/${party.slug}`}
+                          className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-4"
+                        >
+                          Voir toutes les affaires ({party.affairsAtTime.length})
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </Link>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
             {/* Press mentions */}
             {pressEnabled && party.pressMentions.length > 0 && (

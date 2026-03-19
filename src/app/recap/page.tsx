@@ -7,13 +7,9 @@ import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { FadeIn } from "@/components/motion/FadeIn";
 import { HexPattern } from "@/components/ui/HexPattern";
 import { getWeeklyRecap, getWeekStart, getWeekEnd, getISOWeekNumber } from "@/lib/data/recap";
-import {
-  AFFAIR_SEVERITY_LABELS,
-  PLATFORM_UPDATE_TYPE_LABELS,
-  PLATFORM_UPDATE_TYPE_ICONS,
-} from "@/config/labels";
+import { PLATFORM_UPDATE_TYPE_LABELS, PLATFORM_UPDATE_TYPE_ICONS } from "@/config/labels";
+import { CERTAINTY_LABELS, CERTAINTY_COLORS, type CertaintyLevel } from "@/config/certainty";
 import { NewsletterCTA } from "./NewsletterCTA";
-import type { AffairSeverity } from "@/types";
 
 export const revalidate = 300;
 
@@ -305,9 +301,9 @@ export default async function RecapPage({ searchParams }: PageProps) {
                       >
                         <Badge
                           variant="outline"
-                          className="shrink-0 text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-800"
+                          className={`shrink-0 ${CERTAINTY_COLORS[a.certaintyLevel as CertaintyLevel] || ""}`}
                         >
-                          {AFFAIR_SEVERITY_LABELS[a.severity as AffairSeverity]}
+                          {CERTAINTY_LABELS[a.certaintyLevel as CertaintyLevel] || a.certaintyLevel}
                         </Badge>
                         <div className="min-w-0">
                           <Link

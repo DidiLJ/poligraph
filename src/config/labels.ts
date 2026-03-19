@@ -244,62 +244,6 @@ export const CATEGORY_TO_SUPER: Record<AffairCategory, AffairSuperCategory> = {
   AUTRE: "AUTRE",
 };
 
-// Status certainty groups — judicial certainty levels for filtering
-export type StatusCertaintyGroup = "condamnations" | "procedures" | "enquetes" | "closes";
-
-export const STATUS_CERTAINTY_LABELS: Record<StatusCertaintyGroup, string> = {
-  condamnations: "Condamnations",
-  procedures: "Procédures judiciaires",
-  enquetes: "Enquêtes préliminaires",
-  closes: "Classées / Acquittées",
-};
-
-export const STATUS_CERTAINTY_DESCRIPTIONS: Record<StatusCertaintyGroup, string> = {
-  condamnations: "Condamnation définitive, en première instance ou en appel",
-  procedures: "Instruction, mise en examen, renvoi ou procès en cours",
-  enquetes: "Enquête préliminaire ouverte, aucune mise en cause formelle",
-  closes: "Relaxe, acquittement, non-lieu, prescription ou classement",
-};
-
-export const STATUS_CERTAINTY_VALUES: Record<StatusCertaintyGroup, AffairStatus[]> = {
-  condamnations: ["CONDAMNATION_DEFINITIVE", "CONDAMNATION_PREMIERE_INSTANCE", "APPEL_EN_COURS"],
-  procedures: ["INSTRUCTION", "MISE_EN_EXAMEN", "RENVOI_TRIBUNAL", "PROCES_EN_COURS"],
-  enquetes: ["ENQUETE_PRELIMINAIRE"],
-  closes: ["RELAXE", "ACQUITTEMENT", "NON_LIEU", "PRESCRIPTION", "CLASSEMENT_SANS_SUITE"],
-};
-
-export const STATUS_CERTAINTY_COLORS: Record<StatusCertaintyGroup, string> = {
-  condamnations:
-    "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700",
-  procedures:
-    "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700",
-  enquetes:
-    "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-700",
-  closes:
-    "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-800/40 dark:text-gray-300 dark:border-gray-700",
-};
-
-export function statusesFromCertaintyGroups(groups: StatusCertaintyGroup[]): AffairStatus[] {
-  return groups.flatMap((g) => STATUS_CERTAINTY_VALUES[g]);
-}
-
-// Categories considered "grave" — selected for the stats page highlights
-export const GRAVE_CATEGORIES: AffairCategory[] = [
-  // Atteintes aux personnes
-  "AGRESSION_SEXUELLE",
-  "HARCELEMENT_SEXUEL",
-  "HARCELEMENT_MORAL",
-  "MENACE",
-  // Expression
-  "INCITATION_HAINE",
-  // Probité
-  "CORRUPTION",
-  // Finances
-  "FRAUDE_FISCALE",
-  "FINANCEMENT_ILLEGAL_CAMPAGNE",
-  "FINANCEMENT_ILLEGAL_PARTI",
-];
-
 // Get categories for a super-category
 export function getCategoriesForSuper(superCat: AffairSuperCategory): AffairCategory[] {
   return Object.entries(CATEGORY_TO_SUPER)
@@ -307,37 +251,7 @@ export function getCategoriesForSuper(superCat: AffairSuperCategory): AffairCate
     .map(([cat]) => cat as AffairCategory);
 }
 
-// ─── Affair Severity Hierarchy ────────────────────────────────────────────
-
-export const AFFAIR_SEVERITY_LABELS: Record<AffairSeverity, string> = {
-  CRITIQUE: "Critique",
-  GRAVE: "Grave",
-  SIGNIFICATIF: "Significatif",
-};
-
-// Editorial labels (what the citizen sees in sections)
-export const AFFAIR_SEVERITY_EDITORIAL: Record<AffairSeverity, string> = {
-  CRITIQUE: "Atteinte à la probité",
-  GRAVE: "Infraction grave",
-  SIGNIFICATIF: "Autre infraction",
-};
-
-export const AFFAIR_SEVERITY_COLORS: Record<AffairSeverity, string> = {
-  CRITIQUE:
-    "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700",
-  GRAVE:
-    "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700",
-  SIGNIFICATIF:
-    "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-800/40 dark:text-gray-300 dark:border-gray-700",
-};
-
-export const AFFAIR_SEVERITY_DESCRIPTIONS: Record<AffairSeverity, string> = {
-  CRITIQUE:
-    "Infractions liées à l'exercice du mandat public : corruption, détournement de fonds, financement illégal, trafic d'influence",
-  GRAVE: "Infractions sérieuses : fraude fiscale, blanchiment, harcèlement, agressions",
-  SIGNIFICATIF:
-    "Infractions de droit commun : diffamation, injure, violence sans lien avec le mandat",
-};
+// ─── Affair Severity (internal classification, used by admin/moderation) ─────
 
 // Default severity per category (before isRelatedToMandate promotion)
 const CATEGORY_DEFAULT_SEVERITY: Record<AffairCategory, AffairSeverity> = {
@@ -409,13 +323,6 @@ export function computeSeverity(
 export function isInherentlyMandateCategory(category: AffairCategory): boolean {
   return INHERENTLY_MANDATE_CATEGORIES.has(category);
 }
-
-/** Numerical severity for sorting (lower = more severe). */
-export const SEVERITY_SORT_ORDER: Record<AffairSeverity, number> = {
-  CRITIQUE: 0,
-  GRAVE: 1,
-  SIGNIFICATIF: 2,
-};
 
 export const NATIONAL_MANDATE_TYPES: MandateType[] = [
   "DEPUTE",

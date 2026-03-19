@@ -4,6 +4,7 @@ import {
   AFFAIR_STATUS_LABELS,
   type AffairSuperCategory,
 } from "@/config/labels";
+import type { CertaintyLevel } from "@/config/certainty";
 import type { AffairCategory, AffairStatus } from "@/types";
 import { DonutChart } from "./DonutChart";
 import { HorizontalBars } from "./HorizontalBars";
@@ -44,10 +45,9 @@ interface ViolenceStats {
 }
 
 interface JudicialSectionProps {
-  totalDirect: number;
-  totalCondamnations: number;
-  condamnationsDefinitives: number;
-  bySeverity: Record<string, number>;
+  certaintyCounts: Record<CertaintyLevel, number>;
+  uniqueCondamnes: number;
+  uniqueMisEnCause: number;
   byStatus: StatusCount[];
   byCategory: CategoryCount[];
   critiqueByCategory: CritiqueCategoryData[];
@@ -65,17 +65,15 @@ const ONGOING_STATUSES = new Set<AffairStatus>([
 ]);
 
 export function JudicialSection({
-  totalDirect,
-  totalCondamnations,
-  condamnationsDefinitives,
-  bySeverity,
+  certaintyCounts,
+  uniqueCondamnes,
+  uniqueMisEnCause,
   byStatus,
   byCategory,
   critiqueByCategory,
   hemicycleGroups,
   victimStats,
 }: JudicialSectionProps) {
-  const totalCritique = bySeverity["CRITIQUE"] || 0;
   const ongoing = byStatus
     .filter((s) => ONGOING_STATUSES.has(s.status))
     .reduce((sum, s) => sum + s.count, 0);
@@ -91,8 +89,8 @@ export function JudicialSection({
           <CardHeader>
             <CardTitle className="text-lg">Hémicycle et affaires judiciaires</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Chaque siège représente un député. La taille du cercle est proportionnelle au nombre
-              d&apos;affaires judiciaires. Cliquez sur un siège pour accéder à la fiche du député.
+              Chaque siège représente un député. La taille du cercle est proportionnelle au niveau
+              de certitude judiciaire. Cliquez sur un siège pour accéder à la fiche du député.
             </p>
           </CardHeader>
           <CardContent>
@@ -101,38 +99,40 @@ export function JudicialSection({
         </Card>
       )}
 
-      {/* Contextual KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {/* 3 certainty-based KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold tabular-nums text-red-600">
-              {totalCritique.toLocaleString("fr-FR")}
+              {uniqueCondamnes.toLocaleString("fr-FR")}
             </div>
-            <div className="text-sm text-muted-foreground mt-1">Atteintes à la probité</div>
+            <div className="text-sm text-muted-foreground mt-1">Élus condamnés</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {certaintyCounts.ETABLI} condamnation{certaintyCounts.ETABLI !== 1 ? "s" : ""}{" "}
+              définitive{certaintyCounts.ETABLI !== 1 ? "s" : ""}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 text-center">
-            <div className="text-3xl font-bold tabular-nums">
-              {totalCondamnations.toLocaleString("fr-FR")}
+            <div className="text-3xl font-bold tabular-nums text-amber-600">
+              {uniqueMisEnCause.toLocaleString("fr-FR")}
             </div>
-            <div className="text-sm text-muted-foreground mt-1">Condamnations</div>
+            <div className="text-sm text-muted-foreground mt-1">Élus mis en cause</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Procédures en cours et condamnations non définitives
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 text-center">
-            <div className="text-3xl font-bold tabular-nums">
-              {condamnationsDefinitives.toLocaleString("fr-FR")}
+            <div className="text-3xl font-bold tabular-nums text-gray-500">
+              {certaintyCounts.CLOS_FAVORABLE.toLocaleString("fr-FR")}
             </div>
-            <div className="text-sm text-muted-foreground mt-1">dont définitives</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <div className="text-3xl font-bold tabular-nums text-muted-foreground">
-              {totalDirect.toLocaleString("fr-FR")}
+            <div className="text-sm text-muted-foreground mt-1">Relaxes / acquittements</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Procédures closes sans condamnation
             </div>
-            <div className="text-sm text-muted-foreground mt-1">Affaires documentées</div>
           </CardContent>
         </Card>
       </div>
@@ -181,7 +181,8 @@ export function JudicialSection({
       <div className="grid md:grid-cols-2 gap-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Condamnations par type</CardTitle>
+            <CardTitle className="text-lg">Répartition par type d{"'"}infraction</CardTitle>
+            <p className="text-sm text-muted-foreground">Toutes certitudes confondues</p>
           </CardHeader>
           <CardContent>
             <DonutChart
@@ -224,9 +225,12 @@ export function JudicialSection({
         Les &laquo;&nbsp;atteintes à la probité&nbsp;&raquo; regroupent les infractions liées à
         l&apos;exercice du mandat public : corruption, trafic d&apos;influence, détournement de
         fonds publics, prise illégale d&apos;intérêts, emplois fictifs, financement illégal de
-        campagne ou de parti, et incitation à la haine. Le graphique &laquo;&nbsp;par
-        type&nbsp;&raquo; ne comptabilise que les condamnations (1ère instance, appel en cours ou
-        définitives) où le politicien est directement mis en cause.
+        campagne ou de parti, et incitation à la haine. Les compteurs distinguent les niveaux de
+        certitude judiciaire : condamnations définitives, procédures en cours, et relaxes /
+        acquittements.{" "}
+        <a href="/methodologie" className="text-primary hover:underline">
+          En savoir plus
+        </a>
       </MethodologyDisclaimer>
     </section>
   );

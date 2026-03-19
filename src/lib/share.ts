@@ -44,10 +44,21 @@ export function getShareUrl(platform: SharePlatform, url: string, text: string) 
       return `https://x.com/intent/post?${new URLSearchParams({ text, url }).toString()}`;
     case "bluesky": {
       const blueskyBody = `${text} ${url}`;
-      const truncatedBody =
-        blueskyBody.length > BLUESKY_MAX_CHARS
-          ? `${text.slice(0, BLUESKY_MAX_CHARS - url.length - 2).trimEnd()}… ${url}`
-          : blueskyBody;
+      let truncatedBody: string;
+
+      if (blueskyBody.length > BLUESKY_MAX_CHARS) {
+        const remainingLength = BLUESKY_MAX_CHARS - url.length - 2; // account for "… "
+
+        if (remainingLength <= 0) {
+          // URL alone fills (or exceeds) the character budget; share just the URL
+          truncatedBody = url;
+        } else {
+          truncatedBody = `${text.slice(0, remainingLength).trimEnd()}… ${url}`;
+        }
+      } else {
+        truncatedBody = blueskyBody;
+      }
+
       return `https://bsky.app/intent/compose?${new URLSearchParams({
         text: truncatedBody,
       }).toString()}`;

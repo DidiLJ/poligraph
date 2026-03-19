@@ -330,7 +330,7 @@ export default async function PoliticianPage({ params }: PageProps) {
             )}
             <div className="mt-4">
               <ShareButtons
-                url={`${SITE_URL}/politiques/${politician.slug}`}
+                url={`${SITE_URL}/politiques/${politician.slug || slug}`}
                 title={politician.fullName}
                 description={shareDescription}
               />

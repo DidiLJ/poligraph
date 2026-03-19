@@ -172,7 +172,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: scrutin.title,
     description,
-    alternates: { canonical: `/votes/${scrutin.slug || slug}` },
+    alternates: { canonical: `/votes/${scrutin.slug || scrutin.externalId}` },
     openGraph: {
       title: scrutin.title,
       description,
@@ -240,7 +240,7 @@ export default async function ScrutinPage({ params }: PageProps) {
           headline={scrutin.title}
           description={extractCitizenImpactFirstSentence(scrutin.citizenImpact)}
           datePublished={scrutin.votingDate.toISOString()}
-          url={`${SITE_URL}/votes/${scrutin.slug || slug}`}
+          url={`${SITE_URL}/votes/${scrutin.slug || scrutin.externalId}`}
         />
       )}
       <div className="container mx-auto px-4 py-8">
@@ -297,7 +297,7 @@ export default async function ScrutinPage({ params }: PageProps) {
 
           <div className="mt-4">
             <ShareButtons
-              url={`${SITE_URL}/votes/${scrutin.slug || slug}`}
+              url={`${SITE_URL}/votes/${scrutin.slug || scrutin.externalId}`}
               title={scrutin.title}
               description={shareDescription}
             />

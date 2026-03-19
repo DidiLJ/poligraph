@@ -1,9 +1,8 @@
 import { BskyAgent, RichText } from "@atproto/api";
 import { TwitterApi } from "twitter-api-v2";
+import { BLUESKY_MAX_CHARS } from "./constants";
 
 // --- Bluesky ---
-
-const BLUESKY_MAX_CHARS = 300;
 
 export function truncateForBluesky(content: string, link?: string): string {
   const linkSuffix = link ? `\n\n${link}` : "";

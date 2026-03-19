@@ -23,7 +23,7 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Extracts the first sentence of citizenImpact for use in share text and SEO descriptions.
- * Strips all markdown (not just bold) since the field is AI-generated and may contain links, italics, etc.
+ * Strips basic markdown formatting (links, bold, italics, underscores) since the field is AI-generated and may contain such markup.
  */
 function extractCitizenImpactFirstSentence(citizenImpact: string | null | undefined) {
   return (

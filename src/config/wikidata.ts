@@ -102,7 +102,7 @@ export const WD_POSITIONS = {
   // Party leadership (generic positions)
   PARTY_LEADER: "Q1553195", // dirigeant de parti politique
   PRESIDENT_GENERIC: "Q1255921", // président ou présidente
-  COORDINATOR: "Q20481199",
+  COORDINATEUR: "Q20481199",
   SECRETAIRE_GENERAL: "Q6501749",
   SECRETAIRE_NATIONAL: "Q88551455",
 

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { VotingResultBadge, VotePositionBadge } from "@/components/votes";
 import { DailyVotesPage } from "@/components/votes/DailyVotesPage";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
+import { ShareButtons } from "@/components/share/ShareButtons";
 import { formatDate } from "@/lib/utils";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
 import { ExternalLink, Calendar, Users, Sparkles, Lightbulb, FileText } from "lucide-react";
@@ -159,6 +160,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: scrutin.title,
     description,
     alternates: { canonical: `/votes/${scrutin.slug}` },
+    openGraph: {
+      title: scrutin.title,
+      description,
+      type: "article",
+    },
     ...(isThinContent && { robots: { index: false, follow: true } }),
   };
 }
@@ -201,6 +207,13 @@ export default async function ScrutinPage({ params }: PageProps) {
   const forPercent = total > 0 ? (scrutin.votesFor / total) * 100 : 0;
   const againstPercent = total > 0 ? (scrutin.votesAgainst / total) * 100 : 0;
   const abstainPercent = total > 0 ? (scrutin.votesAbstain / total) * 100 : 0;
+  const citizenImpactFirstSentence = scrutin.citizenImpact
+    ?.replace(/\*\*/g, "")
+    .split(/[.!?]\s/)[0];
+  const shareDescription =
+    (citizenImpactFirstSentence ? `${citizenImpactFirstSentence}.` : null) ||
+    scrutin.summary?.split("\n")[0] ||
+    `Scrutin ${scrutin.result === "ADOPTED" ? "adopté" : "rejeté"} : ${scrutin.votesFor} pour, ${scrutin.votesAgainst} contre et ${scrutin.votesAbstain} abstentions.`;
 
   return (
     <>
@@ -269,6 +282,14 @@ export default async function ScrutinPage({ params }: PageProps) {
                     : "Voir la source"}
               </a>
             )}
+          </div>
+
+          <div className="mt-4">
+            <ShareButtons
+              url={`${SITE_URL}/votes/${scrutin.slug}`}
+              title={scrutin.title}
+              description={shareDescription}
+            />
           </div>
         </div>
 

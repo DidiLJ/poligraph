@@ -5,6 +5,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ShareButtons } from "@/components/share/ShareButtons";
 import { formatDate } from "@/lib/utils";
 import { FACTCHECK_RATING_LABELS, FACTCHECK_RATING_COLORS } from "@/config/labels";
 import { BreadcrumbJsonLd, ClaimReviewJsonLd } from "@/components/seo/JsonLd";
@@ -87,6 +88,9 @@ export default async function FactCheckDetailPage({ params }: PageProps) {
 
   const ratingLabel = FACTCHECK_RATING_LABELS[factCheck.verdictRating];
   const ratingColor = FACTCHECK_RATING_COLORS[factCheck.verdictRating];
+  const shareDescription = factCheck.claimant
+    ? `${ratingLabel} — ${factCheck.claimant} : « ${factCheck.claimText.slice(0, 120)} »`
+    : `${ratingLabel} — « ${factCheck.claimText.slice(0, 140)} »`;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -131,6 +135,14 @@ export default async function FactCheckDetailPage({ params }: PageProps) {
       <p className="text-sm text-muted-foreground mb-6">
         Publié le {formatDate(factCheck.publishedAt)}
       </p>
+
+      <div className="mb-6">
+        <ShareButtons
+          url={`${SITE_URL}/factchecks/${factCheck.slug}`}
+          title={factCheck.title}
+          description={shareDescription}
+        />
+      </div>
 
       {/* Claim card */}
       <Card className="mb-6">

@@ -29,6 +29,7 @@ import { LinkedAffairBanner } from "@/components/affairs/LinkedAffairBanner";
 import { SentenceDetails } from "@/components/affairs/SentenceDetails";
 import { StatusTooltip } from "@/components/affairs/StatusTooltip";
 import { AffairTimeline } from "@/components/affairs/AffairTimeline";
+import { ShareButtons } from "@/components/share/ShareButtons";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { ArticleJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import type { AffairCategory, Involvement } from "@/types";
@@ -155,6 +156,7 @@ export default async function AffairDetailPage({ params }: PageProps) {
   const certainty = getCertaintyLevel(affair.status);
   const partyToShow = affair.partyAtTime || affair.politician.currentParty;
   const linked = affair.linkedAffair || affair.linkedBy?.[0];
+  const shareDescription = stripMarkdown(affair.description).slice(0, 140);
 
   return (
     <>
@@ -257,6 +259,14 @@ export default async function AffairDetailPage({ params }: PageProps) {
                   )}
               </p>
             )}
+          </div>
+
+          <div className="mt-4">
+            <ShareButtons
+              url={`${SITE_URL}/affaires/${affair.slug}`}
+              title={`${affair.title} — ${affair.politician.fullName}`}
+              description={shareDescription}
+            />
           </div>
         </div>
 

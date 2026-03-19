@@ -28,6 +28,7 @@ import { FactChecksTab } from "@/components/politicians/FactChecksTab";
 import { CareerTimeline } from "@/components/politicians/CareerTimeline";
 import { AffairsSection } from "@/components/politicians/AffairsSection";
 import { VotesSection } from "@/components/politicians/VotesSection";
+import { ShareButtons } from "@/components/share/ShareButtons";
 import { getPoliticianVotingStats, getPoliticianParliamentaryCard } from "@/services/voteStats";
 import { getPolitician } from "@/lib/data/politicians";
 import { FollowButton } from "@/components/politicians/FollowButton";
@@ -161,6 +162,9 @@ export default async function PoliticianPage({ params }: PageProps) {
   const isChamberPresident = politician.mandates.some(
     (m) => m.isCurrent && m.role != null && /^Président /.test(m.role)
   );
+  const shareDescription = currentMandate
+    ? `${MANDATE_TYPE_LABELS[currentMandate.type]}${politician.currentParty ? ` (${politician.currentParty.shortName})` : ""}`
+    : politician.currentParty?.name;
 
   // Get vote stats (for deputies and senators - both have votes tracked)
   const isParliamentarian =
@@ -326,6 +330,13 @@ export default async function PoliticianPage({ params }: PageProps) {
                 <CopyableId value={politician.publicId} />
               </div>
             )}
+            <div className="mt-4">
+              <ShareButtons
+                url={`${SITE_URL}/politiques/${politician.slug}`}
+                title={politician.fullName}
+                description={shareDescription}
+              />
+            </div>
           </div>
         </div>
 

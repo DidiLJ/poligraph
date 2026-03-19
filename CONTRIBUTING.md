@@ -2,6 +2,13 @@
 
 Merci de votre intérêt pour Poligraph ! Ce guide explique comment contribuer au projet.
 
+## Avant de commencer
+
+- **Vérifier les issues existantes** : quelqu'un travaille peut-être déjà sur le même sujet. Consultez les [issues ouvertes](https://github.com/ironlam/poligraph/issues) et les [PRs en cours](https://github.com/ironlam/poligraph/pulls).
+- **Nouvelle fonctionnalité** : ouvrez d'abord une [issue](https://github.com/ironlam/poligraph/issues/new?template=feature_request.md) pour en discuter. Cela évite de coder quelque chose qui ne sera pas mergé.
+- **Bug ou documentation** : vous pouvez soumettre une PR directement.
+- **Première contribution ?** Cherchez les issues avec le label [`good first issue`](https://github.com/ironlam/poligraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22). Elles sont conçues pour découvrir le projet sans pré-requis particulier.
+
 ## Démarrage rapide (< 5 minutes)
 
 ### Prérequis
@@ -60,18 +67,58 @@ Le fichier `.env.example` est organisé en 3 sections :
 
 Pour contribuer au frontend ou aux composants, seule la section **REQUIRED** est nécessaire.
 
-## Workflow
+## Workflow de contribution
 
-1. Créer une branche depuis `main` :
-   ```bash
-   git checkout -b feat/ma-fonctionnalite
-   ```
-2. Coder, tester, committer
-3. Vérifier que la CI passe :
-   ```bash
-   npm run lint && npm run typecheck && npm run test:run
-   ```
-4. Pousser et ouvrir une Pull Request
+Le projet utilise le modèle **Fork & Pull**, standard en open source. Vous n'avez pas besoin d'accès en écriture au repo principal.
+
+### 1. Forker et préparer
+
+```bash
+# Forker le repo sur GitHub (bouton "Fork" en haut à droite)
+# Puis cloner votre fork
+git clone https://github.com/<votre-username>/poligraph.git
+cd poligraph
+
+# Ajouter le repo principal comme remote "upstream"
+git remote add upstream https://github.com/ironlam/poligraph.git
+```
+
+### 2. Créer une branche
+
+```bash
+# Toujours partir de main à jour
+git fetch upstream
+git checkout -b feat/ma-fonctionnalite upstream/main
+```
+
+### 3. Coder et vérifier
+
+```bash
+# Le pre-commit hook lance lint + format automatiquement
+# Vérifier manuellement avant de pousser :
+npm run lint && npm run typecheck && npm run test:run
+```
+
+### 4. Pousser et ouvrir une PR
+
+```bash
+git push origin feat/ma-fonctionnalite
+```
+
+Ouvrez une Pull Request depuis votre fork vers `ironlam/poligraph:main`. Remplissez le template fourni.
+
+### 5. Review et merge
+
+Un maintainer reviewera votre PR. Soyez patient, le projet est maintenu bénévolement. Vous pouvez recevoir des demandes de modifications : c'est normal et constructif. Une fois approuvée, votre PR sera mergée (squash merge).
+
+## Guidelines pour les Pull Requests
+
+- **Une PR = un sujet.** Ne mélangez pas un bug fix et une feature dans la même PR.
+- **Taille raisonnable** : visez moins de 400 lignes modifiées. Au-delà, découpez en plusieurs PRs.
+- **Liez à une issue** : utilisez `Closes #123` dans la description pour lier automatiquement.
+- **Décrivez le pourquoi**, pas seulement le quoi. Le diff montre ce qui change, la description explique pourquoi.
+- **Tests** : toute nouvelle fonctionnalité (service, data function, utilitaire) doit inclure des tests.
+- **CI verte** : les 4 jobs (lint, typecheck, format-check, unit-tests) doivent passer avant review.
 
 ## Conventions de commits
 
@@ -223,6 +270,10 @@ Ouvrir une [issue](https://github.com/ironlam/poligraph/issues/new?template=feat
 - Le besoin citoyen
 - La solution proposée
 - Les alternatives envisagées
+
+## Questions ?
+
+Ouvrez une [Discussion](https://github.com/ironlam/poligraph/discussions) sur GitHub pour toute question sur le projet, l'architecture, ou comment aborder une contribution. Les issues sont réservées aux bugs et demandes de fonctionnalités.
 
 ## Principes importants
 

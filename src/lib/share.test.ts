@@ -59,7 +59,7 @@ describe("getShareUrl", () => {
   it("should generate the X intent URL", () => {
     const shareUrl = new URL(getShareUrl("x", url, text));
 
-    expect(`${shareUrl.origin}${shareUrl.pathname}`).toBe("https://x.com/intent/post");
+    expect(`${shareUrl.origin}${shareUrl.pathname}`).toBe("https://twitter.com/intent/tweet");
     expect(shareUrl.searchParams.get("text")).toBe(text);
     expect(shareUrl.searchParams.get("url")).toBe(url);
   });

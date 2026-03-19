@@ -146,7 +146,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Prefer citizen impact for SEO description (more user-friendly)
   const citizenImpactFirstSentence = scrutin.citizenImpact
     ?.replace(/\*\*/g, "")
-    .split(/[.!?]\s/)[0]
+    ?.split(/[.!?]\s/)?.[0]
     ?.replace(/[.!?]+$/, "");
   const summaryFirstLine = scrutin.summary?.split("\n")[0];
   const description =
@@ -210,7 +210,7 @@ export default async function ScrutinPage({ params }: PageProps) {
   const abstainPercent = total > 0 ? (scrutin.votesAbstain / total) * 100 : 0;
   const citizenImpactFirstSentence = scrutin.citizenImpact
     ?.replace(/\*\*/g, "")
-    .split(/[.!?]\s/)[0]
+    ?.split(/[.!?]\s/)?.[0]
     ?.replace(/[.!?]+$/, "");
   const shareDescription =
     (citizenImpactFirstSentence ? `${citizenImpactFirstSentence}.` : null) ||

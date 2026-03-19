@@ -160,7 +160,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: scrutin.title,
     description,
-    alternates: { canonical: `/votes/${scrutin.slug}` },
+    alternates: { canonical: `/votes/${scrutin.slug || slug}` },
     openGraph: {
       title: scrutin.title,
       description,

@@ -285,6 +285,12 @@ const CATEGORY_DEFAULT_SEVERITY: Record<AffairCategory, AffairSeverity> = {
   AUTRE: "SIGNIFICATIF",
 };
 
+export const AFFAIR_SEVERITY_LABELS: Record<AffairSeverity, string> = {
+  CRITIQUE: "Critique",
+  GRAVE: "Grave",
+  SIGNIFICATIF: "Significatif",
+};
+
 // Categories inherently related to mandate (isRelatedToMandate forced true)
 const INHERENTLY_MANDATE_CATEGORIES: Set<AffairCategory> = new Set([
   "CORRUPTION",

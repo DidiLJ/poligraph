@@ -12,6 +12,7 @@ import {
   DOSSIER_STATUS_COLORS,
   DOSSIER_STATUS_ICONS,
   DOSSIER_STATUS_DESCRIPTIONS,
+  AFFAIR_SEVERITY_LABELS,
 } from "./labels";
 
 describe("AFFAIR_STATUS_LABELS", () => {
@@ -201,5 +202,47 @@ describe("DOSSIER_STATUS_LABELS", () => {
     expect(DOSSIER_STATUS_LABELS.EN_COMMISSION).toBe("En commission");
     expect(DOSSIER_STATUS_LABELS.CONSEIL_CONSTITUTIONNEL).toBe("Conseil constitutionnel");
     expect(DOSSIER_STATUS_LABELS.CADUQUE).toBe("Caduc");
+  });
+});
+
+describe("AFFAIR_SEVERITY_LABELS", () => {
+  it("should have labels for all 3 severity levels", () => {
+    const severities = ["CRITIQUE", "GRAVE", "SIGNIFICATIF"];
+
+    severities.forEach((severity) => {
+      expect(AFFAIR_SEVERITY_LABELS).toHaveProperty(severity);
+      expect(typeof AFFAIR_SEVERITY_LABELS[severity as keyof typeof AFFAIR_SEVERITY_LABELS]).toBe(
+        "string"
+      );
+    });
+
+    expect(Object.keys(AFFAIR_SEVERITY_LABELS)).toHaveLength(3);
+  });
+
+  it("should have human-readable French labels", () => {
+    expect(AFFAIR_SEVERITY_LABELS.CRITIQUE).toBe("Critique");
+    expect(AFFAIR_SEVERITY_LABELS.GRAVE).toBe("Grave");
+    expect(AFFAIR_SEVERITY_LABELS.SIGNIFICATIF).toBe("Significatif");
+  });
+});
+
+describe("Label quality", () => {
+  it("should not have any SCREAMING_SNAKE_CASE values (untranslated keys)", () => {
+    const allLabelMaps = [
+      AFFAIR_STATUS_LABELS,
+      AFFAIR_CATEGORY_LABELS,
+      MANDATE_TYPE_LABELS,
+      AFFAIR_EVENT_TYPE_LABELS,
+      DOSSIER_STATUS_LABELS,
+      AFFAIR_SEVERITY_LABELS,
+    ];
+
+    allLabelMaps.forEach((labelMap) => {
+      Object.entries(labelMap).forEach(([key, value]) => {
+        expect(value, `Label for "${key}" looks like an untranslated key`).not.toMatch(
+          /^[A-Z][A-Z_]+$/
+        );
+      });
+    });
   });
 });

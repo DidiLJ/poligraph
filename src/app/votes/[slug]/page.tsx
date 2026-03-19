@@ -9,7 +9,7 @@ import { VotingResultBadge, VotePositionBadge } from "@/components/votes";
 import { DailyVotesPage } from "@/components/votes/DailyVotesPage";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { ShareButtons } from "@/components/share/ShareButtons";
-import { formatDate } from "@/lib/utils";
+import { formatDate, stripMarkdown } from "@/lib/utils";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
 import { ExternalLink, Calendar, Users, Sparkles, Lightbulb, FileText } from "lucide-react";
 import { StatusBadge } from "@/components/legislation";
@@ -20,6 +20,18 @@ import { SITE_URL } from "@/config/site";
 
 // Matches bare YYYY-MM-DD (never collides with scrutin slugs which are YYYY-MM-DD-title)
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Extracts the first sentence of citizenImpact for use in share text and SEO descriptions.
+ * Strips all markdown (not just bold) since the field is AI-generated and may contain links, italics, etc.
+ */
+function extractCitizenImpactFirstSentence(citizenImpact: string | null | undefined) {
+  return (
+    stripMarkdown(citizenImpact ?? "")
+      .split(/[.!?]\s/)?.[0]
+      ?.replace(/[.!?]+$/, "") || undefined
+  );
+}
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -144,10 +156,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   // Prefer citizen impact for SEO description (more user-friendly)
-  const citizenImpactFirstSentence = scrutin.citizenImpact
-    ?.replace(/\*\*/g, "")
-    ?.split(/[.!?]\s/)?.[0]
-    ?.replace(/[.!?]+$/, "");
+  const citizenImpactFirstSentence = extractCitizenImpactFirstSentence(scrutin.citizenImpact);
   const summaryFirstLine = scrutin.summary?.split("\n")[0];
   const description =
     (citizenImpactFirstSentence ? citizenImpactFirstSentence + "." : null) ||
@@ -208,10 +217,7 @@ export default async function ScrutinPage({ params }: PageProps) {
   const forPercent = total > 0 ? (scrutin.votesFor / total) * 100 : 0;
   const againstPercent = total > 0 ? (scrutin.votesAgainst / total) * 100 : 0;
   const abstainPercent = total > 0 ? (scrutin.votesAbstain / total) * 100 : 0;
-  const citizenImpactFirstSentence = scrutin.citizenImpact
-    ?.replace(/\*\*/g, "")
-    ?.split(/[.!?]\s/)?.[0]
-    ?.replace(/[.!?]+$/, "");
+  const citizenImpactFirstSentence = extractCitizenImpactFirstSentence(scrutin.citizenImpact);
   const shareDescription =
     (citizenImpactFirstSentence ? `${citizenImpactFirstSentence}.` : null) ||
     scrutin.summary?.split("\n")[0] ||
@@ -229,7 +235,7 @@ export default async function ScrutinPage({ params }: PageProps) {
       {scrutin.summary && (
         <ArticleJsonLd
           headline={scrutin.title}
-          description={scrutin.citizenImpact?.replace(/\*\*/g, "").split(/[.!?]\s/)[0] || undefined}
+          description={extractCitizenImpactFirstSentence(scrutin.citizenImpact)}
           datePublished={scrutin.votingDate.toISOString()}
           url={`${SITE_URL}/votes/${scrutin.slug}`}
         />

@@ -85,7 +85,9 @@ export function ShareButtons({ url, title, description }: ShareButtonsProps) {
         setCopied(false);
         timeoutRef.current = null;
       }, 2000);
-    } catch {
+    } catch (error) {
+      console.error("[ShareButtons] Clipboard write failed:", error);
+
       if (timeoutRef.current !== null) {
         window.clearTimeout(timeoutRef.current);
         timeoutRef.current = null;

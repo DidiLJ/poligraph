@@ -1,0 +1,55 @@
+import { stripMarkdown } from "./utils";
+
+export type SharePlatform = "x" | "bluesky" | "facebook" | "whatsapp";
+
+const SHARE_TEXT_LIMIT = 250;
+const SHARE_SUFFIX = " sur Poligraph";
+const TRUNCATED_SHARE_SUFFIX = `…${SHARE_SUFFIX}`;
+
+function normalizeShareSegment(value: string) {
+  return stripMarkdown(value).replace(/\s+/g, " ").trim();
+}
+
+function truncateShareBase(baseText: string) {
+  const maxBaseLength = SHARE_TEXT_LIMIT - TRUNCATED_SHARE_SUFFIX.length;
+  const shortened = baseText.slice(0, maxBaseLength).trim();
+  const lastWordBoundary = shortened.lastIndexOf(" ");
+
+  if (lastWordBoundary > Math.floor(maxBaseLength * 0.6)) {
+    return shortened.slice(0, lastWordBoundary).trim();
+  }
+
+  return shortened;
+}
+
+export function getShareText(title: string, description?: string) {
+  const normalizedTitle = normalizeShareSegment(title);
+  const normalizedDescription = description ? normalizeShareSegment(description) : "";
+  const baseText = normalizedDescription
+    ? `${normalizedTitle} — ${normalizedDescription}`
+    : normalizedTitle;
+  const fullText = `${baseText}${SHARE_SUFFIX}`;
+
+  if (fullText.length <= SHARE_TEXT_LIMIT) {
+    return fullText;
+  }
+
+  return `${truncateShareBase(baseText)}${TRUNCATED_SHARE_SUFFIX}`;
+}
+
+export function getShareUrl(platform: SharePlatform, url: string, text: string) {
+  switch (platform) {
+    case "x":
+      return `https://x.com/intent/post?${new URLSearchParams({ text, url }).toString()}`;
+    case "bluesky":
+      return `https://bsky.app/intent/compose?${new URLSearchParams({
+        text: `${text} ${url}`,
+      }).toString()}`;
+    case "facebook":
+      return `https://www.facebook.com/sharer/sharer.php?${new URLSearchParams({
+        u: url,
+      }).toString()}`;
+    case "whatsapp":
+      return `https://wa.me/?${new URLSearchParams({ text: `${text} ${url}` }).toString()}`;
+  }
+}

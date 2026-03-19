@@ -41,7 +41,7 @@ export function getShareText(title: string, description?: string) {
 export function getShareUrl(platform: SharePlatform, url: string, text: string) {
   switch (platform) {
     case "x":
-      return `https://x.com/intent/post?${new URLSearchParams({ text, url }).toString()}`;
+      return `https://twitter.com/intent/tweet?${new URLSearchParams({ text, url }).toString()}`;
     case "bluesky": {
       const blueskyBody = `${text} ${url}`;
       let truncatedBody: string;

@@ -38,10 +38,13 @@ export const revalidate = 3600; // ISR: revalidate every hour
 export async function generateStaticParams() {
   const scrutins = await db.scrutin.findMany({
     select: { slug: true },
+    where: { slug: { not: null } },
     orderBy: { votingDate: "desc" },
     take: 50,
   });
-  return scrutins.map((s) => ({ slug: s.slug }));
+  return scrutins
+    .filter((s): s is typeof s & { slug: string } => s.slug !== null)
+    .map((s) => ({ slug: s.slug }));
 }
 
 interface PageProps {

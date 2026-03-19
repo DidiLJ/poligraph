@@ -50,11 +50,11 @@ export function getShareUrl(platform: SharePlatform, url: string, text: string) 
         const remainingLength = BLUESKY_MAX_CHARS - url.length - 2; // account for "… "
 
         if (remainingLength <= 0) {
-          // URL alone fills (or exceeds) the character budget; share just the URL
-          truncatedBody = url;
-        } else {
-          truncatedBody = `${text.slice(0, remainingLength).trimEnd()}… ${url}`;
+          // URL alone exceeds the character budget; open compose without prefill
+          // so Bluesky doesn't reject or truncate the intent URL silently
+          return "https://bsky.app/intent/compose";
         }
+        truncatedBody = `${text.slice(0, remainingLength).trimEnd()}… ${url}`;
       } else {
         truncatedBody = blueskyBody;
       }

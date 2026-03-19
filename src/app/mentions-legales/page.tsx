@@ -24,7 +24,7 @@ export default function MentionsLegalesPage() {
               contact@poligraph.fr
             </a>
             <br />
-            <strong>Directeur de la publication :</strong> Lamine Diaby, Président
+            <strong>Directeur de la publication :</strong> Lamine Diaby
           </p>
         </section>
 
@@ -86,7 +86,7 @@ export default function MentionsLegalesPage() {
               >
                 gouvernement.fr
               </a>
-              ) — données ministérielles
+              ) : données ministérielles
             </li>
             <li>
               Parlement européen (
@@ -98,7 +98,7 @@ export default function MentionsLegalesPage() {
               >
                 europarl.europa.eu
               </a>
-              ) — mandats européens
+              ) : mandats européens
             </li>
             <li>
               Haute Autorité pour la Transparence de la Vie Publique (
@@ -122,7 +122,7 @@ export default function MentionsLegalesPage() {
               >
                 wikidata.org
               </a>
-              ) — données biographiques, photos, identifiants
+              ) : données biographiques, photos, identifiants
             </li>
             <li>
               NosDéputés / NosSénateurs (
@@ -143,7 +143,7 @@ export default function MentionsLegalesPage() {
               >
                 nossenateurs.fr
               </a>
-              ) — activité parlementaire
+              ) : activité parlementaire
             </li>
             <li>
               Répertoire National des Élus (
@@ -155,7 +155,7 @@ export default function MentionsLegalesPage() {
               >
                 data.gouv.fr
               </a>
-              ) — maires et élus locaux
+              ) : maires et élus locaux
             </li>
             <li>
               Judilibre (
@@ -167,9 +167,9 @@ export default function MentionsLegalesPage() {
               >
                 courdecassation.fr
               </a>
-              ) — décisions de justice publiées
+              ) : décisions de justice publiées
             </li>
-            <li>Google Fact Check Tools API — vérification des faits (fact-checking)</li>
+            <li>Google Fact Check Tools API : vérification des faits (fact-checking)</li>
             <li>Articles de presse (sources citées pour chaque information)</li>
           </ul>
         </section>

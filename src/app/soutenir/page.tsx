@@ -45,7 +45,7 @@ const FEATURES_FUNDED = [
 const DONATION_PLATFORMS = [
   {
     name: "Tipeee",
-    url: "https://fr.tipeee.com/transparence-politique",
+    url: "https://fr.tipeee.com/poligraph",
     description: "Soutien récurrent ou ponctuel",
     primary: true,
   },

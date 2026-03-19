@@ -4,14 +4,14 @@ import { MobileMenu } from "./MobileMenu";
 import { NavDropdown } from "./NavDropdown";
 import { NavIconBar } from "./NavIconBar";
 import { NAV_GROUPS, NAV_TOP_LEVEL, NAV_TOOLS } from "@/config/navigation";
-import { CalendarDays, BarChart3, ShieldCheck } from "lucide-react";
+import { CalendarDays, BarChart3, Heart } from "lucide-react";
 import { getEnabledFlags } from "@/lib/feature-flags";
 import type { LucideIcon } from "lucide-react";
 
 const TOP_LEVEL_ICONS: Record<string, LucideIcon> = {
   calendarDays: CalendarDays,
   barChart: BarChart3,
-  shieldCheck: ShieldCheck,
+  heart: Heart,
 };
 
 export async function Header() {
@@ -63,7 +63,11 @@ export async function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-foreground hover:text-primary rounded-lg hover:bg-muted/50 transition-colors"
+                  className={
+                    item.highlight
+                      ? "flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
+                      : "flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-foreground hover:text-primary rounded-lg hover:bg-muted/50 transition-colors"
+                  }
                 >
                   {Icon && <Icon className="h-4 w-4" />}
                   {item.label}

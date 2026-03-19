@@ -21,6 +21,7 @@ import {
   Vote,
   Landmark,
   Search,
+  Heart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   vote: Vote,
   landmark: Landmark,
   arrowLeftRight: ArrowLeftRight,
+  heart: Heart,
 };
 
 /** Tricolor owl icon — Poligraph brand for Mon Observatoire */
@@ -254,7 +256,9 @@ export function MobileMenu({ enabledFlags = [] }: MobileMenuProps) {
                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium rounded-lg transition-colors ${
                       isActive
                         ? "bg-primary text-primary-foreground"
-                        : "border border-border hover:bg-muted/50"
+                        : item.highlight
+                          ? "border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+                          : "border border-border hover:bg-muted/50"
                     }`}
                     aria-current={isActive ? "page" : undefined}
                   >

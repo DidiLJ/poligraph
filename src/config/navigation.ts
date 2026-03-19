@@ -1,5 +1,5 @@
 // Navigation configuration
-// 4 top-level links + 2 thematic dropdowns + icon tool rail
+// 3 top-level links + 2 thematic dropdowns + icon tool rail
 
 export interface NavItem {
   href: string;
@@ -8,6 +8,8 @@ export interface NavItem {
   description?: string;
   /** If set, this item is only shown when the named feature flag is enabled */
   featureFlag?: string;
+  /** If true, render with a highlighted/accent style */
+  highlight?: boolean;
 }
 
 export interface NavGroup {
@@ -31,10 +33,11 @@ export const NAV_TOP_LEVEL: NavItem[] = [
     featureFlag: "STATISTIQUES_SECTION",
   },
   {
-    href: "/factchecks",
-    label: "Fact-checks",
-    icon: "shieldCheck",
-    description: "Vérification des déclarations politiques",
+    href: "/soutenir",
+    label: "Nous soutenir",
+    icon: "heart",
+    description: "Soutenez le projet Poligraph",
+    highlight: true,
   },
 ];
 
@@ -60,12 +63,6 @@ export const NAV_GROUPS: NavGroup[] = [
         description: "Dossiers judiciaires documentés avec sources",
       },
       {
-        href: "/elections",
-        label: "Calendrier électoral",
-        icon: "calendar",
-        description: "Toutes les élections à venir et passées",
-      },
-      {
         href: "/elections/municipales-2026",
         label: "Municipales 2026",
         icon: "vote",
@@ -78,13 +75,6 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "mapPin",
         description: "Trouvez votre député par code postal",
         featureFlag: "MON_DEPUTE_SECTION",
-      },
-      {
-        href: "/comparer",
-        label: "Comparer",
-        icon: "arrowLeftRight",
-        description: "Comparez des représentants, partis ou groupes",
-        featureFlag: "COMPARISON_TOOL",
       },
     ],
   },
@@ -115,6 +105,13 @@ export const NAV_GROUPS: NavGroup[] = [
 
 // Icon-only tool buttons in the header utility rail
 export const NAV_TOOLS: NavItem[] = [
+  {
+    href: "/comparer",
+    label: "Comparer",
+    icon: "arrowLeftRight",
+    description: "Comparez des représentants, partis ou groupes",
+    featureFlag: "COMPARISON_TOOL",
+  },
   {
     href: "/mon-observatoire",
     label: "Mon Observatoire",
@@ -166,6 +163,7 @@ export const FOOTER_SECTIONS: FooterSection[] = [
       },
       { href: "/mon-depute", label: "Mon député", featureFlag: "MON_DEPUTE_SECTION" },
       { href: "/comparer", label: "Comparer", featureFlag: "COMPARISON_TOOL" },
+      { href: "/factchecks", label: "Fact-checks" },
     ],
   },
   {
@@ -174,7 +172,6 @@ export const FOOTER_SECTIONS: FooterSection[] = [
       { href: "/votes", label: "Votes parlementaires" },
       { href: "/assemblee", label: "Dossiers législatifs", featureFlag: "ASSEMBLEE_SECTION" },
       { href: "/declarations-et-patrimoine", label: "Patrimoine & déclarations" },
-      { href: "/factchecks", label: "Fact-checks" },
       { href: "/statistiques", label: "Statistiques", featureFlag: "STATISTIQUES_SECTION" },
     ],
   },

@@ -74,10 +74,9 @@ describe("ShareButtons", () => {
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(url);
+      expect(toast.success).toHaveBeenCalledWith("Lien copié !");
+      expect(screen.getByRole("button", { name: /lien copié/i })).toBeInTheDocument();
     });
-
-    expect(toast.success).toHaveBeenCalledWith("Lien copié !");
-    expect(screen.getByRole("button", { name: /lien copié/i })).toBeInTheDocument();
   });
 
   it("should handle clipboard failures gracefully", async () => {

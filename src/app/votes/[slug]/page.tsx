@@ -29,7 +29,8 @@ function extractCitizenImpactFirstSentence(citizenImpact: string | null | undefi
   return (
     stripMarkdown(citizenImpact ?? "")
       .split(/[.!?]\s/)?.[0]
-      ?.replace(/[.!?]+$/, "") || undefined
+      ?.replace(/[.!?]+$/, "")
+      ?.trim() || undefined
   );
 }
 

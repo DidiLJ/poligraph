@@ -69,5 +69,9 @@ export function getShareUrl(platform: SharePlatform, url: string, text: string) 
       }).toString()}`;
     case "whatsapp":
       return `https://wa.me/?${new URLSearchParams({ text: `${text} ${url}` }).toString()}`;
+    default: {
+      const _exhaustiveCheck: never = platform;
+      throw new Error(`Unsupported share platform: ${String(_exhaustiveCheck)}`);
+    }
   }
 }

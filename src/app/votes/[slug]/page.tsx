@@ -237,7 +237,7 @@ export default async function ScrutinPage({ params }: PageProps) {
           headline={scrutin.title}
           description={extractCitizenImpactFirstSentence(scrutin.citizenImpact)}
           datePublished={scrutin.votingDate.toISOString()}
-          url={`${SITE_URL}/votes/${scrutin.slug}`}
+          url={`${SITE_URL}/votes/${scrutin.slug || slug}`}
         />
       )}
       <div className="container mx-auto px-4 py-8">

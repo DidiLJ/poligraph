@@ -1,9 +1,9 @@
+import { BLUESKY_MAX_CHARS } from "./social/constants";
 import { stripMarkdown } from "./utils";
 
 export type SharePlatform = "x" | "bluesky" | "facebook" | "whatsapp";
 
 const SHARE_TEXT_LIMIT = 250;
-const BLUESKY_MAX_CHARS = 300;
 const SHARE_SUFFIX = " sur Poligraph";
 const TRUNCATED_SHARE_SUFFIX = `…${SHARE_SUFFIX}`;
 

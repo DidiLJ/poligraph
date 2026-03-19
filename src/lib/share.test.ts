@@ -41,6 +41,18 @@ describe("getShareText", () => {
     expect(politicianText).not.toBe(factCheckText);
   });
 
+  it("should strip markdown syntax from title and description", () => {
+    expect(getShareText("**Jean Dupont**", "[Député](https://example.com) du _Rhône_")).toBe(
+      "Jean Dupont — Député du Rhône sur Poligraph"
+    );
+  });
+
+  it("should collapse multiple spaces into one after markdown removal", () => {
+    expect(getShareText("Jean  Dupont", "Élu   à  Paris")).toBe(
+      "Jean Dupont — Élu à Paris sur Poligraph"
+    );
+  });
+
   it("should not inject non-neutral wording into affair share text", () => {
     const shareText = getShareText(
       "Affaire des emplois fictifs",
@@ -98,12 +110,12 @@ describe("getShareUrl", () => {
     expect(blueskyText).toContain("…");
   });
 
-  it("should handle very long URLs for Bluesky by falling back to URL only", () => {
+  it("should open Bluesky compose without prefill when URL alone exceeds 300 characters", () => {
     const longUrl = "https://poligraph.fr/" + "a".repeat(300);
     const shareUrl = new URL(getShareUrl("bluesky", longUrl, "Some text"));
-    const blueskyText = shareUrl.searchParams.get("text")!;
 
-    expect(blueskyText).toBe(longUrl);
+    expect(`${shareUrl.origin}${shareUrl.pathname}`).toBe("https://bsky.app/intent/compose");
+    expect(shareUrl.searchParams.get("text")).toBeNull();
   });
 
   it("should encode special characters safely in share URLs", () => {

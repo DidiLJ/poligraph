@@ -28,16 +28,18 @@ export interface RenderInput {
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://poligraph.fr";
 const DEFAULT_PHOTO = `${SITE_URL}/images/placeholder-politician.png`;
 
-const SEVERITY_COLORS: Record<string, string> = {
-  CRITIQUE: "#dc2626",
-  GRAVE: "#d97706",
-  SIGNIFICATIF: "#ca8a04",
+const CERTAINTY_EMAIL_COLORS: Record<string, string> = {
+  ETABLI: "#b91c1c",
+  PRONONCE: "#c2410c",
+  EN_COURS: "#b45309",
+  CLOS_FAVORABLE: "#6b7280",
 };
 
-const SEVERITY_LABELS: Record<string, string> = {
-  CRITIQUE: "Critique",
-  GRAVE: "Grave",
-  SIGNIFICATIF: "Significatif",
+const CERTAINTY_EMAIL_LABELS: Record<string, string> = {
+  ETABLI: "Condamnation definitive",
+  PRONONCE: "Condamnation non definitive",
+  EN_COURS: "Procedure en cours",
+  CLOS_FAVORABLE: "Procedure close",
 };
 
 // ---------------------------------------------------------------------------
@@ -132,8 +134,8 @@ function buildAffairsHtml(recap: WeeklyRecapData): string {
 
   const rows = top5
     .map((a) => {
-      const color = SEVERITY_COLORS[a.severity] ?? "#6b7280";
-      const label = SEVERITY_LABELS[a.severity] ?? a.severity;
+      const color = CERTAINTY_EMAIL_COLORS[a.certaintyLevel] ?? "#6b7280";
+      const label = CERTAINTY_EMAIL_LABELS[a.certaintyLevel] ?? a.certaintyLevel;
       const title = escapeHtml(a.title);
       const politician = escapeHtml(a.politicianName);
       const affairUrl = `${SITE_URL}/affaires/${a.slug}`;
@@ -267,7 +269,7 @@ function buildPlainText(input: RenderInput): string {
   if (recap.affairs.newAffairs.length > 0) {
     lines.push("--- AFFAIRES JUDICIAIRES ---");
     for (const a of recap.affairs.newAffairs.slice(0, 5)) {
-      const label = SEVERITY_LABELS[a.severity] ?? a.severity;
+      const label = CERTAINTY_EMAIL_LABELS[a.certaintyLevel] ?? a.certaintyLevel;
       lines.push(`[${label}] ${a.title}`);
       lines.push(`  Impliquant ${a.politicianName}`);
       lines.push(`  ${SITE_URL}/affaires/${a.slug}`);

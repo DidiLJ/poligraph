@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useId } from "react";
 import { useRouter } from "next/navigation";
 import { scaleLinear } from "d3-scale";
 import { computeHemicycleLayout } from "./hemicycle-layout";
+import { CERTAINTY_LABELS } from "@/config/certainty";
 import type { HemicycleGroup, HemicycleDeputy } from "@/lib/data/hemicycle";
 
 interface HemicycleProps {
@@ -29,7 +30,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [highlightGroup, setHighlightGroup] = useState<string | null>(null);
 
-  const { seats, deputyMap, totalMisEnCause, totalProbity, totalDeputies } = useMemo(() => {
+  const { seats, deputyMap, totalMisEnCause, totalCondamnes, totalDeputies } = useMemo(() => {
     const activeGroups = groups.filter((g) => g.deputies.length > 0);
     const groupInputs = activeGroups.map((g) => ({
       code: g.code,
@@ -79,14 +80,16 @@ export function Hemicycle({ groups }: HemicycleProps) {
 
     const total = seatPositions.length;
     const deputies = [...dMap.values()];
-    const misEnCause = deputies.filter((d) => d.deputy.severityScore > 0).length;
-    const probity = deputies.filter((d) => d.deputy.hasProbity).length;
+    const misEnCause = deputies.filter((d) => d.deputy.activeAffairCount > 0).length;
+    const condamnes = deputies.filter(
+      (d) => d.deputy.maxCertaintyLevel === "ETABLI" || d.deputy.maxCertaintyLevel === "PRONONCE"
+    ).length;
 
     return {
       seats: seatPositions,
       deputyMap: dMap,
       totalMisEnCause: misEnCause,
-      totalProbity: probity,
+      totalCondamnes: condamnes,
       totalDeputies: total,
     };
   }, [groups]);
@@ -145,11 +148,20 @@ export function Hemicycle({ groups }: HemicycleProps) {
           const r = radiusScale(score);
           const isHighlighted = !highlightGroup || seat.groupCode === highlightGroup;
           const hasIssue = score > 0;
+          const maxLevel = deputy?.maxCertaintyLevel;
 
-          // Probity = group color + thick black stroke. Other affair = group color + thin gray stroke.
+          // ETABLI = thick red stroke, PRONONCE = medium orange stroke, EN_COURS = thin gray stroke
           const fill = seat.groupColor;
-          const stroke = deputy?.hasProbity ? "#000000" : hasIssue ? "rgba(0,0,0,0.3)" : "none";
-          const strokeWidth = deputy?.hasProbity ? 2 : hasIssue ? 0.8 : 0;
+          const stroke =
+            maxLevel === "ETABLI"
+              ? "#991b1b"
+              : maxLevel === "PRONONCE"
+                ? "#c2410c"
+                : hasIssue
+                  ? "rgba(0,0,0,0.3)"
+                  : "none";
+          const strokeWidth =
+            maxLevel === "ETABLI" ? 2 : maxLevel === "PRONONCE" ? 1.5 : hasIssue ? 0.8 : 0;
 
           return (
             <circle
@@ -186,17 +198,24 @@ export function Hemicycle({ groups }: HemicycleProps) {
           <div className="text-muted-foreground">
             {tooltip.groupName} ({tooltip.groupCode})
           </div>
-          {tooltip.deputy.hasProbity && <div className="font-medium">Atteinte à la probité</div>}
-          {tooltip.deputy.hasCondamnation && <div className="font-medium">Condamné</div>}
-          {tooltip.deputy.hasMiseEnExamen && !tooltip.deputy.hasCondamnation && (
-            <div className="text-amber-600 dark:text-amber-400 font-medium">Mis en examen</div>
+          {tooltip.deputy.maxCertaintyLevel && (
+            <div
+              className={
+                tooltip.deputy.maxCertaintyLevel === "ETABLI"
+                  ? "font-medium text-red-600 dark:text-red-400"
+                  : tooltip.deputy.maxCertaintyLevel === "PRONONCE"
+                    ? "font-medium text-orange-600 dark:text-orange-400"
+                    : "font-medium text-amber-600 dark:text-amber-400"
+              }
+            >
+              {CERTAINTY_LABELS[tooltip.deputy.maxCertaintyLevel]}
+            </div>
           )}
-          {tooltip.deputy.severityScore > 0 &&
-            !tooltip.deputy.hasProbity &&
-            !tooltip.deputy.hasCondamnation &&
-            !tooltip.deputy.hasMiseEnExamen && (
-              <div className="text-muted-foreground font-medium">Affaire en cours</div>
-            )}
+          {tooltip.deputy.activeAffairCount > 1 && (
+            <div className="text-xs text-muted-foreground">
+              {tooltip.deputy.activeAffairCount} affaires actives
+            </div>
+          )}
         </div>
       )}
 
@@ -204,19 +223,25 @@ export function Hemicycle({ groups }: HemicycleProps) {
       <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-3 text-xs">
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <span className="font-medium text-foreground">Taille =</span>
-          <span>gravité</span>
+          <span>certitude judiciaire</span>
         </div>
         <div className="flex items-center gap-1.5">
           <svg width="14" height="14">
-            <circle cx="7" cy="7" r="5" fill="#9ca3af" stroke="#000000" strokeWidth="2" />
+            <circle cx="7" cy="7" r="5" fill="#9ca3af" stroke="#991b1b" strokeWidth="2" />
           </svg>
-          <span className="font-medium">Atteinte à la probité</span>
+          <span className="font-medium">Condamnation définitive</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <svg width="14" height="14">
+            <circle cx="7" cy="7" r="5" fill="#9ca3af" stroke="#c2410c" strokeWidth="1.5" />
+          </svg>
+          <span className="text-muted-foreground font-medium">Condamnation non définitive</span>
         </div>
         <div className="flex items-center gap-1.5">
           <svg width="14" height="14">
             <circle cx="7" cy="7" r="5" fill="#9ca3af" stroke="rgba(0,0,0,0.4)" strokeWidth="1.5" />
           </svg>
-          <span className="text-muted-foreground font-medium">Autre affaire judiciaire</span>
+          <span className="text-muted-foreground font-medium">Procédure en cours</span>
         </div>
       </div>
 
@@ -244,10 +269,11 @@ export function Hemicycle({ groups }: HemicycleProps) {
         <span className="font-semibold text-amber-600 dark:text-amber-400">{totalMisEnCause}</span>{" "}
         député{totalMisEnCause !== 1 ? "s" : ""} mis en cause dans au moins une affaire judiciaire
         sur <span className="font-semibold">{totalDeputies}</span>
-        {totalProbity > 0 && (
+        {totalCondamnes > 0 && (
           <>
             {" "}
-            dont <span className="font-semibold">{totalProbity}</span> pour atteinte à la probité
+            dont <span className="font-semibold">{totalCondamnes}</span> condamné
+            {totalCondamnes !== 1 ? "s" : ""}
           </>
         )}
       </p>
@@ -260,7 +286,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
             <th>Groupe</th>
             <th>Députés</th>
             <th>Mis en cause</th>
-            <th>Atteinte à la probité</th>
+            <th>Condamnés</th>
           </tr>
         </thead>
         <tbody>
@@ -268,8 +294,14 @@ export function Hemicycle({ groups }: HemicycleProps) {
             <tr key={g.code}>
               <td>{g.shortName || g.name}</td>
               <td>{g.deputies.length}</td>
-              <td>{g.deputies.filter((d) => d.severityScore > 0).length}</td>
-              <td>{g.deputies.filter((d) => d.hasProbity).length}</td>
+              <td>{g.deputies.filter((d) => d.activeAffairCount > 0).length}</td>
+              <td>
+                {
+                  g.deputies.filter(
+                    (d) => d.maxCertaintyLevel === "ETABLI" || d.maxCertaintyLevel === "PRONONCE"
+                  ).length
+                }
+              </td>
             </tr>
           ))}
         </tbody>

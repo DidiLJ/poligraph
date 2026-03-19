@@ -31,7 +31,7 @@ interface WeeklyScrutin {
 interface WeeklyAffair {
   slug: string;
   title: string;
-  severity: string;
+  certaintyLevel: string;
   politicianName: string;
   politicianSlug: string;
 }
@@ -163,7 +163,7 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
         Array<{
           slug: string;
           title: string;
-          severity: string;
+          certaintyLevel: string;
           politicianName: string;
           politicianSlug: string;
         }>
@@ -171,15 +171,36 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
       SELECT
         a.slug,
         a.title,
-        a.severity,
+        CASE a.status
+          WHEN 'CONDAMNATION_DEFINITIVE' THEN 'ETABLI'
+          WHEN 'CONDAMNATION_PREMIERE_INSTANCE' THEN 'PRONONCE'
+          WHEN 'APPEL_EN_COURS' THEN 'PRONONCE'
+          WHEN 'MISE_EN_EXAMEN' THEN 'EN_COURS'
+          WHEN 'RENVOI_TRIBUNAL' THEN 'EN_COURS'
+          WHEN 'PROCES_EN_COURS' THEN 'EN_COURS'
+          WHEN 'ENQUETE_PRELIMINAIRE' THEN 'EN_COURS'
+          WHEN 'INSTRUCTION' THEN 'EN_COURS'
+          ELSE 'CLOS_FAVORABLE'
+        END as "certaintyLevel",
         p."fullName" as "politicianName",
         p.slug as "politicianSlug"
       FROM "Affair" a
       JOIN "Politician" p ON a."politicianId" = p.id
       WHERE a."publicationStatus" = 'PUBLISHED'
+        AND a.involvement NOT IN ('VICTIM', 'PLAINTIFF', 'MENTIONED_ONLY')
         AND COALESCE(a."startDate", a."factsDate", a."createdAt") >= ${weekStart}
         AND COALESCE(a."startDate", a."factsDate", a."createdAt") < ${weekEnd}
-      ORDER BY a.severity DESC
+      ORDER BY CASE a.status
+        WHEN 'CONDAMNATION_DEFINITIVE' THEN 0
+        WHEN 'CONDAMNATION_PREMIERE_INSTANCE' THEN 1
+        WHEN 'APPEL_EN_COURS' THEN 1
+        WHEN 'MISE_EN_EXAMEN' THEN 2
+        WHEN 'RENVOI_TRIBUNAL' THEN 2
+        WHEN 'PROCES_EN_COURS' THEN 2
+        WHEN 'ENQUETE_PRELIMINAIRE' THEN 2
+        WHEN 'INSTRUCTION' THEN 2
+        ELSE 3
+      END ASC
       LIMIT 10
     `,
 

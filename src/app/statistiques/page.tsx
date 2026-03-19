@@ -10,6 +10,7 @@ import {
   AFFAIR_CATEGORY_LABELS,
   type AffairSuperCategory,
 } from "@/config/labels";
+import { getCertaintyLevel, ACTIVE_AFFAIR_STATUSES, type CertaintyLevel } from "@/config/certainty";
 import type { AffairStatus, AffairCategory } from "@/types";
 import type { Chamber } from "@/generated/prisma";
 import { getVictimStats } from "@/lib/data/affairs";
@@ -41,75 +42,67 @@ async function getJudicialData() {
     involvement: "DIRECT" as const,
   };
 
-  // Statuses that represent an actual condemnation (even if appeal is pending)
-  const CONDAMNATION_STATUSES = [
-    "CONDAMNATION_DEFINITIVE",
-    "CONDAMNATION_PREMIERE_INSTANCE",
-    "APPEL_EN_COURS",
-  ] as const;
-
-  const condamnationFilter = {
-    ...directFilter,
-    status: { in: [...CONDAMNATION_STATUSES] },
-  };
-
-  // Single batch: counts + status breakdown + severity + critique affairs by party
-  const [
-    totalDirect,
-    totalCondamnations,
-    condamnationsDefinitives,
-    byStatusRaw,
-    byCategoryRaw,
-    bySeverityRaw,
-    critiqueAffairs,
-  ] = await Promise.all([
-    db.affair.count({ where: directFilter }),
-    db.affair.count({ where: condamnationFilter }),
-    db.affair.count({
-      where: { ...directFilter, status: "CONDAMNATION_DEFINITIVE" },
-    }),
-    db.affair.groupBy({
-      by: ["status"],
-      where: directFilter,
-      _count: { status: true },
-      orderBy: { _count: { status: "desc" } },
-    }),
-    db.affair.groupBy({
-      by: ["category"],
-      where: condamnationFilter,
-      _count: { category: true },
-      orderBy: { _count: { category: "desc" } },
-    }),
-    db.affair.groupBy({
-      by: ["severity"],
-      where: directFilter,
-      _count: { severity: true },
-    }),
-    // Critique affairs (atteintes à la probité) — all statuses
-    db.affair.findMany({
-      where: {
-        ...directFilter,
-        severity: "CRITIQUE",
-      },
-      select: {
-        category: true,
-        politician: {
-          select: {
-            currentParty: {
-              select: { name: true, shortName: true, color: true, slug: true },
+  // Single batch: certainty counts + status breakdown + category + critique by party
+  const [byStatusRaw, byCategoryRaw, critiqueAffairs, condamnesPoliticians, misEnCausePoliticians] =
+    await Promise.all([
+      db.affair.groupBy({
+        by: ["status"],
+        where: directFilter,
+        _count: { status: true },
+        orderBy: { _count: { status: "desc" } },
+      }),
+      db.affair.groupBy({
+        by: ["category"],
+        where: directFilter,
+        _count: { category: true },
+        orderBy: { _count: { category: "desc" } },
+      }),
+      db.affair.findMany({
+        where: { ...directFilter, severity: "CRITIQUE" },
+        select: {
+          category: true,
+          politician: {
+            select: {
+              currentParty: {
+                select: { name: true, shortName: true, color: true, slug: true },
+              },
             },
           },
         },
-      },
-    }),
-  ]);
+      }),
+      // Unique politicians with Etabli
+      db.affair.findMany({
+        where: { ...directFilter, status: "CONDAMNATION_DEFINITIVE" },
+        select: { politicianId: true },
+        distinct: ["politicianId"],
+      }),
+      // Unique politicians with En cours or Prononce (active non-definitive)
+      db.affair.findMany({
+        where: {
+          ...directFilter,
+          status: {
+            in: ACTIVE_AFFAIR_STATUSES.filter((s) => s !== "CONDAMNATION_DEFINITIVE"),
+          },
+        },
+        select: { politicianId: true },
+        distinct: ["politicianId"],
+      }),
+    ]);
 
-  const byStatus = byStatusRaw.map((a) => ({
-    status: a.status as AffairStatus,
-    count: a._count.status,
-  }));
+  // Compute certainty counts from status breakdown
+  const certaintyCounts: Record<CertaintyLevel, number> = {
+    ETABLI: 0,
+    PRONONCE: 0,
+    EN_COURS: 0,
+    CLOS_FAVORABLE: 0,
+  };
+  const byStatus = byStatusRaw.map((a) => {
+    const level = getCertaintyLevel(a.status);
+    certaintyCounts[level] += a._count.status;
+    return { status: a.status as AffairStatus, count: a._count.status };
+  });
 
-  // Aggregate categories into super-categories (for donut)
+  // Aggregate categories into super-categories (for donut) — all certitudes
   const superCategories: Record<AffairSuperCategory, number> = {
     PROBITE: 0,
     FINANCES: 0,
@@ -128,11 +121,6 @@ async function getJudicialData() {
       category: category as AffairSuperCategory,
       count,
     }));
-
-  // Severity breakdown
-  const bySeverity = Object.fromEntries(
-    bySeverityRaw.map((s) => [s.severity, s._count.severity])
-  ) as Record<string, number>;
 
   // Aggregate critique affairs: category → party → count
   const critiqueByCategoryParty = new Map<
@@ -157,7 +145,6 @@ async function getJudicialData() {
     }
   }
 
-  // Convert to sorted array: categories sorted by total desc, parties sorted by count desc
   const critiqueByCategory = [...critiqueByCategoryParty.entries()]
     .map(([category, partyMap]) => {
       const parties = [...partyMap.entries()]
@@ -176,10 +163,9 @@ async function getJudicialData() {
     .sort((a, b) => b.total - a.total);
 
   return {
-    totalDirect,
-    totalCondamnations,
-    condamnationsDefinitives,
-    bySeverity,
+    certaintyCounts,
+    uniqueCondamnes: condamnesPoliticians.length,
+    uniqueMisEnCause: misEnCausePoliticians.length,
     byStatus,
     byCategory,
     critiqueByCategory,
@@ -267,10 +253,9 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
       <StatsTabs
         judicialContent={
           <JudicialSection
-            totalDirect={judicialData.totalDirect}
-            totalCondamnations={judicialData.totalCondamnations}
-            condamnationsDefinitives={judicialData.condamnationsDefinitives}
-            bySeverity={judicialData.bySeverity}
+            certaintyCounts={judicialData.certaintyCounts}
+            uniqueCondamnes={judicialData.uniqueCondamnes}
+            uniqueMisEnCause={judicialData.uniqueMisEnCause}
             byStatus={judicialData.byStatus}
             byCategory={judicialData.byCategory}
             critiqueByCategory={judicialData.critiqueByCategory}

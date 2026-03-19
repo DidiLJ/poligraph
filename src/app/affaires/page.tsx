@@ -12,13 +12,11 @@ import { stripMarkdown } from "@/lib/utils";
 import {
   getAffairs,
   getSuperCategoryCounts,
-  getStatusCounts,
-  getSeverityCounts,
+  getCertaintyCounts,
   getPartiesWithAffairs,
 } from "@/lib/data/affairs";
 import {
   AFFAIR_STATUS_LABELS,
-  AFFAIR_STATUS_COLORS,
   AFFAIR_CATEGORY_LABELS,
   AFFAIR_STATUS_NEEDS_PRESUMPTION,
   AFFAIR_SUPER_CATEGORY_LABELS,
@@ -27,14 +25,18 @@ import {
   CATEGORY_TO_SUPER,
   INVOLVEMENT_LABELS,
   INVOLVEMENT_COLORS,
-  AFFAIR_SEVERITY_EDITORIAL,
-  AFFAIR_SEVERITY_COLORS,
   type AffairSuperCategory,
 } from "@/config/labels";
+import {
+  getCertaintyLevel,
+  CERTAINTY_LABELS,
+  CERTAINTY_COLORS,
+  type CertaintyLevel,
+} from "@/config/certainty";
 import { AffairModeToggle } from "@/components/affairs/AffairModeToggle";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
-import type { AffairStatus, AffairSeverity, Involvement } from "@/types";
+import type { AffairStatus, Involvement } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 
@@ -54,7 +56,7 @@ interface PageProps {
     status?: string;
     supercat?: string;
     category?: string;
-    severity?: string;
+    certainty?: string;
     page?: string;
     parti?: string;
     mode?: string;
@@ -66,6 +68,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const partiSlug = params.parti || "";
   const statusKey = params.status || "";
   const superCatKey = (params.supercat || "") as AffairSuperCategory | "";
+  const certaintyKey = (params.certainty || "") as CertaintyLevel | "";
 
   let title = "Affaires judiciaires des responsables politiques français";
   let description =
@@ -80,6 +83,9 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
       title = `Affaires judiciaires — ${party.name} (${party.shortName})`;
       description = `Affaires judiciaires impliquant des élus ${party.name}. Filtrez par statut et catégorie. Sources vérifiées.`;
     }
+  } else if (certaintyKey && CERTAINTY_LABELS[certaintyKey]) {
+    title = `Affaires judiciaires : ${CERTAINTY_LABELS[certaintyKey]}`;
+    description = `Responsables politiques français avec une affaire au niveau "${CERTAINTY_LABELS[certaintyKey]}".`;
   } else if (statusKey && AFFAIR_STATUS_LABELS[statusKey as AffairStatus]) {
     title = `Affaires judiciaires : ${AFFAIR_STATUS_LABELS[statusKey as AffairStatus]}`;
     description = `Responsables politiques français avec une affaire au statut "${AFFAIR_STATUS_LABELS[statusKey as AffairStatus]}".`;
@@ -99,10 +105,10 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
       canonical: (() => {
         const cp = new URLSearchParams();
         if (partiSlug) cp.set("parti", partiSlug);
+        if (certaintyKey) cp.set("certainty", certaintyKey);
         if (statusKey) cp.set("status", statusKey);
         if (superCatKey) cp.set("supercat", superCatKey);
         if (params.category) cp.set("category", params.category);
-        if (params.severity) cp.set("severity", params.severity);
         if (params.mode && params.mode !== "mise-en-cause") cp.set("mode", params.mode);
         const qs = cp.toString();
         return `/affaires${qs ? `?${qs}` : ""}`;
@@ -118,7 +124,7 @@ export default async function AffairesPage({ searchParams }: PageProps) {
   const statusFilter = params.status || "";
   const superCatFilter = (params.supercat || "") as AffairSuperCategory | "";
   const categoryFilter = params.category || "";
-  const severityFilter = (params.severity || "") as AffairSeverity | "";
+  const certaintyFilter = (params.certainty || "") as CertaintyLevel | "";
   const partiFilter = params.parti || "";
   const page = parseInt(params.page || "1", 10);
   const mode = (params.mode === "victime" ? "victime" : "mise-en-cause") as
@@ -130,29 +136,24 @@ export default async function AffairesPage({ searchParams }: PageProps) {
       ? (["VICTIM", "PLAINTIFF"] as Involvement[])
       : (["DIRECT", "INDIRECT", "MENTIONED_ONLY"] as Involvement[]);
 
-  const [
-    { affairs, total, totalPages },
-    superCounts,
-    statusCounts,
-    severityCounts,
-    partiesWithAffairs,
-  ] = await Promise.all([
-    getAffairs(
-      searchFilter || undefined,
-      statusFilter,
-      superCatFilter || undefined,
-      categoryFilter,
-      severityFilter || undefined,
-      page,
-      activeInvolvements,
-      partiFilter || undefined,
-      sortFilter || undefined
-    ),
-    getSuperCategoryCounts(),
-    getStatusCounts(),
-    getSeverityCounts(),
-    getPartiesWithAffairs(),
-  ]);
+  const [{ affairs, total, totalPages }, superCounts, certaintyCounts, partiesWithAffairs] =
+    await Promise.all([
+      getAffairs(
+        searchFilter || undefined,
+        statusFilter,
+        superCatFilter || undefined,
+        categoryFilter,
+        undefined, // severity — removed from public filters
+        page,
+        activeInvolvements,
+        partiFilter || undefined,
+        sortFilter || undefined,
+        certaintyFilter || undefined
+      ),
+      getSuperCategoryCounts(),
+      getCertaintyCounts(),
+      getPartiesWithAffairs(),
+    ]);
 
   const totalAffairs = Object.values(superCounts).reduce((a, b) => a + b, 0);
 
@@ -244,9 +245,9 @@ export default async function AffairesPage({ searchParams }: PageProps) {
           currentFilters={{
             search: searchFilter,
             sort: sortFilter,
-            severity: severityFilter,
+            certainty: certaintyFilter,
             parti: partiFilter,
-            status: statusFilter,
+            category: categoryFilter,
             supercat: superCatFilter,
           }}
           parties={partiesWithAffairs.map((p) => ({
@@ -255,12 +256,11 @@ export default async function AffairesPage({ searchParams }: PageProps) {
             name: p.name,
             count: p._count.affairsAtTime,
           }))}
-          severityCounts={severityCounts}
-          statusCounts={statusCounts}
+          certaintyCounts={certaintyCounts}
         />
 
         {/* Active filters summary */}
-        {(searchFilter || superCatFilter || statusFilter || severityFilter || partiFilter) && (
+        {(searchFilter || superCatFilter || certaintyFilter || categoryFilter || partiFilter) && (
           <div className="mb-6 flex items-center gap-2 text-sm flex-wrap">
             <span className="text-muted-foreground">Filtres actifs :</span>
             {searchFilter && <Badge variant="outline">Recherche : {searchFilter}</Badge>}
@@ -275,14 +275,14 @@ export default async function AffairesPage({ searchParams }: PageProps) {
                 {AFFAIR_SUPER_CATEGORY_LABELS[superCatFilter]}
               </Badge>
             )}
-            {severityFilter && (
-              <Badge className={AFFAIR_SEVERITY_COLORS[severityFilter as AffairSeverity]}>
-                {AFFAIR_SEVERITY_EDITORIAL[severityFilter as AffairSeverity]}
+            {certaintyFilter && (
+              <Badge className={CERTAINTY_COLORS[certaintyFilter as CertaintyLevel]}>
+                {CERTAINTY_LABELS[certaintyFilter as CertaintyLevel]}
               </Badge>
             )}
-            {statusFilter && (
-              <Badge className={AFFAIR_STATUS_COLORS[statusFilter as AffairStatus]}>
-                {AFFAIR_STATUS_LABELS[statusFilter as AffairStatus]}
+            {categoryFilter && (
+              <Badge variant="outline">
+                {AFFAIR_CATEGORY_LABELS[categoryFilter as keyof typeof AFFAIR_CATEGORY_LABELS]}
               </Badge>
             )}
             <Link
@@ -306,6 +306,7 @@ export default async function AffairesPage({ searchParams }: PageProps) {
             <div className="space-y-4">
               {affairs.map((affair) => {
                 const superCat = CATEGORY_TO_SUPER[affair.category];
+                const certainty = getCertaintyLevel(affair.status);
                 // Get the most relevant date for display
                 const relevantDate = affair.verdictDate || affair.startDate || affair.factsDate;
                 const dateLabel = affair.verdictDate
@@ -336,20 +337,9 @@ export default async function AffairesPage({ searchParams }: PageProps) {
                             <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCat]}>
                               {AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
                             </Badge>
-                            {affair.severity === "CRITIQUE" && (
-                              <Badge
-                                className={
-                                  AFFAIR_SEVERITY_COLORS[affair.severity as AffairSeverity]
-                                }
-                              >
-                                {AFFAIR_SEVERITY_EDITORIAL[affair.severity as AffairSeverity]}
-                              </Badge>
-                            )}
-                            {affair.status === "CONDAMNATION_DEFINITIVE" && (
-                              <Badge className={AFFAIR_STATUS_COLORS[affair.status]}>
-                                {AFFAIR_STATUS_LABELS[affair.status]}
-                              </Badge>
-                            )}
+                            <Badge className={CERTAINTY_COLORS[certainty]}>
+                              {CERTAINTY_LABELS[certainty]}
+                            </Badge>
                             <Badge variant="outline">
                               {AFFAIR_CATEGORY_LABELS[affair.category]}
                             </Badge>
@@ -436,9 +426,9 @@ export default async function AffairesPage({ searchParams }: PageProps) {
                   search: searchFilter,
                   page: String(p),
                   sort: sortFilter,
-                  status: statusFilter,
+                  certainty: certaintyFilter,
                   supercat: superCatFilter,
-                  severity: severityFilter,
+                  category: categoryFilter,
                   parti: partiFilter,
                 })
               }
@@ -449,7 +439,7 @@ export default async function AffairesPage({ searchParams }: PageProps) {
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground mb-2">
                 Aucune affaire documentée
-                {searchFilter || statusFilter || superCatFilter ? " avec ces filtres" : ""}
+                {searchFilter || certaintyFilter || superCatFilter ? " avec ces filtres" : ""}
               </p>
               <p className="text-sm text-muted-foreground">
                 Les affaires sont ajoutées avec des sources vérifiables. Notre base est enrichie

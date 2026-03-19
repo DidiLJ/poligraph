@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { formatDate } from "@/lib/utils";
 import { MANDATE_TYPE_LABELS } from "@/config/labels";
+import { getCertaintyLevel } from "@/config/certainty";
+import type { AffairStatus } from "@/types";
 import { AffairsSection } from "../sections/AffairsSection";
 import { FactchecksSection } from "../sections/FactchecksSection";
 import type { MinistreComparisonData } from "@/lib/data/compare";
@@ -16,6 +18,15 @@ function countBy<T>(items: T[], key: keyof T): Record<string, number> {
   for (const item of items) {
     const val = String(item[key]);
     counts[val] = (counts[val] || 0) + 1;
+  }
+  return counts;
+}
+
+function countByCertainty(affairs: { status: string }[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const a of affairs) {
+    const level = getCertaintyLevel(a.status as AffairStatus);
+    counts[level] = (counts[level] || 0) + 1;
   }
   return counts;
 }
@@ -45,12 +56,12 @@ export function MinistresComparison({ left, right }: Props) {
         left={{
           count: left.affairs.length,
           byStatus: countBy(left.affairs, "status"),
-          bySeverity: countBy(left.affairs, "severity"),
+          byCertainty: countByCertainty(left.affairs),
         }}
         right={{
           count: right.affairs.length,
           byStatus: countBy(right.affairs, "status"),
-          bySeverity: countBy(right.affairs, "severity"),
+          byCertainty: countByCertainty(right.affairs),
         }}
         leftLabel={left.fullName}
         rightLabel={right.fullName}

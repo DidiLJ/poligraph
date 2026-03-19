@@ -3,16 +3,22 @@
 import { useFilterParams } from "@/hooks/useFilterParams";
 import { DebouncedSearchInput, SelectFilter } from "@/components/filters";
 import { FilterBarShell } from "@/components/filters/FilterBarShell";
-import { AFFAIR_STATUS_LABELS, AFFAIR_SEVERITY_EDITORIAL } from "@/config/labels";
-import type { AffairStatus, AffairSeverity } from "@/types";
+import {
+  AFFAIR_CATEGORY_LABELS,
+  AFFAIR_SUPER_CATEGORY_LABELS,
+  getCategoriesForSuper,
+  type AffairSuperCategory,
+} from "@/config/labels";
+import { CERTAINTY_LABELS, type CertaintyLevel } from "@/config/certainty";
+import type { AffairCategory } from "@/types";
 
 interface AffairesFilterBarProps {
   currentFilters: {
     search: string;
     sort: string;
-    severity: string;
+    certainty: string;
     parti: string;
-    status: string;
+    category: string;
     supercat: string;
   };
   parties: Array<{
@@ -21,64 +27,58 @@ interface AffairesFilterBarProps {
     name: string;
     count: number;
   }>;
-  severityCounts: Record<string, number>;
-  statusCounts: Record<string, number>;
+  certaintyCounts: Record<string, number>;
 }
 
 const SORT_OPTIONS: Record<string, string> = {
   "": "Pertinence",
+  certainty: "Par certitude",
   "date-desc": "Plus récentes",
   "date-asc": "Plus anciennes",
+  "name-asc": "Nom A-Z",
+  "name-desc": "Nom Z-A",
 };
 
-const STATUS_GROUPS: { label: string; statuses: AffairStatus[] }[] = [
-  {
-    label: "── Condamnations ──",
-    statuses: ["CONDAMNATION_DEFINITIVE", "CONDAMNATION_PREMIERE_INSTANCE", "APPEL_EN_COURS"],
-  },
-  {
-    label: "── Procédures ──",
-    statuses: ["INSTRUCTION", "MISE_EN_EXAMEN", "RENVOI_TRIBUNAL", "PROCES_EN_COURS"],
-  },
-  {
-    label: "── Enquêtes ──",
-    statuses: ["ENQUETE_PRELIMINAIRE"],
-  },
-  {
-    label: "── Classées ──",
-    statuses: ["RELAXE", "ACQUITTEMENT", "NON_LIEU", "PRESCRIPTION", "CLASSEMENT_SANS_SUITE"],
-  },
+const SUPER_CATEGORIES: AffairSuperCategory[] = [
+  "PROBITE",
+  "FINANCES",
+  "PERSONNES",
+  "EXPRESSION",
+  "AUTRE",
 ];
 
 export function AffairesFilterBar({
   currentFilters,
   parties,
-  severityCounts,
-  statusCounts,
+  certaintyCounts,
 }: AffairesFilterBarProps) {
   const { isPending, updateParams } = useFilterParams();
 
-  const statusOptions = [
-    { value: "", label: "Tous les statuts" },
-    ...STATUS_GROUPS.flatMap((group) => {
-      const groupStatuses = group.statuses.filter((s) => (statusCounts[s] || 0) > 0);
-      if (groupStatuses.length === 0) return [];
+  const certaintyOptions = [
+    { value: "", label: "Toutes les certitudes" },
+    ...(Object.keys(CERTAINTY_LABELS) as CertaintyLevel[]).map((level) => ({
+      value: level,
+      label: `${CERTAINTY_LABELS[level]} (${certaintyCounts[level] || 0})`,
+    })),
+  ];
+
+  const categoryOptions = [
+    { value: "", label: "Toutes les infractions" },
+    ...SUPER_CATEGORIES.flatMap((superCat) => {
+      const cats = getCategoriesForSuper(superCat);
+      if (cats.length === 0) return [];
       return [
-        { value: `sep-${group.label}`, label: group.label, disabled: true },
-        ...groupStatuses.map((s) => ({
-          value: s,
-          label: `${AFFAIR_STATUS_LABELS[s]} (${statusCounts[s] || 0})`,
+        {
+          value: `sep-${superCat}`,
+          label: `── ${AFFAIR_SUPER_CATEGORY_LABELS[superCat]} ──`,
+          disabled: true,
+        },
+        ...cats.map((cat: AffairCategory) => ({
+          value: cat,
+          label: AFFAIR_CATEGORY_LABELS[cat],
         })),
       ];
     }),
-  ];
-
-  const severityOptions = [
-    { value: "", label: "Toutes" },
-    ...(Object.keys(AFFAIR_SEVERITY_EDITORIAL) as AffairSeverity[]).map((sev) => ({
-      value: sev,
-      label: `${AFFAIR_SEVERITY_EDITORIAL[sev]} (${severityCounts[sev] || 0})`,
-    })),
   ];
 
   const partyOptions = [
@@ -121,19 +121,19 @@ export function AffairesFilterBar({
         />
 
         <SelectFilter
-          id="severity-affairs"
-          label="Gravité"
-          value={currentFilters.severity}
-          onChange={(v) => updateParams({ severity: v })}
-          options={severityOptions}
+          id="certainty-affairs"
+          label="Certitude judiciaire"
+          value={currentFilters.certainty}
+          onChange={(v) => updateParams({ certainty: v })}
+          options={certaintyOptions}
         />
 
         <SelectFilter
-          id="status-affairs"
-          label="Statut"
-          value={currentFilters.status}
-          onChange={(v) => updateParams({ status: v })}
-          options={statusOptions}
+          id="category-affairs"
+          label="Catégorie"
+          value={currentFilters.category}
+          onChange={(v) => updateParams({ category: v })}
+          options={categoryOptions}
         />
       </div>
     </FilterBarShell>

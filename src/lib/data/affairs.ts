@@ -5,6 +5,11 @@ import {
   CATEGORY_TO_SUPER,
   type AffairSuperCategory,
 } from "@/config/labels";
+import {
+  getCertaintyLevel,
+  getStatusesForCertainty,
+  type CertaintyLevel,
+} from "@/config/certainty";
 import type { AffairStatus, AffairCategory, AffairSeverity, Involvement } from "@/types";
 
 export async function getPartiesWithAffairs() {
@@ -44,7 +49,8 @@ async function queryAffairs(
   page = 1,
   involvements: Involvement[] = ["DIRECT"],
   partySlug?: string,
-  sort?: string
+  sort?: string,
+  certainty?: CertaintyLevel
 ) {
   const limit = 20;
   const skip = (page - 1) * limit;
@@ -65,10 +71,18 @@ async function queryAffairs(
       : VIOLENCE_CATEGORIES;
   }
 
+  // Build status filter: certainty takes precedence over individual status
+  let statusFilter: { status: AffairStatus } | { status: { in: AffairStatus[] } } | undefined;
+  if (certainty) {
+    statusFilter = { status: { in: getStatusesForCertainty(certainty) } };
+  } else if (status) {
+    statusFilter = { status: status as AffairStatus };
+  }
+
   const where = {
     publicationStatus: "PUBLISHED" as const,
     involvement: { in: involvements },
-    ...(status && { status: status as AffairStatus }),
+    ...statusFilter,
     ...(categoryFilter && { category: { in: categoryFilter } }),
     ...(severity && { severity }),
     ...(partySlug && { partyAtTime: { slug: partySlug } }),
@@ -80,25 +94,7 @@ async function queryAffairs(
     }),
   };
 
-  const orderBy =
-    sort === "date-desc"
-      ? [
-          { verdictDate: { sort: "desc" as const, nulls: "last" as const } },
-          { startDate: { sort: "desc" as const, nulls: "last" as const } },
-          { createdAt: "desc" as const },
-        ]
-      : sort === "date-asc"
-        ? [
-            { verdictDate: { sort: "asc" as const, nulls: "last" as const } },
-            { startDate: { sort: "asc" as const, nulls: "last" as const } },
-            { createdAt: "asc" as const },
-          ]
-        : [
-            { severity: "asc" as const },
-            { verdictDate: { sort: "desc" as const, nulls: "last" as const } },
-            { startDate: { sort: "desc" as const, nulls: "last" as const } },
-            { createdAt: "desc" as const },
-          ];
+  const orderBy = buildOrderBy(sort);
 
   const [affairs, total] = await Promise.all([
     db.affair.findMany({
@@ -120,11 +116,46 @@ async function queryAffairs(
   ]);
 
   return {
-    affairs,
+    affairs: affairs.map((a) => ({
+      ...a,
+      fineAmount: a.fineAmount ? Number(a.fineAmount) : null,
+    })),
     total,
     page,
     totalPages: Math.ceil(total / limit),
   };
+}
+
+function buildOrderBy(sort?: string) {
+  switch (sort) {
+    case "date-desc":
+      return [
+        { verdictDate: { sort: "desc" as const, nulls: "last" as const } },
+        { startDate: { sort: "desc" as const, nulls: "last" as const } },
+        { createdAt: "desc" as const },
+      ];
+    case "date-asc":
+      return [
+        { verdictDate: { sort: "asc" as const, nulls: "last" as const } },
+        { startDate: { sort: "asc" as const, nulls: "last" as const } },
+        { createdAt: "asc" as const },
+      ];
+    case "name-asc":
+      return [{ politician: { lastName: "asc" as const } }, { createdAt: "desc" as const }];
+    case "name-desc":
+      return [{ politician: { lastName: "desc" as const } }, { createdAt: "desc" as const }];
+    case "certainty":
+    default:
+      // Severity correlates with certainty: CRITIQUE affairs (probity) tend to have
+      // definitive condemnations, SIGNIFICATIF tend to be ongoing/minor.
+      // Perfect certainty sort would need raw SQL CASE; severity ASC is a practical proxy.
+      return [
+        { severity: "asc" as const },
+        { verdictDate: { sort: "desc" as const, nulls: "last" as const } },
+        { startDate: { sort: "desc" as const, nulls: "last" as const } },
+        { createdAt: "desc" as const },
+      ];
+  }
 }
 
 // Tier 2: Cached path — bounded params only (no free-text search)
@@ -136,7 +167,8 @@ export async function getAffairsFiltered(
   page = 1,
   involvements: Involvement[] = ["DIRECT"],
   partySlug?: string,
-  sort?: string
+  sort?: string,
+  certainty?: CertaintyLevel
 ) {
   "use cache";
   cacheTag("affairs");
@@ -150,7 +182,8 @@ export async function getAffairsFiltered(
     page,
     involvements,
     partySlug,
-    sort
+    sort,
+    certainty
   );
 }
 
@@ -164,7 +197,8 @@ export async function searchAffairs(
   page = 1,
   involvements: Involvement[] = ["DIRECT"],
   partySlug?: string,
-  sort?: string
+  sort?: string,
+  certainty?: CertaintyLevel
 ) {
   return queryAffairs(
     search,
@@ -175,7 +209,8 @@ export async function searchAffairs(
     page,
     involvements,
     partySlug,
-    sort
+    sort,
+    certainty
   );
 }
 
@@ -189,7 +224,8 @@ export async function getAffairs(
   page = 1,
   involvements: Involvement[] = ["DIRECT"],
   partySlug?: string,
-  sort?: string
+  sort?: string,
+  certainty?: CertaintyLevel
 ) {
   if (search) {
     return searchAffairs(
@@ -201,7 +237,8 @@ export async function getAffairs(
       page,
       involvements,
       partySlug,
-      sort
+      sort,
+      certainty
     );
   }
   return getAffairsFiltered(
@@ -212,7 +249,8 @@ export async function getAffairs(
     page,
     involvements,
     partySlug,
-    sort
+    sort,
+    certainty
   );
 }
 
@@ -275,6 +313,35 @@ export async function getSeverityCounts() {
     string,
     number
   >;
+}
+
+export async function getCertaintyCounts() {
+  "use cache";
+  cacheTag("affairs");
+  cacheLife("minutes");
+
+  const statusCounts = await db.affair.groupBy({
+    by: ["status"],
+    _count: true,
+    where: {
+      publicationStatus: "PUBLISHED",
+      involvement: { notIn: ["VICTIM", "PLAINTIFF", "MENTIONED_ONLY"] },
+    },
+  });
+
+  const counts: Record<CertaintyLevel, number> = {
+    ETABLI: 0,
+    PRONONCE: 0,
+    EN_COURS: 0,
+    CLOS_FAVORABLE: 0,
+  };
+
+  for (const row of statusCounts) {
+    const level = getCertaintyLevel(row.status);
+    counts[level] += row._count;
+  }
+
+  return counts;
 }
 
 const TERMINAL_STATUSES: AffairStatus[] = [

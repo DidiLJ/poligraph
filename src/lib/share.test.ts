@@ -98,6 +98,14 @@ describe("getShareUrl", () => {
     expect(blueskyText).toContain("…");
   });
 
+  it("should handle very long URLs for Bluesky by falling back to URL only", () => {
+    const longUrl = "https://poligraph.fr/" + "a".repeat(300);
+    const shareUrl = new URL(getShareUrl("bluesky", longUrl, "Some text"));
+    const blueskyText = shareUrl.searchParams.get("text")!;
+
+    expect(blueskyText).toBe(longUrl);
+  });
+
   it("should encode special characters safely in share URLs", () => {
     const specialText = getShareText("Éric Coquerel", 'A déclaré : "c\'est déjà fait"');
     const specialUrl =

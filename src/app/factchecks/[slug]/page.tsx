@@ -138,7 +138,7 @@ export default async function FactCheckDetailPage({ params }: PageProps) {
 
       <div className="mb-6">
         <ShareButtons
-          url={`${SITE_URL}/factchecks/${factCheck.slug}`}
+          url={`${SITE_URL}/factchecks/${factCheck.slug || slug}`}
           title={factCheck.title}
           description={shareDescription}
         />

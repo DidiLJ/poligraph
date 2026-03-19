@@ -263,7 +263,7 @@ export default async function AffairDetailPage({ params }: PageProps) {
 
           <div className="mt-4">
             <ShareButtons
-              url={`${SITE_URL}/affaires/${affair.slug}`}
+              url={`${SITE_URL}/affaires/${affair.slug || slug}`}
               title={`${affair.title} — ${affair.politician.fullName}`}
               description={shareDescription}
             />

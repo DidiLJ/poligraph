@@ -657,21 +657,21 @@ Features:
           if (!politicianExt?.politicianId) {
             if (dryRun) {
               console.log(
-                `[DRY-RUN] ${founderLabel} - FOUNDER @ ${data.partyName} (politician not in DB)`
+                `[DRY-RUN] ${founderLabel} - FONDATEUR @ ${data.partyName} (politician not in DB)`
               );
             }
             continue;
           }
 
           if (dryRun) {
-            console.log(`[DRY-RUN] ${founderLabel} - FOUNDER @ ${data.partyName}`);
+            console.log(`[DRY-RUN] ${founderLabel} - FONDATEUR @ ${data.partyName}`);
             stats.foundersCreated++;
           } else {
             try {
               await setPartyRole(politicianExt.politicianId, data.partyId, PartyRole.FONDATEUR);
               stats.foundersCreated++;
             } catch (error) {
-              errors.push(`Founder ${founderLabel} @ ${data.partyName}: ${error}`);
+              errors.push(`Fondateur ${founderLabel} @ ${data.partyName}: ${error}`);
             }
           }
 

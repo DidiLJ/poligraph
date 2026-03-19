@@ -3,6 +3,7 @@ import { stripMarkdown } from "./utils";
 export type SharePlatform = "x" | "bluesky" | "facebook" | "whatsapp";
 
 const SHARE_TEXT_LIMIT = 250;
+const BLUESKY_MAX_CHARS = 300;
 const SHARE_SUFFIX = " sur Poligraph";
 const TRUNCATED_SHARE_SUFFIX = `…${SHARE_SUFFIX}`;
 
@@ -41,10 +42,16 @@ export function getShareUrl(platform: SharePlatform, url: string, text: string) 
   switch (platform) {
     case "x":
       return `https://x.com/intent/post?${new URLSearchParams({ text, url }).toString()}`;
-    case "bluesky":
+    case "bluesky": {
+      const blueskyBody = `${text} ${url}`;
+      const truncatedBody =
+        blueskyBody.length > BLUESKY_MAX_CHARS
+          ? `${text.slice(0, BLUESKY_MAX_CHARS - url.length - 2).trimEnd()}… ${url}`
+          : blueskyBody;
       return `https://bsky.app/intent/compose?${new URLSearchParams({
-        text: `${text} ${url}`,
+        text: truncatedBody,
       }).toString()}`;
+    }
     case "facebook":
       return `https://www.facebook.com/sharer/sharer.php?${new URLSearchParams({
         u: url,

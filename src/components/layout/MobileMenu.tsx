@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { MobileThemeToggle } from "@/components/theme/MobileThemeToggle";
 import { NAV_PRIMARY, NAV_SECONDARY } from "@/config/navigation";
 import {
   BarChart3,
@@ -149,99 +150,108 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
         </button>
       </div>
 
-      {/* Full-screen menu overlay */}
-      {isOpen && (
-        <div
-          ref={menuRef}
-          id="mobile-menu"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu de navigation"
-          className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col"
-        >
-          {/* Menu header */}
-          <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
-            <Link href="/" className="flex items-center gap-3" onClick={close}>
-              <Image src="/logo.svg" alt="Poligraph" width={36} height={36} />
-              <span className="text-lg font-display font-bold">Poligraph</span>
-            </Link>
-            <button
-              onClick={close}
-              className="flex items-center justify-center h-10 w-10 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-              aria-label="Fermer le menu"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+      {/* Full-screen menu overlay — portaled to body to escape header's backdrop-filter containing block */}
+      {isOpen &&
+        createPortal(
+          <div
+            ref={menuRef}
+            id="mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu de navigation"
+            className="fixed inset-0 z-[60] bg-background text-foreground flex flex-col"
+          >
+            {/* Menu header */}
+            <div className="flex items-center justify-between px-4 h-16 border-b border-border">
+              <Link href="/" className="flex items-center gap-3" onClick={close}>
+                <Image src="/logo.svg" alt="Poligraph" width={36} height={36} />
+                <span className="text-lg font-display font-bold">Poligraph</span>
+              </Link>
+              <button
+                onClick={close}
+                className="flex items-center justify-center h-10 w-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Fermer le menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-          {/* Primary links */}
-          <nav className="flex-1 overflow-y-auto px-4 py-6" aria-label="Navigation principale">
-            <ul className="space-y-1">
-              {filteredPrimary.map((item) => {
-                const Icon = item.icon ? ICON_MAP[item.icon] : null;
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={close}
-                      aria-current={isActive ? "page" : undefined}
-                      className={`flex items-center justify-between px-4 py-4 rounded-xl text-[22px] font-semibold transition-colors ${
-                        isActive
-                          ? "bg-white/15 text-white"
-                          : "text-white/80 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      <span className="flex items-center gap-3">
-                        {Icon && <Icon className="h-6 w-6" />}
-                        {item.label}
-                      </span>
-                      <ChevronRight className="h-5 w-5 text-white/40" />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-
-            {/* Secondary links as pills */}
-            {filteredSecondary.length > 0 && (
-              <div className="mt-8 pt-6 border-t border-white/10">
-                <div className="flex flex-wrap gap-3">
-                  {filteredSecondary.map((item) => {
-                    const Icon = item.icon ? ICON_MAP[item.icon] : null;
-                    return (
+            {/* Primary links */}
+            <nav className="flex-1 overflow-y-auto px-4 py-6" aria-label="Navigation principale">
+              <ul className="space-y-1">
+                {filteredPrimary.map((item) => {
+                  const Icon = item.icon ? ICON_MAP[item.icon] : null;
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  return (
+                    <li key={item.href}>
                       <Link
-                        key={item.href}
                         href={item.href}
                         onClick={close}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-white/20 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                        aria-current={isActive ? "page" : undefined}
+                        className={`flex items-center justify-between px-4 py-4 rounded-xl text-[22px] font-semibold transition-colors ${
+                          item.highlight
+                            ? "border border-primary/40 text-primary"
+                            : isActive
+                              ? "bg-muted text-foreground"
+                              : "text-foreground/80 hover:bg-muted hover:text-foreground"
+                        }`}
                       >
-                        {Icon && <Icon className="h-4 w-4" />}
-                        {item.label}
+                        <span className="flex items-center gap-3">
+                          {Icon && <Icon className="h-6 w-6" />}
+                          {item.label}
+                          {item.highlight && (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                              En cours
+                            </span>
+                          )}
+                        </span>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </nav>
+                    </li>
+                  );
+                })}
+              </ul>
 
-          {/* Bottom section: theme toggle + CTA */}
-          <div className="px-4 py-6 border-t border-white/10">
-            <div className="flex items-center justify-between">
-              <ThemeToggle />
-              <Link
-                href="/soutenir"
-                onClick={close}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 border-red-500 text-red-400 font-semibold text-sm hover:bg-red-500/10 transition-colors"
-              >
-                <Heart className="h-4 w-4" />
-                Nous soutenir
-              </Link>
+              {/* Secondary links as pills */}
+              {filteredSecondary.length > 0 && (
+                <div className="mt-8 pt-6 border-t border-border">
+                  <div className="flex flex-wrap gap-3">
+                    {filteredSecondary.map((item) => {
+                      const Icon = item.icon ? ICON_MAP[item.icon] : null;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={close}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-border text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                        >
+                          {Icon && <Icon className="h-4 w-4" />}
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </nav>
+
+            {/* Bottom section: theme toggle + CTA */}
+            <div className="px-4 py-6 border-t border-border">
+              <div className="flex items-center justify-between">
+                <MobileThemeToggle />
+                <Link
+                  href="/soutenir"
+                  onClick={close}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 border-red-500 text-red-500 font-semibold text-sm hover:bg-red-500/10 transition-colors"
+                >
+                  <Heart className="h-4 w-4" />
+                  Nous soutenir
+                </Link>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }

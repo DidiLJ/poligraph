@@ -43,12 +43,14 @@ function StatsTabsInner({
 
   return (
     <Tabs value={tab} onValueChange={onTabChange}>
-      <TabsList className="w-full justify-start">
-        <TabsTrigger value="judiciaire">Judiciaire</TabsTrigger>
-        <TabsTrigger value="factchecks">Fact-checking</TabsTrigger>
-        <TabsTrigger value="legislatif">Législatif</TabsTrigger>
-        <TabsTrigger value="participation">Participation</TabsTrigger>
-      </TabsList>
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="judiciaire">Judiciaire</TabsTrigger>
+          <TabsTrigger value="factchecks">Fact-checking</TabsTrigger>
+          <TabsTrigger value="legislatif">Législatif</TabsTrigger>
+          <TabsTrigger value="participation">Participation</TabsTrigger>
+        </TabsList>
+      </div>
       <TabsContent value="judiciaire">{judicialContent}</TabsContent>
       <TabsContent value="factchecks">{factCheckContent}</TabsContent>
       <TabsContent value="legislatif">{legislativeContent}</TabsContent>

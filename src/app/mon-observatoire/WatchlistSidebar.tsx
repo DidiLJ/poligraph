@@ -78,8 +78,8 @@ export function WatchlistSidebar({
                 >
                   <PoliticianAvatar photoUrl={p.photoUrl} fullName={p.fullName} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{p.fullName}</p>
-                    {p.party && <p className="text-xs text-muted-foreground truncate">{p.party}</p>}
+                    <p className="text-sm font-medium">{p.fullName}</p>
+                    {p.party && <p className="text-xs text-muted-foreground">{p.party}</p>}
                   </div>
                   {isSelected ? (
                     <Check className="size-4 text-primary shrink-0" />
@@ -150,7 +150,7 @@ export function WatchlistSidebar({
                     <Building2 className="size-5" style={{ color: p.color || "#6b7280" }} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{p.shortName || p.name}</p>
+                    <p className="text-sm font-medium">{p.shortName || p.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {p.memberCount} membre{p.memberCount !== 1 ? "s" : ""}
                     </p>

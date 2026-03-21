@@ -112,7 +112,7 @@ export function MissingMairesTable({ maires }: MissingMairesTableProps) {
               <Link
                 href={`/politiques/${m.slug}`}
                 prefetch={false}
-                className="font-medium hover:text-primary transition-colors block truncate"
+                className="font-medium hover:text-primary transition-colors block"
               >
                 {m.fullName}
               </Link>

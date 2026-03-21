@@ -50,9 +50,7 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
                       size="sm"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium group-hover:underline truncate">
-                        {author.fullName}
-                      </p>
+                      <p className="text-sm font-medium group-hover:underline">{author.fullName}</p>
                       {author.partyShortName && (
                         <p
                           className="text-xs"
@@ -102,7 +100,7 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
                         className="w-3 h-3 rounded-full shrink-0"
                         style={{ backgroundColor: color || "#94a3b8" }}
                       />
-                      <span className="text-sm font-medium group-hover:underline truncate flex-1">
+                      <span className="text-sm font-medium group-hover:underline flex-1">
                         {party.shortName}
                       </span>
                       <span className="text-sm font-semibold tabular-nums shrink-0">

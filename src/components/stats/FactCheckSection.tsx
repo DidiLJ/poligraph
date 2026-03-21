@@ -72,7 +72,7 @@ function PoliticianRankingItem({
       </span>
       <PoliticianAvatar photoUrl={pol.photoUrl} fullName={pol.fullName} size="sm" />
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">{pol.fullName}</div>
+        <div className="text-sm font-medium">{pol.fullName}</div>
         <div className="flex items-center gap-2">
           {pol.party && <span className="text-xs text-muted-foreground">{pol.party}</span>}
           <span className="text-xs text-muted-foreground">
@@ -126,7 +126,7 @@ function PartyRankingItem({
         {party.shortName || party.name.slice(0, 3)}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">{party.name}</div>
+        <div className="text-sm font-medium">{party.name}</div>
         <span className="text-xs text-muted-foreground">
           {party.totalMentions} fact-check{party.totalMentions > 1 ? "s" : ""}
         </span>

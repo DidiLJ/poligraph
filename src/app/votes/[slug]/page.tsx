@@ -226,7 +226,7 @@ export default async function ScrutinPage({ params }: PageProps) {
             Votes
           </Link>
           <span className="mx-2">/</span>
-          <span className="truncate">Scrutin n°{scrutin.externalId}</span>
+          <span>Scrutin n°{scrutin.externalId}</span>
         </nav>
 
         {/* Header */}
@@ -337,7 +337,7 @@ export default async function ScrutinPage({ params }: PageProps) {
             <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm text-muted-foreground">Dossier législatif</p>
-              <p className="font-medium group-hover:underline truncate">
+              <p className="font-medium group-hover:underline">
                 {scrutin.dossierLegislatif.shortTitle || scrutin.dossierLegislatif.title}
               </p>
             </div>
@@ -437,17 +437,12 @@ export default async function ScrutinPage({ params }: PageProps) {
                               size="sm"
                             />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {vote.politician.fullName}
-                              </p>
+                              <p className="text-sm font-medium">{vote.politician.fullName}</p>
                               {(() => {
                                 const group = vote.politician.mandates[0]?.parliamentaryGroup;
                                 if (group) {
                                   return (
-                                    <p
-                                      className="text-xs text-muted-foreground truncate"
-                                      title={group.name}
-                                    >
+                                    <p className="text-xs text-muted-foreground" title={group.name}>
                                       {group.code}
                                     </p>
                                   );
@@ -455,7 +450,7 @@ export default async function ScrutinPage({ params }: PageProps) {
                                 if (vote.politician.currentParty) {
                                   return (
                                     <p
-                                      className="text-xs text-muted-foreground truncate"
+                                      className="text-xs text-muted-foreground"
                                       title={vote.politician.currentParty.name}
                                     >
                                       {vote.politician.currentParty.shortName}

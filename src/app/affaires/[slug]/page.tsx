@@ -192,7 +192,7 @@ export default async function AffairDetailPage({ params }: PageProps) {
               </Link>
             </li>
             <li>/</li>
-            <li className="text-foreground truncate max-w-[200px]">{affair.title}</li>
+            <li className="text-foreground">{affair.title}</li>
           </ol>
         </nav>
 

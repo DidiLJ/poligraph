@@ -127,7 +127,7 @@ export default async function ParitePage() {
               return (
                 <Card key={`${list.communeId}-${list.listName}-${i}`}>
                   <CardContent className="pt-5">
-                    <p className="font-semibold truncate" title={list.listName}>
+                    <p className="font-semibold" title={list.listName}>
                       {list.listName}
                     </p>
                     <Link
@@ -178,7 +178,7 @@ export default async function ParitePage() {
               return (
                 <Card key={`${list.communeId}-${list.listName}-${i}`}>
                   <CardContent className="pt-5">
-                    <p className="font-semibold truncate" title={list.listName}>
+                    <p className="font-semibold" title={list.listName}>
                       {list.listName}
                     </p>
                     <Link

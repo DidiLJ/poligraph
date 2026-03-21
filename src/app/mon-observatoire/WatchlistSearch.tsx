@@ -119,8 +119,8 @@ export function WatchlistSearch() {
                     >
                       <PoliticianAvatar photoUrl={p.photoUrl} fullName={p.fullName} size="sm" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{p.fullName}</p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-sm font-medium">{p.fullName}</p>
+                        <p className="text-xs text-muted-foreground">
                           {[p.party, p.mandate ? MANDATE_TYPE_LABELS[p.mandate] : null]
                             .filter(Boolean)
                             .join(" · ") || "—"}
@@ -179,7 +179,7 @@ export function WatchlistSearch() {
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{p.name}</p>
+                        <p className="text-sm font-medium">{p.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {p.memberCount} membre{p.memberCount !== 1 ? "s" : ""}
                         </p>

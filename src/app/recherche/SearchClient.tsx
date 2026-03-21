@@ -489,7 +489,7 @@ function PoliticianRow({ result }: { result: PoliticianResult }) {
         size="sm"
         className="w-8 h-8 text-xs shrink-0"
       />
-      <span className="font-medium text-sm truncate">{result.fullName}</span>
+      <span className="font-medium text-sm">{result.fullName}</span>
       {result.party && (
         <span
           className="text-xs px-2 py-0.5 rounded-full shrink-0"
@@ -521,7 +521,7 @@ function PartyRow({ result }: { result: PartyResult }) {
         className="w-3.5 h-3.5 rounded-full shrink-0"
         style={{ backgroundColor: result.color || "#888" }}
       />
-      <span className="font-medium text-sm truncate">{result.name}</span>
+      <span className="font-medium text-sm">{result.name}</span>
       <span className="text-xs text-muted-foreground shrink-0">{result.shortName}</span>
       <span className="ml-auto text-xs text-muted-foreground shrink-0">
         {result.memberCount} membre{result.memberCount > 1 ? "s" : ""}
@@ -539,8 +539,8 @@ function AffairRow({ result }: { result: AffairResult }) {
     >
       <Scale className="h-4 w-4 text-amber-500/60 shrink-0" aria-hidden="true" />
       <div className="flex-1 min-w-0">
-        <span className="font-medium text-sm truncate block">{result.title}</span>
-        <span className="text-xs text-muted-foreground">{result.politicianName}</span>
+        <span className="font-medium text-sm leading-snug">{result.title}</span>
+        <span className="block text-xs text-muted-foreground">{result.politicianName}</span>
       </div>
       <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0 hidden sm:inline">
         {AFFAIR_STATUS_LABELS[result.status]}
@@ -553,15 +553,17 @@ function ScrutinRow({ result }: { result: ScrutinResult }) {
   return (
     <Link
       href={`/votes/${result.slug || result.id}`}
-      className="flex items-center gap-3 py-3 hover:bg-accent/40 rounded-lg transition-colors px-3 -mx-3"
+      className="flex items-start gap-3 py-3 hover:bg-accent/40 rounded-lg transition-colors px-3 -mx-3"
       prefetch={false}
     >
-      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0 mt-0.5">
         {CHAMBER_SHORT_LABELS[result.chamber]}
       </span>
-      <span className="font-medium text-sm truncate">{result.title}</span>
-      <span className="ml-auto text-xs text-muted-foreground shrink-0">
-        {formatDateShort(result.votingDate)}
+      <span className="min-w-0 flex-1">
+        <span className="font-medium text-sm leading-snug">{result.title}</span>
+        <span className="block text-xs text-muted-foreground mt-0.5">
+          {formatDateShort(result.votingDate)}
+        </span>
       </span>
     </Link>
   );
@@ -582,8 +584,8 @@ function FactCheckRow({ result }: { result: FactCheckResult }) {
         aria-hidden="true"
       />
       <div className="flex-1 min-w-0">
-        <span className="font-medium text-sm truncate block">{result.title}</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="font-medium text-sm leading-snug">{result.title}</span>
+        <span className="block text-xs text-muted-foreground">
           {result.source}
           {result.politicianName && ` · ${result.politicianName}`}
         </span>
@@ -612,7 +614,7 @@ function DossierRow({ result }: { result: DossierResult }) {
     >
       <FileText className="h-4 w-4 text-muted-foreground/60 shrink-0" aria-hidden="true" />
       <div className="flex-1 min-w-0">
-        <span className="font-medium text-sm truncate block">
+        <span className="font-medium text-sm leading-snug">
           {result.shortTitle || result.title}
         </span>
         {result.filingDate && (
@@ -636,7 +638,7 @@ function CommuneRow({ result }: { result: CommuneResult }) {
       prefetch={false}
     >
       <MapPin className="h-4 w-4 text-muted-foreground/60 shrink-0" aria-hidden="true" />
-      <span className="font-medium text-sm truncate">{result.name}</span>
+      <span className="font-medium text-sm">{result.name}</span>
       <span className="text-xs text-muted-foreground shrink-0">{result.departmentName}</span>
       {result.population && (
         <span className="ml-auto text-xs text-muted-foreground shrink-0">

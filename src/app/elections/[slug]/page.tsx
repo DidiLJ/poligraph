@@ -155,7 +155,7 @@ function CandidacyCard({
             />
           )}
           <div className="min-w-0">
-            <p className="font-medium truncate">
+            <p className="font-medium">
               {candidacy.politician ? (
                 <Link
                   href={`/politiques/${candidacy.politician.slug}`}
@@ -169,7 +169,7 @@ function CandidacyCard({
               )}
             </p>
             {candidacy.partyLabel && (
-              <p className="text-sm text-muted-foreground truncate">{candidacy.partyLabel}</p>
+              <p className="text-sm text-muted-foreground">{candidacy.partyLabel}</p>
             )}
             {candidacy.constituencyName && (
               <p className="text-xs text-muted-foreground">{candidacy.constituencyName}</p>
@@ -237,9 +237,7 @@ export default async function ElectionDetailPage({ params }: PageProps) {
               </Link>
             </li>
             <li aria-hidden="true">/</li>
-            <li className="text-foreground font-medium truncate">
-              {election.shortTitle || election.title}
-            </li>
+            <li className="text-foreground font-medium">{election.shortTitle || election.title}</li>
           </ol>
         </nav>
 

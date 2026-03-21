@@ -101,7 +101,7 @@ export default async function Commune2020DetailPage({ params }: PageProps) {
               </Link>
             </li>
             <li aria-hidden="true">/</li>
-            <li className="text-foreground font-medium truncate">{commune.communeName}</li>
+            <li className="text-foreground font-medium">{commune.communeName}</li>
           </ol>
         </nav>
 
@@ -142,7 +142,7 @@ export default async function Commune2020DetailPage({ params }: PageProps) {
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold truncate" title={list.listName}>
+                          <h3 className="font-semibold" title={list.listName}>
                             {normalizeLabel(list.listName)}
                           </h3>
                           {list.isElected && (

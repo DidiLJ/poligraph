@@ -103,7 +103,7 @@ function MinistreInfoCard({ data }: { data: MinistreComparisonData }) {
           />
         )}
         <div className="min-w-0">
-          <p className="font-semibold truncate">{data.fullName}</p>
+          <p className="font-semibold">{data.fullName}</p>
           {data.currentParty && (
             <p className="text-sm text-muted-foreground flex items-center gap-1.5">
               <span

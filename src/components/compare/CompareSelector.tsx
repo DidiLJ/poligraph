@@ -378,9 +378,9 @@ export function CompareSelector({ category, side, preview }: CompareSelectorProp
         <div className="flex items-center gap-4">
           <ResultIcon result={previewResult} size="lg" />
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg truncate">{preview.label}</h3>
+            <h3 className="font-semibold text-lg">{preview.label}</h3>
             {preview.sublabel && (
-              <p className="text-sm text-muted-foreground truncate">{preview.sublabel}</p>
+              <p className="text-sm text-muted-foreground">{preview.sublabel}</p>
             )}
           </div>
           <button
@@ -458,11 +458,9 @@ export function CompareSelector({ category, side, preview }: CompareSelectorProp
             >
               <ResultIcon result={result} size="sm" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate text-sm">{result.label}</p>
+                <p className="font-medium text-sm">{result.label}</p>
                 {result.sublabel && (
-                  <span className="text-xs text-muted-foreground truncate block">
-                    {result.sublabel}
-                  </span>
+                  <span className="text-xs text-muted-foreground block">{result.sublabel}</span>
                 )}
               </div>
             </button>

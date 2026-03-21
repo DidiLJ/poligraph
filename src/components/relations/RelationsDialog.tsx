@@ -119,7 +119,7 @@ export function RelationsDialog({
         {/* Header */}
         <div className="shrink-0 border-b px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 id="relations-dialog-title" className="text-base font-semibold truncate">
+            <h2 id="relations-dialog-title" className="text-base font-semibold">
               Relations de {center.fullName}
             </h2>
             <div className="hidden sm:flex items-center gap-2 flex-1 justify-center">

@@ -28,7 +28,7 @@ export function HorizontalBars({ bars, title, maxValue: globalMax }: HorizontalB
 
           const label = (
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium truncate mr-2">{bar.label}</span>
+              <span className="text-sm font-medium mr-2">{bar.label}</span>
               <span className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                 {formattedValue}
                 {bar.suffix || ""}

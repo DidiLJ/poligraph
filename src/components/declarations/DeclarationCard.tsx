@@ -113,7 +113,7 @@ export function DeclarationCard({ id, declarations, politicianHatvpUrl }: Declar
                 <div className="pt-2 space-y-2">
                   {remainingParticipations.map((p, i) => (
                     <div key={`part-${i}`} className="flex items-center justify-between text-sm">
-                      <span className="truncate mr-2">{cleanCompanyName(p.company)}</span>
+                      <span className="mr-2">{cleanCompanyName(p.company)}</span>
                       <span className="font-mono text-muted-foreground whitespace-nowrap">
                         {new Intl.NumberFormat("fr-FR").format(p.evaluation!)} €
                       </span>

@@ -36,7 +36,7 @@ export function HistoriqueSection2020({ data }: HistoriqueSection2020Props) {
                   aria-hidden="true"
                 />
               )}
-              <span className="font-semibold truncate" title={data.winningList.name}>
+              <span className="font-semibold" title={data.winningList.name}>
                 {normalizeLabel(data.winningList.name)}
               </span>
               <span className="text-sm text-muted-foreground tabular-nums shrink-0">

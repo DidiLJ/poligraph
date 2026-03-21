@@ -105,7 +105,7 @@ export default async function DepartementsPage() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold group-hover:text-primary transition-colors truncate">
+                    <p className="font-semibold group-hover:text-primary transition-colors">
                       {dept.name}
                     </p>
                     <p className="text-xs text-muted-foreground">{dept.code}</p>

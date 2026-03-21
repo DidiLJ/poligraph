@@ -393,7 +393,7 @@ function ActivityCard({ item }: { item: ActivityItem }) {
           <div className="flex items-center gap-2 mb-0.5">
             <Link
               href={`/partis/${item.party.slug}`}
-              className="text-sm font-semibold hover:text-primary transition-colors truncate"
+              className="text-sm font-semibold hover:text-primary transition-colors"
               prefetch={false}
             >
               {item.party.shortName || item.party.name}
@@ -429,7 +429,7 @@ function ActivityCard({ item }: { item: ActivityItem }) {
         <div className="flex items-center gap-2 mb-0.5">
           <Link
             href={`/politiques/${item.politician.slug}`}
-            className="text-sm font-semibold hover:text-primary transition-colors truncate"
+            className="text-sm font-semibold hover:text-primary transition-colors"
             prefetch={false}
           >
             {item.politician.fullName}

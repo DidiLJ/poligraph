@@ -502,6 +502,10 @@ model Affair {
   @@index([publicationStatus, severity])
   @@index([linkedAffairId])
   @@index([involvement])
+  @@index([publicationStatus, involvement])
+  @@index([publicationStatus, involvement, status])
+  @@index([publicationStatus, involvement, category])
+  @@index([publicationStatus, involvement, severity])
 }
 
 // Timeline events for an affair

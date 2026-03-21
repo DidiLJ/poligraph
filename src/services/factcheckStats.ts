@@ -210,27 +210,42 @@ async function getStatisticsData(): Promise<FactCheckStatisticsData> {
       _count: true,
       orderBy: { _count: { source: "desc" } },
     }),
-    // Fetch only claimant mentions (politician actually made the claim)
-    db.factCheckMention.findMany({
-      where: {
-        isClaimant: true,
-        factCheck: { source: { in: FACTCHECK_ALLOWED_SOURCES } },
-      },
-      select: {
-        factCheck: { select: { verdictRating: true } },
-        politician: {
-          select: {
-            id: true,
-            fullName: true,
-            slug: true,
-            photoUrl: true,
-            currentParty: {
-              select: { name: true, shortName: true, color: true, slug: true },
-            },
-          },
-        },
-      },
-    }),
+    // Fetch claimant mentions aggregated by politician + verdict (raw SQL for performance)
+    db.$queryRaw<
+      Array<{
+        politicianId: string;
+        fullName: string;
+        slug: string;
+        photoUrl: string | null;
+        partyName: string | null;
+        partyShortName: string | null;
+        partyColor: string | null;
+        partySlug: string | null;
+        verdictRating: string;
+        mentionCount: bigint;
+      }>
+    >`
+      SELECT
+        p.id AS "politicianId",
+        p."fullName",
+        p.slug,
+        p."photoUrl",
+        party.name AS "partyName",
+        party."shortName" AS "partyShortName",
+        party.color AS "partyColor",
+        party.slug AS "partySlug",
+        fc."verdictRating",
+        COUNT(*)::bigint AS "mentionCount"
+      FROM "FactCheckMention" fcm
+      JOIN "FactCheck" fc ON fcm."factCheckId" = fc.id
+      JOIN "Politician" p ON fcm."politicianId" = p.id
+      LEFT JOIN "Party" party ON p."currentPartyId" = party.id
+      WHERE fcm."isClaimant" = true
+        AND fc.source IN (${Prisma.join(FACTCHECK_ALLOWED_SOURCES)})
+      GROUP BY p.id, p."fullName", p.slug, p."photoUrl",
+               party.name, party."shortName", party.color, party.slug,
+               fc."verdictRating"
+    `,
   ]);
 
   // Global verdict groups
@@ -246,7 +261,7 @@ async function getStatisticsData(): Promise<FactCheckStatisticsData> {
     inverifiable: ratingMap["UNVERIFIABLE"] || 0,
   };
 
-  // Aggregate mentions by politician and party
+  // Aggregate pre-grouped mention rows by politician and party
   const politicianMap = new Map<
     string,
     {
@@ -271,43 +286,43 @@ async function getStatisticsData(): Promise<FactCheckStatisticsData> {
     }
   >();
 
-  for (const mention of allMentions) {
-    const pol = mention.politician;
-    const verdict = classifyRating(mention.factCheck.verdictRating);
-    const partyKey = pol.currentParty?.slug || null;
-    const partyDisplayName = pol.currentParty?.name || pol.currentParty?.shortName || null;
+  for (const row of allMentions) {
+    const count = Number(row.mentionCount);
+    const verdict = classifyRating(row.verdictRating);
+    const partyKey = row.partySlug;
+    const partyDisplayName = row.partyName || row.partyShortName;
 
     // By politician
-    if (!politicianMap.has(pol.id)) {
-      politicianMap.set(pol.id, {
-        fullName: pol.fullName,
-        slug: pol.slug,
-        photoUrl: pol.photoUrl,
+    if (!politicianMap.has(row.politicianId)) {
+      politicianMap.set(row.politicianId, {
+        fullName: row.fullName,
+        slug: row.slug,
+        photoUrl: row.photoUrl,
         party: partyDisplayName,
-        partyColor: pol.currentParty?.color || null,
+        partyColor: row.partyColor,
         breakdown: { vrai: 0, trompeur: 0, faux: 0, inverifiable: 0 },
         total: 0,
       });
     }
-    const polEntry = politicianMap.get(pol.id)!;
-    polEntry.breakdown[verdict]++;
-    polEntry.total++;
+    const polEntry = politicianMap.get(row.politicianId)!;
+    polEntry.breakdown[verdict] += count;
+    polEntry.total += count;
 
     // By party
     if (partyKey) {
       if (!partyMap.has(partyKey)) {
         partyMap.set(partyKey, {
           name: partyDisplayName!,
-          shortName: pol.currentParty!.shortName,
-          color: pol.currentParty!.color,
-          slug: pol.currentParty!.slug,
+          shortName: row.partyShortName,
+          color: row.partyColor,
+          slug: row.partySlug,
           breakdown: { vrai: 0, trompeur: 0, faux: 0, inverifiable: 0 },
           total: 0,
         });
       }
       const partyEntry = partyMap.get(partyKey)!;
-      partyEntry.breakdown[verdict]++;
-      partyEntry.total++;
+      partyEntry.breakdown[verdict] += count;
+      partyEntry.total += count;
     }
   }
 

@@ -319,13 +319,19 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
     .map(([name, members]) => {
       // Results are per-list: all members share the same values
       const firstWithResults = members.find((m) => m.round1Votes !== null);
+      // Convert Decimal fields to Number to cross RSC→Client boundary
+      const sanitizedMembers = members.map((m) => ({
+        ...m,
+        round1Pct: m.round1Pct != null ? Number(m.round1Pct) : null,
+        round2Pct: m.round2Pct != null ? Number(m.round2Pct) : null,
+      }));
       return {
         name,
         partyLabel: members[0]?.partyLabel || null,
         candidateCount: members.length,
         femaleCount: members.filter((m) => m.candidate?.gender === "F").length,
-        teteDeListe: (members.find((m) => m.listPosition === 1) || members[0])!,
-        members,
+        teteDeListe: (sanitizedMembers.find((m) => m.listPosition === 1) || sanitizedMembers[0])!,
+        members: sanitizedMembers,
         // Results (null if not yet imported)
         round1Pct: firstWithResults?.round1Pct ? Number(firstWithResults.round1Pct) : null,
         round1Votes: firstWithResults?.round1Votes ?? null,
@@ -371,7 +377,11 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
   };
 });
 
-export const getDepartmentPartyData = cache(async function getDepartmentPartyData() {
+export async function getDepartmentPartyData() {
+  "use cache";
+  cacheTag("elections");
+  cacheLife("hours");
+
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
     select: { id: true },
@@ -421,7 +431,7 @@ export const getDepartmentPartyData = cache(async function getDepartmentPartyDat
     ...dept,
     dominantParty: dept.parties[0]?.label ?? null, // Already sorted by listCount DESC
   }));
-});
+}
 
 export const getParityBySize = cache(async function getParityBySize() {
   const election = await db.election.findUnique({

@@ -1,9 +1,10 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CompetitionIndex } from "@/components/elections/municipales/CompetitionIndex";
 import { MunicipalesHero } from "@/components/elections/municipales/MunicipalesHero";
 import { MunicipalesChiffres } from "@/components/elections/municipales/MunicipalesChiffres";
@@ -42,10 +43,41 @@ export const metadata: Metadata = {
   alternates: { canonical: "/elections/municipales-2026" },
 };
 
+async function PartyMapSection() {
+  const departmentData = await getDepartmentPartyData();
+  if (departmentData.length === 0) return null;
+
+  return (
+    <section className="py-8">
+      <h2 className="text-xl font-bold mb-4">Cartographie politique</h2>
+      <div className="border rounded-xl overflow-hidden bg-card p-4">
+        <PartyMap departments={departmentData} mini />
+      </div>
+      <div className="mt-3 text-right">
+        <Link
+          href="/elections/municipales-2026/carte"
+          prefetch={false}
+          className="text-sm text-primary hover:underline"
+        >
+          Voir la carte complète →
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function PartyMapFallback() {
+  return (
+    <section className="py-8">
+      <Skeleton className="h-6 w-56 mb-4" />
+      <Skeleton className="h-[300px] w-full rounded-xl" />
+    </section>
+  );
+}
+
 export default async function MunicipalesLandingPage() {
   const election = await getElection();
   const [stats, resultats] = await Promise.all([getMunicipalesStats(), getResultatsStats()]);
-  const departmentData = await getDepartmentPartyData();
 
   // After T1 has passed, countdown to T2 instead
   const now = new Date();
@@ -178,24 +210,10 @@ export default async function MunicipalesLandingPage() {
         </div>
       </section>
 
-      {/* Cartographie politique */}
-      {departmentData.length > 0 && (
-        <section className="py-8">
-          <h2 className="text-xl font-bold mb-4">Cartographie politique</h2>
-          <div className="border rounded-xl overflow-hidden bg-card p-4">
-            <PartyMap departments={departmentData} mini />
-          </div>
-          <div className="mt-3 text-right">
-            <Link
-              href="/elections/municipales-2026/carte"
-              prefetch={false}
-              className="text-sm text-primary hover:underline"
-            >
-              Voir la carte complète →
-            </Link>
-          </div>
-        </section>
-      )}
+      {/* Cartographie politique — streamed independently (heavy query) */}
+      <Suspense fallback={<PartyMapFallback />}>
+        <PartyMapSection />
+      </Suspense>
 
       {/* Uncontested communes */}
       {stats && stats.communesUncontested > 0 && (

@@ -32,9 +32,9 @@
   <!-- Eye shine right -->
   <circle cx="120" cy="72" r="2" fill="white"/>
   <!-- Beak -->
-  <path d="M96 85l4 10l4-10z" fill="#C1362B"/>
+  <path d="M96 85l4 10l4-10z" fill="#ED2939"/>
   <!-- Forehead V -->
-  <path d="M80 58l20 12l20-12" stroke="#C1362B" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M80 58l20 12l20-12" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   <!-- Feet -->
   <path d="M82 180c-3 3-8 3-12 0M88 180c-3 3-8 3-12 0" stroke="#002654" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   <path d="M118 180c3 3 8 3 12 0M124 180c-3 3-8 3-12 0" stroke="#002654" stroke-width="2.5" fill="none" stroke-linecap="round"/>

@@ -11,27 +11,30 @@ export function ActivityFeed({ recap }: ActivityFeedProps) {
   const items: Array<{ label: string; count: number; href: string; color: string }> = [];
 
   if (recap.votes && recap.votes.total > 0) {
+    const n = recap.votes.total;
     items.push({
-      label: `${recap.votes.total} votes cette semaine`,
-      count: recap.votes.total,
+      label: `${n} vote${n > 1 ? "s" : ""} cette semaine`,
+      count: n,
       href: "/votes",
       color: "bg-blue-500",
     });
   }
 
   if (recap.affairs && recap.affairs.newAffairs.length > 0) {
+    const n = recap.affairs.newAffairs.length;
     items.push({
-      label: `${recap.affairs.newAffairs.length} nouvelles affaires`,
-      count: recap.affairs.newAffairs.length,
+      label: `${n} nouvelle${n > 1 ? "s" : ""} affaire${n > 1 ? "s" : ""}`,
+      count: n,
       href: "/affaires",
       color: "bg-red-500",
     });
   }
 
   if (recap.factChecks && recap.factChecks.total > 0) {
+    const n = recap.factChecks.total;
     items.push({
-      label: `${recap.factChecks.total} fact-checks`,
-      count: recap.factChecks.total,
+      label: `${n} fact-check${n > 1 ? "s" : ""}`,
+      count: n,
       href: "/factchecks",
       color: "bg-amber-500",
     });

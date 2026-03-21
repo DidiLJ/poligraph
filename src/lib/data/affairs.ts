@@ -145,12 +145,17 @@ function buildOrderBy(sort?: string) {
     case "name-desc":
       return [{ politician: { lastName: "desc" as const } }, { createdAt: "desc" as const }];
     case "certainty":
-    default:
       // Severity correlates with certainty: CRITIQUE affairs (probity) tend to have
       // definitive condemnations, SIGNIFICATIF tend to be ongoing/minor.
       // Perfect certainty sort would need raw SQL CASE; severity ASC is a practical proxy.
       return [
         { severity: "asc" as const },
+        { verdictDate: { sort: "desc" as const, nulls: "last" as const } },
+        { startDate: { sort: "desc" as const, nulls: "last" as const } },
+        { createdAt: "desc" as const },
+      ];
+    default:
+      return [
         { verdictDate: { sort: "desc" as const, nulls: "last" as const } },
         { startDate: { sort: "desc" as const, nulls: "last" as const } },
         { createdAt: "desc" as const },

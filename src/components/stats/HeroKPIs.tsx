@@ -24,7 +24,7 @@ export function HeroKPIs(props: HeroKPIsProps) {
         Vue d&apos;ensemble des données sur la vie politique française
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {KPI_CONFIG.map(({ key, label, icon }) => (
           <Card key={key}>
             <CardContent className="pt-6 text-center">

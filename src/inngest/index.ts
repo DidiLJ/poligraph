@@ -149,6 +149,11 @@ const phase2Extracted = [
     const force = Boolean(data.flags && (data.flags as string).includes("--force"));
     return syncMepParties({ limit, force });
   }),
+  createSyncFunction("sync-opensanctions", async (data) => {
+    const { syncOpenSanctions } = await import("@/services/sync/opensanctions");
+    const limit = (data.limit as number) || undefined;
+    return syncOpenSanctions({ limit });
+  }),
 ];
 
 export const functions = [

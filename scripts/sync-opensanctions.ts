@@ -20,7 +20,8 @@ async function main() {
   const args = process.argv.slice(2);
   const isStats = args.includes("--stats");
   const limitArg = args.find((a) => a.startsWith("--limit="));
-  const limit = limitArg ? parseInt(limitArg.split("=")[1], 10) : undefined;
+  const limitStr = limitArg?.split("=")[1];
+  const limit = limitStr ? parseInt(limitStr, 10) : undefined;
 
   if (isStats) {
     await showStats();

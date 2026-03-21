@@ -29,6 +29,7 @@ interface PageProps {
     verdict?: string;
     politician?: string;
     search?: string;
+    directOnly?: string;
   }>;
 }
 
@@ -85,9 +86,10 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
   const verdict = params.verdict;
   const politicianSlug = params.politician;
   const search = params.search;
+  const directOnly = params.directOnly === "1";
 
   const [{ factChecks, total, totalPages }, stats, sources, politicianContext] = await Promise.all([
-    getFactchecks({ page, limit, source, verdict, politicianSlug, search }),
+    getFactchecks({ page, limit, source, verdict, politicianSlug, search, directOnly }),
     getFactcheckStats(),
     getFactcheckSources(),
     politicianSlug ? getPoliticianFactcheckContext(politicianSlug) : Promise.resolve(null),
@@ -99,6 +101,7 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
     if (params.source) current.set("source", params.source);
     if (params.verdict) current.set("verdict", params.verdict);
     if (params.politician) current.set("politician", params.politician);
+    if (params.directOnly) current.set("directOnly", params.directOnly);
 
     for (const [key, value] of Object.entries(newParams)) {
       if (value) {
@@ -161,6 +164,7 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
           source: source || "",
           verdict: verdict || "",
           politician: politicianSlug || "",
+          directOnly,
         }}
         sources={sources}
         ratingCounts={stats.byRating}
@@ -168,8 +172,19 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
       />
 
       {/* Active filters */}
-      {(source || verdict || politicianSlug || search) && (
+      {(source || verdict || politicianSlug || search || directOnly) && (
         <div className="flex flex-wrap gap-2 mb-6">
+          {directOnly && (
+            <Badge variant="secondary" className="gap-1">
+              Propos directs
+              <Link
+                href={buildUrl({ directOnly: undefined })}
+                className="ml-1 hover:text-destructive"
+              >
+                ×
+              </Link>
+            </Badge>
+          )}
           {search && (
             <Badge variant="secondary" className="gap-1">
               Recherche: {search}
@@ -224,7 +239,11 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
           <p className="text-xs text-muted-foreground mb-2">Politiciens les plus fact-checkés :</p>
           <div className="flex flex-wrap gap-1">
             {stats.topPoliticians.map((p) => (
-              <Link key={p.slug} href={buildUrl({ politician: p.slug })} prefetch={false}>
+              <Link
+                key={p.slug}
+                href={buildUrl({ politician: p.slug, directOnly: "1" })}
+                prefetch={false}
+              >
                 <Badge variant="outline" className="text-xs hover:bg-muted cursor-pointer">
                   {p.fullName} ({Number(p.count)})
                 </Badge>
@@ -261,7 +280,7 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
       ) : (
         <div className="text-center py-12 text-muted-foreground">
           <p>Aucun fact-check trouvé</p>
-          {(source || verdict || politicianSlug || search) && (
+          {(source || verdict || politicianSlug || search || directOnly) && (
             <Link
               href="/factchecks"
               scroll={false}

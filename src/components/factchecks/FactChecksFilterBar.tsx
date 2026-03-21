@@ -22,6 +22,7 @@ interface FactChecksFilterBarProps {
     source: string;
     verdict: string;
     politician: string;
+    directOnly: boolean;
   };
   sources: Array<{ name: string; count: number }>;
   ratingCounts: Record<string, number>;
@@ -133,6 +134,21 @@ export function FactChecksFilterBar({
           </select>
         </div>
       </div>
+
+      {/* Direct claims toggle */}
+      <label
+        htmlFor="direct-only-factchecks"
+        className="flex items-center gap-2 cursor-pointer w-fit"
+      >
+        <input
+          id="direct-only-factchecks"
+          type="checkbox"
+          checked={currentFilters.directOnly}
+          onChange={(e) => updateParams({ directOnly: e.target.checked ? "1" : "" })}
+          className="rounded border-input text-primary focus:ring-ring h-4 w-4 cursor-pointer"
+        />
+        <span className="text-sm text-muted-foreground">Propos directs uniquement</span>
+      </label>
 
       {/* Politician context banner */}
       {politicianContext && (

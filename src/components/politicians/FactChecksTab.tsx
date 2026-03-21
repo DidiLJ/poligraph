@@ -1,5 +1,6 @@
 // src/components/politicians/FactChecksTab.tsx
 import Link from "next/link";
+import { Quote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
@@ -159,52 +160,65 @@ export function FactChecksTab({ mentions, politicianSlug }: FactChecksTabProps) 
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="leading-none font-semibold">Fact-checks</h2>
-            <Link
-              href={`/factchecks?politician=${politicianSlug}`}
-              className="text-sm text-primary hover:underline"
-            >
-              Voir tout →
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Fact-checks</h2>
+          <p className="text-xs text-muted-foreground">
             Verdicts {"é"}mis par les organismes de fact-checking cit{"é"}s.
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Verdict distribution bar */}
-          {directClaims.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium mb-3">
+        </div>
+        <Link
+          href={`/factchecks?politician=${politicianSlug}&directOnly=1`}
+          className="text-sm text-primary hover:underline"
+        >
+          Voir tout →
+        </Link>
+      </div>
+
+      {/* Direct claims: prominent section */}
+      {directClaims.length > 0 && (
+        <Card className="border-primary/20 bg-primary/[0.02]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Quote className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">
                 Ses d{"é"}clarations v{"é"}rifi{"é"}es ({directClaims.length})
               </h3>
-              <VerdictBar counts={verdictCounts} total={verdictTotal} />
-              <div className="space-y-3">
-                {directClaims.map((mention) => (
-                  <MentionRow key={mention.id} mention={mention} />
-                ))}
-              </div>
             </div>
-          )}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Propos directement attribu{"é"}s {"à"} ce politicien
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <VerdictBar counts={verdictCounts} total={verdictTotal} />
+            <div className="space-y-3">
+              {directClaims.map((mention) => (
+                <MentionRow key={mention.id} mention={mention} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Other mentions */}
-          {otherMentions.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium mb-3 text-muted-foreground">
-                Mentionn{"é"} dans ({otherMentions.length})
-              </h3>
+      {/* Other mentions: collapsed by default */}
+      {otherMentions.length > 0 && (
+        <details className="group">
+          <summary className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
+            <span className="transition-transform group-open:rotate-90">▸</span>
+            Mentionn{"é"} dans {otherMentions.length} autre{otherMentions.length > 1 ? "s" : ""}{" "}
+            fact-check{otherMentions.length > 1 ? "s" : ""}
+          </summary>
+          <Card className="mt-2">
+            <CardContent className="pt-4">
               <div className="space-y-3">
                 {otherMentions.map((mention) => (
                   <MentionRow key={mention.id} mention={mention} />
                 ))}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </details>
+      )}
     </div>
   );
 }

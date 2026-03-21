@@ -1,4 +1,3 @@
-import { Metadata } from "next";
 import Link from "next/link";
 import { SimplePagination } from "@/components/ui/SimplePagination";
 import { VoteCard } from "@/components/votes";
@@ -16,42 +15,20 @@ import { getScrutins, getLegislatures, getChambers, getThemeCounts } from "@/lib
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import type { VotingResult, Chamber, ThemeCategory } from "@/types";
+import { ArrowLeft } from "lucide-react";
 
-export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
-
-interface PageProps {
-  searchParams: Promise<{
+interface ScrutinsListingProps {
+  searchParams: {
     page?: string;
     result?: string;
     legislature?: string;
     chamber?: string;
     theme?: string;
     search?: string;
-  }>;
-}
-
-export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const params = await searchParams;
-
-  // Build canonical with meaningful filter params (exclude page, search)
-  const canonicalParams = new URLSearchParams();
-  if (params.theme) canonicalParams.set("theme", params.theme);
-  if (params.legislature) canonicalParams.set("legislature", params.legislature);
-  if (params.chamber) canonicalParams.set("chamber", params.chamber);
-  if (params.result) canonicalParams.set("result", params.result);
-  const qs = canonicalParams.toString();
-  const canonical = `/votes${qs ? `?${qs}` : ""}`;
-
-  return {
-    title: "Votes parlementaires",
-    description:
-      "Suivez les votes de l'Assemblée nationale et du Sénat. Consultez les scrutins et découvrez comment votent vos représentants.",
-    alternates: { canonical },
   };
 }
 
-export default async function VotesPage({ searchParams }: PageProps) {
-  const params = await searchParams;
+export async function ScrutinsListing({ searchParams: params }: ScrutinsListingProps) {
   const page = Math.max(1, parseInt(params.page || "1", 10));
   const limit = 20;
   const result = (params.result || undefined) as VotingResult | undefined;
@@ -68,7 +45,6 @@ export default async function VotesPage({ searchParams }: PageProps) {
       getThemeCounts(),
     ]);
 
-  // Build filter URL helper
   const buildUrl = (newParams: Record<string, string | undefined>) => {
     const current = new URLSearchParams();
     if (search) current.set("search", search);
@@ -85,16 +61,14 @@ export default async function VotesPage({ searchParams }: PageProps) {
       }
     }
 
-    // Reset page when filters change
     if (Object.keys(newParams).some((k) => k !== "page")) {
       current.delete("page");
     }
 
     const qs = current.toString();
-    return `/votes${qs ? `?${qs}` : ""}`;
+    return `/parlement${qs ? `?${qs}` : ""}`;
   };
 
-  // Check if we have multiple chambers
   const hasMultipleChambers = chambers.length > 1;
 
   return (
@@ -102,10 +76,19 @@ export default async function VotesPage({ searchParams }: PageProps) {
       <CollectionPageJsonLd
         name="Votes parlementaires"
         description="Scrutins de l'Assemblée nationale et du Sénat. Résultats, résumés et détails des votes parlementaires."
-        url={`${SITE_URL}/votes`}
+        url={`${SITE_URL}/parlement`}
         numberOfItems={total}
       />
       <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <Link
+          href="/parlement"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Parlement
+        </Link>
+
         {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -341,7 +324,7 @@ export default async function VotesPage({ searchParams }: PageProps) {
               </Badge>
             )}
             <Link
-              href="/votes"
+              href="/parlement"
               scroll={false}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
@@ -377,7 +360,7 @@ export default async function VotesPage({ searchParams }: PageProps) {
             <p>Aucun scrutin trouvé</p>
             {(result || legislature || search || theme) && (
               <Link
-                href="/votes"
+                href="/parlement"
                 scroll={false}
                 className="text-primary hover:underline mt-2 inline-block"
               >

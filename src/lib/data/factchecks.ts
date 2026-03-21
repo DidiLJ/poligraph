@@ -120,6 +120,7 @@ async function queryFactchecks(params: {
       mentions: {
         some: {
           politician: { slug: politicianSlug },
+          ...(directOnly && { isClaimant: true }),
         },
       },
     }),
@@ -129,7 +130,7 @@ async function queryFactchecks(params: {
         { claimText: { contains: search, mode: "insensitive" as const } },
       ],
     }),
-    ...(directOnly && buildDirectClaimFilter()),
+    ...(directOnly && !politicianSlug && buildDirectClaimFilter()),
   };
 
   const [factChecks, total] = await Promise.all([

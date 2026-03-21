@@ -334,7 +334,7 @@ export async function getEuroparlStats() {
   });
 
   // Fetch group details first
-  const groups = await db.europeanGroup.findMany();
+  const groups = await db.europeanGroup.findMany({ take: 50 });
 
   // Get stats with group details via include
   const mandatesWithGroups = await db.mandate.findMany({

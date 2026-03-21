@@ -279,7 +279,7 @@ export function Hemicycle({ groups }: HemicycleProps) {
       </p>
 
       {/* SR-only accessible table */}
-      <table className="sr-only" id={descId}>
+      <table className="sr-only table-fixed" id={descId}>
         <caption>Affaires judiciaires par groupe parlementaire</caption>
         <thead>
           <tr>

@@ -200,7 +200,7 @@ export function FactCheckSection({
       </MethodologyDisclaimer>
 
       {/* KPI cards — 4 columns */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-6 mb-8">
         <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold tabular-nums">{total.toLocaleString("fr-FR")}</div>
@@ -329,7 +329,7 @@ export function FactCheckSection({
           <CardContent>
             <HorizontalBars title="Répartition des verdicts de fact-checking" bars={verdictBars} />
 
-            <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t">
               {(["vrai", "trompeur", "faux", "inverifiable"] as const).map((key) => {
                 const pct = total > 0 ? ((groups[key] / total) * 100).toFixed(0) : "0";
                 return (

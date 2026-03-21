@@ -60,7 +60,7 @@ const SUPER_CATEGORIES: { key: AffairSuperCategory; description: string }[] = [
 export default function MethodologiePage() {
   return (
     <main className="container mx-auto max-w-3xl px-4 py-12">
-      <h1 className="text-3xl font-display font-bold mb-2">Méthodologie</h1>
+      <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">Méthodologie</h1>
       <p className="text-muted-foreground mb-10">
         Comment Poligraph classe et présente les affaires judiciaires
       </p>

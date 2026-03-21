@@ -157,7 +157,9 @@ export default function SourcesPage() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
       <div className="mb-12">
-        <h1 className="text-3xl font-bold mb-4">Sources et Méthodologie</h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-4">
+          Sources et Méthodologie
+        </h1>
         <p className="text-lg text-muted-foreground">
           Notre engagement : des données vérifiables, une méthodologie transparente, et le respect
           de la présomption d&apos;innocence.

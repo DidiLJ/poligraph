@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
+import { Scale, ShieldCheck, FileText, BarChart3 } from "lucide-react";
 
 const VALID_TABS = ["judiciaire", "factchecks", "legislatif", "participation"] as const;
 type TabValue = (typeof VALID_TABS)[number];
@@ -43,12 +44,28 @@ function StatsTabsInner({
 
   return (
     <Tabs value={tab} onValueChange={onTabChange}>
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="judiciaire">Judiciaire</TabsTrigger>
-          <TabsTrigger value="factchecks">Fact-checking</TabsTrigger>
-          <TabsTrigger value="legislatif">Législatif</TabsTrigger>
-          <TabsTrigger value="participation">Participation</TabsTrigger>
+      <div className="overflow-x-auto scrollbar-hide">
+        <TabsList>
+          <TabsTrigger value="judiciaire">
+            <Scale className="h-4 w-4" />
+            <span className="hidden sm:inline">Judiciaire</span>
+            <span className="sm:hidden">Justice</span>
+          </TabsTrigger>
+          <TabsTrigger value="factchecks">
+            <ShieldCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Fact-checking</span>
+            <span className="sm:hidden">Facts</span>
+          </TabsTrigger>
+          <TabsTrigger value="legislatif">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Législatif</span>
+            <span className="sm:hidden">Lois</span>
+          </TabsTrigger>
+          <TabsTrigger value="participation">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Participation</span>
+            <span className="sm:hidden">Votes</span>
+          </TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value="judiciaire">{judicialContent}</TabsContent>

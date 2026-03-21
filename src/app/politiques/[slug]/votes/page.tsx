@@ -127,7 +127,9 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
           size="md"
         />
         <div>
-          <h1 className="text-2xl font-bold">Votes de {politician.fullName}</h1>
+          <h1 className="text-2xl font-display font-extrabold tracking-tight">
+            Votes de {politician.fullName}
+          </h1>
           <p className="text-muted-foreground">{total} votes enregistrés</p>
         </div>
       </div>

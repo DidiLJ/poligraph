@@ -117,7 +117,9 @@ export default function AssembleeNationalePage() {
               <Landmark className="h-8 w-8" style={{ color: "#0066CC" }} />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">L&apos;Assemblée nationale</h1>
+              <h1 className="text-3xl font-display font-extrabold tracking-tight">
+                L&apos;Assemblée nationale
+              </h1>
               <p className="text-lg text-muted-foreground">577 députés, comment ça fonctionne ?</p>
             </div>
           </div>

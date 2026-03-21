@@ -27,7 +27,9 @@ export default async function CartePage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Carte des Résultats Électoraux</h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+          Carte des Résultats Électoraux
+        </h1>
         <p className="text-muted-foreground">
           Visualisez les résultats des législatives 2024 par département. Cliquez sur un département
           pour voir les détails.

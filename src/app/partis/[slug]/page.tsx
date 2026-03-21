@@ -181,7 +181,9 @@ export default async function PartyPage({ params }: PageProps) {
             )}
             <div className="flex-1">
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold">{party.name}</h1>
+                <h1 className="text-3xl font-display font-extrabold tracking-tight">
+                  {party.name}
+                </h1>
                 {party.slug && <FollowButton slug={party.slug} type="party" />}
               </div>
               <div className="flex items-center gap-2 mt-1">

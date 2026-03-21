@@ -250,7 +250,9 @@ export default async function ElectionDetailPage({ params }: PageProps) {
                 <span className="text-3xl" aria-hidden="true">
                   {icon}
                 </span>
-                <h1 className="text-2xl md:text-3xl font-bold">{election.title}</h1>
+                <h1 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight">
+                  {election.title}
+                </h1>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge className={statusColor}>{statusLabel}</Badge>

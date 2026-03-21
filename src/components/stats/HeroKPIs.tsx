@@ -17,7 +17,7 @@ const KPI_CONFIG = [
 export function HeroKPIs(props: HeroKPIsProps) {
   return (
     <section aria-labelledby="stats-heading">
-      <h1 id="stats-heading" className="text-3xl font-bold mb-2">
+      <h1 id="stats-heading" className="text-3xl font-display font-extrabold tracking-tight mb-2">
         Statistiques
       </h1>
       <p className="text-muted-foreground mb-8">

@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { SimplePagination } from "@/components/ui/SimplePagination";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { FactCheckCard } from "@/components/factchecks/FactCheckCard";
 import { FactChecksFilterBar } from "@/components/factchecks/FactChecksFilterBar";
@@ -61,12 +60,11 @@ const RATING_OPTIONS: FactCheckRating[] = [
   "UNVERIFIABLE",
 ];
 
-// Hex accent colors for verdict groups (inline styles per CLAUDE.md convention)
-const VERDICT_ACCENT: Record<string, { border: string; bg: string }> = {
-  total: { border: "#2563eb", bg: "#2563eb0a" },
-  faux: { border: "#c1121f", bg: "#c1121f0a" },
-  trompeur: { border: "#e9a825", bg: "#e9a8250a" },
-  vrai: { border: "#2d6a4f", bg: "#2d6a4f0a" },
+/** Super-category labels for active filter badges. */
+const VERDICT_GROUP_LABELS: Record<string, string> = {
+  faux: "Faux / Plutôt faux",
+  trompeur: "Trompeur / Partiel",
+  vrai: "Vrai / Plutôt vrai",
 };
 
 export default async function FactChecksPage({ searchParams }: PageProps) {
@@ -132,38 +130,6 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatCard
-          count={stats.totalFactChecks}
-          label="Fact-checks"
-          description="Total des vérifications"
-          accent={VERDICT_ACCENT.total!}
-        />
-        <StatCard
-          count={(stats.byRating["FALSE"] || 0) + (stats.byRating["MOSTLY_FALSE"] || 0)}
-          label="Faux / Plutôt faux"
-          description="Déclarations réfutées"
-          accent={VERDICT_ACCENT.faux!}
-        />
-        <StatCard
-          count={
-            (stats.byRating["HALF_TRUE"] || 0) +
-            (stats.byRating["MISLEADING"] || 0) +
-            (stats.byRating["OUT_OF_CONTEXT"] || 0)
-          }
-          label="Trompeur / Partiel"
-          description="Contexte incomplet"
-          accent={VERDICT_ACCENT.trompeur!}
-        />
-        <StatCard
-          count={(stats.byRating["TRUE"] || 0) + (stats.byRating["MOSTLY_TRUE"] || 0)}
-          label="Vrai / Plutôt vrai"
-          description="Déclarations vérifiées"
-          accent={VERDICT_ACCENT.vrai!}
-        />
-      </div>
-
       {/* Verdict legend */}
       <details className="mb-6 bg-muted/50 rounded-lg border">
         <summary className="px-4 py-3 cursor-pointer text-sm font-medium hover:bg-muted/80 rounded-lg transition-colors">
@@ -223,8 +189,11 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
             </Badge>
           )}
           {verdict && (
-            <Badge className={`gap-1 ${FACTCHECK_RATING_COLORS[verdict as FactCheckRating]}`}>
-              {FACTCHECK_RATING_LABELS[verdict as FactCheckRating]}
+            <Badge
+              variant={VERDICT_GROUP_LABELS[verdict] ? "secondary" : undefined}
+              className={`gap-1 ${!VERDICT_GROUP_LABELS[verdict] ? FACTCHECK_RATING_COLORS[verdict as FactCheckRating] : ""}`}
+            >
+              {VERDICT_GROUP_LABELS[verdict] || FACTCHECK_RATING_LABELS[verdict as FactCheckRating]}
               <Link href={buildUrl({ verdict: undefined })} className="ml-1 hover:text-destructive">
                 ×
               </Link>

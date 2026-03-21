@@ -209,7 +209,9 @@ export default async function PressePage({ searchParams }: PageProps) {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Revue de presse</h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+          Revue de presse
+        </h1>
         <p className="text-muted-foreground">
           Les derniers articles politiques du Monde, Politico et Mediapart mentionnant les
           responsables politiques.

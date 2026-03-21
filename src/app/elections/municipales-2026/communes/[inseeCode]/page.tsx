@@ -117,7 +117,9 @@ export default async function CommuneDetailPage({ params }: PageProps) {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-3">Municipales 2026 — {commune.name}</h1>
+          <h1 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight mb-3">
+            Municipales 2026 — {commune.name}
+          </h1>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">
               {commune.departmentName} ({commune.departmentCode})

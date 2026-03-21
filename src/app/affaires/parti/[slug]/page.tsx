@@ -325,7 +325,9 @@ export default async function PartyAffairsPage({ params }: PageProps) {
               </div>
             )}
             <div>
-              <h1 className="text-3xl font-bold">Affaires judiciaires — {party.name}</h1>
+              <h1 className="text-3xl font-display font-extrabold tracking-tight">
+                Affaires judiciaires - {party.name}
+              </h1>
               <div className="flex items-center gap-2 mt-1">
                 <Badge
                   style={{

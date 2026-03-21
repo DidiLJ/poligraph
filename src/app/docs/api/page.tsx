@@ -12,7 +12,7 @@ export default function ApiDocsPage() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Documentation API</h1>
+          <h1 className="text-3xl font-display font-extrabold tracking-tight">Documentation API</h1>
           <p className="text-muted-foreground mt-2">
             Explorez et testez les endpoints de l&apos;API Poligraph
           </p>

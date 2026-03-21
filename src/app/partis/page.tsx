@@ -3,7 +3,6 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/ui/StatCard";
 import { PoliticalPositionBadge } from "@/components/partis/PoliticalPositionBadge";
 import { PartiesFilterBar } from "@/components/partis/PartiesFilterBar";
 import { SeoIntro } from "@/components/seo/SeoIntro";
@@ -19,15 +18,6 @@ export const metadata: Metadata = {
   title: "Partis politiques",
   description: "Liste des partis politiques français avec leurs membres et historique",
   alternates: { canonical: "/partis" },
-};
-
-// Hex accent colors for stat cards (inline styles per CLAUDE.md convention)
-const STAT_ACCENT = {
-  actifs: { border: "#2563eb", bg: "#2563eb0a" },
-  gauche: { border: "#dc2626", bg: "#dc26260a" },
-  centre: { border: "#eab308", bg: "#eab3080a" },
-  droite: { border: "#2563eb", bg: "#2563eb0a" },
-  affaires: { border: "#d97706", bg: "#d977060a" },
 };
 
 interface PageProps {
@@ -74,40 +64,6 @@ export default async function PartiesPage({ searchParams }: PageProps) {
               text={`${stats.actifs} partis politiques français actifs référencés sur Poligraph, avec leurs membres, orientation politique et affaires judiciaires.`}
             />
           </div>
-        </div>
-
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          <StatCard
-            count={stats.actifs}
-            label="Partis actifs"
-            description="Avec au moins un membre"
-            accent={STAT_ACCENT.actifs}
-          />
-          <StatCard
-            count={stats.gauche}
-            label="Gauche"
-            description="Extrême gauche à centre-gauche"
-            accent={STAT_ACCENT.gauche}
-          />
-          <StatCard
-            count={stats.centre}
-            label="Centre"
-            description="Partis centristes"
-            accent={STAT_ACCENT.centre}
-          />
-          <StatCard
-            count={stats.droite}
-            label="Droite"
-            description="Centre-droit à extrême droite"
-            accent={STAT_ACCENT.droite}
-          />
-          <StatCard
-            count={stats.affaires}
-            label="Affaires judiciaires"
-            description="Partis avec au moins une affaire"
-            accent={STAT_ACCENT.affaires}
-          />
         </div>
 
         <PartiesFilterBar

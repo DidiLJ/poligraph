@@ -10,7 +10,9 @@ export default function NotFound() {
       <HexPattern className="absolute inset-0 text-primary opacity-[0.03] dark:opacity-[0.05] pointer-events-none" />
       <div className="relative z-10 flex flex-col items-center">
         <Image src="/logo.svg" alt="Poligraph" width={80} height={80} className="mb-6" />
-        <h1 className="text-4xl font-display font-bold mb-3">Page introuvable</h1>
+        <h1 className="text-4xl font-display font-extrabold tracking-tight mb-3">
+          Page introuvable
+        </h1>
         <p className="text-muted-foreground max-w-md mb-8">
           La page que vous recherchez n&apos;existe pas ou a été déplacée.
         </p>

@@ -109,7 +109,9 @@ export default async function VotesPage({ searchParams }: PageProps) {
         {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Votes parlementaires</h1>
+            <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+              Votes parlementaires
+            </h1>
             <p className="text-muted-foreground">
               {total.toLocaleString("fr-FR")} scrutins analysés.{" "}
               {stats.ADOPTED ? `${Math.round((stats.ADOPTED / total) * 100)}% adoptés.` : ""}{" "}

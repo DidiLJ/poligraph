@@ -58,7 +58,9 @@ export default async function Municipales2020Page() {
         {/* Hero */}
         <section className="py-4">
           <div className="mb-3">
-            <h1 className="text-2xl md:text-3xl font-bold">Municipales 2020</h1>
+            <h1 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight">
+              Municipales 2020
+            </h1>
             <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 mt-1">
               Résultats définitifs
             </Badge>

@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { CONVICTION_BADGE_WHERE } from "@/config/labels";
 import { type SortOption, type MandateFilter } from "@/components/politicians/FilterBar";
 import { MandateType } from "@/generated/prisma";
-import { StatCard } from "@/components/ui/StatCard";
 import { SearchForm } from "@/components/politicians/SearchForm";
 import { PoliticiansGrid } from "@/components/politicians/PoliticiansGrid";
 import { ExportButton } from "@/components/ui/ExportButton";
@@ -47,41 +46,6 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 
 // Badge triggers on severity=CRITIQUE (atteintes à la probité)
 // Replaced former CONVICTION_STATUSES = ["CONDAMNATION_DEFINITIVE"]
-
-// Hex accent colors per mandate type (for inline styles per CLAUDE.md convention)
-const MANDATE_ACCENT: Record<string, { border: string; bg: string; label: string; desc: string }> =
-  {
-    depute: {
-      border: "#2563eb",
-      bg: "#2563eb0a",
-      label: "Députés",
-      desc: "Assemblée nationale",
-    },
-    senateur: {
-      border: "#9333ea",
-      bg: "#9333ea0a",
-      label: "Sénateurs",
-      desc: "Sénat",
-    },
-    gouvernement: {
-      border: "#d97706",
-      bg: "#d977060a",
-      label: "Gouvernement",
-      desc: "Ministres et secrétaires d'État",
-    },
-    dirigeants: {
-      border: "#059669",
-      bg: "#0596690a",
-      label: "Dirigeants",
-      desc: "Dirigeants de partis politiques",
-    },
-    conviction: {
-      border: "#dc2626",
-      bg: "#dc26260a",
-      label: "Condamnations",
-      desc: "Condamnations définitives pour atteinte à la probité",
-    },
-  };
 
 // Mandate type groups
 const MANDATE_GROUPS: Record<string, MandateType[]> = {
@@ -461,41 +425,6 @@ export default async function PolitiquesPage({ searchParams }: PageProps) {
               hasAffairs: convictionFilter ? "true" : undefined,
             }}
           />
-        </div>
-
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          {(
-            [
-              { key: "depute", count: counts.deputes, mandate: "depute" },
-              { key: "senateur", count: counts.senateurs, mandate: "senateur" },
-              { key: "gouvernement", count: counts.gouvernement, mandate: "gouvernement" },
-              { key: "dirigeants", count: counts.dirigeants, mandate: "dirigeants" },
-              { key: "conviction", count: counts.withConviction, mandate: "" },
-            ] as const
-          ).map(({ key, count, mandate }) => {
-            const accent = MANDATE_ACCENT[key]!;
-            const isActive = key === "conviction" ? convictionFilter : mandateFilter === mandate;
-            const href =
-              key === "conviction"
-                ? isActive
-                  ? "/politiques"
-                  : "/politiques?conviction=true"
-                : isActive
-                  ? "/politiques"
-                  : `/politiques?mandate=${mandate}`;
-            return (
-              <StatCard
-                key={key}
-                count={count}
-                label={accent!.label}
-                description={accent!.desc}
-                accent={accent}
-                href={href}
-                isActive={isActive}
-              />
-            );
-          })}
         </div>
 
         {/* Search with autocomplete */}

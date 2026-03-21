@@ -115,30 +115,6 @@ export default async function DeclarationsPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <StatCard
-          value={stats.totalDeclarations.toLocaleString("fr-FR")}
-          label="Déclarations"
-          accent="#2563eb"
-        />
-        <StatCard
-          value={stats.politiciansWithDeclarations.toLocaleString("fr-FR")}
-          label="Élus déclarants"
-          accent="#9333ea"
-        />
-        <StatCard
-          value={formatCompactCurrency(stats.totalPortfolio)}
-          label="Portefeuille cumulé"
-          accent="#059669"
-        />
-        <StatCard
-          value={stats.enrichedCount.toLocaleString("fr-FR")}
-          label="Déclarations enrichies"
-          accent="#d97706"
-        />
-      </div>
-
       {/* Rankings: top portfolios + top companies */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
         {/* Top portfolios */}
@@ -380,22 +356,6 @@ export default async function DeclarationsPage({ searchParams }: PageProps) {
 }
 
 // ─── Sub-components ───────────────────────────────────────────
-
-function StatCard({ value, label, accent }: { value: string; label: string; accent: string }) {
-  return (
-    <Card className="border-l-4" style={{ borderLeftColor: accent }}>
-      <CardContent className="p-3 py-3">
-        <div
-          className="text-2xl font-display font-extrabold tracking-tight"
-          style={{ color: accent }}
-        >
-          {value}
-        </div>
-        <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function DeclarationListCard({ row }: { row: DeclarationRow }) {
   return (

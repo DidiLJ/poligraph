@@ -30,6 +30,8 @@ const MANDATE_OPTIONS: Record<MandateFilter, string> = {
 interface FilterBarProps {
   currentSort: SortOption;
   currentMandate: MandateFilter;
+  currentConviction: boolean;
+  convictionCount: number;
   counts: {
     deputes: number;
     senateurs: number;
@@ -43,6 +45,8 @@ interface FilterBarProps {
 export function FilterBar({
   currentSort,
   currentMandate,
+  currentConviction,
+  convictionCount,
   counts,
   onLoadingChange,
 }: FilterBarProps) {
@@ -109,6 +113,21 @@ export function FilterBar({
           options={mandateOptions}
         />
       </div>
+
+      {/* Conviction filter */}
+      <label
+        htmlFor="conviction-toggle"
+        className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer whitespace-nowrap"
+      >
+        <input
+          id="conviction-toggle"
+          type="checkbox"
+          checked={currentConviction}
+          onChange={(e) => updateParams({ conviction: e.target.checked ? "true" : "" })}
+          className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
+        />
+        Condamnations ({convictionCount})
+      </label>
 
       {/* Loading indicator — at the end so it doesn't displace filters */}
       {isPending && (

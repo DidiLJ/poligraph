@@ -92,7 +92,9 @@ export default async function CartePage() {
 
       {/* Header */}
       <section className="py-4">
-        <h1 className="text-3xl font-bold mb-2">Carte des forces politiques</h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+          Carte des forces politiques
+        </h1>
         <p className="text-muted-foreground text-lg">
           Répartition des listes par parti dans chaque département
         </p>

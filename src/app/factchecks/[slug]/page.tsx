@@ -123,7 +123,9 @@ export default async function FactCheckDetailPage({ params }: PageProps) {
       <p className="text-sm text-muted-foreground mb-4">{factCheck.source}</p>
 
       {/* Title */}
-      <h1 className="text-2xl font-bold mb-2">{factCheck.title}</h1>
+      <h1 className="text-2xl font-display font-extrabold tracking-tight mb-2">
+        {factCheck.title}
+      </h1>
 
       {/* Date */}
       <p className="text-sm text-muted-foreground mb-6">

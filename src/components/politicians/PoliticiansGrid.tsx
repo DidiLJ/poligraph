@@ -87,6 +87,8 @@ export function PoliticiansGrid({
         <FilterBar
           currentSort={sortOption}
           currentMandate={mandateFilter}
+          currentConviction={convictionFilter}
+          convictionCount={counts.withConviction}
           counts={{
             deputes: counts.deputes,
             senateurs: counts.senateurs,

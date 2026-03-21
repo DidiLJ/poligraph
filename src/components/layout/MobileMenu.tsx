@@ -188,7 +188,7 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
                         href={item.href}
                         onClick={close}
                         aria-current={isActive ? "page" : undefined}
-                        className={`flex items-center justify-between px-4 py-4 rounded-xl text-[22px] font-semibold transition-colors ${
+                        className={`flex items-center justify-between px-4 py-4 rounded-xl text-xl font-display font-semibold transition-colors ${
                           item.highlight
                             ? "border border-primary/40 text-primary"
                             : isActive

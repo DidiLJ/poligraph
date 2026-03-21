@@ -10,7 +10,7 @@ export const getParty = cache(async function getParty(slug: string) {
   cacheTag(`party:${slug}`, "parties");
   cacheLife("minutes");
 
-  return db.party.findUnique({
+  const party = await db.party.findUnique({
     where: { slug },
     include: {
       // Current members
@@ -66,6 +66,15 @@ export const getParty = cache(async function getParty(slug: string) {
       },
     },
   });
+  if (!party) return null;
+  // Convert Decimal fields for RSC boundary
+  return {
+    ...party,
+    affairsAtTime: party.affairsAtTime.map((a) => ({
+      ...a,
+      fineAmount: a.fineAmount != null ? Number(a.fineAmount) : null,
+    })),
+  };
 });
 
 export async function getPartyLeadership(partyId: string, partyName: string) {

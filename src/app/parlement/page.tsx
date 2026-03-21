@@ -1,0 +1,67 @@
+import { Metadata } from "next";
+import { ParlementHub } from "@/components/parlement/ParlementHub";
+import { ScrutinsListing } from "@/components/parlement/ScrutinsListing";
+import { getHubStats } from "@/lib/data/scrutins";
+
+export const revalidate = 300;
+
+interface PageProps {
+  searchParams: Promise<{
+    page?: string;
+    result?: string;
+    legislature?: string;
+    chamber?: string;
+    theme?: string;
+    search?: string;
+  }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const hasFilters =
+    params.search ||
+    params.result ||
+    params.legislature ||
+    params.chamber ||
+    params.theme ||
+    params.page;
+
+  if (hasFilters) {
+    const canonicalParams = new URLSearchParams();
+    if (params.theme) canonicalParams.set("theme", params.theme);
+    if (params.legislature) canonicalParams.set("legislature", params.legislature);
+    if (params.chamber) canonicalParams.set("chamber", params.chamber);
+    if (params.result) canonicalParams.set("result", params.result);
+    const qs = canonicalParams.toString();
+    return {
+      title: "Votes parlementaires",
+      description:
+        "Suivez les votes de l'Assemblée nationale et du Sénat. Consultez les scrutins et découvrez comment votent vos représentants.",
+      alternates: { canonical: `/parlement${qs ? `?${qs}` : ""}` },
+    };
+  }
+
+  const stats = await getHubStats();
+  return {
+    title: "Parlement - Scrutins et travail législatif",
+    description: `Suivez le travail parlementaire : ${stats.totalScrutins.toLocaleString("fr-FR")} scrutins et ${stats.totalDossiers.toLocaleString("fr-FR")} dossiers législatifs. Assemblée nationale et Sénat.`,
+    alternates: { canonical: "/parlement" },
+  };
+}
+
+export default async function ParlementPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const hasFilters =
+    params.search ||
+    params.result ||
+    params.legislature ||
+    params.chamber ||
+    params.theme ||
+    params.page;
+
+  if (hasFilters) {
+    return <ScrutinsListing searchParams={params} />;
+  }
+
+  return <ParlementHub />;
+}

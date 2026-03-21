@@ -76,7 +76,7 @@ export function LegislativeSection({ stats }: LegislativeSectionProps) {
   return (
     <section aria-labelledby="legislative-heading" className="py-8">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
         <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold tabular-nums">
@@ -93,7 +93,7 @@ export function LegislativeSection({ stats }: LegislativeSectionProps) {
             <div className="text-sm text-muted-foreground mt-1">Textes adoptés</div>
           </CardContent>
         </Card>
-        <Card className="col-span-2 sm:col-span-1">
+        <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold tabular-nums">
               {kpi.dossiersEnDiscussion.toLocaleString("fr-FR")}

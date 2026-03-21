@@ -17,14 +17,10 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-// Top-level links (displayed as direct links, not in a dropdown)
-export const NAV_TOP_LEVEL: NavItem[] = [
-  {
-    href: "/recap",
-    label: "Le Recap",
-    icon: "calendarDays",
-    description: "Synthèse hebdomadaire de la vie politique",
-  },
+// Primary navigation links (5 direct links, no dropdowns)
+// Note: supersedes the old NAV_TOP_LEVEL max-3 rule.
+// The new full-screen mobile menu eliminates the overflow constraint.
+export const NAV_PRIMARY: NavItem[] = [
   {
     href: "/statistiques",
     label: "Statistiques",
@@ -33,75 +29,67 @@ export const NAV_TOP_LEVEL: NavItem[] = [
     featureFlag: "STATISTIQUES_SECTION",
   },
   {
-    href: "/soutenir",
-    label: "Nous soutenir",
-    icon: "heart",
-    description: "Soutenez le projet Poligraph",
-    highlight: true,
+    href: "/politiques",
+    label: "Politiques",
+    icon: "users",
+    description: "Députés, sénateurs, ministres, eurodéputés",
+  },
+  {
+    href: "/affaires",
+    label: "Affaires",
+    icon: "scale",
+    description: "Dossiers judiciaires documentés avec sources",
+  },
+  {
+    href: "/elections/municipales-2026",
+    label: "Municipales 2026",
+    icon: "vote",
+    description: "Candidats et listes dans votre commune",
+    featureFlag: "MUNICIPALES_2026",
+  },
+  {
+    href: "/votes",
+    label: "Votes",
+    icon: "landmark",
+    description: "Scrutins et positions des élus",
   },
 ];
 
-// Main navigation groups (2 thematic dropdowns)
-export const NAV_GROUPS: NavGroup[] = [
+// Secondary links shown as pills in mobile menu
+export const NAV_SECONDARY: NavItem[] = [
   {
-    label: "Représentants",
-    items: [
-      {
-        href: "/politiques",
-        label: "Tous les représentants",
-        description: "Députés, sénateurs, ministres, eurodéputés",
-      },
-      {
-        href: "/partis",
-        label: "Partis politiques",
-        description: "Les partis et leurs membres",
-      },
-      {
-        href: "/affaires",
-        label: "Affaires judiciaires",
-        icon: "scale",
-        description: "Dossiers judiciaires documentés avec sources",
-      },
-      {
-        href: "/elections/municipales-2026",
-        label: "Municipales 2026",
-        icon: "vote",
-        description: "Candidats et listes dans votre commune",
-        featureFlag: "MUNICIPALES_2026",
-      },
-      {
-        href: "/mon-depute",
-        label: "Mon député",
-        icon: "mapPin",
-        description: "Trouvez votre député par code postal",
-        featureFlag: "MON_DEPUTE_SECTION",
-      },
-    ],
+    href: "/comparer",
+    label: "Comparer",
+    icon: "arrowLeftRight",
+    description: "Comparez des représentants",
+    featureFlag: "COMPARISON_TOOL",
   },
   {
-    label: "Parlement",
-    items: [
-      {
-        href: "/votes",
-        label: "Votes parlementaires",
-        icon: "vote",
-        description: "Scrutins et positions des élus",
-      },
-      {
-        href: "/assemblee",
-        label: "Dossiers législatifs",
-        icon: "live",
-        description: "Textes en discussion à l'Assemblée",
-        featureFlag: "ASSEMBLEE_SECTION",
-      },
-      {
-        href: "/declarations-et-patrimoine",
-        label: "Patrimoine & déclarations",
-        description: "Intérêts, patrimoine et participations des élus",
-      },
-    ],
+    href: "/mon-depute",
+    label: "Mon député",
+    icon: "mapPin",
+    description: "Trouvez votre député par code postal",
+    featureFlag: "MON_DEPUTE_SECTION",
   },
-] as const;
+  {
+    href: "/partis",
+    label: "Partis",
+    icon: "building",
+    description: "Les partis et leurs membres",
+  },
+  {
+    href: "/recherche",
+    label: "Recherche",
+    icon: "search",
+    description: "Recherche avancée",
+  },
+];
+
+/** @deprecated Use NAV_PRIMARY instead */
+export const NAV_TOP_LEVEL = NAV_PRIMARY;
+
+/** @deprecated Dropdown groups removed in redesign */
+export const NAV_GROUPS: NavGroup[] = [];
 
 // Icon-only tool buttons in the header utility rail
 export const NAV_TOOLS: NavItem[] = [

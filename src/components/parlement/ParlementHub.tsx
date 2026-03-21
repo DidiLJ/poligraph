@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { VoteCard } from "@/components/votes";
 import { ParlementSearch } from "./ParlementSearch";
 import { SeoIntro } from "@/components/seo/SeoIntro";
+import { FAQJsonLd } from "@/components/seo/JsonLd";
 import {
   THEME_CATEGORY_LABELS,
   THEME_CATEGORY_ICONS,
@@ -48,6 +49,19 @@ export async function ParlementHub() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <FAQJsonLd
+        questions={[
+          {
+            question: "Comment fonctionne le Parlement français ?",
+            answer:
+              "Le Parlement français est composé de deux chambres : l'Assemblée nationale (577 députés élus au suffrage universel direct) et le Sénat (348 sénateurs élus au suffrage indirect). Ensemble, ils votent les lois et contrôlent l'action du gouvernement.",
+          },
+          {
+            question: "Comment suivre les votes parlementaires ?",
+            answer: `Poligraph recense ${hubStats.totalScrutins.toLocaleString("fr-FR")} scrutins et ${hubStats.totalDossiers.toLocaleString("fr-FR")} dossiers législatifs. Vous pouvez explorer les votes par thème, par chambre, ou rechercher un scrutin par mot-clé.`,
+          },
+        ]}
+      />
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">Parlement</h1>

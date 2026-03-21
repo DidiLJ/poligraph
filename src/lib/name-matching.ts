@@ -162,6 +162,27 @@ function isPartOfHyphenatedWord(originalText: string, normalizedWord: string): b
 }
 
 /**
+ * Check if a politician's full name was written with hyphens in the original text.
+ * In French, "Jean-Michel" (hyphenated) is a compound first name, while
+ * "Jean Michel" (no hyphen) is first name + last name. These are different names.
+ *
+ * After dash normalization both become "jean michel", creating false matches.
+ * This function checks the ORIGINAL text for hyphens to distinguish them.
+ */
+function wasOriginallyHyphenated(originalText: string, normalizedFullName: string): boolean {
+  const parts = normalizedFullName.split(/\s+/);
+  if (parts.length < 2) return false;
+
+  const lowerOriginal = originalText
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const hyphenPattern = parts.map(escapeRegex).join("[-–—]");
+  return new RegExp(`\\b${hyphenPattern}\\b`).test(lowerOriginal);
+}
+
+/**
  * Check if a last-name-only match is actually part of another politician's full name.
  * e.g. "Laurent" in "Laurent Wauquiez" is Wauquiez's first name, not Daniel Laurent's last name.
  */
@@ -214,6 +235,15 @@ export function findMentions(
     // Try full name first (more specific)
     const fullNameRegex = new RegExp(`\\b${escapeRegex(politician.normalizedFullName)}\\b`);
     if (fullNameRegex.test(normalizedText)) {
+      // Guard: compound first names written with hyphens in the original text
+      // (e.g. "Jean-Michel") normalize to "jean michel", colliding with politicians
+      // whose actual name is "Jean Michel" (firstName + lastName, no hyphen).
+      // If the original text had hyphens, it's a different person — skip.
+      const wordCount = politician.normalizedFullName.split(/\s+/).length;
+      if (wordCount <= 3 && wasOriginallyHyphenated(text, politician.normalizedFullName)) {
+        continue;
+      }
+
       matches.push({
         politicianId: politician.id,
         matchedName: politician.fullName,

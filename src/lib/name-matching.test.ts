@@ -318,6 +318,104 @@ describe("findMentions", () => {
     const ids = result.map((r) => r.politicianId).sort();
     expect(ids).toEqual(["11", "12"]);
   });
+
+  // Compound first name false positive prevention
+  describe("compound first name collision", () => {
+    const withJeanMichel: PoliticianName[] = [
+      ...politicians,
+      {
+        id: "15",
+        fullName: "Jean Michel",
+        firstName: "Jean",
+        lastName: "Michel",
+        normalizedFullName: "jean michel",
+        normalizedLastName: "michel",
+      },
+    ];
+
+    it("should NOT match 'Jean Michel' politician in 'Jean-Michel Aulas'", () => {
+      const result = findMentions(
+        "Jean-Michel Aulas est candidat aux municipales de Lyon",
+        withJeanMichel
+      );
+      expect(result.find((r) => r.politicianId === "15")).toBeUndefined();
+    });
+
+    it("should match 'Jean Michel' in 'Jean Michel Aulas' (no hyphen = genuinely ambiguous)", () => {
+      const result = findMentions(
+        "Jean Michel Aulas est candidat aux municipales de Lyon",
+        withJeanMichel
+      );
+      // Without hyphen, "Jean Michel" could be our politician — match is acceptable
+      expect(result.find((r) => r.politicianId === "15")).toBeDefined();
+    });
+
+    it("should still match 'Jean Michel' when followed by a common word", () => {
+      const result = findMentions(
+        "le maire Jean Michel est venu au conseil municipal",
+        withJeanMichel
+      );
+      expect(result.find((r) => r.politicianId === "15")).toBeDefined();
+    });
+
+    it("should still match 'Jean Michel' at end of text", () => {
+      const result = findMentions("une déclaration de Jean Michel", withJeanMichel);
+      expect(result.find((r) => r.politicianId === "15")).toBeDefined();
+    });
+
+    it("should still match 'Jean Michel' when followed by punctuation", () => {
+      const result = findMentions("Jean Michel, le maire de la commune, a déclaré", withJeanMichel);
+      expect(result.find((r) => r.politicianId === "15")).toBeDefined();
+    });
+
+    it("should NOT match 'Jean Michel' in 'Jean-Michel Baylet'", () => {
+      const result = findMentions("Jean-Michel Baylet exprime sa gratitude", withJeanMichel);
+      expect(result.find((r) => r.politicianId === "15")).toBeUndefined();
+    });
+
+    it("should NOT match 'Jean Michel' in 'Jean-Michel Lafuente'", () => {
+      const result = findMentions(
+        "Jean-Michel Lafuente arrive en tête des municipales à Boé",
+        withJeanMichel
+      );
+      expect(result.find((r) => r.politicianId === "15")).toBeUndefined();
+    });
+
+    it("should handle 'Marie Claire' not matching 'Marie-Claire Dupont'", () => {
+      const withMarieClaire: PoliticianName[] = [
+        ...politicians,
+        {
+          id: "16",
+          fullName: "Marie Claire",
+          firstName: "Marie",
+          lastName: "Claire",
+          normalizedFullName: "marie claire",
+          normalizedLastName: "claire",
+        },
+      ];
+      const result = findMentions("Marie-Claire Dupont a été élue", withMarieClaire);
+      expect(result.find((r) => r.politicianId === "16")).toBeUndefined();
+    });
+
+    it("should still match real politician Jean-Michel Blanquer via full name", () => {
+      const withBlanquer: PoliticianName[] = [
+        ...withJeanMichel,
+        {
+          id: "17",
+          fullName: "Jean-Michel Blanquer",
+          firstName: "Jean-Michel",
+          lastName: "Blanquer",
+          normalizedFullName: "jean michel blanquer",
+          normalizedLastName: "blanquer",
+        },
+      ];
+      const result = findMentions("Jean-Michel Blanquer a présenté la réforme", withBlanquer);
+      // Blanquer should match
+      expect(result.find((r) => r.politicianId === "17")).toBeDefined();
+      // "Jean Michel" politician should NOT match
+      expect(result.find((r) => r.politicianId === "15")).toBeUndefined();
+    });
+  });
 });
 
 // ============================================

@@ -1,0 +1,41 @@
+// src/components/factchecks/PoliticianFilterBanner.tsx
+import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
+import { X } from "lucide-react";
+
+interface PoliticianFilterBannerProps {
+  fullName: string;
+  slug: string;
+  photoUrl: string | null;
+  party: string | null;
+  factcheckCount: number;
+  onDismiss: () => void;
+}
+
+export function PoliticianFilterBanner({
+  fullName,
+  photoUrl,
+  party,
+  factcheckCount,
+  onDismiss,
+}: PoliticianFilterBannerProps) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+      <PoliticianAvatar photoUrl={photoUrl} fullName={fullName} size="sm" />
+      <div className="flex-1 min-w-0">
+        <span className="font-semibold text-sm">{fullName}</span>
+        {party && <span className="text-xs text-muted-foreground ml-2">{party}</span>}
+      </div>
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
+        {factcheckCount} fact-check{factcheckCount > 1 ? "s" : ""}
+      </span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-muted-foreground hover:text-foreground transition-colors p-1"
+        aria-label={`Retirer le filtre ${fullName}`}
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}

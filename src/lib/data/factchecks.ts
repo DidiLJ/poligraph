@@ -199,3 +199,46 @@ export async function getPoliticianNameBySlug(slug: string): Promise<string | nu
   });
   return p?.fullName || null;
 }
+
+/**
+ * Get politician context for the filter banner (photo, party, factcheck count).
+ */
+export async function getPoliticianFactcheckContext(slug: string) {
+  "use cache";
+  cacheTag("factchecks", "politicians");
+  cacheLife("minutes");
+
+  const politician = await db.politician.findUnique({
+    where: { slug },
+    select: {
+      fullName: true,
+      slug: true,
+      photoUrl: true,
+      currentParty: {
+        select: { shortName: true },
+      },
+      _count: {
+        select: {
+          factCheckMentions: {
+            where: {
+              factCheck: {
+                publicationStatus: "PUBLISHED",
+                source: { in: FACTCHECK_ALLOWED_SOURCES },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!politician) return null;
+
+  return {
+    fullName: politician.fullName,
+    slug: politician.slug,
+    photoUrl: politician.photoUrl,
+    party: politician.currentParty?.shortName || null,
+    factcheckCount: politician._count.factCheckMentions,
+  };
+}

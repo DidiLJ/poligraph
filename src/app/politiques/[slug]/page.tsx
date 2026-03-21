@@ -6,13 +6,7 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatCompactCurrency } from "@/lib/utils";
-import {
-  MANDATE_TYPE_LABELS,
-  FACTCHECK_RATING_LABELS,
-  FACTCHECK_RATING_COLORS,
-  PARTY_ROLE_LABELS,
-  feminizePartyRole,
-} from "@/config/labels";
+import { MANDATE_TYPE_LABELS, PARTY_ROLE_LABELS, feminizePartyRole } from "@/config/labels";
 import { ensureContrast } from "@/lib/contrast";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { MandateTimeline } from "@/components/politicians/MandateTimeline";
@@ -25,6 +19,7 @@ import { Scale, FileText } from "lucide-react";
 import { StatusBadge } from "@/components/legislation";
 import { BetaDisclaimer } from "@/components/BetaDisclaimer";
 import { ProfileTabs } from "@/components/politicians/ProfileTabs";
+import { FactChecksTab } from "@/components/politicians/FactChecksTab";
 import { CareerTimeline } from "@/components/politicians/CareerTimeline";
 import { AffairsSection } from "@/components/politicians/AffairsSection";
 import { VotesSection } from "@/components/politicians/VotesSection";
@@ -528,233 +523,15 @@ export default async function PoliticianPage({ params }: PageProps) {
                       </CardContent>
                     </Card>
                   ) : null}
-
-                  {/* Fact-checks */}
-                  {politician.factCheckMentions.length > 0 &&
-                    (() => {
-                      const directClaims = politician.factCheckMentions.filter((m) => m.isClaimant);
-                      const otherMentions = politician.factCheckMentions.filter(
-                        (m) => !m.isClaimant
-                      );
-
-                      // Verdict distribution for direct claims
-                      const verdictCounts = directClaims.reduce(
-                        (acc, m) => {
-                          const r = m.factCheck.verdictRating;
-                          if (r === "TRUE" || r === "MOSTLY_TRUE") acc.vrai++;
-                          else if (
-                            r === "HALF_TRUE" ||
-                            r === "MISLEADING" ||
-                            r === "OUT_OF_CONTEXT"
-                          )
-                            acc.mitige++;
-                          else if (r === "FALSE" || r === "MOSTLY_FALSE") acc.faux++;
-                          else acc.autre++;
-                          return acc;
-                        },
-                        { vrai: 0, mitige: 0, faux: 0, autre: 0 }
-                      );
-                      const verdictTotal =
-                        verdictCounts.vrai +
-                        verdictCounts.mitige +
-                        verdictCounts.faux +
-                        verdictCounts.autre;
-
-                      return (
-                        <Card id="factchecks">
-                          <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <h2 className="leading-none font-semibold">Fact-checks</h2>
-                              <Link
-                                href={`/factchecks?politician=${politician.slug}`}
-                                className="text-sm text-primary hover:underline"
-                              >
-                                Voir tout →
-                              </Link>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Verdicts émis par les organismes de fact-checking cités.
-                            </p>
-                          </CardHeader>
-                          <CardContent className="space-y-6">
-                            {/* Direct claims with verdict bar */}
-                            {directClaims.length > 0 && (
-                              <div>
-                                <h3 className="text-sm font-medium mb-3">
-                                  Ses déclarations vérifiées ({directClaims.length})
-                                </h3>
-
-                                {/* Verdict distribution bar */}
-                                {verdictTotal > 0 && (
-                                  <div className="mb-4">
-                                    <div className="flex h-3 rounded-full overflow-hidden">
-                                      {verdictCounts.faux > 0 && (
-                                        <div
-                                          className="bg-red-400"
-                                          style={{
-                                            width: `${(verdictCounts.faux / verdictTotal) * 100}%`,
-                                          }}
-                                          title={`Faux : ${verdictCounts.faux}`}
-                                        />
-                                      )}
-                                      {verdictCounts.mitige > 0 && (
-                                        <div
-                                          className="bg-yellow-400"
-                                          style={{
-                                            width: `${(verdictCounts.mitige / verdictTotal) * 100}%`,
-                                          }}
-                                          title={`Mitigé : ${verdictCounts.mitige}`}
-                                        />
-                                      )}
-                                      {verdictCounts.vrai > 0 && (
-                                        <div
-                                          className="bg-green-400"
-                                          style={{
-                                            width: `${(verdictCounts.vrai / verdictTotal) * 100}%`,
-                                          }}
-                                          title={`Vrai : ${verdictCounts.vrai}`}
-                                        />
-                                      )}
-                                      {verdictCounts.autre > 0 && (
-                                        <div
-                                          className="bg-gray-300"
-                                          style={{
-                                            width: `${(verdictCounts.autre / verdictTotal) * 100}%`,
-                                          }}
-                                          title={`Invérifiable : ${verdictCounts.autre}`}
-                                        />
-                                      )}
-                                    </div>
-                                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                      {verdictCounts.faux > 0 && (
-                                        <span className="text-red-600">
-                                          Faux : {verdictCounts.faux}
-                                        </span>
-                                      )}
-                                      {verdictCounts.mitige > 0 && (
-                                        <span className="text-yellow-600">
-                                          Mitigé : {verdictCounts.mitige}
-                                        </span>
-                                      )}
-                                      {verdictCounts.vrai > 0 && (
-                                        <span className="text-green-600">
-                                          Vrai : {verdictCounts.vrai}
-                                        </span>
-                                      )}
-                                      {verdictCounts.autre > 0 && (
-                                        <span className="text-gray-500">
-                                          Autre : {verdictCounts.autre}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-
-                                <div className="space-y-3">
-                                  {directClaims.slice(0, 5).map((mention) => (
-                                    <div
-                                      key={mention.id}
-                                      className="border-b last:border-0 pb-3 last:pb-0 space-y-1"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <Badge
-                                          className={`shrink-0 ${FACTCHECK_RATING_COLORS[mention.factCheck.verdictRating]}`}
-                                        >
-                                          {FACTCHECK_RATING_LABELS[mention.factCheck.verdictRating]}
-                                        </Badge>
-                                        <span className="text-xs text-muted-foreground">
-                                          {mention.factCheck.source} ·{" "}
-                                          {formatDate(mention.factCheck.publishedAt)}
-                                        </span>
-                                      </div>
-                                      {mention.factCheck.slug ? (
-                                        <Link
-                                          href={`/factchecks/${mention.factCheck.slug}`}
-                                          className="text-sm font-medium hover:underline block"
-                                        >
-                                          {mention.factCheck.title}
-                                        </Link>
-                                      ) : (
-                                        <a
-                                          href={mention.factCheck.sourceUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-sm font-medium hover:underline block"
-                                        >
-                                          {mention.factCheck.title}
-                                        </a>
-                                      )}
-                                      {mention.factCheck.claimText && (
-                                        <p className="text-sm text-muted-foreground">
-                                          &laquo;&nbsp;{mention.factCheck.claimText}&nbsp;&raquo;
-                                        </p>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Other mentions */}
-                            {otherMentions.length > 0 && (
-                              <div>
-                                <h3 className="text-sm font-medium mb-3 text-muted-foreground">
-                                  Mentionné dans ({otherMentions.length})
-                                </h3>
-                                <div className="space-y-3">
-                                  {otherMentions.slice(0, 3).map((mention) => (
-                                    <div
-                                      key={mention.id}
-                                      className="border-b last:border-0 pb-3 last:pb-0 space-y-1"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <Badge
-                                          className={`shrink-0 ${FACTCHECK_RATING_COLORS[mention.factCheck.verdictRating]}`}
-                                        >
-                                          {FACTCHECK_RATING_LABELS[mention.factCheck.verdictRating]}
-                                        </Badge>
-                                        <span className="text-xs text-muted-foreground">
-                                          {mention.factCheck.source} ·{" "}
-                                          {formatDate(mention.factCheck.publishedAt)}
-                                        </span>
-                                      </div>
-                                      {mention.factCheck.slug ? (
-                                        <Link
-                                          href={`/factchecks/${mention.factCheck.slug}`}
-                                          className="text-sm font-medium hover:underline block"
-                                        >
-                                          {mention.factCheck.title}
-                                        </Link>
-                                      ) : (
-                                        <a
-                                          href={mention.factCheck.sourceUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-sm font-medium hover:underline block"
-                                        >
-                                          {mention.factCheck.title}
-                                        </a>
-                                      )}
-                                      {mention.factCheck.claimText && (
-                                        <p className="text-sm text-muted-foreground">
-                                          {mention.factCheck.claimant && (
-                                            <span className="font-medium">
-                                              {mention.factCheck.claimant} :{" "}
-                                            </span>
-                                          )}
-                                          &laquo;&nbsp;{mention.factCheck.claimText}&nbsp;&raquo;
-                                        </p>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })()}
                 </div>
+              }
+              factchecksContent={
+                politician.factCheckMentions.length > 0 ? (
+                  <FactChecksTab
+                    mentions={politician.factCheckMentions}
+                    politicianSlug={politician.slug}
+                  />
+                ) : null
               }
               careerContent={
                 <CareerTimeline

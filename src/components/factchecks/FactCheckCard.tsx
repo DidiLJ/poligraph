@@ -101,7 +101,7 @@ export function FactCheckCard({
           {visiblePoliticians.map((mention) => (
             <Link
               key={mention.politician.slug}
-              href={`/politiques/${mention.politician.slug}`}
+              href={`/factchecks?politician=${mention.politician.slug}`}
               prefetch={false}
               className="inline-block"
             >

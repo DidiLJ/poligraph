@@ -68,7 +68,12 @@ export function KPIStrip({ kpis }: { kpis: HomepageKPIs }) {
         badge={`${kpis.activeAffairsCount} en cours`}
       />
       <KPICard count={kpis.votesCount} label="Votes analysés" href="/votes" color="#002654" />
-      <KPICard count={kpis.factchecksCount} label="Fact-checks vérifiés" color="#6B7280" />
+      <KPICard
+        count={kpis.factchecksCount}
+        label="Fact-checks vérifiés"
+        href="/factchecks"
+        color="#6B7280"
+      />
     </div>
   );
 }

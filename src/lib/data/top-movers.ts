@@ -105,12 +105,15 @@ export async function getTopMovers(): Promise<TopMoverItem[]> {
 
   const factcheckItems: TopMoverItem[] = recentFactchecks
     .filter((fc) => fc.mentions.length > 0)
-    .map((fc) => ({
-      politician: fc.mentions[0].politician,
-      reason: `Fact-check récent : ${fc.verdictRating}`,
-      type: "factcheck" as const,
-      href: `/politiques/${fc.mentions[0].politician.slug}`,
-    }));
+    .map((fc) => {
+      const mention = fc.mentions[0]!;
+      return {
+        politician: mention.politician,
+        reason: `Fact-check récent : ${fc.verdictRating}`,
+        type: "factcheck" as const,
+        href: `/politiques/${mention.politician.slug}`,
+      };
+    });
 
   const participationSlugs = lowParticipation.map((p) => p.slug);
   const participationPoliticians =

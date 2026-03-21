@@ -44,7 +44,7 @@ describe("mergeAndDedupe", () => {
 
     const result = mergeAndDedupe(affairs, factchecks, participation);
     expect(result).toHaveLength(2);
-    expect(result[0].type).toBe("affair");
+    expect(result[0]!.type).toBe("affair");
   });
 
   it("returns empty array when no data", () => {

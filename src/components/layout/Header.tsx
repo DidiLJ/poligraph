@@ -1,34 +1,27 @@
 import Image from "next/image";
 import Link from "next/link";
 import { MobileMenu } from "./MobileMenu";
-import { NavDropdown } from "./NavDropdown";
 import { NavIconBar } from "./NavIconBar";
-import { NAV_GROUPS, NAV_TOP_LEVEL, NAV_TOOLS } from "@/config/navigation";
-import { CalendarDays, BarChart3, Heart } from "lucide-react";
+import { NAV_PRIMARY, NAV_TOOLS } from "@/config/navigation";
+import { BarChart3, Users, Scale, Vote, Landmark } from "lucide-react";
 import { getEnabledFlags } from "@/lib/feature-flags";
 import type { LucideIcon } from "lucide-react";
 
-const TOP_LEVEL_ICONS: Record<string, LucideIcon> = {
-  calendarDays: CalendarDays,
+const PRIMARY_ICONS: Record<string, LucideIcon> = {
   barChart: BarChart3,
-  heart: Heart,
+  users: Users,
+  scale: Scale,
+  vote: Vote,
+  landmark: Landmark,
 };
 
 export async function Header() {
   const enabledFlags = await getEnabledFlags();
 
-  // Filter nav groups: remove items gated behind disabled flags, drop empty groups
-  const filteredGroups = NAV_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => !item.featureFlag || enabledFlags.has(item.featureFlag)),
-  })).filter((group) => group.items.length > 0);
-
-  // Filter top-level links by feature flags
-  const filteredTopLevel = NAV_TOP_LEVEL.filter(
+  const filteredPrimary = NAV_PRIMARY.filter(
     (item) => !item.featureFlag || enabledFlags.has(item.featureFlag)
   );
 
-  // Filter icon tools by feature flags
   const filteredTools = NAV_TOOLS.filter(
     (item) => !item.featureFlag || enabledFlags.has(item.featureFlag)
   );
@@ -49,45 +42,35 @@ export async function Header() {
               height={40}
               className="rounded-xl group-hover:scale-105 transition-transform duration-300"
             />
-            <span className="hidden sm:inline text-xl font-display font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent group-hover:from-primary group-hover:to-brand transition-all duration-300">
+            <span className="hidden sm:inline text-xl font-display font-bold text-foreground">
               Poligraph
             </span>
           </Link>
 
-          {/* Desktop navigation */}
+          {/* Desktop navigation - flat links, no dropdowns */}
           <nav className="hidden lg:flex items-center gap-1" aria-label="Navigation principale">
-            {/* Top-level direct links */}
-            {filteredTopLevel.map((item) => {
-              const Icon = item.icon ? TOP_LEVEL_ICONS[item.icon] : null;
+            {filteredPrimary.map((item) => {
+              const Icon = item.icon ? PRIMARY_ICONS[item.icon] : null;
+              // Shorten "Municipales 2026" to "Municipales" for desktop space
+              const displayLabel = item.label.startsWith("Municipales")
+                ? "Municipales"
+                : item.label;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={
-                    item.highlight
-                      ? "flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-full border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
-                      : "flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-foreground hover:text-primary rounded-lg hover:bg-muted/50 transition-colors"
-                  }
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-foreground/80 hover:text-primary rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   {Icon && <Icon className="h-4 w-4" />}
-                  {item.label}
+                  {displayLabel}
                 </Link>
               );
             })}
 
-            {/* Dropdown menus */}
-            {filteredGroups.map((group) => (
-              <NavDropdown
-                key={group.label}
-                group={group}
-                boost={group.label === "Élections" && enabledFlags.has("ELECTIONS_BOOST")}
-              />
-            ))}
-
             {/* Separator between nav and tools */}
             <div className="h-6 w-px bg-border mx-1.5" aria-hidden="true" />
 
-            {/* Icon tool rail */}
+            {/* Icon tool rail (search + theme toggle) */}
             <NavIconBar tools={filteredTools} />
           </nav>
 

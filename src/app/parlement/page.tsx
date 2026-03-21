@@ -1,6 +1,5 @@
 import { Metadata } from "next";
-import { ParlementHub } from "@/components/parlement/ParlementHub";
-import { ScrutinsListing } from "@/components/parlement/ScrutinsListing";
+import { ParlementHub, ScrutinsListing } from "@/components/parlement";
 import { getHubStats } from "@/lib/data/scrutins";
 
 export const revalidate = 300;

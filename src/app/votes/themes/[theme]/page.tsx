@@ -25,12 +25,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { theme: slug } = await params;
   const theme = themeFromSlug(slug);
-  if (!theme) return { title: "Theme introuvable" };
+  if (!theme) return { title: "Thème introuvable" };
 
   const label = THEME_CATEGORY_LABELS[theme];
   return {
     title: `Votes ${label}`,
-    description: `Tous les scrutins parlementaires sur le theme ${label}. Resultats des votes de l'Assemblee nationale et du Senat.`,
+    description: `Tous les scrutins parlementaires sur le thème ${label}. Résultats des votes de l'Assemblée nationale et du Sénat.`,
     alternates: { canonical: `/votes/themes/${slug}` },
   };
 }
@@ -86,8 +86,8 @@ export default async function ThemePage({
   const adoptedPercent = total > 0 ? Math.round((adopted / total) * 100) : 0;
 
   const introText = [
-    `${total.toLocaleString("fr-FR")} scrutins sur le theme ${label}.`,
-    total > 0 ? `${adoptedPercent}% adoptes.` : "",
+    `${total.toLocaleString("fr-FR")} scrutins sur le thème ${label}.`,
+    total > 0 ? `${adoptedPercent}% adoptés.` : "",
     lastScrutin ? `Dernier vote : ${formatDate(lastScrutin.votingDate)}.` : "",
   ]
     .filter(Boolean)
@@ -104,8 +104,8 @@ export default async function ThemePage({
       <BreadcrumbJsonLd
         items={[
           { name: "Accueil", url: SITE_URL },
-          { name: "Votes", url: `${SITE_URL}/votes` },
-          { name: "Thematiques", url: `${SITE_URL}/votes/themes` },
+          { name: "Parlement", url: `${SITE_URL}/parlement` },
+          { name: "Thématiques", url: `${SITE_URL}/votes/themes` },
           { name: label, url: `${SITE_URL}/votes/themes/${themeToSlug(theme)}` },
         ]}
       />
@@ -123,11 +123,11 @@ export default async function ThemePage({
         </div>
         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
           <p className="text-2xl font-bold text-green-600">{adopted}</p>
-          <p className="text-sm text-muted-foreground">Adoptes</p>
+          <p className="text-sm text-muted-foreground">Adoptés</p>
         </div>
         <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center">
           <p className="text-2xl font-bold text-red-600">{rejected}</p>
-          <p className="text-sm text-muted-foreground">Rejetes</p>
+          <p className="text-sm text-muted-foreground">Rejetés</p>
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
           <p className="text-2xl font-bold text-primary">{adoptedPercent}%</p>
@@ -152,16 +152,17 @@ export default async function ThemePage({
           </div>
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span className="text-green-600">
-              Adoptes: {adopted} ({adoptedPercent}%)
+              Adoptés : {adopted} ({adoptedPercent}%)
             </span>
             <span className="text-red-600">
-              Rejetes: {rejected} ({total > 0 ? Math.round((rejected / total) * 100) : 0}%)
+              Rejetés : {rejected} ({total > 0 ? Math.round((rejected / total) * 100) : 0}%)
             </span>
           </div>
         </div>
       )}
 
       {/* Scrutin list */}
+      <h2 className="text-lg font-semibold mb-4">Scrutins {label}</h2>
       {scrutins.length > 0 ? (
         <div className="space-y-4">
           {scrutins.map((scrutin) => (
@@ -185,7 +186,7 @@ export default async function ThemePage({
         </div>
       ) : (
         <div className="text-center py-12 text-muted-foreground">
-          <p>Aucun scrutin trouve pour cette thematique.</p>
+          <p>Aucun scrutin trouvé pour cette thématique.</p>
         </div>
       )}
 
@@ -197,7 +198,7 @@ export default async function ThemePage({
               href={buildPageUrl(page - 1)}
               className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80"
             >
-              Precedent
+              Précédent
             </Link>
           )}
           <span className="px-4 py-2 text-muted-foreground">
@@ -217,14 +218,14 @@ export default async function ThemePage({
       {/* Back link */}
       <div className="mt-8 text-center">
         <Link href="/votes/themes" className="text-primary hover:underline text-sm">
-          Voir toutes les thematiques
+          Voir toutes les thématiques
         </Link>
       </div>
 
       {/* Source */}
       <div className="mt-4 text-center text-sm text-muted-foreground">
         <p>
-          Donnees issues de{" "}
+          Données issues de{" "}
           <a
             href="https://data.assemblee-nationale.fr"
             target="_blank"

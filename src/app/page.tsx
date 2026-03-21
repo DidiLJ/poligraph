@@ -26,13 +26,11 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const now = new Date();
   const currentWeekStart = getWeekStart(now);
-  const prevWeekStart = new Date(currentWeekStart);
-  prevWeekStart.setUTCDate(prevWeekStart.getUTCDate() - 7);
 
   const [kpis, topMovers, weeklyRecap, featuredElection, enabledFlags] = await Promise.all([
     getHomepageKPIs(),
     getTopMovers(),
-    getWeeklyRecap(prevWeekStart),
+    getWeeklyRecap(currentWeekStart),
     getFeaturedElection(),
     getEnabledFlags(),
   ]);

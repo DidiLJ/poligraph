@@ -32,9 +32,8 @@ interface AffairesFilterBarProps {
 }
 
 const SORT_OPTIONS: Record<string, string> = {
-  "": "Pertinence",
+  "": "Plus récentes",
   certainty: "Par certitude",
-  "date-desc": "Plus récentes",
   "date-asc": "Plus anciennes",
   "name-asc": "Nom A-Z",
   "name-desc": "Nom Z-A",

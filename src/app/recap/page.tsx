@@ -150,10 +150,26 @@ export default async function RecapPage({ searchParams }: PageProps) {
             {/* ── KPI Strip ──────────────────────────── */}
             <FadeIn delay={0.1}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <KpiCard value={data.votes.total} label="scrutins" emoji="🗳️" />
-                <KpiCard value={data.press.articleCount} label="articles presse" emoji="📰" />
-                <KpiCard value={data.affairs.total} label="nouvelles affaires" emoji="⚖️" />
-                <KpiCard value={data.factChecks.total} label="fact-checks" emoji="🔍" />
+                <KpiCard
+                  value={data.votes.total}
+                  label={`scrutin${data.votes.total > 1 ? "s" : ""}`}
+                  emoji="🗳️"
+                />
+                <KpiCard
+                  value={data.press.articleCount}
+                  label={`article${data.press.articleCount > 1 ? "s" : ""} presse`}
+                  emoji="📰"
+                />
+                <KpiCard
+                  value={data.affairs.total}
+                  label={`nouvelle${data.affairs.total > 1 ? "s" : ""} affaire${data.affairs.total > 1 ? "s" : ""}`}
+                  emoji="⚖️"
+                />
+                <KpiCard
+                  value={data.factChecks.total}
+                  label={`fact-check${data.factChecks.total > 1 ? "s" : ""}`}
+                  emoji="🔍"
+                />
               </div>
             </FadeIn>
 

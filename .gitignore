@@ -3,6 +3,9 @@
 
 # plans (local only)
 /docs/plans/
+
+# perf baseline (local only)
+.perf-baseline.json
 /docs/superpowers/
 
 # storybook

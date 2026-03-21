@@ -16,9 +16,9 @@ import { SITE_URL } from "@/config/site";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Votes par thematique",
+  title: "Votes par thématique",
   description:
-    "Explorez les scrutins parlementaires classes par thematique : economie, sante, securite, environnement et plus. Decouvrez les votes de vos representants par sujet.",
+    "Explorez les scrutins parlementaires classés par thématique : économie, santé, sécurité, environnement et plus. Découvrez les votes de vos représentants par sujet.",
   alternates: { canonical: "/votes/themes" },
 };
 
@@ -60,16 +60,16 @@ export default async function ThemesListingPage() {
       <BreadcrumbJsonLd
         items={[
           { name: "Accueil", url: SITE_URL },
-          { name: "Votes", url: `${SITE_URL}/votes` },
-          { name: "Thematiques", url: `${SITE_URL}/votes/themes` },
+          { name: "Parlement", url: `${SITE_URL}/parlement` },
+          { name: "Thématiques", url: `${SITE_URL}/votes/themes` },
         ]}
       />
 
       <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
-        Votes par thematique
+        Votes par thématique
       </h1>
       <SeoIntro
-        text={`${totalScrutins.toLocaleString("fr-FR")} scrutins parlementaires classes dans ${themes.length} thematiques. Explorez les votes de l'Assemblee nationale et du Senat par sujet.`}
+        text={`${totalScrutins.toLocaleString("fr-FR")} scrutins parlementaires classés dans ${themes.length} thématiques. Explorez les votes de l'Assemblée nationale et du Sénat par sujet.`}
       />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -89,7 +89,7 @@ export default async function ThemesListingPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>{total.toLocaleString("fr-FR")} scrutins</span>
-                    <span className="text-green-600 font-medium">{adoptedPercent}% adoptes</span>
+                    <span className="text-green-600 font-medium">{adoptedPercent}% adoptés</span>
                   </div>
                 </CardContent>
               </Card>
@@ -100,7 +100,7 @@ export default async function ThemesListingPage() {
 
       <div className="mt-8 text-center text-sm text-muted-foreground">
         <p>
-          Donnees issues de{" "}
+          Données issues de{" "}
           <a
             href="https://data.assemblee-nationale.fr"
             target="_blank"

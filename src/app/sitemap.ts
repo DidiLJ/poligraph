@@ -62,7 +62,7 @@ async function buildStaticAndPoliticiansSitemap(): Promise<MetadataRoute.Sitemap
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/votes`,
+      url: `${SITE_URL}/parlement`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.8,

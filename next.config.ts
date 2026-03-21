@@ -125,6 +125,11 @@ const nextConfig: NextConfig = {
         destination: "/partis/:slug",
         permanent: true,
       },
+      {
+        source: "/votes",
+        destination: "/parlement",
+        permanent: true,
+      },
     ];
   },
 };

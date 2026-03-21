@@ -182,7 +182,16 @@ async function queryScrutins(params: {
     ...(chamber && { chamber }),
     ...(theme && { theme }),
     ...(search && {
-      title: { contains: search, mode: "insensitive" as const },
+      OR: [
+        { title: { contains: search, mode: "insensitive" as const } },
+        { summary: { contains: search, mode: "insensitive" as const } },
+        { citizenImpact: { contains: search, mode: "insensitive" as const } },
+        {
+          dossierLegislatif: {
+            title: { contains: search, mode: "insensitive" as const },
+          },
+        },
+      ],
     }),
   };
 
@@ -279,4 +288,112 @@ export async function getThemeCounts() {
     orderBy: { _count: { theme: "desc" } },
   });
   return counts.filter((c) => c.theme !== null) as { theme: ThemeCategory; _count: number }[];
+}
+
+// ---------------------------------------------------------------------------
+// Hub page — data functions
+// ---------------------------------------------------------------------------
+
+/** Last scrutin date, used for parliamentary recess banner. */
+export async function getLastScrutinDate(): Promise<Date | null> {
+  "use cache";
+  cacheTag("votes");
+  cacheLife("minutes");
+
+  const last = await db.scrutin.findFirst({
+    orderBy: { votingDate: "desc" },
+    select: { votingDate: true },
+  });
+  return last?.votingDate ?? null;
+}
+
+/** 8 most recent scrutins for the hub page hero section. */
+export async function getLatestScrutins() {
+  "use cache";
+  cacheTag("votes");
+  cacheLife("minutes");
+
+  return db.scrutin.findMany({
+    orderBy: { votingDate: "desc" },
+    take: 8,
+    select: DAILY_SELECT,
+  });
+}
+
+/** Today's vote counts by chamber. */
+export async function getTodayVotesByChamber(): Promise<{
+  AN: number;
+  SENAT: number;
+  total: number;
+  date: string;
+}> {
+  "use cache";
+  cacheTag("votes", "votes-daily");
+  cacheLife("minutes");
+
+  const dateStr = getParisToday();
+  const { start, end } = parseDateRange(dateStr);
+
+  const results = await db.scrutin.groupBy({
+    by: ["chamber"],
+    where: { votingDate: { gte: start, lt: end } },
+    _count: true,
+  });
+
+  const AN = results.find((r) => r.chamber === "AN")?._count ?? 0;
+  const SENAT = results.find((r) => r.chamber === "SENAT")?._count ?? 0;
+
+  return { AN, SENAT, total: AN + SENAT, date: dateStr };
+}
+
+/** Aggregate stats for the hub page: total scrutins + total dossiers. */
+export async function getHubStats(): Promise<{
+  totalScrutins: number;
+  totalDossiers: number;
+}> {
+  "use cache";
+  cacheTag("votes");
+  cacheLife("minutes");
+
+  const [totalScrutins, totalDossiers] = await Promise.all([
+    db.scrutin.count(),
+    db.legislativeDossier.count(),
+  ]);
+
+  return { totalScrutins, totalDossiers };
+}
+
+/** Per-chamber vote count and adoption rate. */
+export async function getChamberAdoptionRates(): Promise<
+  Array<{
+    chamber: Chamber;
+    total: number;
+    adopted: number;
+    adoptionRate: number;
+  }>
+> {
+  "use cache";
+  cacheTag("votes");
+  cacheLife("minutes");
+
+  const results = await db.scrutin.groupBy({
+    by: ["chamber", "result"],
+    _count: true,
+  });
+
+  const byC = new Map<Chamber, { total: number; adopted: number }>();
+
+  for (const r of results) {
+    const entry = byC.get(r.chamber) ?? { total: 0, adopted: 0 };
+    entry.total += r._count;
+    if (r.result === "ADOPTED") entry.adopted += r._count;
+    byC.set(r.chamber, entry);
+  }
+
+  return Array.from(byC.entries()).map(([chamber, { total, adopted }]) => ({
+    chamber,
+    total,
+    adopted,
+    adoptionRate: total > 0 ? Math.round((adopted / total) * 100) : 0,
+  }));
 }

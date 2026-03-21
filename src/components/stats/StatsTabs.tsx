@@ -44,30 +44,28 @@ function StatsTabsInner({
 
   return (
     <Tabs value={tab} onValueChange={onTabChange}>
-      <div className="overflow-x-auto scrollbar-hide">
-        <TabsList>
-          <TabsTrigger value="judiciaire">
-            <Scale className="h-4 w-4" />
-            <span className="hidden sm:inline">Judiciaire</span>
-            <span className="sm:hidden">Justice</span>
-          </TabsTrigger>
-          <TabsTrigger value="factchecks">
-            <ShieldCheck className="h-4 w-4" />
-            <span className="hidden sm:inline">Fact-checking</span>
-            <span className="sm:hidden">Facts</span>
-          </TabsTrigger>
-          <TabsTrigger value="legislatif">
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Législatif</span>
-            <span className="sm:hidden">Lois</span>
-          </TabsTrigger>
-          <TabsTrigger value="participation">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">Participation</span>
-            <span className="sm:hidden">Votes</span>
-          </TabsTrigger>
-        </TabsList>
-      </div>
+      <TabsList>
+        <TabsTrigger value="judiciaire">
+          <Scale className="h-4 w-4" />
+          <span className="hidden sm:inline">Judiciaire</span>
+          <span className="sm:hidden">Justice</span>
+        </TabsTrigger>
+        <TabsTrigger value="factchecks">
+          <ShieldCheck className="h-4 w-4" />
+          <span className="hidden sm:inline">Fact-checking</span>
+          <span className="sm:hidden">Facts</span>
+        </TabsTrigger>
+        <TabsTrigger value="legislatif">
+          <FileText className="h-4 w-4" />
+          <span className="hidden sm:inline">Législatif</span>
+          <span className="sm:hidden">Lois</span>
+        </TabsTrigger>
+        <TabsTrigger value="participation">
+          <BarChart3 className="h-4 w-4" />
+          <span className="hidden sm:inline">Participation</span>
+          <span className="sm:hidden">Votes</span>
+        </TabsTrigger>
+      </TabsList>
       <TabsContent value="judiciaire">{judicialContent}</TabsContent>
       <TabsContent value="factchecks">{factCheckContent}</TabsContent>
       <TabsContent value="legislatif">{legislativeContent}</TabsContent>

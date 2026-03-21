@@ -1,14 +1,13 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { cacheTag, cacheLife } from "next/cache";
 import { SimplePagination } from "@/components/ui/SimplePagination";
-import { db } from "@/lib/db";
 import { PressCard, PartyFilterSelect } from "@/components/presse";
 import { PresseSearchInput } from "@/components/presse/PresseSearchInput";
 import { Badge } from "@/components/ui/badge";
 import { ensureContrast } from "@/lib/contrast";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getPress, getPressStats, getPartiesWithPressMentions } from "@/lib/data/press";
 
 export const revalidate = 300; // ISR: re-check feature flag every 5 minutes
 
@@ -35,131 +34,6 @@ const SOURCE_OPTIONS = [
   { id: "mediapart", name: "Mediapart" },
 ];
 
-async function getArticles(params: {
-  page: number;
-  limit: number;
-  source?: string;
-  partyId?: string;
-  search?: string;
-  sort?: string;
-}) {
-  const { page, limit, source, partyId, search, sort } = params;
-  const skip = (page - 1) * limit;
-
-  const where = {
-    // Only show articles linked to at least one politician or party
-    OR: [{ mentions: { some: {} } }, { partyMentions: { some: {} } }],
-    ...(source && { feedSource: source }),
-    ...(partyId && {
-      partyMentions: {
-        some: { partyId },
-      },
-    }),
-    ...(search && {
-      title: { contains: search, mode: "insensitive" as const },
-    }),
-  };
-
-  const [articles, total] = await Promise.all([
-    db.pressArticle.findMany({
-      where,
-      orderBy: sort === "relevance" ? { mentions: { _count: "desc" } } : { publishedAt: "desc" },
-      skip,
-      take: limit,
-      include: {
-        _count: { select: { mentions: true } },
-        mentions: {
-          include: {
-            politician: {
-              select: { slug: true, fullName: true },
-            },
-          },
-        },
-        partyMentions: {
-          include: {
-            party: {
-              select: { slug: true, name: true, shortName: true, color: true },
-            },
-          },
-        },
-      },
-    }),
-    db.pressArticle.count({ where }),
-  ]);
-
-  return {
-    articles,
-    total,
-    totalPages: Math.ceil(total / limit),
-  };
-}
-
-async function getStats() {
-  "use cache";
-  cacheTag("press");
-  cacheLife("minutes");
-
-  // Only count articles linked to at least one politician or party
-  const linkedFilter = {
-    OR: [{ mentions: { some: {} } }, { partyMentions: { some: {} } }],
-  };
-
-  const [totalArticles, bySource, totalMentions, totalPartyMentions] = await Promise.all([
-    db.pressArticle.count({ where: linkedFilter }),
-    db.pressArticle.groupBy({
-      by: ["feedSource"],
-      where: linkedFilter,
-      _count: true,
-    }),
-    db.pressArticleMention.count(),
-    db.pressArticlePartyMention.count(),
-  ]);
-
-  return {
-    totalArticles,
-    bySource: bySource.reduce(
-      (acc, s) => {
-        acc[s.feedSource] = s._count;
-        return acc;
-      },
-      {} as Record<string, number>
-    ),
-    totalMentions,
-    totalPartyMentions,
-  };
-}
-
-async function getPartiesWithMentions() {
-  "use cache";
-  cacheTag("press", "parties");
-  cacheLife("minutes");
-
-  const parties = await db.party.findMany({
-    where: {
-      pressMentions: {
-        some: {},
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-      shortName: true,
-      color: true,
-      _count: {
-        select: { pressMentions: true },
-      },
-    },
-    orderBy: {
-      pressMentions: {
-        _count: "desc",
-      },
-    },
-    take: 20,
-  });
-
-  return parties;
-}
-
 export default async function PressePage({ searchParams }: PageProps) {
   if (!(await isFeatureEnabled("PRESS_SECTION"))) notFound();
 
@@ -172,9 +46,9 @@ export default async function PressePage({ searchParams }: PageProps) {
   const sort = params.sort === "relevance" ? "relevance" : "recent";
 
   const [{ articles, total, totalPages }, stats, partiesWithMentions] = await Promise.all([
-    getArticles({ page, limit, source, partyId, search, sort }),
-    getStats(),
-    getPartiesWithMentions(),
+    getPress({ page, limit, source, partyId, search, sort }),
+    getPressStats(),
+    getPartiesWithPressMentions(),
   ]);
 
   // Get current party name for display

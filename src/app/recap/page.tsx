@@ -398,7 +398,7 @@ export default async function RecapPage({ searchParams }: PageProps) {
                         {data.factChecks.topPoliticians.map((p) => (
                           <Link
                             key={p.slug}
-                            href={`/factchecks?politician=${p.slug}`}
+                            href={`/factchecks?politician=${p.slug}&directOnly=1`}
                             className="flex items-center gap-3 group"
                             prefetch={false}
                           >

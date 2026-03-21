@@ -49,8 +49,8 @@ export const NAV_PRIMARY: NavItem[] = [
     highlight: true,
   },
   {
-    href: "/votes",
-    label: "Votes",
+    href: "/parlement",
+    label: "Parlement",
     icon: "landmark",
     description: "Scrutins et positions des élus",
   },
@@ -158,7 +158,7 @@ export const FOOTER_SECTIONS: FooterSection[] = [
   {
     title: "Parlement",
     links: [
-      { href: "/votes", label: "Votes parlementaires" },
+      { href: "/parlement", label: "Travail parlementaire" },
       { href: "/assemblee", label: "Dossiers législatifs", featureFlag: "ASSEMBLEE_SECTION" },
       { href: "/declarations-et-patrimoine", label: "Patrimoine & déclarations" },
       { href: "/statistiques", label: "Statistiques", featureFlag: "STATISTIQUES_SECTION" },
@@ -233,7 +233,7 @@ export const SOCIAL_LINKS: SocialLink[] = [
 // Legacy exports for backwards compatibility
 export const NAV_LINKS = [
   { href: "/politiques", label: "Représentants" },
-  { href: "/votes", label: "Votes" },
+  { href: "/parlement", label: "Parlement" },
   { href: "/affaires", label: "Affaires" },
   { href: "/partis", label: "Partis" },
   { href: "/statistiques", label: "Stats" },

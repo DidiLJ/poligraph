@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { normalizeText } from "@/lib/name-matching";
 import { withPublicRoute } from "@/lib/api/with-public-route";
 
-interface ReconciliationQuery {
-  query: string;
-  type?: string;
-  limit?: number;
-  properties?: Array<{ pid: string; v: string }>;
-}
+const reconciliationQuerySchema = z.object({
+  query: z.string().min(1).max(500),
+  type: z.string().optional(),
+  limit: z.number().int().min(1).max(25).optional(),
+  properties: z.array(z.object({ pid: z.string(), v: z.string() })).optional(),
+});
+
+const reconciliationQueriesSchema = z.record(z.string(), reconciliationQuerySchema);
+
+type ReconciliationQuery = z.infer<typeof reconciliationQuerySchema>;
 
 interface ReconciliationResult {
   id: string;
@@ -38,19 +43,35 @@ export const GET = withPublicRoute(async (request) => {
     });
   }
 
-  let queries: Record<string, ReconciliationQuery>;
+  let raw: unknown;
   try {
-    queries = JSON.parse(queriesParam);
+    raw = JSON.parse(queriesParam);
   } catch {
     return NextResponse.json({ error: "Invalid JSON in queries parameter" }, { status: 400 });
   }
-  return handleQueries(queries);
+
+  const parsed = reconciliationQueriesSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid queries format", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
+  return handleQueries(parsed.data as Record<string, ReconciliationQuery>);
 });
 
 export const POST = withPublicRoute(async (request) => {
   const body = await request.json();
-  const queries: Record<string, ReconciliationQuery> = body.queries ?? body;
-  return handleQueries(queries);
+  const input = body.queries ?? body;
+
+  const parsed = reconciliationQueriesSchema.safeParse(input);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid queries format", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
+  return handleQueries(parsed.data as Record<string, ReconciliationQuery>);
 });
 
 async function handleQueries(queries: Record<string, ReconciliationQuery>): Promise<NextResponse> {

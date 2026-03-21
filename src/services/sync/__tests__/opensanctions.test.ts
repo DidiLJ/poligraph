@@ -1,4 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/identity", () => ({ resolveBatch: vi.fn() }));
+
 import { parseFtmPerson, toResolveInput } from "../opensanctions";
 
 // Minimal FtM entity fixture matching real OpenSanctions NDJSON structure

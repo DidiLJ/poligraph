@@ -4,17 +4,28 @@ import { useFilterParams } from "@/hooks/useFilterParams";
 import { DebouncedSearchInput } from "@/components/filters";
 import { FilterBarShell } from "@/components/filters/FilterBarShell";
 import { FACTCHECK_RATING_LABELS } from "@/config/labels";
+import { PoliticianFilterAutocomplete } from "./PoliticianFilterAutocomplete";
+import { PoliticianFilterBanner } from "./PoliticianFilterBanner";
 import type { FactCheckRating } from "@/types";
+
+interface PoliticianContext {
+  fullName: string;
+  slug: string;
+  photoUrl: string | null;
+  party: string | null;
+  factcheckCount: number;
+}
 
 interface FactChecksFilterBarProps {
   currentFilters: {
     search: string;
     source: string;
     verdict: string;
-    type: string;
+    politician: string;
   };
   sources: Array<{ name: string; count: number }>;
   ratingCounts: Record<string, number>;
+  politicianContext: PoliticianContext | null;
 }
 
 const RATING_OPTIONS: FactCheckRating[] = [
@@ -46,12 +57,13 @@ export function FactChecksFilterBar({
   currentFilters,
   sources,
   ratingCounts,
+  politicianContext,
 }: FactChecksFilterBarProps) {
   const { isPending, updateParams } = useFilterParams();
 
   return (
-    <FilterBarShell isPending={isPending}>
-      {/* Dropdowns grid: 2 cols mobile, 4 cols desktop */}
+    <FilterBarShell isPending={isPending} className="space-y-3">
+      {/* Filters row: search + politician + source + verdict */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <DebouncedSearchInput
           id="search-factchecks"
@@ -59,6 +71,11 @@ export function FactChecksFilterBar({
           onSearch={(v) => updateParams({ search: v })}
           placeholder="Mot-clé..."
           label="Recherche"
+        />
+
+        <PoliticianFilterAutocomplete
+          onSelect={(slug) => updateParams({ politician: slug })}
+          selectedSlug={currentFilters.politician || undefined}
         />
 
         <div>
@@ -118,25 +135,15 @@ export function FactChecksFilterBar({
             })}
           </select>
         </div>
-
-        <div>
-          <label
-            htmlFor="type-factchecks"
-            className="text-xs font-medium text-muted-foreground mb-1 block"
-          >
-            Type
-          </label>
-          <select
-            id="type-factchecks"
-            value={currentFilters.type}
-            onChange={(e) => updateParams({ type: e.target.value })}
-            className={selectClassName}
-          >
-            <option value="">Tous les fact-checks</option>
-            <option value="direct">Propos de politicien</option>
-          </select>
-        </div>
       </div>
+
+      {/* Politician context banner */}
+      {politicianContext && (
+        <PoliticianFilterBanner
+          {...politicianContext}
+          onDismiss={() => updateParams({ politician: "" })}
+        />
+      )}
     </FilterBarShell>
   );
 }

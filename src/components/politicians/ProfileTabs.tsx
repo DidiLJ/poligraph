@@ -4,9 +4,9 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
-import { User, Briefcase, Vote, Scale } from "lucide-react";
+import { User, Briefcase, Vote, FileCheck, Scale } from "lucide-react";
 
-const VALID_TABS = ["profil", "carriere", "votes", "affaires"] as const;
+const VALID_TABS = ["profil", "carriere", "votes", "factchecks", "affaires"] as const;
 type TabValue = (typeof VALID_TABS)[number];
 const DEFAULT_TAB: TabValue = "profil";
 
@@ -14,6 +14,7 @@ interface ProfileTabsProps {
   profileContent: ReactNode;
   careerContent: ReactNode;
   votesContent: ReactNode | null;
+  factchecksContent: ReactNode | null;
   affairsContent: ReactNode;
   affairsCount?: number;
 }
@@ -22,6 +23,7 @@ function ProfileTabsInner({
   profileContent,
   careerContent,
   votesContent,
+  factchecksContent,
   affairsContent,
   affairsCount,
 }: ProfileTabsProps) {
@@ -30,9 +32,11 @@ function ProfileTabsInner({
   const pathname = usePathname();
 
   const rawTab = searchParams.get("tab");
-  const availableTabs: readonly TabValue[] = votesContent
-    ? VALID_TABS
-    : VALID_TABS.filter((t) => t !== "votes");
+  const availableTabs: readonly TabValue[] = VALID_TABS.filter((t) => {
+    if (t === "votes" && !votesContent) return false;
+    if (t === "factchecks" && !factchecksContent) return false;
+    return true;
+  });
   const tab: TabValue = availableTabs.includes(rawTab as TabValue)
     ? (rawTab as TabValue)
     : DEFAULT_TAB;
@@ -65,6 +69,12 @@ function ProfileTabsInner({
             Votes
           </TabsTrigger>
         )}
+        {factchecksContent && (
+          <TabsTrigger value="factchecks">
+            <FileCheck className="size-4" />
+            Fact-checks
+          </TabsTrigger>
+        )}
         <TabsTrigger value="affaires">
           <Scale className="size-4" />
           Affaires
@@ -78,6 +88,7 @@ function ProfileTabsInner({
       <TabsContent value="profil">{profileContent}</TabsContent>
       <TabsContent value="carriere">{careerContent}</TabsContent>
       {votesContent && <TabsContent value="votes">{votesContent}</TabsContent>}
+      {factchecksContent && <TabsContent value="factchecks">{factchecksContent}</TabsContent>}
       <TabsContent value="affaires">{affairsContent}</TabsContent>
     </Tabs>
   );

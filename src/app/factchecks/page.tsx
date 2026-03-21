@@ -16,6 +16,7 @@ import {
   getFactcheckStats,
   getFactcheckSources,
   getPoliticianNameBySlug,
+  getPoliticianFactcheckContext,
 } from "@/lib/data/factchecks";
 import type { FactCheckRating } from "@/types";
 
@@ -28,7 +29,6 @@ interface PageProps {
     verdict?: string;
     politician?: string;
     search?: string;
-    type?: string; // "direct" = propos de politicien only
   }>;
 }
 
@@ -38,8 +38,18 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   if (params.source) cp.set("source", params.source);
   if (params.verdict) cp.set("verdict", params.verdict);
   if (params.politician) cp.set("politician", params.politician);
-  if (params.type) cp.set("type", params.type);
   const qs = cp.toString();
+
+  if (params.politician) {
+    const name = await getPoliticianNameBySlug(params.politician);
+    if (name) {
+      return {
+        title: `Fact-checks de ${name}`,
+        description: `Vérifications des déclarations de ${name}. Fact-checks issus de sources reconnues : AFP Factuel, Les Décodeurs et autres.`,
+        alternates: { canonical: `/factchecks?politician=${params.politician}` },
+      };
+    }
+  }
 
   return {
     title: "Fact-checks",
@@ -75,17 +85,13 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
   const verdict = params.verdict;
   const politicianSlug = params.politician;
   const search = params.search;
-  const type = params.type; // "direct" or undefined
-  const directOnly = type === "direct";
 
-  const [{ factChecks, total, totalPages }, stats, sources] = await Promise.all([
-    getFactchecks({ page, limit, source, verdict, politicianSlug, search, directOnly }),
+  const [{ factChecks, total, totalPages }, stats, sources, politicianContext] = await Promise.all([
+    getFactchecks({ page, limit, source, verdict, politicianSlug, search }),
     getFactcheckStats(),
     getFactcheckSources(),
+    politicianSlug ? getPoliticianFactcheckContext(politicianSlug) : Promise.resolve(null),
   ]);
-
-  // Get politician name if filtering
-  const politicianName = politicianSlug ? await getPoliticianNameBySlug(politicianSlug) : null;
 
   const buildUrl = (newParams: Record<string, string | undefined>) => {
     const current = new URLSearchParams();
@@ -93,7 +99,6 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
     if (params.source) current.set("source", params.source);
     if (params.verdict) current.set("verdict", params.verdict);
     if (params.politician) current.set("politician", params.politician);
-    if (params.type) current.set("type", params.type);
 
     for (const [key, value] of Object.entries(newParams)) {
       if (value) {
@@ -155,27 +160,20 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
           search: search || "",
           source: source || "",
           verdict: verdict || "",
-          type: type || "",
+          politician: politicianSlug || "",
         }}
         sources={sources}
         ratingCounts={stats.byRating}
+        politicianContext={politicianContext}
       />
 
       {/* Active filters */}
-      {(source || verdict || politicianSlug || search || directOnly) && (
+      {(source || verdict || politicianSlug || search) && (
         <div className="flex flex-wrap gap-2 mb-6">
           {search && (
             <Badge variant="secondary" className="gap-1">
               Recherche: {search}
               <Link href={buildUrl({ search: undefined })} className="ml-1 hover:text-destructive">
-                ×
-              </Link>
-            </Badge>
-          )}
-          {directOnly && (
-            <Badge variant="secondary" className="gap-1">
-              Propos de politicien
-              <Link href={buildUrl({ type: undefined })} className="ml-1 hover:text-destructive">
                 ×
               </Link>
             </Badge>
@@ -199,9 +197,9 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
               </Link>
             </Badge>
           )}
-          {politicianName && (
+          {politicianContext && (
             <Badge variant="secondary" className="gap-1">
-              {politicianName}
+              {politicianContext.fullName}
               <Link
                 href={buildUrl({ politician: undefined })}
                 className="ml-1 hover:text-destructive"
@@ -263,7 +261,7 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
       ) : (
         <div className="text-center py-12 text-muted-foreground">
           <p>Aucun fact-check trouvé</p>
-          {(source || verdict || politicianSlug || search || directOnly) && (
+          {(source || verdict || politicianSlug || search) && (
             <Link
               href="/factchecks"
               scroll={false}

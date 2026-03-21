@@ -390,7 +390,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                             <p className="font-medium text-sm">
                               {`${encartAffairs.length} condamnation${encartAffairs.length > 1 ? "s" : ""}`}
                             </p>
-                            <p className="text-xs text-muted-foreground truncate">
+                            <p className="text-xs text-muted-foreground">
                               {encartAffairs
                                 .slice(0, 2)
                                 .map((a) => a.title)

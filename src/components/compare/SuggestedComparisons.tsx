@@ -159,9 +159,9 @@ export function SuggestedComparisons({ category }: SuggestedComparisonsProps) {
                 onClick={() => handleClick(s)}
                 className="flex items-center justify-center gap-3 rounded-lg border bg-card p-4 text-sm transition-all hover:shadow-md hover:border-primary/20 cursor-pointer"
               >
-                <span className="font-medium text-right flex-1 truncate">{s.leftName}</span>
+                <span className="font-medium text-right flex-1">{s.leftName}</span>
                 <span className="text-muted-foreground font-bold text-xs shrink-0">VS</span>
-                <span className="font-medium text-left flex-1 truncate">{s.rightName}</span>
+                <span className="font-medium text-left flex-1">{s.rightName}</span>
               </button>
             ))}
       </div>

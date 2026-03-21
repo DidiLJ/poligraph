@@ -126,7 +126,7 @@ function ParticipationsList({ participations }: { participations: FinancialParti
       <div className="space-y-1">
         {top.map((p, i) => (
           <div key={i} className="flex items-center justify-between text-xs gap-2">
-            <span className="truncate">
+            <span>
               {cleanCompanyName(p.company)}
               {p.isBoardMember && (
                 <span className="text-amber-600 ml-1" title="Membre du conseil">
@@ -148,14 +148,14 @@ function ParticipationsList({ participations }: { participations: FinancialParti
           <div className="pt-1 space-y-1">
             {rest.map((p, i) => (
               <div key={`r-${i}`} className="flex items-center justify-between text-xs gap-2">
-                <span className="truncate">{cleanCompanyName(p.company)}</span>
+                <span>{cleanCompanyName(p.company)}</span>
                 <span className="font-mono text-muted-foreground whitespace-nowrap">
                   {new Intl.NumberFormat("fr-FR").format(p.evaluation!)} €
                 </span>
               </div>
             ))}
             {noValue.map((p, i) => (
-              <div key={`nv-${i}`} className="text-xs text-muted-foreground truncate">
+              <div key={`nv-${i}`} className="text-xs text-muted-foreground">
                 {cleanCompanyName(p.company)}
                 {p.capitalPercent ? ` (${p.capitalPercent}%)` : ""}
               </div>

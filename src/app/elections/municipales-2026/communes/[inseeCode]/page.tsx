@@ -111,7 +111,7 @@ export default async function CommuneDetailPage({ params }: PageProps) {
               </Link>
             </li>
             <li aria-hidden="true">/</li>
-            <li className="text-foreground font-medium truncate">{commune.name}</li>
+            <li className="text-foreground font-medium">{commune.name}</li>
           </ol>
         </nav>
 

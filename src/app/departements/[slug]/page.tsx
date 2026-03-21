@@ -114,7 +114,7 @@ export default async function DepartmentPage({ params }: PageProps) {
                       size="sm"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium group-hover:text-primary transition-colors truncate">
+                      <p className="font-medium group-hover:text-primary transition-colors">
                         {deputy.fullName}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -173,7 +173,7 @@ export default async function DepartmentPage({ params }: PageProps) {
                       size="sm"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium group-hover:text-primary transition-colors truncate">
+                      <p className="font-medium group-hover:text-primary transition-colors">
                         {senator.fullName}
                       </p>
                       <p className="text-xs text-muted-foreground">Sénateur</p>

@@ -282,7 +282,7 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
                                     {mandate.endDate && ` - ${formatYear(mandate.endDate)}`}
                                   </span>
                                   <span>·</span>
-                                  <span className="truncate">
+                                  <span>
                                     {mandate.parliamentaryGroup && (
                                       <span
                                         className="font-medium"

@@ -84,11 +84,11 @@ export function PoliticianCard({
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-lg truncate group-hover:text-primary transition-colors duration-200">
+              <p className="font-semibold text-lg group-hover:text-primary transition-colors duration-200">
                 {politician.fullName}
               </p>
               {(mandateDisplay || roleDisplay) && (
-                <p className="text-sm text-muted-foreground truncate mt-0.5">
+                <p className="text-sm text-muted-foreground mt-0.5">
                   {mandateDisplay || roleDisplay}
                 </p>
               )}

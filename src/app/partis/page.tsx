@@ -169,7 +169,7 @@ export default async function PartiesPage({ searchParams }: PageProps) {
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold truncate">{party.name}</h3>
+                        <h3 className="font-semibold">{party.name}</h3>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge variant="outline" className="text-xs" title={party.name}>
                             {party.shortName}

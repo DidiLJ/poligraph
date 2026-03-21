@@ -171,7 +171,7 @@ export default async function DeclarationsPage({ searchParams }: PageProps) {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                        <span className="text-sm font-medium group-hover:text-primary transition-colors">
                           {p.fullName}
                         </span>
                         {p.party && (
@@ -234,7 +234,7 @@ export default async function DeclarationsPage({ searchParams }: PageProps) {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium truncate">{c.company}</span>
+                        <span className="text-sm font-medium">{c.company}</span>
                         <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                           {c.politicianCount} élu{c.politicianCount > 1 ? "s" : ""}
                         </span>
@@ -412,7 +412,7 @@ function DeclarationListCard({ row }: { row: DeclarationRow }) {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate group-hover:text-primary transition-colors">
+              <p className="font-semibold group-hover:text-primary transition-colors">
                 {row.fullName}
               </p>
               <div className="flex items-center gap-2 mt-1">

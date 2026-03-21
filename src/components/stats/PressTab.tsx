@@ -129,9 +129,9 @@ export function PressTab({ stats, topPoliticians, topParties }: PressTabProps) {
                   <div className="flex justify-between text-sm mb-1">
                     <Link
                       href={`/politiques/${politician.slug}`}
-                      className="hover:underline flex items-center gap-2 truncate"
+                      className="hover:underline flex items-center gap-2"
                     >
-                      <span className="truncate">{politician.fullName}</span>
+                      <span>{politician.fullName}</span>
                       {politician.party && (
                         <Badge
                           variant="outline"

@@ -39,29 +39,21 @@ export function CompareHeader({ left, right }: CompareHeaderProps) {
                 style={{ backgroundColor: left.color || "#888" }}
               />
               {left.href ? (
-                <Link
-                  href={left.href}
-                  prefetch={false}
-                  className="font-medium truncate text-primary"
-                >
+                <Link href={left.href} prefetch={false} className="font-medium text-primary">
                   {left.label}
                 </Link>
               ) : (
-                <span className="font-medium truncate">{left.label}</span>
+                <span className="font-medium">{left.label}</span>
               )}
             </span>
             <span className="text-muted-foreground font-bold shrink-0">VS</span>
             <span className="flex items-center gap-1.5 min-w-0 justify-end">
               {right.href ? (
-                <Link
-                  href={right.href}
-                  prefetch={false}
-                  className="font-medium truncate text-primary"
-                >
+                <Link href={right.href} prefetch={false} className="font-medium text-primary">
                   {right.label}
                 </Link>
               ) : (
-                <span className="font-medium truncate">{right.label}</span>
+                <span className="font-medium">{right.label}</span>
               )}
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0"

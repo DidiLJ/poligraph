@@ -58,7 +58,7 @@ export function UpcomingElections({ elections, showCountdown = false }: Upcoming
                         {ELECTION_TYPE_ICONS[election.type]}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">
+                        <p className="font-semibold">
                           {election.shortTitle || ELECTION_TYPE_LABELS[election.type]}
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5 mt-1">

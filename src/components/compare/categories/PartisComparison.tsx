@@ -168,9 +168,9 @@ function PartyInfoCard({ data }: { data: PartyComparisonData }) {
                 style={{ backgroundColor: party.color }}
               />
             )}
-            <span className="truncate">{party.shortName}</span>
+            <span>{party.shortName}</span>
           </p>
-          <p className="text-sm text-muted-foreground truncate">{party.name}</p>
+          <p className="text-sm text-muted-foreground">{party.name}</p>
         </div>
       </div>
 

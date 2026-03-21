@@ -209,7 +209,7 @@ function AffairesContent({ affairs }: { affairs: AffairItem[] }) {
               className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group"
             >
               <div className="flex-1 min-w-0 mr-4">
-                <p className="font-medium truncate group-hover:text-primary transition-colors">
+                <p className="font-medium group-hover:text-primary transition-colors">
                   {affair.title}
                 </p>
                 <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
@@ -253,7 +253,7 @@ function VotesContent({ votes }: { votes: VoteItem[] }) {
               className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group"
             >
               <div className="flex-1 min-w-0 mr-4">
-                <p className="font-medium truncate group-hover:text-primary transition-colors">
+                <p className="font-medium group-hover:text-primary transition-colors">
                   {vote.title}
                 </p>
                 <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
@@ -321,7 +321,7 @@ function DossiersContent({ dossiers }: { dossiers: DossierItem[] }) {
               className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group"
             >
               <div className="flex-1 min-w-0 mr-4">
-                <p className="font-medium truncate group-hover:text-primary transition-colors">
+                <p className="font-medium group-hover:text-primary transition-colors">
                   {dossier.shortTitle || dossier.title}
                 </p>
                 {dossier.filingDate && (
@@ -380,7 +380,7 @@ function PresseContent({ articles }: { articles: ArticleItem[] }) {
               className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group"
             >
               <div className="flex-1 min-w-0 mr-4">
-                <p className="font-medium truncate group-hover:text-primary transition-colors">
+                <p className="font-medium group-hover:text-primary transition-colors">
                   {article.title}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">

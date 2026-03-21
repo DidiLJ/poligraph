@@ -46,7 +46,7 @@ export function PoliticianBridge({
         <Link
           href={`/politiques/${politician.slug}`}
           prefetch={false}
-          className="font-bold text-sm hover:text-primary transition-colors truncate"
+          className="font-bold text-sm hover:text-primary transition-colors"
         >
           {politician.fullName}
         </Link>

@@ -49,7 +49,7 @@ export function CandidateRow({
       <GenderDot gender={gender} />
 
       {/* Name */}
-      <span className="min-w-0 flex-1 truncate">
+      <span className="min-w-0 flex-1">
         {politician ? (
           <Link
             href={`/politiques/${politician.slug}`}

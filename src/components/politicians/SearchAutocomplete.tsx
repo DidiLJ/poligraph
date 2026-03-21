@@ -223,7 +223,7 @@ export function SearchAutocomplete({
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{result.fullName}</p>
+                    <p className="font-medium">{result.fullName}</p>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       {result.mandate && (
                         <span>

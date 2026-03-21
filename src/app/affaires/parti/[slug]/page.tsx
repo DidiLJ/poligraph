@@ -432,7 +432,7 @@ export default async function PartyAffairsPage({ params }: PageProps) {
                           size="sm"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{pol.fullName}</p>
+                          <p className="font-medium">{pol.fullName}</p>
                           <p className="text-xs text-muted-foreground">
                             {pol.count} affaire{pol.count > 1 ? "s" : ""}
                           </p>
@@ -470,7 +470,7 @@ export default async function PartyAffairsPage({ params }: PageProps) {
                           size="sm"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{pol.fullName}</p>
+                          <p className="font-medium">{pol.fullName}</p>
                           <p className="text-xs text-green-600 dark:text-green-400">
                             {pol.count} affaire{pol.count > 1 ? "s" : ""} close
                             {pol.count > 1 ? "s" : ""}
@@ -502,7 +502,7 @@ export default async function PartyAffairsPage({ params }: PageProps) {
                     >
                       <PoliticianAvatar photoUrl={pol.photoUrl} fullName={pol.fullName} size="sm" />
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{pol.fullName}</p>
+                        <p className="font-medium">{pol.fullName}</p>
                         <p className="text-xs text-primary">
                           Victime dans {pol.count} affaire{pol.count > 1 ? "s" : ""}
                         </p>

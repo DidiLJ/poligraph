@@ -357,12 +357,12 @@ export default async function PartyPage({ params }: PageProps) {
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/politiques/${politician.slug}`}
-                          className="font-medium truncate block hover:text-primary transition-colors"
+                          className="font-medium block hover:text-primary transition-colors"
                         >
                           {politician.fullName}
                         </Link>
                         {politician.mandates[0] && (
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground">
                             {politician.mandates[0].title}
                           </p>
                         )}
@@ -497,7 +497,7 @@ export default async function PartyPage({ params }: PageProps) {
                                     >
                                       {AFFAIR_STATUS_LABELS[affair.status as AffairStatus]}
                                     </Badge>
-                                    <span className="text-sm font-medium truncate">
+                                    <span className="text-sm font-medium">
                                       {affair.politician.fullName}
                                     </span>
                                   </div>

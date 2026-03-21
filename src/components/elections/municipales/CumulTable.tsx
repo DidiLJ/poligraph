@@ -272,7 +272,7 @@ export function CumulTable({ candidates }: CumulTableProps) {
                 {/* List name */}
                 <td className="py-3 px-2 max-w-[200px]">
                   <span
-                    className="text-muted-foreground truncate block"
+                    className="text-muted-foreground block"
                     title={c.listName ? normalizeListLabel(c.listName) : undefined}
                   >
                     {c.listName ? normalizeListLabel(c.listName) : "—"}
@@ -303,12 +303,12 @@ export function CumulTable({ candidates }: CumulTableProps) {
                   <Link
                     href={`/politiques/${c.politician.slug}`}
                     prefetch={false}
-                    className="font-medium hover:text-primary transition-colors block truncate"
+                    className="font-medium hover:text-primary transition-colors block"
                   >
                     {c.politician.fullName}
                   </Link>
                 ) : (
-                  <span className="font-medium block truncate">{c.candidateName}</span>
+                  <span className="font-medium block">{c.candidateName}</span>
                 )}
                 {c.politician?.currentParty && (
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -348,7 +348,7 @@ export function CumulTable({ candidates }: CumulTableProps) {
             {/* List name */}
             {c.listName && (
               <p
-                className="text-xs text-muted-foreground mt-1 truncate"
+                className="text-xs text-muted-foreground mt-1"
                 title={normalizeListLabel(c.listName)}
               >
                 {normalizeListLabel(c.listName)}

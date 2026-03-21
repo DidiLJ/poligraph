@@ -339,7 +339,7 @@ export function CommuneSearch({
                       )}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">
+                        <p className="font-medium">
                           {result.name}
                           <span className="text-muted-foreground font-normal ml-1">
                             ({result.departmentName})

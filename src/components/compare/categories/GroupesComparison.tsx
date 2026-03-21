@@ -101,9 +101,9 @@ function GroupInfoCard({ data }: { data: GroupComparisonData }) {
                 style={{ backgroundColor: group.color }}
               />
             )}
-            <span className="truncate">{group.shortName ?? group.code}</span>
+            <span>{group.shortName ?? group.code}</span>
           </p>
-          <p className="text-sm text-muted-foreground truncate">{group.name}</p>
+          <p className="text-sm text-muted-foreground">{group.name}</p>
         </div>
       </div>
 

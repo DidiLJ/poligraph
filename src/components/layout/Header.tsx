@@ -59,7 +59,11 @@ export async function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-foreground/80 hover:text-primary rounded-lg hover:bg-muted/50 transition-colors"
+                  className={
+                    item.highlight
+                      ? "flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors"
+                      : "flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-foreground/80 hover:text-primary rounded-lg hover:bg-muted/50 transition-colors"
+                  }
                 >
                   {Icon && <Icon className="h-4 w-4" />}
                   {displayLabel}

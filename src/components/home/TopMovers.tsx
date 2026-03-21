@@ -7,13 +7,11 @@ import type { TopMoverItem } from "@/lib/data/top-movers";
 const TYPE_COLORS: Record<TopMoverItem["type"], string> = {
   affair: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   factcheck: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  participation: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
 };
 
 const TYPE_LABELS: Record<TopMoverItem["type"], string> = {
   affair: "Affaire",
   factcheck: "Fact-check",
-  participation: "Participation",
 };
 
 export function TopMovers({ movers }: { movers: TopMoverItem[] }) {

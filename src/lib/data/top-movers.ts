@@ -1,6 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { cacheTag, cacheLife } from "next/cache";
+import { FACTCHECK_RATING_LABELS } from "@/config/labels";
+import type { FactCheckRating } from "@/generated/prisma";
 
 export interface TopMoverPolitician {
   slug: string;
@@ -13,7 +15,7 @@ export interface TopMoverPolitician {
 export interface TopMoverItem {
   politician: TopMoverPolitician;
   reason: string;
-  type: "affair" | "factcheck" | "participation";
+  type: "affair" | "factcheck";
   href: string;
 }
 
@@ -26,15 +28,14 @@ const POLITICIAN_SELECT = {
 } as const;
 
 /**
- * Merge three sources, deduplicate by politician slug, take first 4.
+ * Merge two sources, deduplicate by politician slug, take first 4.
  * Exported for testing.
  */
 export function mergeAndDedupe(
   affairs: TopMoverItem[],
-  factchecks: TopMoverItem[],
-  participation: TopMoverItem[]
+  factchecks: TopMoverItem[]
 ): TopMoverItem[] {
-  const merged = [...affairs, ...factchecks, ...participation];
+  const merged = [...affairs, ...factchecks];
   const seen = new Set<string>();
   const result: TopMoverItem[] = [];
 
@@ -56,7 +57,7 @@ export async function getTopMovers(): Promise<TopMoverItem[]> {
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
-  const [recentAffairs, recentFactchecks, lowParticipation] = await Promise.all([
+  const [recentAffairs, recentFactchecks] = await Promise.all([
     db.affair.findMany({
       where: {
         createdAt: { gte: weekAgo },
@@ -84,16 +85,6 @@ export async function getTopMovers(): Promise<TopMoverItem[]> {
       orderBy: { createdAt: "desc" },
       take: 2,
     }),
-    db.politicianParticipation.findMany({
-      orderBy: { participationRate: "asc" },
-      take: 2,
-      select: {
-        participationRate: true,
-        slug: true,
-        firstName: true,
-        lastName: true,
-      },
-    }),
   ]);
 
   const affairItems: TopMoverItem[] = recentAffairs.map((a) => ({
@@ -107,32 +98,14 @@ export async function getTopMovers(): Promise<TopMoverItem[]> {
     .filter((fc) => fc.mentions.length > 0)
     .map((fc) => {
       const mention = fc.mentions[0]!;
+      const label = FACTCHECK_RATING_LABELS[fc.verdictRating as FactCheckRating];
       return {
         politician: mention.politician,
-        reason: `Fact-check récent : ${fc.verdictRating}`,
+        reason: `Fact-check récent : ${label}`,
         type: "factcheck" as const,
         href: `/politiques/${mention.politician.slug}`,
       };
     });
 
-  const participationSlugs = lowParticipation.map((p) => p.slug);
-  const participationPoliticians =
-    participationSlugs.length > 0
-      ? await db.politician.findMany({
-          where: { slug: { in: participationSlugs }, publicationStatus: "PUBLISHED" },
-          select: POLITICIAN_SELECT,
-        })
-      : [];
-  const politicianBySlug = new Map(participationPoliticians.map((p) => [p.slug, p]));
-
-  const participationItems: TopMoverItem[] = lowParticipation
-    .filter((p) => politicianBySlug.has(p.slug))
-    .map((p) => ({
-      politician: politicianBySlug.get(p.slug)!,
-      reason: `Taux de participation : ${Math.round(p.participationRate)}%`,
-      type: "participation" as const,
-      href: `/politiques/${p.slug}`,
-    }));
-
-  return mergeAndDedupe(affairItems, factcheckItems, participationItems);
+  return mergeAndDedupe(affairItems, factcheckItems);
 }

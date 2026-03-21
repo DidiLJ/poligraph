@@ -25,39 +25,39 @@ const makeMover = (
 
 describe("mergeAndDedupe", () => {
   it("returns up to 4 items", () => {
-    const affairs = [makeMover("a", "affair", "Nouvelle affaire documentée")];
-    const factchecks = [makeMover("b", "factcheck", "Fact-check récent : Faux")];
-    const participation = [
-      makeMover("c", "participation", "Taux de participation : 12%"),
-      makeMover("d", "participation", "Taux de participation : 15%"),
-      makeMover("e", "participation", "Taux de participation : 18%"),
+    const affairs = [
+      makeMover("a", "affair", "Nouvelle affaire documentée"),
+      makeMover("b", "affair", "Nouvelle affaire documentée"),
+      makeMover("c", "affair", "Nouvelle affaire documentée"),
+    ];
+    const factchecks = [
+      makeMover("d", "factcheck", "Fact-check récent : Faux"),
+      makeMover("e", "factcheck", "Fact-check récent : Plutôt faux"),
     ];
 
-    const result = mergeAndDedupe(affairs, factchecks, participation);
+    const result = mergeAndDedupe(affairs, factchecks);
     expect(result).toHaveLength(4);
   });
 
   it("deduplicates by politician slug", () => {
     const affairs = [makeMover("a", "affair", "Nouvelle affaire")];
     const factchecks = [makeMover("a", "factcheck", "Fact-check")];
-    const participation = [makeMover("b", "participation", "Participation")];
 
-    const result = mergeAndDedupe(affairs, factchecks, participation);
-    expect(result).toHaveLength(2);
+    const result = mergeAndDedupe(affairs, factchecks);
+    expect(result).toHaveLength(1);
     expect(result[0]!.type).toBe("affair");
   });
 
   it("returns empty array when no data", () => {
-    const result = mergeAndDedupe([], [], []);
+    const result = mergeAndDedupe([], []);
     expect(result).toHaveLength(0);
   });
 
-  it("prioritizes affairs over factchecks over participation", () => {
+  it("prioritizes affairs over factchecks", () => {
     const affairs = [makeMover("a", "affair", "Affaire")];
     const factchecks = [makeMover("b", "factcheck", "Fact-check")];
-    const participation = [makeMover("c", "participation", "Participation")];
 
-    const result = mergeAndDedupe(affairs, factchecks, participation);
-    expect(result.map((m) => m.type)).toEqual(["affair", "factcheck", "participation"]);
+    const result = mergeAndDedupe(affairs, factchecks);
+    expect(result.map((m) => m.type)).toEqual(["affair", "factcheck"]);
   });
 });

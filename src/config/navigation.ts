@@ -46,6 +46,7 @@ export const NAV_PRIMARY: NavItem[] = [
     icon: "vote",
     description: "Candidats et listes dans votre commune",
     featureFlag: "MUNICIPALES_2026",
+    highlight: true,
   },
   {
     href: "/votes",

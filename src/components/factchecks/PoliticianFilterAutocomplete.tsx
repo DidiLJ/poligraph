@@ -17,7 +17,6 @@ interface SearchResult {
 
 interface PoliticianFilterAutocompleteProps {
   onSelect: (slug: string) => void;
-  selectedSlug?: string;
 }
 
 function ResultAvatar({ photoUrl, fullName }: { photoUrl: string | null; fullName: string }) {
@@ -52,10 +51,7 @@ function ResultAvatar({ photoUrl, fullName }: { photoUrl: string | null; fullNam
   );
 }
 
-export function PoliticianFilterAutocomplete({
-  onSelect,
-  selectedSlug,
-}: PoliticianFilterAutocompleteProps) {
+export function PoliticianFilterAutocomplete({ onSelect }: PoliticianFilterAutocompleteProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -131,18 +127,6 @@ export function PoliticianFilterAutocomplete({
         break;
     }
   };
-
-  // Show a static label when a politician is already selected (banner handles display)
-  if (selectedSlug) {
-    return (
-      <div>
-        <label className="text-xs font-medium text-muted-foreground mb-1 block">Politicien</label>
-        <div className="h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm text-muted-foreground flex items-center">
-          Sélectionné ✓
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div ref={containerRef} className="relative">

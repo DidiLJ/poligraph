@@ -73,10 +73,7 @@ export function FactChecksFilterBar({
           label="Recherche"
         />
 
-        <PoliticianFilterAutocomplete
-          onSelect={(slug) => updateParams({ politician: slug })}
-          selectedSlug={currentFilters.politician || undefined}
-        />
+        <PoliticianFilterAutocomplete onSelect={(slug) => updateParams({ politician: slug })} />
 
         <div>
           <label

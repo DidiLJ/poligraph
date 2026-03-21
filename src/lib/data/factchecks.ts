@@ -2,6 +2,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import { FACTCHECK_ALLOWED_SOURCES } from "@/config/labels";
 import { factcheckStatsService } from "@/services/factcheckStats";
+import { decodeHtmlEntities } from "@/lib/parsing/html-utils";
 import type { FactCheckRating } from "@/types";
 
 /** Generic claimant patterns — must match GENERIC_CLAIMANT_PATTERNS in labels.ts */
@@ -152,7 +153,12 @@ async function queryFactchecks(params: {
   ]);
 
   return {
-    factChecks,
+    factChecks: factChecks.map((fc) => ({
+      ...fc,
+      title: decodeHtmlEntities(fc.title),
+      claimText: decodeHtmlEntities(fc.claimText),
+      claimant: fc.claimant ? decodeHtmlEntities(fc.claimant) : fc.claimant,
+    })),
     total,
     totalPages: Math.ceil(total / limit),
   };

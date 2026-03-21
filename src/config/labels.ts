@@ -418,6 +418,7 @@ export const DATA_SOURCE_LABELS: Record<DataSource, string> = {
   PRESS: "Presse",
   FACTCHECK: "Fact-checks",
   JUDILIBRE: "Judilibre",
+  OPENSANCTIONS: "OpenSanctions",
 };
 
 export const DATA_SOURCE_URLS: Record<DataSource, string> = {
@@ -436,6 +437,7 @@ export const DATA_SOURCE_URLS: Record<DataSource, string> = {
   PRESS: "",
   FACTCHECK: "",
   JUDILIBRE: "https://www.courdecassation.fr/acces-rapide-judilibre",
+  OPENSANCTIONS: "https://www.opensanctions.org/entities/",
 };
 
 // Political position labels (for parties)

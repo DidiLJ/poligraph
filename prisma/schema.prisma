@@ -155,6 +155,7 @@ enum DataSource {
   PRESS
   FACTCHECK
   JUDILIBRE
+  OPENSANCTIONS
 }
 
 enum MatchMethod {

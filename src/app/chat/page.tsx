@@ -79,7 +79,9 @@ export default async function ChatPage() {
           <Sparkles className="w-4 h-4" />
           {chatEnabled ? "Bêta" : "Prochainement"}
         </div>
-        <h1 className="text-3xl font-bold mb-3">Assistant Poligraph</h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-3">
+          Assistant Poligraph
+        </h1>
         <p className="text-muted-foreground max-w-2xl mx-auto">
           Posez vos questions sur les représentants politiques français, leurs mandats, les votes
           parlementaires ou les dossiers législatifs en cours.

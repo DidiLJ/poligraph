@@ -82,7 +82,9 @@ export default async function DepartmentPage({ params }: PageProps) {
       </nav>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{departmentName}</h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+          {departmentName}
+        </h1>
         <p className="text-muted-foreground">
           {deputies.length} député{deputies.length > 1 ? "s" : ""} · {senators.length} sénateur
           {senators.length > 1 ? "s" : ""}

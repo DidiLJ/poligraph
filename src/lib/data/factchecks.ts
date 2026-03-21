@@ -26,6 +26,21 @@ const GENERIC_CLAIMANT_PATTERNS = [
   "forum",
 ];
 
+/** Super-category groups for verdict filtering. */
+const VERDICT_GROUPS: Record<string, FactCheckRating[]> = {
+  faux: ["FALSE", "MOSTLY_FALSE"],
+  trompeur: ["MISLEADING", "OUT_OF_CONTEXT", "HALF_TRUE"],
+  vrai: ["TRUE", "MOSTLY_TRUE"],
+};
+
+function buildVerdictFilter(verdict: string) {
+  const group = VERDICT_GROUPS[verdict];
+  if (group) {
+    return { verdictRating: { in: group } };
+  }
+  return { verdictRating: verdict as FactCheckRating };
+}
+
 function buildDirectClaimFilter() {
   return {
     claimant: { not: null },
@@ -99,7 +114,7 @@ async function queryFactchecks(params: {
   const where = {
     publicationStatus: "PUBLISHED" as const,
     source: source || { in: FACTCHECK_ALLOWED_SOURCES },
-    ...(verdict && { verdictRating: verdict as FactCheckRating }),
+    ...(verdict && buildVerdictFilter(verdict)),
     ...(politicianSlug && {
       mentions: {
         some: {

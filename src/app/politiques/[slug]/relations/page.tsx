@@ -82,7 +82,9 @@ export default async function RelationsPage({ params }: PageProps) {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Relations de {politician.fullName}</h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+          Relations de {politician.fullName}
+        </h1>
         <p className="text-muted-foreground">
           Visualisez les connexions politiques : gouvernement, entreprises en commun, département,
           parcours partisan

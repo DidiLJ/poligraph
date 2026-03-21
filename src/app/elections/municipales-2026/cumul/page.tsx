@@ -90,7 +90,9 @@ export default async function CumulPage() {
       {/* Hero */}
       <section className="py-4">
         <div className="bg-gradient-to-br from-amber-50 via-background to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border rounded-2xl p-6 md:p-8">
-          <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">Cumul des mandats</h1>
+          <h1 className="text-3xl md:text-4xl font-display font-extrabold tracking-tight mb-2">
+            Cumul des mandats
+          </h1>
           <p className="text-muted-foreground text-lg mb-6">
             Députés, sénateurs et ministres candidats aux municipales 2026
           </p>

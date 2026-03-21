@@ -82,7 +82,7 @@ export function JudicialSection({
     .reduce((sum, s) => sum + s.count, 0);
 
   return (
-    <section aria-labelledby="judicial-heading" className="py-8">
+    <section aria-labelledby="judicial-heading" className="py-8 overflow-x-hidden">
       {/* Hemicycle visualization */}
       {hemicycleGroups.length > 0 && (
         <Card className="mb-8">
@@ -140,7 +140,7 @@ export function JudicialSection({
       {/* Atteintes à la probité by category → party */}
       {critiqueByCategory.length > 0 && (
         <>
-          <h2 id="judicial-heading" className="text-xl font-bold mb-2">
+          <h2 id="judicial-heading" className="text-xl font-display font-bold mb-2">
             Atteintes à la probité par parti
           </h2>
           <p className="text-sm text-muted-foreground mb-6">

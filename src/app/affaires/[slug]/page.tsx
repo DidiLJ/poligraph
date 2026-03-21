@@ -220,7 +220,9 @@ export default async function AffairDetailPage({ params }: PageProps) {
           </div>
           <p className="text-sm text-muted-foreground mb-4">{CERTAINTY_DESCRIPTIONS[certainty]}</p>
 
-          <h1 className="text-3xl font-bold mb-4">{affair.title}</h1>
+          <h1 className="text-3xl font-display font-extrabold tracking-tight mb-4">
+            {affair.title}
+          </h1>
 
           {/* Politician card */}
           <div className="inline-flex items-center gap-3 p-3 rounded-lg border bg-muted/30">

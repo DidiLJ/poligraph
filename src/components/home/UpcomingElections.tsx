@@ -28,7 +28,9 @@ export function UpcomingElections({ elections, showCountdown = false }: Upcoming
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-end mb-8">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Prochaines élections</h2>
+            <h2 className="text-2xl md:text-3xl font-display font-bold mb-2">
+              Prochaines élections
+            </h2>
             <p className="text-muted-foreground">Calendrier des scrutins à venir</p>
           </div>
           <Button variant="ghost" asChild className="text-primary">

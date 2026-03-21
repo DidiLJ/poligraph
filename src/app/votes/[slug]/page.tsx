@@ -232,7 +232,7 @@ export default async function ScrutinPage({ params }: PageProps) {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 mb-4">
-            <h1 className="text-2xl font-bold">{scrutin.title}</h1>
+            <h1 className="text-2xl font-display font-extrabold tracking-tight">{scrutin.title}</h1>
             <VotingResultBadge result={scrutin.result} />
           </div>
 

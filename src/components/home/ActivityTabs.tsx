@@ -91,7 +91,9 @@ export function ActivityTabs({
       <div className="container mx-auto px-4">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Dernières activités</h2>
+            <h2 className="text-2xl md:text-3xl font-display font-bold mb-2">
+              Dernières activités
+            </h2>
             <p className="text-muted-foreground">Actualités parlementaires et médiatiques</p>
           </div>
         </div>

@@ -78,7 +78,9 @@ export default async function ParitePage() {
       {/* Hero — global parity rate */}
       <section className="py-4">
         <div className="bg-gradient-to-br from-pink-50 via-background to-blue-50 dark:from-pink-950/20 dark:to-blue-950/20 border rounded-2xl p-6 md:p-8">
-          <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">Parité femmes-hommes</h1>
+          <h1 className="text-3xl md:text-4xl font-display font-extrabold tracking-tight mb-2">
+            Parité femmes-hommes
+          </h1>
           <p className="text-muted-foreground text-lg mb-6">
             Analyse de la représentation des femmes dans les candidatures aux municipales 2026
           </p>

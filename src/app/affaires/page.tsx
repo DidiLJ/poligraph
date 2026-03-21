@@ -3,7 +3,6 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { SimplePagination } from "@/components/ui/SimplePagination";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/ui/ExportButton";
 import { AffairesFilterBar } from "@/components/affairs/AffairesFilterBar";
@@ -40,13 +39,13 @@ import type { AffairStatus, Involvement } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 
-// Hex accent colors per super-category (for inline styles per CLAUDE.md convention)
-const SUPER_CATEGORY_ACCENT: Record<AffairSuperCategory, { border: string; bg: string }> = {
-  PROBITE: { border: "#9333ea", bg: "#9333ea0a" },
-  FINANCES: { border: "#2563eb", bg: "#2563eb0a" },
-  PERSONNES: { border: "#dc2626", bg: "#dc26260a" },
-  EXPRESSION: { border: "#d97706", bg: "#d977060a" },
-  AUTRE: { border: "#6b7280", bg: "#6b72800a" },
+// Hex border colors for affair card left-border (keyed by super-category)
+const SUPER_CATEGORY_BORDER: Record<AffairSuperCategory, string> = {
+  PROBITE: "#9333ea",
+  FINANCES: "#2563eb",
+  PERSONNES: "#dc2626",
+  EXPRESSION: "#d97706",
+  AUTRE: "#6b7280",
 };
 
 interface PageProps {
@@ -202,26 +201,6 @@ export default async function AffairesPage({ searchParams }: PageProps) {
           />
         </div>
 
-        {/* Super-category cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          {(Object.keys(AFFAIR_SUPER_CATEGORY_LABELS) as AffairSuperCategory[]).map((superCat) => {
-            const count = superCounts[superCat] || 0;
-            const isActive = superCatFilter === superCat;
-            const accent = SUPER_CATEGORY_ACCENT[superCat];
-            return (
-              <StatCard
-                key={superCat}
-                count={count}
-                label={AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
-                description={AFFAIR_SUPER_CATEGORY_DESCRIPTIONS[superCat]}
-                accent={accent}
-                href={isActive ? "/affaires" : buildUrl({ supercat: superCat })}
-                isActive={isActive}
-              />
-            );
-          })}
-        </div>
-
         {/* Mode toggle */}
         <div className="mb-4">
           <AffairModeToggle mode={mode} />
@@ -257,6 +236,7 @@ export default async function AffairesPage({ searchParams }: PageProps) {
             count: p._count.affairsAtTime,
           }))}
           certaintyCounts={certaintyCounts}
+          superCounts={superCounts}
         />
 
         {/* Active filters summary */}
@@ -320,7 +300,7 @@ export default async function AffairesPage({ searchParams }: PageProps) {
                   <Card
                     key={affair.id}
                     className="border-l-4 transition-shadow hover:shadow-md"
-                    style={{ borderLeftColor: SUPER_CATEGORY_ACCENT[superCat].border }}
+                    style={{ borderLeftColor: SUPER_CATEGORY_BORDER[superCat] }}
                   >
                     <CardContent className="pt-6">
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

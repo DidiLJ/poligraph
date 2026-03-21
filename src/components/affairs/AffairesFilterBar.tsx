@@ -28,6 +28,7 @@ interface AffairesFilterBarProps {
     count: number;
   }>;
   certaintyCounts: Record<string, number>;
+  superCounts: Record<string, number>;
 }
 
 const SORT_OPTIONS: Record<string, string> = {
@@ -51,6 +52,7 @@ export function AffairesFilterBar({
   currentFilters,
   parties,
   certaintyCounts,
+  superCounts,
 }: AffairesFilterBarProps) {
   const { isPending, updateParams } = useFilterParams();
 
@@ -59,6 +61,14 @@ export function AffairesFilterBar({
     ...(Object.keys(CERTAINTY_LABELS) as CertaintyLevel[]).map((level) => ({
       value: level,
       label: `${CERTAINTY_LABELS[level]} (${certaintyCounts[level] || 0})`,
+    })),
+  ];
+
+  const superCatOptions = [
+    { value: "", label: "Toutes les familles" },
+    ...SUPER_CATEGORIES.map((superCat) => ({
+      value: superCat,
+      label: `${AFFAIR_SUPER_CATEGORY_LABELS[superCat]} (${superCounts[superCat] || 0})`,
     })),
   ];
 
@@ -102,14 +112,30 @@ export function AffairesFilterBar({
         label="Recherche"
       />
 
-      {/* Dropdowns grid: 2 cols mobile, 4 cols desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Dropdowns grid: 2 cols mobile, 5 cols desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <SelectFilter
-          id="sort-affairs"
-          label="Trier par"
-          value={currentFilters.sort}
-          onChange={(v) => updateParams({ sort: v })}
-          options={sortOptions}
+          id="supercat-affairs"
+          label="Famille"
+          value={currentFilters.supercat}
+          onChange={(v) => updateParams({ supercat: v, category: "" })}
+          options={superCatOptions}
+        />
+
+        <SelectFilter
+          id="category-affairs"
+          label="Infraction"
+          value={currentFilters.category}
+          onChange={(v) => updateParams({ category: v })}
+          options={categoryOptions}
+        />
+
+        <SelectFilter
+          id="certainty-affairs"
+          label="Certitude"
+          value={currentFilters.certainty}
+          onChange={(v) => updateParams({ certainty: v })}
+          options={certaintyOptions}
         />
 
         <SelectFilter
@@ -121,19 +147,11 @@ export function AffairesFilterBar({
         />
 
         <SelectFilter
-          id="certainty-affairs"
-          label="Certitude judiciaire"
-          value={currentFilters.certainty}
-          onChange={(v) => updateParams({ certainty: v })}
-          options={certaintyOptions}
-        />
-
-        <SelectFilter
-          id="category-affairs"
-          label="Catégorie"
-          value={currentFilters.category}
-          onChange={(v) => updateParams({ category: v })}
-          options={categoryOptions}
+          id="sort-affairs"
+          label="Trier par"
+          value={currentFilters.sort}
+          onChange={(v) => updateParams({ sort: v })}
+          options={sortOptions}
         />
       </div>
     </FilterBarShell>

@@ -28,7 +28,9 @@ export default async function DepartmentsPage() {
         ]}
       />
       <main id="main-content" className="container mx-auto px-4 py-8 max-w-6xl">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Résultats par département</h1>
+        <h1 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight mb-2">
+          Résultats par département
+        </h1>
         <p className="text-muted-foreground mb-8">
           Municipales 2020 — Vue d{"'"}ensemble par département
         </p>

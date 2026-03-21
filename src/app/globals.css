@@ -132,6 +132,17 @@
   }
 }
 
+/* Hide scrollbar while preserving scroll behavior */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Accessibility improvements */
 @layer utilities {
   /* Skip to main content link */

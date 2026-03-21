@@ -55,7 +55,9 @@ export default async function ElectionsPage({ searchParams }: PageProps) {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Calendrier électoral</h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+          Calendrier électoral
+        </h1>
         <p className="text-muted-foreground">
           Retrouvez les dates des prochaines élections en France, avec compte à rebours et
           informations sur chaque scrutin.

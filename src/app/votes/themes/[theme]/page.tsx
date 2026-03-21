@@ -110,7 +110,7 @@ export default async function ThemePage({
         ]}
       />
 
-      <h1 className="text-3xl font-bold mb-2">
+      <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
         {icon} {label}
       </h1>
       <SeoIntro text={introText} />

@@ -107,7 +107,7 @@ export default async function Commune2020DetailPage({ params }: PageProps) {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-3">
+          <h1 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight mb-3">
             Municipales 2020 — {commune.communeName}
           </h1>
           <div className="flex flex-wrap gap-2">

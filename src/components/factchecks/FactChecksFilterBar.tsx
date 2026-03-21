@@ -28,6 +28,17 @@ const RATING_OPTIONS: FactCheckRating[] = [
   "UNVERIFIABLE",
 ];
 
+/** Super-categories grouping individual ratings. */
+const VERDICT_GROUPS: { value: string; label: string; ratings: FactCheckRating[] }[] = [
+  { value: "faux", label: "Faux / Plutôt faux", ratings: ["FALSE", "MOSTLY_FALSE"] },
+  {
+    value: "trompeur",
+    label: "Trompeur / Partiel",
+    ratings: ["MISLEADING", "OUT_OF_CONTEXT", "HALF_TRUE"],
+  },
+  { value: "vrai", label: "Vrai / Plutôt vrai", ratings: ["TRUE", "MOSTLY_TRUE"] },
+];
+
 const selectClassName =
   "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer hover:border-primary/50 transition-colors";
 
@@ -86,6 +97,16 @@ export function FactChecksFilterBar({
             className={selectClassName}
           >
             <option value="">Tous les verdicts</option>
+            {VERDICT_GROUPS.map((group) => {
+              const count = group.ratings.reduce((sum, r) => sum + (ratingCounts[r] || 0), 0);
+              if (count === 0) return null;
+              return (
+                <option key={group.value} value={group.value}>
+                  {group.label} ({count})
+                </option>
+              );
+            })}
+            <option disabled>────────</option>
             {RATING_OPTIONS.map((rating) => {
               const count = ratingCounts[rating] || 0;
               if (count === 0) return null;

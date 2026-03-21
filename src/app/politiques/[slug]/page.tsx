@@ -255,7 +255,9 @@ export default async function PoliticianPage({ params }: PageProps) {
           />
           <div className="min-w-0">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold">{politician.fullName}</h1>
+              <h1 className="text-3xl font-display font-extrabold tracking-tight">
+                {politician.fullName}
+              </h1>
               <FollowButton slug={politician.slug} />
             </div>
             <div className="flex flex-wrap items-center gap-2">

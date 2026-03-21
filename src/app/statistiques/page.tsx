@@ -245,7 +245,7 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2">Statistiques</h1>
+      <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">Statistiques</h1>
       <p className="text-muted-foreground mb-8">
         Vue d&apos;ensemble des données sur la vie politique française
       </p>

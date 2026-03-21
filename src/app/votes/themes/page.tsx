@@ -65,7 +65,9 @@ export default async function ThemesListingPage() {
         ]}
       />
 
-      <h1 className="text-3xl font-bold mb-2">Votes par thematique</h1>
+      <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+        Votes par thematique
+      </h1>
       <SeoIntro
         text={`${totalScrutins.toLocaleString("fr-FR")} scrutins parlementaires classes dans ${themes.length} thematiques. Explorez les votes de l'Assemblee nationale et du Senat par sujet.`}
       />

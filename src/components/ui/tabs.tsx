@@ -42,13 +42,44 @@ function TabsList({
   variant = "default",
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> & VariantProps<typeof tabsListVariants>) {
+  const listRef = React.useRef<HTMLDivElement>(null);
+  const [showLeftFade, setShowLeftFade] = React.useState(false);
+  const [showRightFade, setShowRightFade] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const check = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = el;
+      setShowLeftFade(scrollLeft > 2);
+      setShowRightFade(scrollLeft + clientWidth < scrollWidth - 2);
+    };
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", check);
+      ro.disconnect();
+    };
+  }, []);
+
   return (
-    <TabsPrimitive.List
-      data-slot="tabs-list"
-      data-variant={variant}
-      className={cn(tabsListVariants({ variant }), className)}
-      {...props}
-    />
+    <div className="relative">
+      <TabsPrimitive.List
+        ref={listRef}
+        data-slot="tabs-list"
+        data-variant={variant}
+        className={cn(tabsListVariants({ variant }), "overflow-x-auto scrollbar-hide", className)}
+        {...props}
+      />
+      {showLeftFade && (
+        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none" />
+      )}
+      {showRightFade && (
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+      )}
+    </div>
   );
 }
 

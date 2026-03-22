@@ -98,6 +98,14 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
+    name: "opensanctions-incremental",
+    run: async () => {
+      if (!process.env.OPENSANCTIONS_API_KEY) return { skipped: "no API key" };
+      const { syncOpenSanctionsIncremental } = await import("@/services/sync/opensanctions");
+      return syncOpenSanctionsIncremental({ limit: 100 });
+    },
+  },
+  {
     name: "prominence",
     run: async () => {
       const { recalculateProminence } = await import("@/services/sync/prominence");

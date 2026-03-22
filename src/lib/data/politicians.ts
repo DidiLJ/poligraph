@@ -79,7 +79,7 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
         orderBy: { startDate: "desc" },
       },
       externalIds: {
-        select: { url: true, source: true },
+        select: { url: true, source: true, metadata: true },
       },
       dossierAuthors: {
         include: {

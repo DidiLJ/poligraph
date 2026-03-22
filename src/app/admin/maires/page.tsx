@@ -3,19 +3,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, ChevronLeft, ChevronRight, UserPlus, Loader2, MapPin } from "lucide-react";
-import { useAdminMutation } from "@/hooks";
+import { Card, CardContent } from "@/components/ui/card";
+import { Search, ChevronLeft, ChevronRight, Loader2, MapPin } from "lucide-react";
 
 interface MaireItem {
   id: string;
   fullName: string;
+  slug: string;
   gender: string | null;
   commune: { name: string; departmentCode: string; population: number | null } | null;
   party: { shortName: string; color: string | null } | null;
-  politician: { slug: string } | null;
   functionStart: string | null;
 }
 
@@ -30,16 +28,13 @@ export default function AdminMairesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const { loading: promoting, mutate } = useAdminMutation();
 
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [promotingId, setPromotingId] = useState<string | null>(null);
 
   const searchQuery = searchParams.get("search") || "";
   const deptFilter = searchParams.get("dept") || "";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
-  const showPromoted = searchParams.get("promoted") === "true";
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -59,7 +54,6 @@ export default function AdminMairesPage() {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
     if (deptFilter) params.set("dept", deptFilter);
-    if (!showPromoted) params.set("fiche", "false");
     params.set("page", String(currentPage));
 
     try {
@@ -68,25 +62,11 @@ export default function AdminMairesPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, deptFilter, currentPage, showPromoted]);
+  }, [searchQuery, deptFilter, currentPage]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  async function handlePromote(officialId: string) {
-    setPromotingId(officialId);
-    const result = await mutate(`/api/admin/maires/${officialId}/promote`, {
-      method: "POST",
-      body: JSON.stringify({}),
-      successMessage: "Fiche creee",
-    });
-    setPromotingId(null);
-    if (result) {
-      const json = await result.json();
-      router.push(`/admin/politiques/${json.politicianId}`);
-    }
-  }
 
   const maires = data?.maires ?? [];
   const pagination = data
@@ -139,15 +119,6 @@ export default function AdminMairesPage() {
           }}
           className="w-20 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
         />
-
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={showPromoted}
-            onChange={(e) => updateParams({ promoted: e.target.checked ? "true" : "" })}
-          />
-          Inclure les promus
-        </label>
       </div>
 
       {/* Table */}
@@ -174,14 +145,19 @@ export default function AdminMairesPage() {
                     <th className="px-4 py-3 font-medium text-muted-foreground">Commune</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Population</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Parti</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">Statut</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {maires.map((maire) => (
                     <tr key={maire.id} className="transition-colors hover:bg-muted/30">
-                      <td className="px-4 py-3 font-medium">{maire.fullName}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link
+                          href={`/admin/politiques/${maire.slug}`}
+                          className="hover:underline text-primary"
+                        >
+                          {maire.fullName}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {maire.commune?.name}
                         <span className="ml-1 text-xs opacity-60">
@@ -203,36 +179,6 @@ export default function AdminMairesPage() {
                           </Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {maire.politician ? (
-                          <Link
-                            href={`/admin/politiques/${maire.politician.slug}`}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            Fiche existante
-                          </Link>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Non promu</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {!maire.politician && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePromote(maire.id)}
-                            disabled={promoting || promotingId === maire.id}
-                            className="h-7 text-xs"
-                          >
-                            {promotingId === maire.id ? (
-                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            ) : (
-                              <UserPlus className="mr-1 h-3 w-3" />
-                            )}
-                            Promouvoir
-                          </Button>
                         )}
                       </td>
                     </tr>

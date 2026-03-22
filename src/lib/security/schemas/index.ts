@@ -23,5 +23,4 @@ export {
   recoverRejectionSchema,
   syncPoliticianSchema,
 } from "./admin";
-export { promoteMaireSchema } from "./maire";
 export { updateFactcheckSchema, addFactcheckMentionSchema, updateMentionSchema } from "./factcheck";

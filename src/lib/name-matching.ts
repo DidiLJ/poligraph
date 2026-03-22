@@ -141,6 +141,29 @@ export async function buildPartyIndex(): Promise<PartyName[]> {
 }
 
 // ============================================
+// FIRST NAME SET (false-positive prevention)
+// ============================================
+
+/**
+ * Build a set of normalized first names from politician data.
+ * Used to prevent last-name-only matching when a politician's last name
+ * is also a common first name (e.g. "Quentin", "Catherine", "Thierry").
+ *
+ * Only includes name parts >= 5 characters (matching the LNO length threshold).
+ */
+export function buildFirstNameSet(politicians: PoliticianName[]): Set<string> {
+  const set = new Set<string>();
+  for (const p of politicians) {
+    for (const part of normalizeText(p.firstName).split(/\s+/)) {
+      if (part.length >= 5) {
+        set.add(part);
+      }
+    }
+  }
+  return set;
+}
+
+// ============================================
 // MATCHING FUNCTIONS
 // ============================================
 
@@ -224,6 +247,13 @@ export function findMentions(
   const seenIds = new Set<string>();
   const fullNameOnly = options?.fullNameOnly ?? false;
 
+  // Build a set of normalized first names from the politician index.
+  // When a politician's last name is also a common first name (e.g. "Quentin",
+  // "Catherine", "Thierry"), last-name-only matching is disabled because
+  // standalone occurrences are overwhelmingly first-name references to
+  // non-politicians, not last-name references to the politician.
+  const firstNameSet = buildFirstNameSet(politicians);
+
   // Sort politicians by full name length (longer names first for more specific matches)
   const sortedPoliticians = [...politicians].sort(
     (a, b) => b.normalizedFullName.length - a.normalizedFullName.length
@@ -262,7 +292,8 @@ export function findMentions(
     // AND the last name is not part of another politician's full name in the text
     if (
       politician.normalizedLastName.length >= 5 &&
-      !isCommonFrenchWord(politician.normalizedLastName)
+      !isCommonFrenchWord(politician.normalizedLastName) &&
+      !firstNameSet.has(politician.normalizedLastName)
     ) {
       const lastNameRegex = new RegExp(`\\b${escapeRegex(politician.normalizedLastName)}\\b`);
       if (

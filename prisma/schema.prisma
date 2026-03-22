@@ -171,6 +171,7 @@ enum MatchMethod {
   TEMPORAL
   FUZZY_NAME
   COMPOSITE
+  EXTERNAL_API
 }
 
 enum Judgement {

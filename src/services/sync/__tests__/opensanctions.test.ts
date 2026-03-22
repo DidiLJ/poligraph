@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/identity", () => ({ resolveBatch: vi.fn() }));
+vi.mock("@/lib/api/opensanctions", () => ({ createOpenSanctionsClient: vi.fn() }));
 
 import { parseFtmPerson, toResolveInput } from "../opensanctions";
 

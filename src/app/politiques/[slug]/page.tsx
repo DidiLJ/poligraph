@@ -6,7 +6,12 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatCompactCurrency } from "@/lib/utils";
-import { MANDATE_TYPE_LABELS, PARTY_ROLE_LABELS, feminizePartyRole } from "@/config/labels";
+import {
+  MANDATE_TYPE_LABELS,
+  PARTY_ROLE_LABELS,
+  feminizePartyRole,
+  DATA_SOURCE_LABELS,
+} from "@/config/labels";
 import { ensureContrast } from "@/lib/contrast";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { MandateTimeline } from "@/components/politicians/MandateTimeline";
@@ -639,14 +644,32 @@ export default async function PoliticianPage({ params }: PageProps) {
 
             <BetaDisclaimer variant="profile" />
 
-            {/* Data source */}
+            {/* External links + data source */}
             <Card className="bg-muted">
               <CardContent className="pt-6">
+                {politician.externalIds.filter((e) => e.url).length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Liens externes</p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {politician.externalIds
+                        .filter((e) => e.url)
+                        .map((ext) => (
+                          <a
+                            key={ext.source}
+                            href={ext.url!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {DATA_SOURCE_LABELS[ext.source]} ↗
+                          </a>
+                        ))}
+                    </div>
+                    <OpenSanctionsDatasets externalIds={politician.externalIds} />
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Dernière mise à jour : {formatDate(politician.updatedAt)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Sources : AN, Sénat, Gouvernement, HATVP, Wikidata
                 </p>
                 <Link
                   href="/sources"
@@ -660,5 +683,35 @@ export default async function PoliticianPage({ params }: PageProps) {
         </div>
       </div>
     </>
+  );
+}
+
+const OS_DATASET_LABELS: Record<string, string> = {
+  fr_assemblee: "Assemblée nationale",
+  fr_senat: "Sénat",
+  fr_maires: "Maires",
+  wd_peps: "PEPs",
+  ann_pep_positions: "PEPs",
+  everypolitician: "EveryPolitician",
+};
+
+function OpenSanctionsDatasets({
+  externalIds,
+}: {
+  externalIds: Array<{ source: string; metadata: unknown }>;
+}) {
+  const osEntry = externalIds.find((e) => e.source === "OPENSANCTIONS");
+  if (!osEntry) return null;
+
+  const meta = osEntry.metadata as { datasets?: string[] } | null;
+  const datasets = meta?.datasets ?? [];
+  const labels = [
+    ...new Set(datasets.map((d) => OS_DATASET_LABELS[d]).filter((l): l is string => l != null)),
+  ];
+
+  if (labels.length === 0) return null;
+
+  return (
+    <p className="text-[10px] text-muted-foreground mt-1.5">Registres : {labels.join(", ")}</p>
   );
 }

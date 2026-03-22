@@ -94,6 +94,16 @@ const DATA_SOURCES = [
     fields: ["Déclarations vérifiées", "Verdicts", "Sources de fact-checking"],
     color: "#4285F4",
   },
+  {
+    name: "OpenSanctions",
+    shortName: "OS",
+    description:
+      "Base internationale de personnes politiquement exposées (PEP) et de sanctions. Croisement automatique avec les profils Poligraph pour enrichir les identifiants externes",
+    url: "https://www.opensanctions.org",
+    frequency: "Hebdomadaire",
+    fields: ["Statut PEP", "Identifiants croisés", "Jeux de données"],
+    color: "#1a1a2e",
+  },
 ];
 
 const METHODOLOGY_POINTS = [

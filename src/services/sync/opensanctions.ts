@@ -6,10 +6,11 @@ import { join } from "path";
 import { createInterface } from "readline";
 import { pipeline } from "stream/promises";
 
-import { DataSource, Judgement } from "@/generated/prisma";
+import { DataSource, Judgement, MatchMethod } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { resolveBatch } from "@/lib/identity";
 import type { ResolveInput } from "@/lib/identity";
+import { createOpenSanctionsClient } from "@/lib/api/opensanctions";
 
 // --- FtM types ---
 
@@ -234,6 +235,131 @@ export async function syncOpenSanctions(options?: {
     await unlink(tmpPath);
   } catch {
     // Non-critical
+  }
+
+  console.log(
+    `Done: ${stats.matched} matched, ${stats.review} for review, ${stats.notFound} not found`
+  );
+  return stats;
+}
+
+// --- Phase 2: Incremental API sync ---
+
+export interface IncrementalSyncStats {
+  total: number;
+  matched: number;
+  review: number;
+  notFound: number;
+  errors: string[];
+}
+
+export async function syncOpenSanctionsIncremental(options?: {
+  limit?: number;
+  concurrency?: number;
+}): Promise<IncrementalSyncStats> {
+  const client = createOpenSanctionsClient();
+  if (!client) {
+    throw new Error(
+      "OPENSANCTIONS_API_KEY is required for incremental sync. " +
+        "Set it in .env or use bulk sync instead."
+    );
+  }
+
+  const stats: IncrementalSyncStats = {
+    total: 0,
+    matched: 0,
+    review: 0,
+    notFound: 0,
+    errors: [],
+  };
+
+  // 1. Find published politicians without OpenSanctions ExternalId
+  const unlinked = await db.politician.findMany({
+    where: {
+      publicationStatus: "PUBLISHED",
+      externalIds: {
+        none: { source: DataSource.OPENSANCTIONS },
+      },
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      birthDate: true,
+    },
+    ...(options?.limit ? { take: options.limit } : {}),
+  });
+
+  stats.total = unlinked.length;
+  console.log(`Found ${unlinked.length} unlinked politicians`);
+
+  if (unlinked.length === 0) return stats;
+
+  // 2. Match each via API with concurrency control
+  const concurrency = options?.concurrency ?? 5;
+
+  for (let i = 0; i < unlinked.length; i += concurrency) {
+    const batch = unlinked.slice(i, i + concurrency);
+
+    await Promise.allSettled(
+      batch.map(async (politician) => {
+        const name = `${politician.firstName} ${politician.lastName}`;
+        const birthDate = politician.birthDate?.toISOString().split("T")[0];
+
+        try {
+          const results = await client.match(name, {
+            birthDate,
+            threshold: 0.7,
+            limit: 3,
+          });
+
+          if (results.length === 0) {
+            stats.notFound++;
+            return;
+          }
+
+          const best = results[0]!;
+
+          if (best.score >= 0.95) {
+            await db.externalId.upsert({
+              where: {
+                source_externalId: {
+                  source: DataSource.OPENSANCTIONS,
+                  externalId: best.id,
+                },
+              },
+              create: {
+                politicianId: politician.id,
+                source: DataSource.OPENSANCTIONS,
+                externalId: best.id,
+                url: `https://www.opensanctions.org/entities/${best.id}/`,
+                confidence: best.score,
+                matchedBy: MatchMethod.EXTERNAL_API,
+                metadata: { datasets: best.datasets },
+              },
+              update: {
+                politicianId: politician.id,
+                url: `https://www.opensanctions.org/entities/${best.id}/`,
+                confidence: best.score,
+                metadata: { datasets: best.datasets },
+              },
+            });
+            stats.matched++;
+          } else {
+            stats.review++;
+            console.log(`  REVIEW: ${name} -> ${best.caption} (${(best.score * 100).toFixed(0)}%)`);
+          }
+        } catch (err) {
+          stats.errors.push(
+            `Match failed for ${name}: ${err instanceof Error ? err.message : String(err)}`
+          );
+        }
+      })
+    );
+
+    if ((i + concurrency) % 50 === 0 || i + concurrency >= unlinked.length) {
+      console.log(`  Progress: ${Math.min(i + concurrency, unlinked.length)}/${unlinked.length}`);
+    }
   }
 
   console.log(

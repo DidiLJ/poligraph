@@ -154,6 +154,11 @@ const phase2Extracted = [
     const limit = (data.limit as number) || undefined;
     return syncOpenSanctions({ limit });
   }),
+  createSyncFunction("sync-opensanctions-incremental", async (data) => {
+    const { syncOpenSanctionsIncremental } = await import("@/services/sync/opensanctions");
+    const limit = (data.limit as number) || undefined;
+    return syncOpenSanctionsIncremental({ limit });
+  }),
 ];
 
 export const functions = [

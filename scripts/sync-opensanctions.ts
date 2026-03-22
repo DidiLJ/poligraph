@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { syncOpenSanctions } from "@/services/sync/opensanctions";
+import { syncOpenSanctions, syncOpenSanctionsIncremental } from "@/services/sync/opensanctions";
 import { db } from "@/lib/db";
 import { DataSource } from "@/generated/prisma";
 
@@ -19,6 +19,7 @@ async function showStats() {
 async function main() {
   const args = process.argv.slice(2);
   const isStats = args.includes("--stats");
+  const isIncremental = args.includes("--incremental");
   const limitArg = args.find((a) => a.startsWith("--limit="));
   const limitStr = limitArg?.split("=")[1];
   const limit = limitStr ? parseInt(limitStr, 10) : undefined;
@@ -28,21 +29,39 @@ async function main() {
     process.exit(0);
   }
 
-  console.log("Starting OpenSanctions sync...");
-  if (limit) console.log(`Limit: ${limit} entities`);
+  if (isIncremental) {
+    console.log("Starting OpenSanctions incremental API sync...");
+    if (limit) console.log(`Limit: ${limit} politicians`);
 
-  const result = await syncOpenSanctions({ limit });
+    const result = await syncOpenSanctionsIncremental({ limit });
 
-  console.log("\n=== Results ===");
-  console.log(`Downloaded entities: ${result.downloaded}`);
-  console.log(`French persons: ${result.frenchFiltered}`);
-  console.log(`Matched (auto-linked): ${result.matched}`);
-  console.log(`For review: ${result.review}`);
-  console.log(`Not found: ${result.notFound}`);
+    console.log("\n=== Incremental Results ===");
+    console.log(`Unlinked politicians checked: ${result.total}`);
+    console.log(`Matched (auto-linked): ${result.matched}`);
+    console.log(`For review: ${result.review}`);
+    console.log(`Not found: ${result.notFound}`);
 
-  if (result.errors.length > 0) {
-    console.log(`\nErrors (${result.errors.length}):`);
-    result.errors.slice(0, 10).forEach((e) => console.log(`  - ${e}`));
+    if (result.errors.length > 0) {
+      console.log(`\nErrors (${result.errors.length}):`);
+      result.errors.slice(0, 10).forEach((e) => console.log(`  - ${e}`));
+    }
+  } else {
+    console.log("Starting OpenSanctions bulk sync...");
+    if (limit) console.log(`Limit: ${limit} entities`);
+
+    const result = await syncOpenSanctions({ limit });
+
+    console.log("\n=== Bulk Results ===");
+    console.log(`Downloaded entities: ${result.downloaded}`);
+    console.log(`French persons: ${result.frenchFiltered}`);
+    console.log(`Matched (auto-linked): ${result.matched}`);
+    console.log(`For review: ${result.review}`);
+    console.log(`Not found: ${result.notFound}`);
+
+    if (result.errors.length > 0) {
+      console.log(`\nErrors (${result.errors.length}):`);
+      result.errors.slice(0, 10).forEach((e) => console.log(`  - ${e}`));
+    }
   }
 
   await showStats();

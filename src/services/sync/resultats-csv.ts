@@ -1,13 +1,14 @@
 /**
- * Import 2026 municipal election first-round results from the official
- * data.gouv.fr CSV (published day after the vote).
+ * Import 2026 municipal election results from the official
+ * data.gouv.fr CSV (published day after each round).
  *
  * Downloads the "Résultats - Communes" CSV, parses it with the 2026 wide-format
  * parser, and updates:
- *   - CommuneElectionRound (participation per commune)
- *   - Candidacy (round1Votes, round1Pct, round1Qualified, isElected)
+ *   - CommuneElectionRound (participation per commune, round 1 or 2)
+ *   - Candidacy (round1/round2 Votes, Pct, Qualified, isElected)
  *   - StatsSnapshot (aggregate stats for the landing page)
  *
+ * Supports both T1 (--round=1, default) and T2 (--round=2).
  * Overwrites any data previously imported by the scraper (resultats-t1.ts).
  * Idempotent — safe to re-run.
  */
@@ -25,7 +26,10 @@ import {
 // --- Data source URLs ---
 
 const URLS = {
-  resultatsCommunes: "https://www.data.gouv.fr/fr/datasets/r/4feeef01-24f7-4d5a-914f-8aa806f31ec2",
+  t1: "https://www.data.gouv.fr/fr/datasets/r/4feeef01-24f7-4d5a-914f-8aa806f31ec2",
+  // T2 CSV URL: published day after T2 vote on data.gouv.fr
+  // Update this once the resource is live
+  t2: "",
 };
 
 const ELECTION_SLUG = "municipales-2026";
@@ -35,6 +39,7 @@ const ELECTION_SLUG = "municipales-2026";
 interface SyncOptions {
   dryRun?: boolean;
   dept?: string;
+  round?: 1 | 2;
 }
 
 interface SyncStats {
@@ -42,8 +47,7 @@ interface SyncStats {
   communesSkipped: number;
   candidaciesUpdated: number;
   candidaciesNotMatched: number;
-  eluesT1: number;
-  auSecondTour: number;
+  elected: number;
   participationSum: number;
   participationCount: number;
 }
@@ -82,6 +86,7 @@ function parseCsvLines(text: string): CommuneResult2026[] {
 async function upsertCommuneParticipation(
   communeId: string,
   electionId: string,
+  round: 1 | 2,
   data: CommuneResult2026
 ) {
   await db.communeElectionRound.upsert({
@@ -89,7 +94,7 @@ async function upsertCommuneParticipation(
       communeId_electionId_round: {
         communeId,
         electionId,
-        round: 1,
+        round,
       },
     },
     update: {
@@ -103,7 +108,7 @@ async function upsertCommuneParticipation(
     create: {
       communeId,
       electionId,
-      round: 1,
+      round,
       registeredVoters: data.registeredVoters,
       actualVoters: data.actualVoters,
       participationRate: new Prisma.Decimal(data.participationRate),
@@ -114,11 +119,12 @@ async function upsertCommuneParticipation(
   });
 }
 
-async function updateCandidacyResults(
+/** Find candidacy IDs matching a list via 3-level cascade (exact, short, partial). */
+async function findMatchingCandidacyIds(
   electionId: string,
   communeId: string,
   list: ListResult2026
-): Promise<number> {
+): Promise<string[]> {
   const normalizedName = normalizeListName(list.listName);
 
   const candidacies = await db.candidacy.findMany({
@@ -162,11 +168,17 @@ async function updateCandidacyResults(
     }
   }
 
-  if (matchingIds.length === 0) {
-    return 0;
-  }
+  return matchingIds;
+}
 
-  // Qualification: >= 10% of expressed votes to advance to T2
+async function updateCandidacyResultsT1(
+  electionId: string,
+  communeId: string,
+  list: ListResult2026
+): Promise<number> {
+  const matchingIds = await findMatchingCandidacyIds(electionId, communeId, list);
+  if (matchingIds.length === 0) return 0;
+
   const round1Qualified = list.pctExpressed >= 10;
 
   await db.candidacy.updateMany({
@@ -182,12 +194,28 @@ async function updateCandidacyResults(
   return matchingIds.length;
 }
 
-async function updateResultsSnapshot(stats: {
-  communesDepouillees: number;
-  participationMoyenne: number;
-  eluesT1: number;
-  auSecondTour: number;
-}) {
+async function updateCandidacyResultsT2(
+  electionId: string,
+  communeId: string,
+  list: ListResult2026,
+  isWinner: boolean
+): Promise<number> {
+  const matchingIds = await findMatchingCandidacyIds(electionId, communeId, list);
+  if (matchingIds.length === 0) return 0;
+
+  await db.candidacy.updateMany({
+    where: { id: { in: matchingIds } },
+    data: {
+      round2Votes: list.votes,
+      round2Pct: new Prisma.Decimal(list.pctExpressed),
+      isElected: isWinner,
+    },
+  });
+
+  return matchingIds.length;
+}
+
+async function updateResultsSnapshot(stats: Record<string, number>) {
   const key = "municipales-2026-resultats";
   const existing = await db.statsSnapshot.findUnique({ where: { key } });
   const merged = {
@@ -206,8 +234,16 @@ async function updateResultsSnapshot(stats: {
 
 // --- Main sync function ---
 
-export async function syncResultatsCsv({ dryRun = false, dept }: SyncOptions = {}) {
-  console.log(`\n=== Sync Resultats CSV 2026 ${dryRun ? "(DRY RUN)" : ""} ===\n`);
+export async function syncResultatsCsv({ dryRun = false, dept, round = 1 }: SyncOptions = {}) {
+  const roundLabel = round === 1 ? "T1" : "T2";
+  console.log(`\n=== Sync Resultats CSV 2026 ${roundLabel} ${dryRun ? "(DRY RUN)" : ""} ===\n`);
+
+  const csvUrl = round === 1 ? URLS.t1 : URLS.t2;
+  if (!csvUrl) {
+    console.error(`No CSV URL configured for ${roundLabel}. Update URLS.t2 in resultats-csv.ts`);
+    await db.$disconnect();
+    return;
+  }
 
   // Load election
   const election = await db.election.findUnique({
@@ -227,7 +263,7 @@ export async function syncResultatsCsv({ dryRun = false, dept }: SyncOptions = {
   console.log(`${communeSet.size} communes in DB\n`);
 
   // Download and parse CSV
-  const csvText = await downloadCsv(URLS.resultatsCommunes);
+  const csvText = await downloadCsv(csvUrl);
   let allResults = parseCsvLines(csvText);
   console.log(`${allResults.length} communes parsed from CSV\n`);
 
@@ -242,8 +278,7 @@ export async function syncResultatsCsv({ dryRun = false, dept }: SyncOptions = {
     communesSkipped: 0,
     candidaciesUpdated: 0,
     candidaciesNotMatched: 0,
-    eluesT1: 0,
-    auSecondTour: 0,
+    elected: 0,
     participationSum: 0,
     participationCount: 0,
   };
@@ -274,25 +309,57 @@ export async function syncResultatsCsv({ dryRun = false, dept }: SyncOptions = {
 
     if (!dryRun) {
       // Upsert participation
-      await upsertCommuneParticipation(commune.inseeCode, election.id, commune);
+      await upsertCommuneParticipation(commune.inseeCode, election.id, round, commune);
 
-      // Update each list's candidacies
-      for (const list of commune.lists) {
-        const count = await updateCandidacyResults(election.id, commune.inseeCode, list);
-        if (count > 0) {
-          stats.candidaciesUpdated += count;
-        } else {
-          stats.candidaciesNotMatched++;
-          console.warn(
-            `  [WARN] No match: "${list.listName}" (${list.nuanceCode}) in ${commune.inseeCode} ${commune.communeName}`
+      if (round === 1) {
+        for (const list of commune.lists) {
+          const count = await updateCandidacyResultsT1(election.id, commune.inseeCode, list);
+          if (count > 0) {
+            stats.candidaciesUpdated += count;
+          } else {
+            stats.candidaciesNotMatched++;
+            console.warn(
+              `  [WARN] No match: "${list.listName}" (${list.nuanceCode}) in ${commune.inseeCode} ${commune.communeName}`
+            );
+          }
+        }
+      } else {
+        // T2: the list with the most votes wins (plurality rule)
+        let maxVotes = -1;
+        let winnerIdx = 0;
+        for (let i = 0; i < commune.lists.length; i++) {
+          if (commune.lists[i]!.votes > maxVotes) {
+            maxVotes = commune.lists[i]!.votes;
+            winnerIdx = i;
+          }
+        }
+        for (let i = 0; i < commune.lists.length; i++) {
+          const list = commune.lists[i]!;
+          const count = await updateCandidacyResultsT2(
+            election.id,
+            commune.inseeCode,
+            list,
+            i === winnerIdx
           );
+          if (count > 0) {
+            stats.candidaciesUpdated += count;
+          } else {
+            stats.candidaciesNotMatched++;
+            console.warn(
+              `  [WARN] No match: "${list.listName}" (${list.nuanceCode}) in ${commune.inseeCode} ${commune.communeName}`
+            );
+          }
         }
       }
     }
 
-    const hasElected = commune.lists.some((l) => l.isElected);
-    if (hasElected) stats.eluesT1++;
-    else stats.auSecondTour++;
+    if (round === 1) {
+      const hasElected = commune.lists.some((l) => l.isElected);
+      if (hasElected) stats.elected++;
+    } else {
+      // At T2, every commune elects a winner
+      stats.elected++;
+    }
 
     stats.participationSum += commune.participationRate;
     stats.participationCount++;
@@ -301,13 +368,23 @@ export async function syncResultatsCsv({ dryRun = false, dept }: SyncOptions = {
 
   // Update stats snapshot
   if (!dryRun && stats.participationCount > 0) {
-    await updateResultsSnapshot({
-      communesDepouillees: stats.communesProcessed,
-      participationMoyenne:
-        Math.round((stats.participationSum / stats.participationCount) * 100) / 100,
-      eluesT1: stats.eluesT1,
-      auSecondTour: stats.auSecondTour,
-    });
+    const avgParticipation =
+      Math.round((stats.participationSum / stats.participationCount) * 100) / 100;
+
+    if (round === 1) {
+      await updateResultsSnapshot({
+        communesDepouillees: stats.communesProcessed,
+        participationMoyenne: avgParticipation,
+        eluesT1: stats.elected,
+        auSecondTour: stats.communesProcessed - stats.elected,
+      });
+    } else {
+      await updateResultsSnapshot({
+        communesDepouilleesT2: stats.communesProcessed,
+        participationMoyenneT2: avgParticipation,
+        eluesT2: stats.elected,
+      });
+    }
     console.log("\nStatsSnapshot updated");
   }
 
@@ -320,14 +397,13 @@ export async function syncResultatsCsv({ dryRun = false, dept }: SyncOptions = {
   }
   const nationalRate = totalRegistered > 0 ? (totalVoters / totalRegistered) * 100 : 0;
 
-  console.log(`\n=== Summary ===`);
+  console.log(`\n=== Summary (${roundLabel}) ===`);
   console.log(`Communes parsed from CSV: ${allResults.length}`);
   console.log(`Communes processed: ${stats.communesProcessed}`);
   console.log(`Communes skipped (not in DB): ${stats.communesSkipped}`);
   console.log(`Candidacies updated: ${stats.candidaciesUpdated}`);
   console.log(`Lists not matched: ${stats.candidaciesNotMatched}`);
-  console.log(`Elected T1: ${stats.eluesT1}`);
-  console.log(`Second tour: ${stats.auSecondTour}`);
+  console.log(`Elected: ${stats.elected}`);
   console.log(
     `National participation: ${nationalRate.toFixed(2)}% (${totalVoters}/${totalRegistered})`
   );

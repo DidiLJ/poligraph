@@ -132,11 +132,19 @@ export function ResultatsBanner({
                 </p>
                 <p className="text-muted-foreground text-xs">Majorité absolue</p>
               </>
-            ) : (
+            ) : round2Date ? (
               <>
                 <p className="font-semibold text-sky-700 dark:text-sky-400">
-                  2nd tour{round2Date ? ` le ${round2Date}` : ""}
+                  2nd tour le {round2Date}
                 </p>
+                <p className="text-muted-foreground text-xs">
+                  {qualifiedCount} liste{qualifiedCount > 1 ? "s" : ""} qualifiée
+                  {qualifiedCount > 1 ? "s" : ""}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-muted-foreground">2nd tour</p>
                 <p className="text-muted-foreground text-xs">
                   {qualifiedCount} liste{qualifiedCount > 1 ? "s" : ""} qualifiée
                   {qualifiedCount > 1 ? "s" : ""}

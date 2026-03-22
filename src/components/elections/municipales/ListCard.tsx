@@ -57,6 +57,9 @@ interface ListCardProps {
   round1Pct?: number | null;
   round1Votes?: number | null;
   round1Qualified?: boolean | null;
+  // Round 2 results (optional - only present after T2 import)
+  round2Pct?: number | null;
+  round2Votes?: number | null;
   isElected?: boolean;
 }
 
@@ -138,6 +141,8 @@ export function ListCard({
   round1Pct,
   round1Votes,
   round1Qualified,
+  round2Pct,
+  round2Votes,
   isElected,
 }: ListCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -191,12 +196,12 @@ export function ListCard({
                   )}
                 </div>
               </div>
-              {isElected && (
+              {isElected && round2Pct == null && (
                 <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 gap-1">
                   Élue
                 </Badge>
               )}
-              {!isElected && round1Qualified === true && (
+              {!isElected && round1Qualified === true && round2Pct == null && (
                 <Badge
                   className="text-sky-700 border-sky-300 dark:text-sky-400 dark:border-sky-800"
                   variant="outline"
@@ -207,6 +212,30 @@ export function ListCard({
               {!isElected && round1Qualified === false && (
                 <Badge variant="outline" className="text-muted-foreground">
                   Non qualifiée
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Round 2 results */}
+        {round2Pct != null && (
+          <div className="mt-2 bg-muted/30 rounded-lg p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">2nd tour</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-bold tabular-nums">{round2Pct.toFixed(2)} %</span>
+                  {round2Votes != null && (
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      {round2Votes.toLocaleString("fr-FR")} voix
+                    </span>
+                  )}
+                </div>
+              </div>
+              {isElected && (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 gap-1">
+                  Élue
                 </Badge>
               )}
             </div>

@@ -79,11 +79,13 @@ export default async function MunicipalesLandingPage() {
   const election = await getElection();
   const [stats, resultats] = await Promise.all([getMunicipalesStats(), getResultatsStats()]);
 
-  // After T1 has passed, countdown to T2 instead
+  // Countdown: T1 → T2 → hidden once both rounds are passed
   const now = new Date();
   const round1Passed = election?.round1Date && election.round1Date < now;
-  const targetDate =
-    round1Passed && election?.round2Date
+  const round2Passed = election?.round2Date && election.round2Date < now;
+  const targetDate = round2Passed
+    ? null
+    : round1Passed && election?.round2Date
       ? election.round2Date.toISOString()
       : election?.round1Date
         ? election.round1Date.toISOString()
@@ -141,6 +143,7 @@ export default async function MunicipalesLandingPage() {
             parityRate={stats.parityRate}
             nationalPoliticiansCandidates={stats.nationalPoliticiansCandidates}
             round2Date={election?.round2Date?.toISOString() ?? null}
+            electionCompleted={!!round2Passed}
             resultats={resultats}
           />
         </section>

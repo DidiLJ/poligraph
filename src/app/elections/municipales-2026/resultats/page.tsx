@@ -21,9 +21,9 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const qs = cp.toString();
 
   return {
-    title: "Résultats du 1er tour - Municipales 2026 | Poligraph",
+    title: "Résultats - Municipales 2026 | Poligraph",
     description:
-      "Résultats du premier tour des élections municipales 2026. Participation, listes élues et communes au second tour.",
+      "Résultats des élections municipales 2026. Participation, listes élues et résultats par commune.",
     alternates: {
       canonical: `/elections/municipales-2026/resultats${qs ? `?${qs}` : ""}`,
     },
@@ -95,16 +95,14 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           </li>
           <li aria-hidden="true">/</li>
           <li className="text-foreground font-medium" aria-current="page">
-            Résultats T1
+            Résultats
           </li>
         </ol>
       </nav>
 
       {/* Header */}
       <section className="py-4">
-        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
-          Résultats du 1er tour
-        </h1>
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">Résultats</h1>
         <p className="text-muted-foreground">
           {total.toLocaleString("fr-FR")} commune{total > 1 ? "s" : ""} dépouillées
           {dept && DEPARTMENTS[dept] ? ` en ${DEPARTMENTS[dept].name}` : ""}

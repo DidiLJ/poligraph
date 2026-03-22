@@ -10,6 +10,7 @@ interface MunicipalesChiffresProps {
   parityRate: number; // 0-1
   nationalPoliticiansCandidates: number;
   round2Date?: string | null;
+  electionCompleted?: boolean;
   resultats?: {
     communesDepouillees: number;
     participationMoyenne: number;
@@ -44,6 +45,7 @@ export function MunicipalesChiffres({
   parityRate,
   nationalPoliticiansCandidates,
   round2Date,
+  electionCompleted = false,
   resultats,
 }: MunicipalesChiffresProps) {
   const competitionPct =
@@ -58,8 +60,10 @@ export function MunicipalesChiffres({
             <CardContent className="p-0">
               <div className="flex items-center gap-3 px-5 py-3 border-b border-white/10">
                 <Vote className="h-5 w-5 opacity-80" />
-                <h3 className="font-bold text-base">Resultats du 1er tour</h3>
-                {daysLeft != null && daysLeft > 0 && (
+                <h3 className="font-bold text-base">
+                  {electionCompleted ? "Résultats" : "Résultats du 1er tour"}
+                </h3>
+                {!electionCompleted && daysLeft != null && daysLeft > 0 && (
                   <span className="ml-auto text-xs bg-sky-500/20 text-sky-200 px-2.5 py-1 rounded-full tabular-nums">
                     2nd tour dans {daysLeft} jour{daysLeft > 1 ? "s" : ""}
                   </span>

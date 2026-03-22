@@ -361,6 +361,8 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
         round1Pct: firstWithResults?.round1Pct ? Number(firstWithResults.round1Pct) : null,
         round1Votes: firstWithResults?.round1Votes ?? null,
         round1Qualified: firstWithResults?.round1Qualified ?? null,
+        round2Pct: firstWithResults?.round2Pct ? Number(firstWithResults.round2Pct) : null,
+        round2Votes: firstWithResults?.round2Votes ?? null,
         isElected: firstWithResults?.isElected ?? false,
       };
     })

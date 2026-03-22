@@ -39,11 +39,11 @@ Matching: Associates RNE data with existing politicians in our database
     const stats = await getRNEStats();
 
     console.log("\n" + "=".repeat(50));
-    console.log("LocalOfficial Stats:");
+    console.log("RNE Maires Stats:");
     console.log("=".repeat(50));
-    console.log(`  Total officials: ${stats.totalOfficials}`);
+    console.log(`  Total maires: ${stats.totalMaires}`);
     console.log(`  Currently active: ${stats.totalCurrent}`);
-    console.log(`  Matched to Politician: ${stats.totalMatched}`);
+    console.log(`  With national presence: ${stats.totalWithNationalPresence}`);
   },
 
   async sync(options): Promise<SyncResult> {

@@ -1,12 +1,12 @@
 import { db } from "@/lib/db";
-import { DataSource, Judgement, LocalOfficialRole, MandateType } from "@/generated/prisma";
-import { Prisma } from "@/generated/prisma";
+import { DataSource, Judgement, MandateType, PublicationStatus } from "@/generated/prisma";
 import { parse } from "csv-parse/sync";
 import type { MaireRNECSV, RNESyncResult } from "./types";
 import { HTTPClient } from "@/lib/api/http-client";
 import { DATA_GOUV_RATE_LIMIT_MS } from "@/config/rate-limits";
 import { NUANCE_POLITIQUE_MAPPING } from "@/config/labels";
 import { resolveBatch } from "@/lib/identity";
+import { generateSlug } from "@/lib/utils";
 
 const client = new HTTPClient({ rateLimitMs: DATA_GOUV_RATE_LIMIT_MS });
 
@@ -94,10 +94,10 @@ async function fetchRNECSV(): Promise<MaireRNECSV[]> {
 
 /**
  * Sync RNE maires data — 4-phase pipeline:
- *   Phase 0: Snapshot current mayors from DB
- *   Phase 1: Parse CSV + upsert all 35k LocalOfficial records
- *   Phase 2: Reconcile unmatched LocalOfficials with politicians + create mandates
- *   Phase 3: Close stale officials no longer in CSV
+ *   Phase 0: Snapshot current mayors from DB (MAIRE mandates with MandateLocal)
+ *   Phase 1: Parse CSV + upsert Politician + Mandate + MandateLocal (500-row batches)
+ *   Phase 2: Reconcile newly created RNE Politicians against existing national Politicians
+ *   Phase 3: Close stale mandates no longer in CSV
  */
 export async function syncRNEMaires(
   options: {
@@ -119,31 +119,31 @@ export async function syncRNEMaires(
   const errors: string[] = [];
 
   // ========================================
-  // Phase 0: Snapshot current MAIRE officials
+  // Phase 0: Snapshot current MAIRE mandates
   // ========================================
   console.log("\n--- Phase 0: Snapshot current mayors from DB ---");
-  const currentMayorsFromDB = await db.localOfficial.findMany({
+  const currentMayorsFromDB = await db.mandate.findMany({
     where: {
-      role: LocalOfficialRole.MAIRE,
+      type: MandateType.MAIRE,
       isCurrent: true,
+      localData: { isNot: null },
     },
     select: {
       id: true,
-      communeId: true,
-      externalId: true,
       politicianId: true,
+      localData: {
+        select: { communeId: true, rneExternalId: true },
+      },
     },
   });
 
-  console.log(`  Found ${currentMayorsFromDB.length} current mayors in DB`);
+  console.log(`  Found ${currentMayorsFromDB.length} current mayor mandates in DB`);
 
   const seenCommuneIds = new Set<string>();
   // Map<inseeCode, communeName> — populated during Phase 1 parsing
   const communeNameByInsee = new Map<string, string>();
 
   // Pre-load existing commune IDs for FK validation
-  // Many of the 35k communes may not exist in our Commune table (only
-  // communes with municipales 2026 candidatures are seeded).
   const existingCommunes = await db.commune.findMany({
     select: { id: true },
   });
@@ -151,21 +151,22 @@ export async function syncRNEMaires(
   console.log(`  Loaded ${communeIdSet.size} existing communes for FK validation`);
 
   // ========================================
-  // Phase 1: Parse CSV + batch upsert LocalOfficial
+  // Phase 1: Parse CSV + upsert Politician + Mandate + MandateLocal
   // ========================================
-  console.log("\n--- Phase 1: Parse CSV + batch upsert LocalOfficial ---");
+  console.log("\n--- Phase 1: Parse CSV + upsert Politician + Mandate + MandateLocal ---");
   const records = await fetchRNECSV();
   const toProcess = limit ? records.slice(0, limit) : records;
 
   console.log(`Processing ${toProcess.length} maires...`);
 
-  // Parse all rows into structured objects
   interface ParsedRow {
     inseeCode: string;
     communeId: string | null;
+    communeLabel: string | null;
     firstName: string;
     lastName: string;
     fullName: string;
+    civility: string | null;
     gender: string | null;
     birthDate: Date | null;
     deptCode: string;
@@ -192,20 +193,23 @@ export async function syncRNEMaires(
 
     const inseeCode = buildInseeCode(deptCode, codeCommune);
     seenCommuneIds.add(inseeCode);
-    const communeLabel = row!["Libellé de la commune"]?.trim();
+    const communeLabel = row!["Libellé de la commune"]?.trim() || null;
     if (communeLabel) communeNameByInsee.set(inseeCode, communeLabel);
     const communeId = communeIdSet.has(inseeCode) ? inseeCode : null;
     const normalizedFirstName = normalizeName(prenom);
     const normalizedLastName = normalizeName(nom);
     const genderCode = row!["Code sexe"];
+    const gender = genderCode === "M" ? "M" : genderCode === "F" ? "F" : null;
 
     parsedRows.push({
       inseeCode,
       communeId,
+      communeLabel,
       firstName: normalizedFirstName,
       lastName: normalizedLastName,
       fullName: `${normalizedFirstName} ${normalizedLastName}`,
-      gender: genderCode === "M" ? "M" : genderCode === "F" ? "F" : null,
+      civility: gender === "F" ? "Mme" : gender === "M" ? "M." : null,
+      gender,
       birthDate: parseFrenchDate(row!["Date de naissance"]),
       deptCode,
       mandateStart: parseFrenchDate(row!["Date de début du mandat"]),
@@ -226,7 +230,7 @@ export async function syncRNEMaires(
   }
 
   if (dryRun) {
-    console.log(`  [DRY-RUN] Would upsert ${uniqueRows.length} officials`);
+    console.log(`  [DRY-RUN] Would upsert ${uniqueRows.length} maires`);
     if (verbose) {
       for (const r of uniqueRows.slice(0, 10)) {
         console.log(`  [DRY-RUN] ${r.fullName} (${r.inseeCode})`);
@@ -234,56 +238,142 @@ export async function syncRNEMaires(
     }
     officialsCreated = uniqueRows.length;
   } else {
-    // Batch upsert using ON CONFLICT on (role, externalId)
+    // Build lookup of existing MandateLocal by rneExternalId for efficient upsert
+    const existingByInsee = new Map<
+      string,
+      { mandateId: string; politicianId: string; mandateLocalId: string }
+    >();
+    const existingLocalData = await db.mandateLocal.findMany({
+      where: { rneExternalId: { not: null } },
+      select: {
+        id: true,
+        rneExternalId: true,
+        mandate: { select: { id: true, politicianId: true } },
+      },
+    });
+    for (const local of existingLocalData) {
+      if (local.rneExternalId) {
+        existingByInsee.set(local.rneExternalId, {
+          mandateId: local.mandate.id,
+          politicianId: local.mandate.politicianId,
+          mandateLocalId: local.id,
+        });
+      }
+    }
+    console.log(`  Loaded ${existingByInsee.size} existing MandateLocal records by INSEE code`);
+
     const BATCH_SIZE = 500;
     for (let start = 0; start < uniqueRows.length; start += BATCH_SIZE) {
       const chunk = uniqueRows.slice(start, start + BATCH_SIZE);
 
-      // Build parameterized VALUES clause
-      const values: Prisma.Sql[] = chunk.map(
-        (r) =>
-          Prisma.sql`(
-          gen_random_uuid(),
-          'MAIRE'::"LocalOfficialRole",
-          ${r.firstName}, ${r.lastName}, ${r.fullName},
-          ${r.gender}, ${r.birthDate},
-          ${r.communeId}, ${r.deptCode},
-          ${r.mandateStart}, ${r.functionStart},
-          true, NULL,
-          'RNE'::"DataSource", ${r.inseeCode},
-          NOW(), NOW()
-        )`
-      );
+      for (const r of chunk) {
+        try {
+          const existing = existingByInsee.get(r.inseeCode);
 
-      const result = await db.$executeRaw`
-        INSERT INTO "LocalOfficial" (
-          "id", "role",
-          "firstName", "lastName", "fullName",
-          "gender", "birthDate",
-          "communeId", "departmentCode",
-          "mandateStart", "functionStart",
-          "isCurrent", "mandateEnd",
-          "source", "externalId",
-          "createdAt", "updatedAt"
-        )
-        VALUES ${Prisma.join(values)}
-        ON CONFLICT ("role", "externalId") DO UPDATE SET
-          "firstName" = EXCLUDED."firstName",
-          "lastName" = EXCLUDED."lastName",
-          "fullName" = EXCLUDED."fullName",
-          "gender" = EXCLUDED."gender",
-          "birthDate" = EXCLUDED."birthDate",
-          "communeId" = EXCLUDED."communeId",
-          "departmentCode" = EXCLUDED."departmentCode",
-          "mandateStart" = EXCLUDED."mandateStart",
-          "functionStart" = EXCLUDED."functionStart",
-          "isCurrent" = true,
-          "mandateEnd" = NULL,
-          "source" = 'RNE'::"DataSource",
-          "updatedAt" = NOW()
-      `;
+          if (existing) {
+            // Update existing Mandate fields
+            const startDate = r.functionStart || r.mandateStart || new Date(2020, 4, 18);
+            const communeLabel = r.communeLabel;
+            const mandateTitle = communeLabel
+              ? `Maire de ${communeLabel}`
+              : `Maire (${r.inseeCode})`;
+            const constituency = communeLabel ? `${communeLabel} (${r.inseeCode})` : r.inseeCode;
 
-      officialsUpdated += result; // total rows affected (created + updated)
+            await db.mandate.update({
+              where: { id: existing.mandateId },
+              data: {
+                title: mandateTitle,
+                constituency,
+                departmentCode: r.deptCode,
+                startDate,
+                isCurrent: true,
+                endDate: null,
+              },
+            });
+
+            // Update MandateLocal fields
+            await db.mandateLocal.update({
+              where: { id: existing.mandateLocalId },
+              data: {
+                communeId: r.communeId,
+                functionStart: r.functionStart,
+              },
+            });
+
+            // Update Politician fields (civility, birthDate)
+            await db.politician.update({
+              where: { id: existing.politicianId },
+              data: {
+                civility: r.civility,
+                birthDate: r.birthDate,
+              },
+            });
+
+            mandatesUpdated++;
+            officialsUpdated++;
+          } else {
+            // Create new Politician + Mandate + MandateLocal
+            const startDate = r.functionStart || r.mandateStart || new Date(2020, 4, 18);
+            const communeLabel = r.communeLabel;
+            const mandateTitle = communeLabel
+              ? `Maire de ${communeLabel}`
+              : `Maire (${r.inseeCode})`;
+            const constituency = communeLabel ? `${communeLabel} (${r.inseeCode})` : r.inseeCode;
+
+            // Generate a unique slug: "prenom-nom" with fallback suffix
+            const baseSlug = generateSlug(`${r.firstName} ${r.lastName}`);
+            // Check for slug collision and append insee suffix if needed
+            const existingSlug = await db.politician.findUnique({
+              where: { slug: baseSlug },
+              select: { id: true },
+            });
+            const slug = existingSlug ? `${baseSlug}-${r.inseeCode}` : baseSlug;
+
+            const newPolitician = await db.politician.create({
+              data: {
+                slug,
+                civility: r.civility,
+                firstName: r.firstName,
+                lastName: r.lastName,
+                fullName: r.fullName,
+                birthDate: r.birthDate,
+                source: DataSource.RNE,
+                publicationStatus: PublicationStatus.PUBLISHED,
+                mandates: {
+                  create: {
+                    type: MandateType.MAIRE,
+                    title: mandateTitle,
+                    institution: "Commune",
+                    constituency,
+                    departmentCode: r.deptCode,
+                    startDate,
+                    isCurrent: true,
+                    source: DataSource.RNE,
+                    localData: {
+                      create: {
+                        communeId: r.communeId,
+                        functionStart: r.functionStart,
+                        rneExternalId: r.inseeCode,
+                      },
+                    },
+                  },
+                },
+              },
+            });
+
+            if (verbose) {
+              console.log(
+                `  Created politician: ${r.fullName} (${r.inseeCode}) -> ${newPolitician.id}`
+              );
+            }
+
+            mandatesCreated++;
+            officialsCreated++;
+          }
+        } catch (err) {
+          errors.push(`Upsert failed for ${r.fullName} (${r.inseeCode}): ${err}`);
+        }
+      }
 
       if ((start + BATCH_SIZE) % 5000 < BATCH_SIZE) {
         console.log(
@@ -293,7 +383,9 @@ export async function syncRNEMaires(
     }
   }
 
-  console.log(`  Phase 1 complete: ${officialsUpdated} rows upserted, ${errors.length} errors`);
+  console.log(
+    `  Phase 1 complete: ${officialsCreated} created, ${officialsUpdated} updated, ${errors.length} errors`
+  );
 
   if (dryRun) {
     console.log("\n[DRY-RUN] Skipping phases 2-3");
@@ -312,47 +404,57 @@ export async function syncRNEMaires(
   }
 
   // ========================================
-  // Phase 2: Reconcile with Politician (via batch IdentityResolver)
+  // Phase 2: Reconcile new RNE Politicians against existing national Politicians
   // ========================================
-  console.log("\n--- Phase 2: Reconcile LocalOfficials with Politicians ---");
+  console.log(
+    "\n--- Phase 2: Reconcile new RNE Politicians with existing national Politicians ---"
+  );
 
-  const unmatchedOfficials = await db.localOfficial.findMany({
+  // Find newly created RNE Politicians that have no external IDs (not yet linked nationally)
+  const rneOnlyPoliticians = await db.politician.findMany({
     where: {
-      role: LocalOfficialRole.MAIRE,
-      isCurrent: true,
-      politicianId: null,
+      source: DataSource.RNE,
+      externalIds: { none: {} },
+      mandates: {
+        some: { type: MandateType.MAIRE, isCurrent: true, localData: { isNot: null } },
+      },
     },
     select: {
       id: true,
       firstName: true,
       lastName: true,
       birthDate: true,
-      departmentCode: true,
-      communeId: true,
-      externalId: true,
-      mandateStart: true,
-      functionStart: true,
+      mandates: {
+        where: { type: MandateType.MAIRE, isCurrent: true },
+        select: {
+          id: true,
+          departmentCode: true,
+          localData: { select: { rneExternalId: true, communeId: true } },
+        },
+        take: 1,
+      },
     },
   });
 
-  console.log(`  Found ${unmatchedOfficials.length} unmatched officials to reconcile`);
+  console.log(`  Found ${rneOnlyPoliticians.length} RNE-only Politicians to reconcile`);
 
-  if (unmatchedOfficials.length > 0) {
-    // Build a map from sourceId → official for post-match processing
-    const officialBySourceId = new Map<string, (typeof unmatchedOfficials)[number]>();
-    const resolveInputs = unmatchedOfficials.map((official) => {
-      const sourceId = official.externalId ?? official.communeId ?? "";
-      officialBySourceId.set(sourceId, official);
+  if (rneOnlyPoliticians.length > 0) {
+    const politicianBySourceId = new Map<string, (typeof rneOnlyPoliticians)[number]>();
+    const resolveInputs = rneOnlyPoliticians.map((politician) => {
+      const mandate = politician.mandates[0];
+      const sourceId =
+        mandate?.localData?.rneExternalId || mandate?.localData?.communeId || politician.id;
+      politicianBySourceId.set(sourceId, politician);
       return {
-        firstName: official.firstName,
-        lastName: official.lastName,
-        birthDate: official.birthDate,
+        firstName: politician.firstName,
+        lastName: politician.lastName,
+        birthDate: politician.birthDate,
         source: DataSource.RNE,
         sourceId,
-        department: official.departmentCode,
+        department: mandate?.departmentCode || undefined,
         mandateType: MandateType.MAIRE,
         context: {
-          commune: communeNameByInsee.get(official.externalId ?? "") ?? null,
+          commune: communeNameByInsee.get(mandate?.localData?.rneExternalId ?? "") ?? null,
         },
       };
     });
@@ -361,7 +463,7 @@ export async function syncRNEMaires(
       sourceType: DataSource.RNE,
       inputs: resolveInputs,
       onProgress: (processed, total) => {
-        if (processed % 10000 === 0 || processed === total) {
+        if (processed % 5000 === 0 || processed === total) {
           console.log(`  Phase 2 progress: ${processed}/${total}`);
         }
       },
@@ -373,140 +475,78 @@ export async function syncRNEMaires(
 
     politiciansNotFound = batchResult.stats.notFound + batchResult.stats.blocked;
 
-    // Apply matches: link officials to politicians + create/update mandates
-    // Only auto-link SAME (≥0.95) — UNDECIDED needs manual review (prevents false positives on common names)
+    // For SAME matches: transfer mandates from the RNE stub to the existing politician,
+    // then delete the stub.
     for (const resolveResult of batchResult.results) {
-      const politicianId = resolveResult.politicianId;
-      if (!politicianId) continue;
+      const existingPoliticianId = resolveResult.politicianId;
+      if (!existingPoliticianId) continue;
       if (resolveResult.decision !== Judgement.SAME) continue;
 
-      const official = officialBySourceId.get(resolveResult.sourceId);
-      if (!official) continue;
+      const rnePolitician = politicianBySourceId.get(resolveResult.sourceId);
+      if (!rnePolitician) continue;
+      if (rnePolitician.id === existingPoliticianId) continue; // already the same record
 
       politiciansMatched++;
 
       try {
-        await db.localOfficial.update({
-          where: { id: official.id },
-          data: { politicianId },
+        // Transfer all MAIRE mandates from the RNE stub to the existing politician
+        await db.mandate.updateMany({
+          where: { politicianId: rnePolitician.id },
+          data: { politicianId: existingPoliticianId },
         });
 
-        const inseeCode = official.externalId || official.communeId;
-        const communeName = inseeCode ? communeNameByInsee.get(inseeCode) : undefined;
-        const mandateTitle = communeName
-          ? `Maire de ${communeName}`
-          : `Maire (${inseeCode || official.departmentCode})`;
-        const constituency =
-          communeName && inseeCode ? `${communeName} (${inseeCode})` : inseeCode || undefined;
-        const startDate = official.functionStart || official.mandateStart || new Date(2020, 4, 18);
-
-        const existingMandate = await db.mandate.findFirst({
-          where: { politicianId, type: MandateType.MAIRE, isCurrent: true },
-        });
-
-        if (existingMandate) {
-          await db.mandate.update({
-            where: { id: existingMandate.id },
-            data: {
-              title: mandateTitle,
-              constituency,
-              departmentCode: official.departmentCode,
-              startDate,
-            },
-          });
-          mandatesUpdated++;
-        } else {
-          await db.mandate.create({
-            data: {
-              politicianId,
-              type: MandateType.MAIRE,
-              title: mandateTitle,
-              institution: "Commune",
-              constituency,
-              departmentCode: official.departmentCode,
-              startDate,
-              isCurrent: true,
-              source: DataSource.RNE,
-            },
-          });
-          mandatesCreated++;
-        }
+        // Delete the RNE stub (no mandates, no external IDs remain)
+        await db.politician.delete({ where: { id: rnePolitician.id } });
 
         if (verbose) {
           console.log(
-            `  Matched: ${official.firstName} ${official.lastName} (${inseeCode}) -> politician ${politicianId} [${resolveResult.method}, confidence=${resolveResult.confidence}]`
+            `  Merged: RNE stub ${rnePolitician.id} (${rnePolitician.firstName} ${rnePolitician.lastName}) -> existing politician ${existingPoliticianId} [${resolveResult.method}, confidence=${resolveResult.confidence}]`
           );
         }
       } catch (err) {
-        errors.push(`Match failed for ${official.firstName} ${official.lastName}: ${err}`);
+        errors.push(
+          `Merge failed for ${rnePolitician.firstName} ${rnePolitician.lastName}: ${err}`
+        );
       }
     }
   }
 
   // ========================================
-  // Phase 3: Close stale officials
+  // Phase 3: Close stale mandates
   // ========================================
-  console.log("\n--- Phase 3: Close stale officials ---");
+  console.log("\n--- Phase 3: Close stale mandates ---");
 
-  // Find officials that were current in the snapshot but whose INSEE code
-  // is not in the CSV. Use externalId (INSEE code) as the reliable identifier
-  // since communeId can be null when the commune isn't in our DB.
-  const staleOfficials = currentMayorsFromDB.filter((m) => {
-    const identifier = m.externalId || m.communeId;
+  // Find MAIRE mandates that were in the snapshot but whose INSEE code is no longer in the CSV
+  const staleMandates = currentMayorsFromDB.filter((m) => {
+    const identifier = m.localData?.rneExternalId || m.localData?.communeId;
     return identifier && !seenCommuneIds.has(identifier);
   });
 
-  console.log(`  Found ${staleOfficials.length} stale officials to close`);
+  console.log(`  Found ${staleMandates.length} stale mandates to close`);
 
-  for (const stale of staleOfficials) {
+  for (const stale of staleMandates) {
     try {
-      // Close the LocalOfficial
-      await db.localOfficial.update({
+      await db.mandate.update({
         where: { id: stale.id },
-        data: {
-          isCurrent: false,
-          mandateEnd: new Date(),
-        },
+        data: { isCurrent: false, endDate: new Date() },
       });
+      mandatesClosed++;
       officialsClosed++;
-
-      // If they had a linked politician, also close their MAIRE mandate
-      if (stale.politicianId) {
-        const currentMaireMandate = await db.mandate.findFirst({
-          where: {
-            politicianId: stale.politicianId,
-            type: MandateType.MAIRE,
-            isCurrent: true,
-          },
-        });
-
-        if (currentMaireMandate) {
-          await db.mandate.update({
-            where: { id: currentMaireMandate.id },
-            data: {
-              isCurrent: false,
-              endDate: new Date(),
-            },
-          });
-          mandatesClosed++;
-        }
-      }
     } catch (error) {
-      errors.push(`Close stale official ${stale.id}: ${error}`);
+      errors.push(`Close stale mandate ${stale.id}: ${error}`);
     }
   }
 
-  console.log(
-    `  Phase 3 complete: ${officialsClosed} officials closed, ${mandatesClosed} mandates closed`
-  );
+  console.log(`  Phase 3 complete: ${mandatesClosed} mandates closed`);
 
   // ========================================
   // Summary
   // ========================================
   console.log(`\n${"=".repeat(50)}`);
   console.log(`Results:`);
-  console.log(`  Officials upserted: ${officialsCreated + officialsUpdated}`);
-  console.log(`  Officials closed:  ${officialsClosed}`);
+  console.log(`  Maires created:    ${officialsCreated}`);
+  console.log(`  Maires updated:    ${officialsUpdated}`);
+  console.log(`  Maires closed:     ${officialsClosed}`);
   console.log(`  Mandates created:  ${mandatesCreated}`);
   console.log(`  Mandates updated:  ${mandatesUpdated}`);
   console.log(`  Mandates closed:   ${mandatesClosed}`);
@@ -514,19 +554,17 @@ export async function syncRNEMaires(
   console.log(`  Politicians not found: ${politiciansNotFound}`);
   console.log(`  Errors: ${errors.length}`);
 
-  // Record platform update if significant import
-  // Note: officialsCreated is only set in dry-run; use officialsUpdated (total upserted rows)
-  if (officialsUpdated > 100) {
+  const totalUpserted = officialsCreated + officialsUpdated;
+  if (totalUpserted > 100) {
     try {
       await db.platformUpdate.create({
         data: {
-          title: `${officialsUpdated.toLocaleString("fr-FR")} maires mis à jour depuis le RNE`,
+          title: `${totalUpserted.toLocaleString("fr-FR")} maires mis à jour depuis le RNE`,
           type: "DATA_IMPORT",
-          metadata: { count: officialsUpdated, entity: "maires" },
+          metadata: { count: totalUpserted, entity: "maires" },
         },
       });
     } catch {
-      // Non-critical - don't fail the sync
       console.warn("Failed to create platform update entry");
     }
   }
@@ -555,7 +593,7 @@ const ENRICHED_COMMUNES_CSV_URL =
 /**
  * Resolve party affiliations for maires using:
  * 1. Enriched communes CSV (data.gouv.fr) → nuance_politique → NUANCE_POLITIQUE_MAPPING → partyId
- * 2. For officials linked to a Politician, inherit currentPartyId
+ * 2. Inherit from Politician.currentPartyId if already set on a matched national politician
  */
 export async function resolveParties(options: { verbose?: boolean } = {}): Promise<{
   fromNuance: number;
@@ -598,85 +636,61 @@ export async function resolveParties(options: { verbose?: boolean } = {}): Promi
     if (p.shortName) partyByShortName.set(p.shortName, p.id);
   }
 
-  // Step 3: Resolve nuance → shortName → partyId for all current maires without a party
-  const officials = await db.localOfficial.findMany({
+  // Step 3: Find current MAIRE mandates where politician has no currentPartyId
+  const mandates = await db.mandate.findMany({
     where: {
-      role: LocalOfficialRole.MAIRE,
+      type: MandateType.MAIRE,
       isCurrent: true,
-      partyId: null,
+      localData: { isNot: null },
+      politician: { currentPartyId: null },
     },
     select: {
       id: true,
-      externalId: true,
       politicianId: true,
+      localData: { select: { rneExternalId: true } },
     },
   });
 
-  console.log(`  Found ${officials.length} maires without party to resolve`);
+  console.log(`  Found ${mandates.length} maires without party to resolve`);
 
   let fromNuance = 0;
-  let fromPolitician = 0;
+  const fromPolitician = 0;
   const unmappedNuances = new Set<string>();
 
-  // Pre-load politician currentPartyId for linked officials
-  const politicianIds = officials.filter((o) => o.politicianId).map((o) => o.politicianId!);
-
-  const politicianParties = new Map<string, string>();
-  if (politicianIds.length > 0) {
-    const politicians = await db.politician.findMany({
-      where: { id: { in: politicianIds }, currentPartyId: { not: null } },
-      select: { id: true, currentPartyId: true },
-    });
-    for (const p of politicians) {
-      if (p.currentPartyId) politicianParties.set(p.id, p.currentPartyId);
-    }
-  }
-
-  // Build batched updates: Map<partyId, officialIds[]>
+  // Build batched updates: Map<partyId, politicianIds[]>
   const updatesByParty = new Map<string, string[]>();
 
-  for (const official of officials) {
-    let resolvedPartyId: string | null = null;
+  for (const mandate of mandates) {
+    const rneId = mandate.localData?.rneExternalId;
+    if (!rneId) continue;
 
-    // Priority 1: inherit from linked Politician
-    if (official.politicianId && politicianParties.has(official.politicianId)) {
-      resolvedPartyId = politicianParties.get(official.politicianId)!;
-      fromPolitician++;
+    const nuance = nuanceMap.get(rneId);
+    if (!nuance) continue;
+
+    const shortName = NUANCE_POLITIQUE_MAPPING[nuance];
+    if (!shortName) {
+      unmappedNuances.add(`${nuance} (no mapping)`);
+      continue;
     }
 
-    // Priority 2: resolve from nuance CSV
-    if (!resolvedPartyId && official.externalId) {
-      const nuance = nuanceMap.get(official.externalId);
-      if (nuance) {
-        const shortName = NUANCE_POLITIQUE_MAPPING[nuance];
-        if (shortName) {
-          const partyId = partyByShortName.get(shortName);
-          if (partyId) {
-            resolvedPartyId = partyId;
-            fromNuance++;
-          } else {
-            unmappedNuances.add(`${nuance} → ${shortName} (no party in DB)`);
-          }
-        } else {
-          unmappedNuances.add(`${nuance} (no mapping)`);
-        }
-      }
+    const partyId = partyByShortName.get(shortName);
+    if (!partyId) {
+      unmappedNuances.add(`${nuance} → ${shortName} (no party in DB)`);
+      continue;
     }
 
-    if (resolvedPartyId) {
-      const list = updatesByParty.get(resolvedPartyId) || [];
-      list.push(official.id);
-      updatesByParty.set(resolvedPartyId, list);
-    }
+    const list = updatesByParty.get(partyId) || [];
+    list.push(mandate.politicianId);
+    updatesByParty.set(partyId, list);
+    fromNuance++;
   }
 
-  // Step 4: Batch UPDATE by partyId
-  for (const [partyId, ids] of updatesByParty) {
-    await db.$executeRaw`
-      UPDATE "LocalOfficial"
-      SET "partyId" = ${partyId}, "updatedAt" = NOW()
-      WHERE id = ANY(${ids})
-    `;
+  // Step 4: Batch UPDATE Politician.currentPartyId grouped by partyId
+  for (const [partyId, politicianIds] of updatesByParty) {
+    await db.politician.updateMany({
+      where: { id: { in: politicianIds } },
+      data: { currentPartyId: partyId },
+    });
   }
 
   if (verbose && unmappedNuances.size > 0) {
@@ -694,18 +708,22 @@ export async function resolveParties(options: { verbose?: boolean } = {}): Promi
 }
 
 /**
- * Get RNE sync statistics (queries LocalOfficial table)
+ * Get RNE sync statistics (queries Mandate + MandateLocal tables)
  */
 export async function getRNEStats() {
-  const totalOfficials = await db.localOfficial.count({
-    where: { role: LocalOfficialRole.MAIRE },
+  const totalMaires = await db.mandate.count({
+    where: { type: MandateType.MAIRE, localData: { isNot: null } },
   });
-  const totalMatched = await db.localOfficial.count({
-    where: { role: LocalOfficialRole.MAIRE, politicianId: { not: null } },
+  const totalWithNationalPresence = await db.mandate.count({
+    where: {
+      type: MandateType.MAIRE,
+      localData: { isNot: null },
+      politician: { externalIds: { some: {} } },
+    },
   });
-  const totalCurrent = await db.localOfficial.count({
-    where: { role: LocalOfficialRole.MAIRE, isCurrent: true },
+  const totalCurrent = await db.mandate.count({
+    where: { type: MandateType.MAIRE, isCurrent: true, localData: { isNot: null } },
   });
 
-  return { totalOfficials, totalMatched, totalCurrent };
+  return { totalMaires, totalWithNationalPresence, totalCurrent };
 }

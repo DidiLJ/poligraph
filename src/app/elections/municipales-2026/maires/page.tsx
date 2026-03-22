@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { MaireCard } from "@/components/elections/municipales/MaireCard";
 import { MairesFilterBar } from "@/components/elections/municipales/MairesFilterBar";
-import { PoligraphBadgeLegend } from "@/components/elections/PoligraphBadge";
 import { getMaireStats, getMaires, getMaireParties } from "@/lib/data/municipales";
 import { DEPARTMENTS } from "@/config/departments";
 
@@ -203,11 +202,6 @@ export default async function MairesPage({ searchParams }: PageProps) {
           activeFilterCount={activeFilterCount}
         />
       </section>
-
-      {/* Legend */}
-      <div className="mb-4">
-        <PoligraphBadgeLegend />
-      </div>
 
       {/* Grid */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-8">

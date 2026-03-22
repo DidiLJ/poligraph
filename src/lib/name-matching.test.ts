@@ -416,6 +416,136 @@ describe("findMentions", () => {
       expect(result.find((r) => r.politicianId === "15")).toBeUndefined();
     });
   });
+
+  // Last name = common first name false positive prevention
+  describe("lastName is a common first name", () => {
+    const withAmbiguous: PoliticianName[] = [
+      ...politicians,
+      {
+        id: "20",
+        fullName: "Virginie Quentin",
+        firstName: "Virginie",
+        lastName: "Quentin",
+        normalizedFullName: "virginie quentin",
+        normalizedLastName: "quentin",
+      },
+      {
+        id: "21",
+        fullName: "Sabrina Catherine",
+        firstName: "Sabrina",
+        lastName: "Catherine",
+        normalizedFullName: "sabrina catherine",
+        normalizedLastName: "catherine",
+      },
+      {
+        id: "22",
+        fullName: "Catherine Trautmann",
+        firstName: "Catherine",
+        lastName: "Trautmann",
+        normalizedFullName: "catherine trautmann",
+        normalizedLastName: "trautmann",
+      },
+      {
+        id: "23",
+        fullName: "Joëlle Laurence",
+        firstName: "Joëlle",
+        lastName: "Laurence",
+        normalizedFullName: "joelle laurence",
+        normalizedLastName: "laurence",
+      },
+      {
+        id: "24",
+        fullName: "Laurence Ruffin",
+        firstName: "Laurence",
+        lastName: "Ruffin",
+        normalizedFullName: "laurence ruffin",
+        normalizedLastName: "ruffin",
+      },
+      {
+        id: "25",
+        fullName: "Roland Thierry",
+        firstName: "Roland",
+        lastName: "Thierry",
+        normalizedFullName: "roland thierry",
+        normalizedLastName: "thierry",
+      },
+      {
+        id: "26",
+        fullName: "Thierry Mariani",
+        firstName: "Thierry",
+        lastName: "Mariani",
+        normalizedFullName: "thierry mariani",
+        normalizedLastName: "mariani",
+      },
+      {
+        id: "27",
+        fullName: "Quentin Bataillon",
+        firstName: "Quentin",
+        lastName: "Bataillon",
+        normalizedFullName: "quentin bataillon",
+        normalizedLastName: "bataillon",
+      },
+    ];
+
+    it("should NOT match 'Quentin' as lastName when it appears as first name in text", () => {
+      // Article about "Quentin F." (anonymized person) — not a politician
+      const result = findMentions(
+        "À 35 ans, Quentin F., atteint d'un trouble du spectre autistique",
+        withAmbiguous
+      );
+      expect(result.find((r) => r.politicianId === "20")).toBeUndefined();
+    });
+
+    it("should NOT match 'Catherine' as lastName when text mentions Catherine Trautmann", () => {
+      const result = findMentions(
+        "Catherine Trautmann toujours investie par le PS à Strasbourg",
+        withAmbiguous
+      );
+      // Trautmann matches by full name
+      expect(result.find((r) => r.politicianId === "22")).toBeDefined();
+      // Sabrina Catherine should NOT match (Catherine is a first name)
+      expect(result.find((r) => r.politicianId === "21")).toBeUndefined();
+    });
+
+    it("should NOT match 'Laurence' as lastName in Laurence Ruffin article", () => {
+      const result = findMentions(
+        "La liste de Laurence Ruffin dénonce l'agression de militants à Grenoble",
+        withAmbiguous
+      );
+      // Ruffin matches by full name
+      expect(result.find((r) => r.politicianId === "24")).toBeDefined();
+      // Joëlle Laurence should NOT match
+      expect(result.find((r) => r.politicianId === "23")).toBeUndefined();
+    });
+
+    it("should NOT match 'Thierry' as lastName in non-politician context", () => {
+      const result = findMentions(
+        "Thierry, candidat sortant à La Teste-de-Buch, arrive en tête",
+        withAmbiguous
+      );
+      // Roland Thierry should NOT match
+      expect(result.find((r) => r.politicianId === "25")).toBeUndefined();
+    });
+
+    it("should still match ambiguous lastName via full name", () => {
+      const result = findMentions(
+        "La candidate Virginie Quentin se présente aux municipales",
+        withAmbiguous
+      );
+      expect(result).toContainEqual({
+        politicianId: "20",
+        matchedName: "Virginie Quentin",
+      });
+    });
+
+    it("should still match ambiguous lastName via full name for Sabrina Catherine", () => {
+      const result = findMentions("Sabrina Catherine a pris position sur le sujet", withAmbiguous);
+      expect(result).toContainEqual({
+        politicianId: "21",
+        matchedName: "Sabrina Catherine",
+      });
+    });
+  });
 });
 
 // ============================================

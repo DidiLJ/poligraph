@@ -71,7 +71,6 @@ model Politician {
   factCheckMentions FactCheckMention[] // Mentions in fact-checks
   candidacies       Candidacy[] // Election candidacies
   candidates        Candidate[] // Local election candidates linked to this politician
-  localOffices        LocalOfficial[] // Local offices from RNE
   participation       PoliticianParticipation? // Pre-computed participation stats
   identityDecisions   IdentityDecision[] // Identity resolution audit trail
   newsletterEditions  NewsletterEdition[] // Weeks featured as "politician of the week"
@@ -215,7 +214,6 @@ model Party {
   candidacies         Candidacy[] // Election candidacies
   leadershipMandates  Mandate[] // Leadership mandates (PRESIDENT_PARTI)
   parliamentaryGroups ParliamentaryGroup[] // Parliamentary groups that map to this party
-  localOfficials      LocalOfficial[] // Local officials from RNE
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -419,18 +417,6 @@ enum MandateType {
   CONSEILLER_MUNICIPAL
   PRESIDENT_PARTI
   OTHER
-}
-
-enum LocalOfficialRole {
-  MAIRE
-  ADJOINT_MAIRE
-  CONSEILLER_MUNICIPAL
-  PRESIDENT_DEPARTEMENT
-  VICE_PRESIDENT_DEPARTEMENT
-  CONSEILLER_DEPARTEMENTAL
-  PRESIDENT_REGION
-  VICE_PRESIDENT_REGION
-  CONSEILLER_REGIONAL
 }
 
 // ============================================
@@ -1567,7 +1553,6 @@ model Commune {
   website             String?
 
   candidacies           Candidacy[]
-  localOfficials        LocalOfficial[]
   localMandates         MandateLocal[]
   communeElectionRounds CommuneElectionRound[]
 
@@ -1595,56 +1580,6 @@ model CommuneElectionRound {
 
   @@unique([communeId, electionId, round])
   @@index([electionId, round])
-}
-
-// ============================================
-// LOCAL OFFICIALS (RNE — maires, adjoints, etc.)
-// ============================================
-
-model LocalOfficial {
-  id              String             @id @default(cuid())
-  role            LocalOfficialRole
-
-  firstName       String
-  lastName        String
-  fullName        String
-  gender          String?
-  birthDate       DateTime?
-
-  commune         Commune?           @relation(fields: [communeId], references: [id])
-  communeId       String?
-  departmentCode  String
-  regionCode      String?
-
-  partyLabel      String?
-  party           Party?             @relation(fields: [partyId], references: [id])
-  partyId         String?
-
-  mandateStart    DateTime?
-  functionStart   DateTime?
-  mandateEnd      DateTime?
-  isCurrent       Boolean            @default(true)
-
-  politician      Politician?        @relation(fields: [politicianId], references: [id])
-  politicianId    String?
-
-  source          DataSource         @default(RNE)
-  externalId      String?
-  photoUrl        String?
-
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-
-  @@unique([role, communeId], name: "one_official_per_role_commune")
-  @@unique([role, externalId], name: "one_official_per_role_externalId")
-  @@index([role, communeId])
-  @@index([role, departmentCode])
-  @@index([role, isCurrent])
-  @@index([politicianId])
-  @@index([role, externalId])
-  @@index([lastName])
-  @@index([isCurrent, departmentCode, lastName]) // v1 API: list elus by dept
-  @@index([isCurrent, communeId]) // v1 API: commune officials
 }
 
 // ============================================

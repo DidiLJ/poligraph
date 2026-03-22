@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { LocalOfficialRole } from "@/generated/prisma";
+import { LOCAL_MANDATE_TYPES } from "@/config/labels";
 import { getElus } from "@/lib/data/elus";
 import { withCache } from "@/lib/cache";
 import { parsePagination, buildPaginationMeta } from "@/lib/api/pagination";
 import { withPublicRoute } from "@/lib/api/with-public-route";
 
-const VALID_ROLES = new Set(Object.values(LocalOfficialRole));
+const VALID_ROLES = new Set(LOCAL_MANDATE_TYPES as readonly string[]);
 const VALID_GENDERS = new Set(["M", "F"]);
 
 /**
@@ -79,10 +79,7 @@ export const GET = withPublicRoute(async (request) => {
   const partyId = searchParams.get("partyId") || undefined;
 
   const roleParam = searchParams.get("role");
-  const role =
-    roleParam && VALID_ROLES.has(roleParam as LocalOfficialRole)
-      ? (roleParam as LocalOfficialRole)
-      : undefined;
+  const role = roleParam && VALID_ROLES.has(roleParam) ? roleParam : undefined;
 
   const genderParam = searchParams.get("gender");
   const gender = genderParam && VALID_GENDERS.has(genderParam) ? genderParam : undefined;

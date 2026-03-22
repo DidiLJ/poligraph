@@ -160,7 +160,7 @@ export default async function CommuneDetailPage({ params }: PageProps) {
                 listCount={commune.stats.listCount}
                 qualifiedCount={qualifiedCount}
                 round2Date={
-                  !electedList && commune.round2Date
+                  !electedList && commune.round2Date && new Date(commune.round2Date) > new Date()
                     ? new Date(commune.round2Date).toLocaleDateString("fr-FR", {
                         day: "numeric",
                         month: "long",
@@ -260,6 +260,8 @@ export default async function CommuneDetailPage({ params }: PageProps) {
                   round1Pct={list.round1Pct}
                   round1Votes={list.round1Votes}
                   round1Qualified={list.round1Qualified}
+                  round2Pct={list.round2Pct}
+                  round2Votes={list.round2Votes}
                   isElected={list.isElected}
                 />
               ))}

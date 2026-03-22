@@ -1,6 +1,7 @@
 import { cacheTag, cacheLife } from "next/cache";
-import { LocalOfficialRole } from "@/generated/prisma";
+import { MandateType } from "@/generated/prisma";
 import { db } from "@/lib/db";
+import { LOCAL_MANDATE_TYPES } from "@/config/labels";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -11,7 +12,7 @@ export interface EluSummary {
   fullName: string;
   gender: string | null;
   birthDate: string | null;
-  role: LocalOfficialRole;
+  role: string; // MandateType value
   isCurrent: boolean;
   mandateStart: string | null;
   functionStart: string | null;
@@ -31,14 +32,14 @@ export interface EluSummary {
     slug: string;
     fullName: string;
     photoUrl: string | null;
-  } | null;
+  };
 }
 
 export interface EluDetail extends EluSummary {
   mandateEnd: string | null;
-  partyLabel: string | null;
-  source: string;
-  externalId: string | null;
+  partyLabel: string | null; // From MandateLocal
+  source: string; // DataSource
+  externalId: string | null; // rneExternalId from MandateLocal
 }
 
 // ─── Shared select shapes ────────────────────────────────────────
@@ -57,71 +58,93 @@ const PARTY_SELECT = {
   slug: true,
 } as const;
 
-const POLITICIAN_SELECT = {
-  slug: true,
-  fullName: true,
-  photoUrl: true,
-} as const;
+// ─── Raw type ────────────────────────────────────────────────────
+
+type RawMandate = {
+  id: string;
+  type: MandateType;
+  startDate: Date;
+  endDate: Date | null;
+  isCurrent: boolean;
+  departmentCode: string | null;
+  source: string | null;
+  politician: {
+    id: string;
+    slug: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    civility: string | null;
+    birthDate: Date | null;
+    photoUrl: string | null;
+    currentParty: { shortName: string; color: string | null; slug: string | null } | null;
+  };
+  localData: {
+    communeId: string | null;
+    functionStart: Date | null;
+    rneExternalId: string | null;
+    partyLabel: string | null;
+    commune: {
+      id: string;
+      name: string;
+      departmentCode: string;
+      departmentName: string;
+      population: number | null;
+    } | null;
+  } | null;
+};
 
 // ─── Transform helpers ───────────────────────────────────────────
 
-type RawElu = Awaited<ReturnType<typeof db.localOfficial.findFirst>> & {
-  commune?: {
-    id: string;
-    name: string;
-    departmentCode: string;
-    departmentName: string;
-    population: number | null;
-  } | null;
-  party?: { shortName: string; color: string | null; slug: string | null } | null;
-  politician?: { slug: string; fullName: string; photoUrl: string | null } | null;
-};
-
-function toSummary(e: NonNullable<RawElu>): EluSummary {
+function toSummary(m: RawMandate): EluSummary {
   return {
-    id: e.id,
-    firstName: e.firstName,
-    lastName: e.lastName,
-    fullName: e.fullName,
-    gender: e.gender,
-    birthDate: e.birthDate?.toISOString() ?? null,
-    role: e.role,
-    isCurrent: e.isCurrent,
-    mandateStart: e.mandateStart?.toISOString() ?? null,
-    functionStart: e.functionStart?.toISOString() ?? null,
-    commune: e.commune
+    id: m.politician.id,
+    firstName: m.politician.firstName,
+    lastName: m.politician.lastName,
+    fullName: m.politician.fullName,
+    gender: m.politician.civility === "Mme" ? "F" : m.politician.civility === "M." ? "M" : null,
+    birthDate: m.politician.birthDate?.toISOString() ?? null,
+    role: m.type,
+    isCurrent: m.isCurrent,
+    mandateStart: m.startDate?.toISOString() ?? null,
+    functionStart: m.localData?.functionStart?.toISOString() ?? null,
+    commune: m.localData?.commune
       ? {
-          inseeCode: e.commune.id,
-          name: e.commune.name,
-          departmentCode: e.commune.departmentCode,
-          departmentName: e.commune.departmentName,
-          population: e.commune.population,
+          inseeCode: m.localData.commune.id,
+          name: m.localData.commune.name,
+          departmentCode: m.localData.commune.departmentCode,
+          departmentName: m.localData.commune.departmentName,
+          population: m.localData.commune.population,
         }
       : null,
-    party: e.party ?? null,
-    politician: e.politician ?? null,
+    party: m.politician.currentParty ?? null,
+    politician: {
+      slug: m.politician.slug,
+      fullName: m.politician.fullName,
+      photoUrl: m.politician.photoUrl,
+    },
   };
 }
 
-function toDetail(e: NonNullable<RawElu>): EluDetail {
+function toDetail(m: RawMandate): EluDetail {
   return {
-    ...toSummary(e),
-    mandateEnd: e.mandateEnd?.toISOString() ?? null,
-    partyLabel: e.partyLabel,
-    source: e.source,
-    externalId: e.externalId,
+    ...toSummary(m),
+    mandateEnd: m.endDate?.toISOString() ?? null,
+    partyLabel: m.localData?.partyLabel ?? null,
+    source: m.source ?? "",
+    externalId: m.localData?.rneExternalId ?? null,
   };
 }
 
 // ─── Private query ───────────────────────────────────────────────
 
-const VALID_ROLES = new Set(Object.values(LocalOfficialRole));
+const VALID_ROLES = new Set<string>(LOCAL_MANDATE_TYPES);
 
 async function queryElus(opts: {
   search?: string;
   departmentCode?: string;
   communeId?: string;
-  role?: LocalOfficialRole;
+  role?: string;
   partyId?: string;
   gender?: string;
   currentOnly?: boolean;
@@ -142,42 +165,56 @@ async function queryElus(opts: {
   const skip = (page - 1) * limit;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const conditions: any[] = [];
+  const where: any = {
+    type: role && VALID_ROLES.has(role) ? role : { in: LOCAL_MANDATE_TYPES },
+    ...(currentOnly ? { isCurrent: true } : {}),
+    ...(departmentCode ? { departmentCode } : {}),
+    ...(communeId ? { localData: { communeId } } : {}),
+    politician: {
+      ...(partyId ? { currentPartyId: partyId } : {}),
+      ...(gender ? { civility: gender === "F" ? "Mme" : "M." } : {}),
+      ...(search
+        ? {
+            OR: [
+              { fullName: { contains: search, mode: "insensitive" } },
+              { lastName: { contains: search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
+  };
 
-  if (currentOnly) conditions.push({ isCurrent: true });
-  if (role && VALID_ROLES.has(role)) conditions.push({ role });
-  if (departmentCode) conditions.push({ departmentCode });
-  if (communeId) conditions.push({ communeId });
-  if (partyId) conditions.push({ partyId });
-  if (gender) conditions.push({ gender });
-
-  if (search) {
-    conditions.push({
-      OR: [
-        { fullName: { contains: search, mode: "insensitive" } },
-        { lastName: { contains: search, mode: "insensitive" } },
-      ],
-    });
-  }
-
-  const where = conditions.length > 0 ? { AND: conditions } : {};
-
-  const [elus, total] = await Promise.all([
-    db.localOfficial.findMany({
-      where,
-      include: {
-        commune: { select: COMMUNE_SELECT },
-        party: { select: PARTY_SELECT },
-        politician: { select: POLITICIAN_SELECT },
+  const include = {
+    politician: {
+      select: {
+        id: true,
+        slug: true,
+        firstName: true,
+        lastName: true,
+        fullName: true,
+        civility: true,
+        birthDate: true,
+        photoUrl: true,
+        currentParty: { select: PARTY_SELECT },
       },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    },
+    localData: {
+      include: { commune: { select: COMMUNE_SELECT } },
+    },
+  } as const;
+
+  const [mandates, total] = await Promise.all([
+    db.mandate.findMany({
+      where,
+      include,
+      orderBy: { politician: { lastName: "asc" } },
       skip,
       take: limit,
     }),
-    db.localOfficial.count({ where }),
+    db.mandate.count({ where }),
   ]);
 
-  return { data: elus.map(toSummary), total, page, limit };
+  return { data: mandates.map(toSummary), total, page, limit };
 }
 
 // ─── Cached path (bounded key space) ─────────────────────────────
@@ -185,7 +222,7 @@ async function queryElus(opts: {
 export async function getElusFiltered(opts: {
   departmentCode?: string;
   communeId?: string;
-  role?: LocalOfficialRole;
+  role?: string;
   partyId?: string;
   gender?: string;
   page: number;
@@ -203,7 +240,7 @@ export async function searchElus(opts: {
   search: string;
   departmentCode?: string;
   communeId?: string;
-  role?: LocalOfficialRole;
+  role?: string;
   partyId?: string;
   gender?: string;
   page: number;
@@ -218,7 +255,7 @@ export async function getElus(opts: {
   search?: string;
   departmentCode?: string;
   communeId?: string;
-  role?: LocalOfficialRole;
+  role?: string;
   partyId?: string;
   gender?: string;
   page: number;
@@ -237,16 +274,33 @@ export async function getEluById(id: string) {
   cacheTag("elections");
   cacheLife("minutes");
 
-  const elu = await db.localOfficial.findUnique({
-    where: { id },
+  // id was a LocalOfficial id - try as mandate id first, then as politician id
+  const mandate = await db.mandate.findFirst({
+    where: {
+      OR: [
+        { id, type: { in: LOCAL_MANDATE_TYPES } },
+        { politicianId: id, type: { in: LOCAL_MANDATE_TYPES } },
+      ],
+    },
     include: {
-      commune: { select: COMMUNE_SELECT },
-      party: { select: PARTY_SELECT },
-      politician: { select: POLITICIAN_SELECT },
+      politician: {
+        select: {
+          id: true,
+          slug: true,
+          firstName: true,
+          lastName: true,
+          fullName: true,
+          civility: true,
+          birthDate: true,
+          photoUrl: true,
+          currentParty: { select: PARTY_SELECT },
+        },
+      },
+      localData: { include: { commune: { select: COMMUNE_SELECT } } },
     },
   });
 
-  return elu ? toDetail(elu) : null;
+  return mandate ? toDetail(mandate) : null;
 }
 
 // ─── Commune: info + elected officials ───────────────────────────
@@ -276,16 +330,32 @@ export async function getCommuneWithElus(inseeCode: string) {
 
   if (!commune) return null;
 
-  const officials = await db.localOfficial.findMany({
-    where: { communeId: inseeCode, isCurrent: true },
-    include: {
-      party: { select: PARTY_SELECT },
-      politician: { select: POLITICIAN_SELECT },
+  const mandates = await db.mandate.findMany({
+    where: {
+      type: { in: LOCAL_MANDATE_TYPES },
+      isCurrent: true,
+      localData: { communeId: inseeCode },
     },
-    orderBy: [{ role: "asc" }, { lastName: "asc" }],
+    include: {
+      politician: {
+        select: {
+          id: true,
+          slug: true,
+          firstName: true,
+          lastName: true,
+          fullName: true,
+          civility: true,
+          birthDate: true,
+          photoUrl: true,
+          currentParty: { select: PARTY_SELECT },
+        },
+      },
+      localData: { include: { commune: { select: COMMUNE_SELECT } } },
+    },
+    orderBy: [{ type: "asc" }, { politician: { lastName: "asc" } }],
   });
 
-  const maire = officials.find((o) => o.role === "MAIRE");
+  const maire = mandates.find((m) => m.type === "MAIRE");
 
   return {
     commune: {
@@ -302,7 +372,7 @@ export async function getCommuneWithElus(inseeCode: string) {
       totalSeats: commune.totalSeats,
       website: commune.website,
     },
-    maire: maire ? toSummary(maire as RawElu) : null,
-    officials: officials.map((o) => toSummary(o as RawElu)),
+    maire: maire ? toSummary(maire) : null,
+    officials: mandates.map(toSummary),
   };
 }

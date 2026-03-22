@@ -9,9 +9,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
   const search = url.searchParams.get("search") || undefined;
   const dept = url.searchParams.get("dept") || undefined;
   const { page } = parsePagination(url.searchParams);
-  const fiche = url.searchParams.get("fiche");
-  const fichePoligraph = fiche === "true" ? true : fiche === "false" ? false : undefined;
 
-  const result = await getMaires(search, dept, undefined, undefined, page, fichePoligraph);
+  const result = await getMaires(search, dept, undefined, undefined, page);
   return NextResponse.json(result);
 });

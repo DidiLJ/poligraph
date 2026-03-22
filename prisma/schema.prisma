@@ -48,6 +48,7 @@ model Politician {
   // Visibility & ranking
   publicationStatus PublicationStatus @default(DRAFT)
   statusOverride    Boolean           @default(false) // true = don't auto-reassign status
+  source            DataSource        @default(MANUAL)
   prominenceScore   Int               @default(0) // 0-1000, higher = more prominent
 
   // Identity resolution v2 (Phase 3 backfill)
@@ -303,6 +304,9 @@ model Mandate {
   sourceUrl   String? // Link to data source (for traceability)
   officialUrl String? // Link to official page (for end users)
 
+  // Local mandate extension (1:1)
+  localData MandateLocal?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -315,6 +319,26 @@ model Mandate {
   @@index([parliamentaryGroupId])
   @@index([departmentCode])
   @@index([partyId])
+}
+
+// Local mandate extension — 1:1 with Mandate for local-specific fields
+model MandateLocal {
+  id               String    @id @default(cuid())
+  mandate          Mandate   @relation(fields: [mandateId], references: [id], onDelete: Cascade)
+  mandateId        String    @unique
+  commune          Commune?  @relation(fields: [communeId], references: [id])
+  communeId        String?
+  functionStart    DateTime?
+  firstElectedDate DateTime?
+  regionCode       String?
+  rneExternalId    String?
+  partyLabel       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([communeId, mandateId])
+  @@index([communeId])
+  @@index([rneExternalId])
 }
 
 // European Parliament political groups
@@ -385,7 +409,9 @@ enum MandateType {
   SECRETAIRE_ETAT
   MINISTRE_DELEGUE
   PRESIDENT_REGION
+  VICE_PRESIDENT_REGION
   PRESIDENT_DEPARTEMENT
+  VICE_PRESIDENT_DEPARTEMENT
   MAIRE
   ADJOINT_MAIRE
   CONSEILLER_REGIONAL
@@ -1542,6 +1568,7 @@ model Commune {
 
   candidacies           Candidacy[]
   localOfficials        LocalOfficial[]
+  localMandates         MandateLocal[]
   communeElectionRounds CommuneElectionRound[]
 
   @@index([departmentCode])

@@ -21,6 +21,7 @@ const mockPolitician = {
   biographyGeneratedAt: null,
   publicationStatus: "PUBLISHED" as const,
   statusOverride: false,
+  source: "MANUAL" as const,
   prominenceScore: 0,
   normalizedLastName: null,
   phoneticCode: null,

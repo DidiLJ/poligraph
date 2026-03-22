@@ -334,6 +334,30 @@ export const NATIONAL_MANDATE_TYPES: MandateType[] = [
   "PRESIDENT_REPUBLIQUE",
 ];
 
+export const LOCAL_MANDATE_TYPES: MandateType[] = [
+  "MAIRE",
+  "ADJOINT_MAIRE",
+  "CONSEILLER_MUNICIPAL",
+  "PRESIDENT_DEPARTEMENT",
+  "VICE_PRESIDENT_DEPARTEMENT",
+  "CONSEILLER_DEPARTEMENTAL",
+  "PRESIDENT_REGION",
+  "VICE_PRESIDENT_REGION",
+  "CONSEILLER_REGIONAL",
+];
+
+export const ROLE_TO_MANDATE_TYPE: Record<string, MandateType> = {
+  MAIRE: "MAIRE",
+  ADJOINT_MAIRE: "ADJOINT_MAIRE",
+  CONSEILLER_MUNICIPAL: "CONSEILLER_MUNICIPAL",
+  PRESIDENT_DEPARTEMENT: "PRESIDENT_DEPARTEMENT",
+  VICE_PRESIDENT_DEPARTEMENT: "VICE_PRESIDENT_DEPARTEMENT",
+  CONSEILLER_DEPARTEMENTAL: "CONSEILLER_DEPARTEMENTAL",
+  PRESIDENT_REGION: "PRESIDENT_REGION",
+  VICE_PRESIDENT_REGION: "VICE_PRESIDENT_REGION",
+  CONSEILLER_REGIONAL: "CONSEILLER_REGIONAL",
+};
+
 export const MANDATE_TYPE_LABELS: Record<MandateType, string> = {
   DEPUTE: "Député",
   SENATEUR: "Sénateur",
@@ -344,7 +368,9 @@ export const MANDATE_TYPE_LABELS: Record<MandateType, string> = {
   SECRETAIRE_ETAT: "Secrétaire d'État",
   MINISTRE_DELEGUE: "Ministre délégué",
   PRESIDENT_REGION: "Président de région",
+  VICE_PRESIDENT_REGION: "Vice-président du conseil régional",
   PRESIDENT_DEPARTEMENT: "Président de département",
+  VICE_PRESIDENT_DEPARTEMENT: "Vice-président du conseil départemental",
   MAIRE: "Maire",
   ADJOINT_MAIRE: "Adjoint au maire",
   CONSEILLER_REGIONAL: "Conseiller régional",
@@ -364,7 +390,9 @@ export const MANDATE_TYPE_LABELS_PLURAL: Record<MandateType, string> = {
   SECRETAIRE_ETAT: "Secrétaires d'État",
   MINISTRE_DELEGUE: "Ministres délégués",
   PRESIDENT_REGION: "Présidents de région",
+  VICE_PRESIDENT_REGION: "Vice-présidents du conseil régional",
   PRESIDENT_DEPARTEMENT: "Présidents de département",
+  VICE_PRESIDENT_DEPARTEMENT: "Vice-présidents du conseil départemental",
   MAIRE: "Maires",
   ADJOINT_MAIRE: "Adjoints au maire",
   CONSEILLER_REGIONAL: "Conseillers régionaux",

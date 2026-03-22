@@ -11,7 +11,9 @@ export const MANDATE_TYPE_COLORS: Record<MandateType, string> = {
   SENATEUR: "#0891b2", // Cyan-600
   DEPUTE_EUROPEEN: "#0d9488", // Teal-600
   PRESIDENT_REGION: "#059669", // Emerald-600
+  VICE_PRESIDENT_REGION: "#34d399", // Emerald-400
   PRESIDENT_DEPARTEMENT: "#10b981", // Emerald-500
+  VICE_PRESIDENT_DEPARTEMENT: "#6ee7b7", // Emerald-300
   MAIRE: "#22c55e", // Green-500
   ADJOINT_MAIRE: "#4ade80", // Green-400
   CONSEILLER_REGIONAL: "#84cc16", // Lime-500
@@ -30,7 +32,9 @@ export const MANDATE_CATEGORY_ORDER: MandateType[][] = [
   // Local (ligne 2)
   [
     "PRESIDENT_REGION",
+    "VICE_PRESIDENT_REGION",
     "PRESIDENT_DEPARTEMENT",
+    "VICE_PRESIDENT_DEPARTEMENT",
     "MAIRE",
     "ADJOINT_MAIRE",
     "CONSEILLER_REGIONAL",

@@ -274,7 +274,7 @@ export async function getEluById(id: string) {
   cacheTag("elections");
   cacheLife("minutes");
 
-  // id was a LocalOfficial id - try as mandate id first, then as politician id
+  // Legacy: id may be a mandate id or a politician id
   const mandate = await db.mandate.findFirst({
     where: {
       OR: [

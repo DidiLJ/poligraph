@@ -54,10 +54,14 @@ async function main() {
       biography: true,
       externalIds: { select: { source: true } },
       _count: { select: { externalIds: true } },
-      localOffices: {
-        where: { role: "MAIRE", isCurrent: true },
+      mandates: {
+        where: { type: "MAIRE", isCurrent: true },
         select: {
-          commune: { select: { name: true, population: true } },
+          localData: {
+            select: {
+              commune: { select: { name: true, population: true } },
+            },
+          },
         },
         take: 1,
       },
@@ -67,7 +71,7 @@ async function main() {
   const stats: PromoteStats = { eligible: 0, promoted: 0, belowThreshold: 0 };
 
   const inStrata = draftMaires.filter(
-    (m) => (m.localOffices[0]?.commune?.population ?? 0) >= minPop
+    (m) => (m.mandates[0]?.localData?.commune?.population ?? 0) >= minPop
   );
   stats.eligible = inStrata.length;
 
@@ -92,7 +96,7 @@ async function main() {
   if (toPromote.length > 0) {
     console.log("\nSample (first 10):");
     for (const m of toPromote.slice(0, 10)) {
-      const commune = m.localOffices[0]?.commune;
+      const commune = m.mandates[0]?.localData?.commune;
       const score = computeCompleteness(m);
       console.log(
         `  ${m.fullName.padEnd(30)} ${(commune?.name ?? "?").padEnd(25)} pop:${(commune?.population ?? 0).toString().padStart(7)} score:${score}/6`

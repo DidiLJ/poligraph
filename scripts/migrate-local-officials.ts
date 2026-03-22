@@ -7,6 +7,7 @@
  *   npx dotenv -e .env -- npx tsx scripts/migrate-local-officials.ts --limit=100
  */
 import { db } from "@/lib/db";
+import { Prisma } from "@/generated/prisma";
 import { generateSlug } from "@/lib/utils";
 import { MandateType, DataSource, PublicationStatus } from "@/generated/prisma";
 
@@ -72,15 +73,50 @@ async function migrate() {
     errors: [],
   };
 
-  // Load all LocalOfficials
-  const officials = await db.localOfficial.findMany({
-    include: { commune: true, party: true, politician: true },
-    orderBy: { createdAt: "asc" },
-    ...(LIMIT ? { take: LIMIT } : {}),
-  });
+  // Load all LocalOfficials (raw SQL since Prisma model was removed)
+  const officials = await db.$queryRaw<
+    {
+      id: string;
+      role: string;
+      firstName: string;
+      lastName: string;
+      fullName: string;
+      gender: string | null;
+      birthDate: Date | null;
+      communeId: string | null;
+      departmentCode: string;
+      regionCode: string | null;
+      partyLabel: string | null;
+      partyId: string | null;
+      mandateStart: Date | null;
+      functionStart: Date | null;
+      mandateEnd: Date | null;
+      isCurrent: boolean;
+      politicianId: string | null;
+      source: string;
+      externalId: string | null;
+      photoUrl: string | null;
+      createdAt: Date;
+    }[]
+  >`
+    SELECT * FROM "LocalOfficial"
+    ORDER BY "createdAt" ASC
+    ${LIMIT ? Prisma.sql`LIMIT ${LIMIT}` : Prisma.empty}
+  `;
 
   stats.totalOfficials = officials.length;
   console.log(`Found ${officials.length} LocalOfficials to migrate`);
+
+  // Build commune name lookup (since raw SQL doesn't do nested includes)
+  const communeIds = [...new Set(officials.map((o) => o.communeId).filter(Boolean))] as string[];
+  const communes =
+    communeIds.length > 0
+      ? await db.commune.findMany({
+          where: { id: { in: communeIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+  const communeNameMap = new Map(communes.map((c) => [c.id, c.name]));
 
   const usedSlugs = new Set<string>();
 
@@ -164,7 +200,8 @@ async function migrate() {
 
         // Step 3: Create Mandate + MandateLocal
         if (!DRY_RUN && politicianId) {
-          const communeName = official.commune?.name ?? "Commune";
+          const communeName =
+            (official.communeId && communeNameMap.get(official.communeId)) ?? "Commune";
           await db.mandate.create({
             data: {
               politicianId,
@@ -230,7 +267,10 @@ async function migrate() {
       where: { type: { in: Object.values(ROLE_TO_MANDATE) } },
     });
     const totalMandateLocals = await db.mandateLocal.count();
-    const remainingUnlinked = await db.localOfficial.count({ where: { politicianId: null } });
+    const unlinkedResult = await db.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*) as count FROM "LocalOfficial" WHERE "politicianId" IS NULL
+    `;
+    const remainingUnlinked = Number(unlinkedResult[0]?.count ?? 0);
 
     console.log(`Total politicians:        ${totalPoliticians}`);
     console.log(`Local mandates:           ${totalMandates}`);

@@ -11,29 +11,41 @@ import { NATIONAL_MANDATE_TYPES } from "@/config/labels";
 
 /** Fetch the incumbent maire for a commune + check if they're running again in 2026. */
 async function getIncumbentMaire(communeId: string, electionId: string) {
-  const maire = await db.localOfficial.findFirst({
-    where: { role: "MAIRE", communeId, isCurrent: true },
+  const maireMandate = await db.mandate.findFirst({
+    where: {
+      type: "MAIRE",
+      isCurrent: true,
+      localData: { communeId },
+    },
     include: {
       politician: {
-        select: { slug: true, fullName: true, photoUrl: true, blobPhotoUrl: true },
+        select: {
+          slug: true,
+          fullName: true,
+          photoUrl: true,
+          blobPhotoUrl: true,
+          lastName: true,
+          civility: true,
+          currentParty: { select: { shortName: true, color: true } },
+        },
       },
-      party: { select: { shortName: true, color: true } },
+      localData: true,
     },
   });
 
-  if (!maire) return null;
+  if (!maireMandate) return null;
 
   // Check if running again: match by lastName in candidacies for this commune.
   // For double surnames (e.g. "Libert Albanel"), also try the primary surname ("Libert")
   // since ballot names are often shorter than the full legal name in the RNE.
-  const primary = primarySurname(maire.lastName.toLowerCase());
+  const primary = primarySurname(maireMandate.politician.lastName.toLowerCase());
 
   const candidacy = await db.candidacy.findFirst({
     where: {
       electionId,
       communeId,
       OR: [
-        { candidateName: { contains: maire.lastName, mode: "insensitive" } },
+        { candidateName: { contains: maireMandate.politician.lastName, mode: "insensitive" } },
         ...(primary
           ? [
               {
@@ -48,6 +60,23 @@ async function getIncumbentMaire(communeId: string, electionId: string) {
     },
     select: { id: true, listName: true, listPosition: true },
   });
+
+  // Return a shape compatible with IncumbentMaireCard and commune page consumers.
+  // civility "Mme"/"M." is mapped to legacy "F"/"M" for gender checks in components.
+  const maire = {
+    fullName: maireMandate.politician.fullName,
+    lastName: maireMandate.politician.lastName,
+    gender: maireMandate.politician.civility === "Mme" ? "F" : "M",
+    mandateStart: maireMandate.startDate,
+    partyLabel: maireMandate.localData?.partyLabel ?? null,
+    party: maireMandate.politician.currentParty,
+    politician: {
+      slug: maireMandate.politician.slug,
+      fullName: maireMandate.politician.fullName,
+      photoUrl: maireMandate.politician.photoUrl,
+      blobPhotoUrl: maireMandate.politician.blobPhotoUrl,
+    },
+  };
 
   return {
     maire,
@@ -681,17 +710,19 @@ export async function getDepartmentMunicipales(
       co.population,
       COUNT(DISTINCT c."listName")::int AS "listCount",
       COUNT(c.id)::int AS "candidateCount",
-      lo."fullName" AS "maireName",
-      lo.gender AS "maireGender",
+      p."fullName" AS "maireName",
+      p.civility AS "maireGender",
       MAX(c."round1Pct")::float AS "topPct",
       MAX(c."isElected"::int)::boolean AS "hasElected",
       MAX(CASE WHEN c."isElected" THEN c."listName" END) AS "winnerListName",
       MAX(CASE WHEN c."isElected" THEN c."round1Pct" END)::float AS "winnerPct"
     FROM "Commune" co
     INNER JOIN "Candidacy" c ON c."communeId" = co.id AND c."electionId" = ${election.id}
-    LEFT JOIN "LocalOfficial" lo ON lo."communeId" = co.id AND lo.role = 'MAIRE' AND lo."isCurrent" = true
+    LEFT JOIN "Mandate" m ON m."isCurrent" = true AND m.type = 'MAIRE'
+    LEFT JOIN "MandateLocal" ml ON ml."mandateId" = m.id AND ml."communeId" = co.id
+    LEFT JOIN "Politician" p ON p.id = m."politicianId"
     WHERE co."departmentCode" = ${departmentCode}
-    GROUP BY co.id, co.name, co.population, lo."fullName", lo.gender
+    GROUP BY co.id, co.name, co.population, p."fullName", p.civility
     HAVING COUNT(DISTINCT c."listName") > 0
     ORDER BY
       MAX(c."round1Votes") IS NOT NULL DESC,
@@ -806,26 +837,31 @@ export async function getMaireStats(): Promise<MaireStats> {
   >(Prisma.sql`
     SELECT
       COUNT(*)::int as total,
-      COUNT(*) FILTER (WHERE gender = 'F')::int as female,
-      COUNT(*) FILTER (WHERE "partyId" IS NOT NULL)::int as with_party,
+      COUNT(*) FILTER (WHERE p.civility = 'Mme')::int as female,
+      COUNT(*) FILTER (WHERE p."currentPartyId" IS NOT NULL)::int as with_party,
       COUNT(*) FILTER (WHERE EXISTS (
-        SELECT 1 FROM "Mandate" m
-        WHERE m."politicianId" = "LocalOfficial"."politicianId"
-          AND m."isCurrent" = true
-          AND m.type IN ('DEPUTE', 'SENATEUR', 'DEPUTE_EUROPEEN', 'MINISTRE', 'SECRETAIRE_ETAT', 'PREMIER_MINISTRE')
+        SELECT 1 FROM "Mandate" m2
+        WHERE m2."politicianId" = m."politicianId"
+          AND m2."isCurrent" = true
+          AND m2.type IN ('DEPUTE', 'SENATEUR', 'DEPUTE_EUROPEEN', 'MINISTRE', 'SECRETAIRE_ETAT', 'PREMIER_MINISTRE', 'PRESIDENT_REPUBLIQUE')
+          AND m2.id != m.id
       ))::int as with_national_mandate
-    FROM "LocalOfficial"
-    WHERE role = 'MAIRE' AND "isCurrent" = true
+    FROM "Mandate" m
+    JOIN "MandateLocal" ml ON ml."mandateId" = m.id
+    JOIN "Politician" p ON p.id = m."politicianId"
+    WHERE m.type = 'MAIRE' AND m."isCurrent" = true
   `);
 
   const partyDistribution = await db.$queryRaw<
     Array<{ shortName: string; color: string | null; count: number }>
   >(Prisma.sql`
-    SELECT p."shortName", p.color, COUNT(*)::int as count
-    FROM "LocalOfficial" lo
-    JOIN "Party" p ON lo."partyId" = p.id
-    WHERE lo.role = 'MAIRE' AND lo."isCurrent" = true AND lo."partyId" IS NOT NULL
-    GROUP BY p."shortName", p.color
+    SELECT pa."shortName", pa.color, COUNT(*)::int as count
+    FROM "Mandate" m
+    JOIN "MandateLocal" ml ON ml."mandateId" = m.id
+    JOIN "Politician" p ON p.id = m."politicianId"
+    JOIN "Party" pa ON pa.id = p."currentPartyId"
+    WHERE m.type = 'MAIRE' AND m."isCurrent" = true AND p."currentPartyId" IS NOT NULL
+    GROUP BY pa."shortName", pa.color
     ORDER BY count DESC
     LIMIT 15
   `);
@@ -835,17 +871,18 @@ export async function getMaireStats(): Promise<MaireStats> {
   >(Prisma.sql`
     SELECT
       CASE
-        WHEN "functionStart" >= '2024-01-01' THEN 'Depuis 2024'
-        WHEN "functionStart" >= '2020-01-01' THEN 'Depuis 2020'
-        WHEN "functionStart" >= '2014-01-01' THEN 'Depuis 2014'
-        WHEN "functionStart" IS NOT NULL THEN 'Avant 2014'
+        WHEN ml."functionStart" >= '2024-01-01' THEN 'Depuis 2024'
+        WHEN ml."functionStart" >= '2020-01-01' THEN 'Depuis 2020'
+        WHEN ml."functionStart" >= '2014-01-01' THEN 'Depuis 2014'
+        WHEN ml."functionStart" IS NOT NULL THEN 'Avant 2014'
         ELSE 'Non renseigné'
       END as bracket,
       COUNT(*)::int as count
-    FROM "LocalOfficial"
-    WHERE role = 'MAIRE' AND "isCurrent" = true
+    FROM "Mandate" m
+    JOIN "MandateLocal" ml ON ml."mandateId" = m.id
+    WHERE m.type = 'MAIRE' AND m."isCurrent" = true
     GROUP BY bracket
-    ORDER BY MIN(COALESCE("functionStart", '1900-01-01'))
+    ORDER BY MIN(COALESCE(ml."functionStart", '1900-01-01'))
   `);
 
   return {
@@ -864,58 +901,76 @@ async function queryMaires(
   departmentCode?: string,
   partyId?: string,
   gender?: string,
-  page = 1,
-  fichePoligraph?: boolean
+  page = 1
 ) {
   const limit = 50;
   const skip = (page - 1) * limit;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const conditions: any[] = [{ role: "MAIRE" as const }, { isCurrent: true }];
+  const where: Prisma.MandateWhereInput = {
+    type: "MAIRE",
+    isCurrent: true,
+    ...(departmentCode ? { departmentCode } : {}),
+    politician: {
+      ...(search
+        ? {
+            OR: [
+              { fullName: { contains: search, mode: "insensitive" as const } },
+              { lastName: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+      ...(partyId ? { currentPartyId: partyId } : {}),
+      ...(gender ? { civility: gender === "F" ? "Mme" : "M." } : {}),
+    },
+  };
 
-  if (search) {
-    conditions.push({
-      OR: [
-        { fullName: { contains: search, mode: "insensitive" } },
-        { lastName: { contains: search, mode: "insensitive" } },
-      ],
-    });
-  }
-
-  if (departmentCode) {
-    conditions.push({ departmentCode });
-  }
-
-  if (partyId) {
-    conditions.push({ partyId });
-  }
-
-  if (gender) {
-    conditions.push({ gender });
-  }
-
-  if (fichePoligraph === true) {
-    conditions.push({ politicianId: { not: null } });
-  } else if (fichePoligraph === false) {
-    conditions.push({ politicianId: null });
-  }
-
-  const where = { AND: conditions };
-
-  const [maires, total] = await Promise.all([
-    db.localOfficial.findMany({
+  const [mandates, total] = await Promise.all([
+    db.mandate.findMany({
       where,
       include: {
-        party: { select: { shortName: true, color: true, slug: true } },
-        politician: { select: { slug: true, fullName: true, photoUrl: true } },
-        commune: { select: { name: true, departmentCode: true, population: true } },
+        politician: {
+          select: {
+            slug: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            civility: true,
+            photoUrl: true,
+            blobPhotoUrl: true,
+            birthDate: true,
+            currentParty: { select: { shortName: true, color: true, slug: true } },
+          },
+        },
+        localData: {
+          include: {
+            commune: { select: { name: true, departmentCode: true, population: true } },
+          },
+        },
       },
-      orderBy: { lastName: "asc" },
+      orderBy: { politician: { lastName: "asc" } },
       skip,
       take: limit,
     }),
-    db.localOfficial.count({ where }),
+    db.mandate.count({ where }),
   ]);
+
+  // Normalize to a flat shape compatible with MaireCard.
+  // civility "Mme"/"M." is mapped to legacy "F"/"M" gender values.
+  const maires = mandates.map((m) => ({
+    id: m.id,
+    fullName: m.politician.fullName,
+    gender: m.politician.civility === "Mme" ? "F" : "M",
+    departmentCode: m.departmentCode ?? m.localData?.commune?.departmentCode ?? "",
+    functionStart: m.localData?.functionStart ?? null,
+    mandateStart: m.startDate,
+    party: m.politician.currentParty,
+    politician: {
+      slug: m.politician.slug,
+      fullName: m.politician.fullName,
+      photoUrl: m.politician.photoUrl,
+    },
+    commune: m.localData?.commune ?? null,
+  }));
 
   return {
     maires,
@@ -930,13 +985,12 @@ export async function getMairesFiltered(
   departmentCode?: string,
   partyId?: string,
   gender?: string,
-  page = 1,
-  fichePoligraph?: boolean
+  page = 1
 ) {
   "use cache";
   cacheTag("maires-listing", "elections");
   cacheLife("minutes");
-  return queryMaires(undefined, departmentCode, partyId, gender, page, fichePoligraph);
+  return queryMaires(undefined, departmentCode, partyId, gender, page);
 }
 
 /** Uncached path — free-text search */
@@ -945,10 +999,9 @@ export async function searchMaires(
   departmentCode?: string,
   partyId?: string,
   gender?: string,
-  page = 1,
-  fichePoligraph?: boolean
+  page = 1
 ) {
-  return queryMaires(search, departmentCode, partyId, gender, page, fichePoligraph);
+  return queryMaires(search, departmentCode, partyId, gender, page);
 }
 
 /** Router: cached when no search, uncached when searching */
@@ -957,13 +1010,12 @@ export async function getMaires(
   departmentCode?: string,
   partyId?: string,
   gender?: string,
-  page = 1,
-  fichePoligraph?: boolean
+  page = 1
 ) {
   if (search) {
-    return searchMaires(search, departmentCode, partyId, gender, page, fichePoligraph);
+    return searchMaires(search, departmentCode, partyId, gender, page);
   }
-  return getMairesFiltered(departmentCode, partyId, gender, page, fichePoligraph);
+  return getMairesFiltered(departmentCode, partyId, gender, page);
 }
 
 /** Get parties that have at least one maire (for filter dropdown) */
@@ -972,15 +1024,16 @@ export async function getMaireParties() {
   cacheTag("maires-listing", "elections");
   cacheLife("minutes");
 
-  return db.party.findMany({
-    where: {
-      localOfficials: {
-        some: { role: "MAIRE", isCurrent: true },
-      },
-    },
-    select: { id: true, shortName: true, color: true },
-    orderBy: { shortName: "asc" },
-  });
+  return db.$queryRaw<Array<{ id: string; shortName: string; color: string | null }>>(
+    Prisma.sql`
+      SELECT DISTINCT pa.id, pa."shortName", pa.color
+      FROM "Party" pa
+      JOIN "Politician" p ON p."currentPartyId" = pa.id
+      JOIN "Mandate" m ON m."politicianId" = p.id AND m.type = 'MAIRE' AND m."isCurrent" = true
+      JOIN "MandateLocal" ml ON ml."mandateId" = m.id
+      ORDER BY pa."shortName" ASC
+    `
+  );
 }
 
 // ============================================

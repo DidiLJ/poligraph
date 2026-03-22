@@ -147,49 +147,57 @@ async function preWarmPartyCache(): Promise<Map<string, string | null>> {
 }
 
 /**
- * Pre-load LocalOfficial birthdates for RNE enrichment.
+ * Pre-load Politician birthdates for RNE enrichment.
  * Key: "normalizedFirstName|normalizedLastName|departmentCode" → { birthDate, gender }
  * Also indexes by first word of multi-word surnames for double surname matching
  * (e.g. "Libert Albanel" also indexed as "Libert").
- * Only keeps unique matches (1 official per name+dept) to avoid false enrichment.
+ * Only keeps unique matches (1 politician per name+dept) to avoid false enrichment.
  */
 async function loadRNEBirthdateLookup(): Promise<
   Map<string, { birthDate: Date; gender: string | null }>
 > {
-  const officials = await db.localOfficial.findMany({
-    where: { birthDate: { not: null } },
+  const mandates = await db.mandate.findMany({
+    where: {
+      localData: { isNot: null },
+      politician: { birthDate: { not: null } },
+    },
     select: {
-      firstName: true,
-      lastName: true,
       departmentCode: true,
-      birthDate: true,
-      gender: true,
+      politician: {
+        select: {
+          firstName: true,
+          lastName: true,
+          birthDate: true,
+          civility: true,
+        },
+      },
     },
   });
 
   // First pass: count occurrences per key to detect ambiguous matches
   // Include both full-name keys and primary-surname fallback keys
   const counts = new Map<string, number>();
-  for (const o of officials) {
-    const normFirst = normalizeText(o.firstName);
-    const normLast = normalizeText(o.lastName);
-    const key = `${normFirst}|${normLast}|${o.departmentCode}`;
+  for (const m of mandates) {
+    const normFirst = normalizeText(m.politician.firstName);
+    const normLast = normalizeText(m.politician.lastName);
+    const key = `${normFirst}|${normLast}|${m.departmentCode}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
 
     const primary = primarySurname(normLast);
     if (primary) {
-      const fwKey = `${normFirst}|${primary}|${o.departmentCode}`;
+      const fwKey = `${normFirst}|${primary}|${m.departmentCode}`;
       counts.set(fwKey, (counts.get(fwKey) ?? 0) + 1);
     }
   }
 
-  // Second pass: only keep unique matches (1 official per name+dept)
+  // Second pass: only keep unique matches (1 politician per name+dept)
   const map = new Map<string, { birthDate: Date; gender: string | null }>();
-  for (const o of officials) {
-    const data = { birthDate: o.birthDate!, gender: o.gender };
-    const normFirst = normalizeText(o.firstName);
-    const normLast = normalizeText(o.lastName);
-    const key = `${normFirst}|${normLast}|${o.departmentCode}`;
+  for (const m of mandates) {
+    const gender = m.politician.civility === "Mme" ? "F" : "M";
+    const data = { birthDate: m.politician.birthDate!, gender };
+    const normFirst = normalizeText(m.politician.firstName);
+    const normLast = normalizeText(m.politician.lastName);
+    const key = `${normFirst}|${normLast}|${m.departmentCode}`;
     if (counts.get(key) === 1) {
       map.set(key, data);
     }
@@ -197,7 +205,7 @@ async function loadRNEBirthdateLookup(): Promise<
     // Fallback: index by primary surname for double surname matching
     const primary = primarySurname(normLast);
     if (primary) {
-      const fwKey = `${normFirst}|${primary}|${o.departmentCode}`;
+      const fwKey = `${normFirst}|${primary}|${m.departmentCode}`;
       if (counts.get(fwKey) === 1 && !map.has(fwKey)) {
         map.set(fwKey, data);
       }
@@ -245,7 +253,7 @@ export async function syncCandidaturesMunicipales(
   const existingCandidacyMap = await loadExistingCandidacies(electionRecord.id);
   const partyCache = await preWarmPartyCache();
   const rneLookup = await loadRNEBirthdateLookup();
-  console.log(`  Pre-loaded ${rneLookup.size} LocalOfficial birthdates for enrichment`);
+  console.log(`  Pre-loaded ${rneLookup.size} RNE birthdates for enrichment`);
 
   // ─── Fetch and parse CSV ────────────────────────────────────────────
   const records = await fetchCandidaturesCSV(url);

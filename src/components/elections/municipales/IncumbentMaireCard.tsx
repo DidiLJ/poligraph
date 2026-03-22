@@ -1,20 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { PoligraphBadge } from "@/components/elections/PoligraphBadge";
 
 interface IncumbentMaireCardProps {
   maire: {
     fullName: string;
+    slug: string;
     gender: string | null;
     mandateStart: Date | null;
+    firstElectedDate: Date | null;
     partyLabel: string | null;
     party: { shortName: string; color: string | null } | null;
-    politician: {
-      slug: string;
-      fullName: string;
-      photoUrl: string | null;
-      blobPhotoUrl: string | null;
-    } | null;
+    photoUrl: string | null;
   };
   isRunningAgain: boolean;
   /** Result status when T1 results are available */
@@ -26,7 +22,7 @@ export function IncumbentMaireCard({
   isRunningAgain,
   resultStatus,
 }: IncumbentMaireCardProps) {
-  const startYear = maire.mandateStart?.getFullYear();
+  const startYear = maire.firstElectedDate?.getFullYear() ?? maire.mandateStart?.getFullYear();
   const partyName = maire.party?.shortName ?? maire.partyLabel;
 
   return (
@@ -37,7 +33,9 @@ export function IncumbentMaireCard({
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="font-semibold text-lg">
-            {maire.fullName}
+            <Link href={`/politiques/${maire.slug}`} prefetch={false} className="hover:underline">
+              {maire.fullName}
+            </Link>
             {partyName && <span className="text-muted-foreground font-normal"> ({partyName})</span>}
           </p>
           {startYear && (
@@ -61,15 +59,6 @@ export function IncumbentMaireCard({
             </Badge>
           ) : (
             <Badge variant="secondary">Ne se représente pas</Badge>
-          )}
-          {maire.politician && (
-            <Link
-              href={`/politiques/${maire.politician.slug}`}
-              prefetch={false}
-              className="flex items-center gap-2"
-            >
-              <PoligraphBadge />
-            </Link>
           )}
         </div>
       </div>

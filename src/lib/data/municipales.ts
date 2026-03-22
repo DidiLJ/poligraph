@@ -23,7 +23,6 @@ async function getIncumbentMaire(communeId: string, electionId: string) {
           slug: true,
           fullName: true,
           photoUrl: true,
-          blobPhotoUrl: true,
           lastName: true,
           civility: true,
           currentParty: { select: { shortName: true, color: true } },
@@ -66,16 +65,13 @@ async function getIncumbentMaire(communeId: string, electionId: string) {
   const maire = {
     fullName: maireMandate.politician.fullName,
     lastName: maireMandate.politician.lastName,
+    slug: maireMandate.politician.slug,
+    photoUrl: maireMandate.politician.photoUrl,
     gender: maireMandate.politician.civility === "Mme" ? "F" : "M",
     mandateStart: maireMandate.startDate,
+    firstElectedDate: null as Date | null,
     partyLabel: maireMandate.localData?.partyLabel ?? null,
     party: maireMandate.politician.currentParty,
-    politician: {
-      slug: maireMandate.politician.slug,
-      fullName: maireMandate.politician.fullName,
-      photoUrl: maireMandate.politician.photoUrl,
-      blobPhotoUrl: maireMandate.politician.blobPhotoUrl,
-    },
   };
 
   return {
@@ -959,16 +955,14 @@ async function queryMaires(
   const maires = mandates.map((m) => ({
     id: m.id,
     fullName: m.politician.fullName,
+    slug: m.politician.slug,
+    photoUrl: m.politician.photoUrl,
     gender: m.politician.civility === "Mme" ? "F" : "M",
     departmentCode: m.departmentCode ?? m.localData?.commune?.departmentCode ?? "",
     functionStart: m.localData?.functionStart ?? null,
+    firstElectedDate: null as Date | null,
     mandateStart: m.startDate,
     party: m.politician.currentParty,
-    politician: {
-      slug: m.politician.slug,
-      fullName: m.politician.fullName,
-      photoUrl: m.politician.photoUrl,
-    },
     commune: m.localData?.commune ?? null,
   }));
 

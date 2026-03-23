@@ -49,15 +49,27 @@ describe("mergeAndDedupe", () => {
   });
 
   it("returns empty array when no data", () => {
-    const result = mergeAndDedupe([], []);
+    const result = mergeAndDedupe();
     expect(result).toHaveLength(0);
   });
 
-  it("prioritizes affairs over factchecks", () => {
+  it("respects source priority order across all types", () => {
     const affairs = [makeMover("a", "affair", "Affaire")];
-    const factchecks = [makeMover("b", "factcheck", "Fact-check")];
+    const elections = [makeMover("b", "election", "Élu(e) à Paris")];
+    const mandates = [makeMover("c", "mandate", "Nouveau mandat : Maire")];
+    const factchecks = [makeMover("d", "factcheck", "Fact-check")];
+    const parties = [makeMover("e", "party", "A rejoint LR")];
 
-    const result = mergeAndDedupe(affairs, factchecks);
-    expect(result.map((m) => m.type)).toEqual(["affair", "factcheck"]);
+    const result = mergeAndDedupe(affairs, elections, mandates, factchecks, parties);
+    expect(result.map((m) => m.type)).toEqual(["affair", "election", "mandate", "factcheck"]);
+  });
+
+  it("deduplicates across different source types", () => {
+    const elections = [makeMover("a", "election", "Élu(e) à Lyon")];
+    const mandates = [makeMover("a", "mandate", "Nouveau mandat : Maire de Lyon")];
+
+    const result = mergeAndDedupe(elections, mandates);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.type).toBe("election");
   });
 });

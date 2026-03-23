@@ -730,6 +730,7 @@ async function getGroupForComparison(idOrCode: string) {
       },
     },
     select: { id: true, status: true, severity: true },
+    take: 500,
   });
 
   // Get fact-check citations (isClaimant) of group members
@@ -748,6 +749,7 @@ async function getGroupForComparison(idOrCode: string) {
     include: {
       factCheck: { select: { verdictRating: true } },
     },
+    take: 500,
   });
 
   return {

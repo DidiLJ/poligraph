@@ -685,6 +685,7 @@ async function getLegislativeStats(): Promise<LegislativeStatsResult> {
 
   const snapshots = await db.statsSnapshot.findMany({
     where: { key: { in: keys } },
+    take: 10,
   });
 
   const snapshotMap = new Map(snapshots.map((s) => [s.key, s.data]));

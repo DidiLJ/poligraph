@@ -270,14 +270,14 @@ async function getPartySuggestions() {
 async function getGroupSuggestions() {
   try {
     const groups = await db.parliamentaryGroup.findMany({
-      where: { legacyMandates: { some: { isCurrent: true } } },
+      where: { mandates: { some: { mandate: { isCurrent: true } } } },
       select: {
         id: true,
         code: true,
         name: true,
         shortName: true,
         politicalPosition: true,
-        _count: { select: { legacyMandates: { where: { isCurrent: true } } } },
+        _count: { select: { mandates: { where: { mandate: { isCurrent: true } } } } },
       },
       orderBy: { name: "asc" },
       take: 30,
@@ -300,7 +300,7 @@ async function getGroupSuggestions() {
           a.politicalPosition as PoliticalPosition | null,
           b.politicalPosition as PoliticalPosition | null
         );
-        const score = distance * 100 + a._count.legacyMandates + b._count.legacyMandates;
+        const score = distance * 100 + a._count.mandates + b._count.mandates;
         candidates.push({
           leftSlug: a.id,
           leftName: a.shortName || a.code,

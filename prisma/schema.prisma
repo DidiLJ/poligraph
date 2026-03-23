@@ -285,9 +285,6 @@ model Mandate {
   europeanGroup     EuropeanGroup? @relation(fields: [europeanGroupId], references: [id])
   europeanGroupId   String?
 
-  // National parliamentary group (for deputies & senators)
-  parliamentaryGroup   ParliamentaryGroup? @relation("LegacyMandateGroup", fields: [parliamentaryGroupId], references: [id])
-  parliamentaryGroupId String?
 
   // Data origin tracking
   source DataSource?
@@ -319,7 +316,6 @@ model Mandate {
   @@index([isCurrent, type])
   @@index([isCurrent, type, departmentCode])
   @@index([europeanGroupId])
-  @@index([parliamentaryGroupId])
   @@index([departmentCode])
   @@index([partyId])
 }
@@ -416,8 +412,7 @@ model ParliamentaryGroup {
   defaultPartyId String?
 
   // Relations
-  legacyMandates Mandate[]              @relation("LegacyMandateGroup")
-  mandates       MandateParliamentary[]
+  mandates MandateParliamentary[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

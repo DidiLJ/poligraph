@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { extractDateFromUrl } from "../extract-date-from-url";
 
-// Returns "YYYY-MM-DD" from a non-null Date, avoiding timezone issues
+// Converts a Date to "YYYY-MM-DD" (or returns null when given null), avoiding timezone issues
 function toDateStr(result: Date | null): string | null {
   return result ? result.toISOString().slice(0, 10) : null;
 }

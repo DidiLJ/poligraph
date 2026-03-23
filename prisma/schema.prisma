@@ -305,6 +305,9 @@ model Mandate {
   // Local mandate extension (1:1)
   localData MandateLocal?
 
+  // Government mandate extension (1:1)
+  governmentData MandateGovernment?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -337,6 +340,16 @@ model MandateLocal {
   @@unique([communeId, mandateId])
   @@index([communeId])
   @@index([rneExternalId])
+}
+
+// Government mandate extension — 1:1 with Mandate for government-specific fields
+model MandateGovernment {
+  id             String   @id @default(cuid())
+  mandate        Mandate  @relation(fields: [mandateId], references: [id], onDelete: Cascade)
+  mandateId      String   @unique
+  governmentName String   // "Gouvernement Borne", etc.
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // European Parliament political groups

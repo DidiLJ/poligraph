@@ -6,16 +6,29 @@ import { HorizontalBars } from "./HorizontalBars";
 import { MethodologyDisclaimer } from "./MethodologyDisclaimer";
 import { ParliamentaryWorkCallout } from "./ParliamentaryWorkCallout";
 import { ParticipationControls } from "./ParticipationControls";
-import type { ParticipationRankingResult, GroupParticipationStats } from "@/services/voteStats";
+import type {
+  ParticipationRankingResult,
+  GroupParticipationStats,
+  GroupDissidenceStats,
+} from "@/services/voteStats";
 import type { Chamber } from "@/generated/prisma";
 
 interface ParticipationSectionProps {
   ranking: ParticipationRankingResult;
   groupStatsAN: GroupParticipationStats[];
   groupStatsSENAT: GroupParticipationStats[];
+  groupDissidenceAN: GroupDissidenceStats[];
+  groupDissidenceSENAT: GroupDissidenceStats[];
   chamber?: Chamber;
   page: number;
   sortDirection: "ASC" | "DESC";
+}
+
+function dissidenceColor(rate: number): string {
+  if (rate < 5) return "text-blue-600 dark:text-blue-400";
+  if (rate < 15) return "text-green-600 dark:text-green-400";
+  if (rate < 30) return "text-yellow-600 dark:text-yellow-400";
+  return "text-orange-600 dark:text-orange-400";
 }
 
 function rateColor(rate: number): string {
@@ -34,6 +47,8 @@ export function ParticipationSection({
   ranking,
   groupStatsAN,
   groupStatsSENAT,
+  groupDissidenceAN,
+  groupDissidenceSENAT,
   chamber,
   page,
   sortDirection,
@@ -133,6 +148,54 @@ export function ParticipationSection({
         </Card>
       </div>
 
+      {/* Group dissidence — AN / Sénat side by side */}
+      {(groupDissidenceAN.length > 0 || groupDissidenceSENAT.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Dissidence - Assemblée nationale</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {groupDissidenceAN.length > 0 ? (
+                <HorizontalBars
+                  title="Dissidence par groupe AN"
+                  maxValue={100}
+                  bars={groupDissidenceAN.map((g) => ({
+                    label: g.groupCode,
+                    value: g.avgDissidenceRate,
+                    color: g.groupColor || undefined,
+                    suffix: "%",
+                  }))}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucune donnée</p>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Dissidence - Sénat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {groupDissidenceSENAT.length > 0 ? (
+                <HorizontalBars
+                  title="Dissidence par groupe Sénat"
+                  maxValue={100}
+                  bars={groupDissidenceSENAT.map((g) => ({
+                    label: g.groupCode,
+                    value: g.avgDissidenceRate,
+                    color: g.groupColor || undefined,
+                    suffix: "%",
+                  }))}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucune donnée</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Ranking table */}
       <Card className="mb-8">
         <CardHeader>
@@ -156,6 +219,7 @@ export function ParticipationSection({
                   <th className="py-2 pr-2">Groupe</th>
                   <th className="py-2 pr-2 text-right">Présences</th>
                   <th className="py-2 text-right">Taux</th>
+                  <th className="py-2 text-right hidden sm:table-cell">Dissidence</th>
                 </tr>
               </thead>
               <tbody>
@@ -216,6 +280,15 @@ export function ParticipationSection({
                         className={`py-2 text-right tabular-nums font-semibold ${rateColor(entry.participationRate)}`}
                       >
                         {entry.participationRate.toFixed(1)}%
+                      </td>
+                      <td className="py-2 text-right tabular-nums hidden sm:table-cell">
+                        {entry.dissidenceRate != null ? (
+                          <span className={dissidenceColor(entry.dissidenceRate)}>
+                            {entry.dissidenceRate}%
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </td>
                     </tr>
                   );

@@ -184,11 +184,14 @@ export async function getParticipationData(
   cacheTag("statistics", "participation");
   cacheLife("minutes");
 
-  const [ranking, groupStatsAN, groupStatsSENAT] = await Promise.all([
-    voteStatsService.getParticipationRanking(chamber, undefined, page, 50, sortDirection),
-    voteStatsService.getGroupParticipationStats("AN" as Chamber),
-    voteStatsService.getGroupParticipationStats("SENAT" as Chamber),
-  ]);
+  const [ranking, groupStatsAN, groupStatsSENAT, groupDissidenceAN, groupDissidenceSENAT] =
+    await Promise.all([
+      voteStatsService.getParticipationRanking(chamber, undefined, page, 50, sortDirection),
+      voteStatsService.getGroupParticipationStats("AN" as Chamber),
+      voteStatsService.getGroupParticipationStats("SENAT" as Chamber),
+      voteStatsService.getGroupDissidenceStats("AN"),
+      voteStatsService.getGroupDissidenceStats("SENAT"),
+    ]);
 
-  return { ranking, groupStatsAN, groupStatsSENAT };
+  return { ranking, groupStatsAN, groupStatsSENAT, groupDissidenceAN, groupDissidenceSENAT };
 }

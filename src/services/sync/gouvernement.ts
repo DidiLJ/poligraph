@@ -178,11 +178,12 @@ async function syncGouvernementMember(
       fullName,
     };
 
+    const governmentNameValue = `Gouvernement ${member.gouvernement}`;
+
     const mandateData = {
       type: mandateType,
       title: member.fonction,
       institution: `Gouvernement ${member.gouvernement}`,
-      governmentName: `Gouvernement ${member.gouvernement}`,
       startDate,
       endDate,
       isCurrent,
@@ -208,14 +209,26 @@ async function syncGouvernementMember(
       if (!existingMandate) {
         // Create new mandate for existing politician
         await db.mandate.create({
-          data: { ...mandateData, politicianId: existing.id },
+          data: {
+            ...mandateData,
+            politicianId: existing.id,
+            governmentData: { create: { governmentName: governmentNameValue } },
+          },
         });
         mandateCreated = true;
       } else {
         // Update existing mandate
         await db.mandate.update({
           where: { id: existingMandate.id },
-          data: mandateData,
+          data: {
+            ...mandateData,
+            governmentData: {
+              upsert: {
+                create: { governmentName: governmentNameValue },
+                update: { governmentName: governmentNameValue },
+              },
+            },
+          },
         });
       }
 
@@ -232,7 +245,12 @@ async function syncGouvernementMember(
         data: {
           ...politicianData,
           photoSource: photoUrl ? "gouvernement" : null,
-          mandates: { create: mandateData },
+          mandates: {
+            create: {
+              ...mandateData,
+              governmentData: { create: { governmentName: governmentNameValue } },
+            },
+          },
         },
       });
 
@@ -460,18 +478,19 @@ async function applyLocalCorrections(): Promise<{ applied: number; errors: strin
         });
 
         if (!existingMandate) {
+          const govName = `Gouvernement ${newMember.mandate.government}`;
           await db.mandate.create({
             data: {
               politicianId: politician.id,
               type: mandateType,
               title: newMember.mandate.title,
               institution: `Gouvernement ${newMember.mandate.government}`,
-              governmentName: `Gouvernement ${newMember.mandate.government}`,
               startDate,
               isCurrent: true,
               source: DataSource.GOUVERNEMENT,
               sourceUrl: "https://www.info.gouv.fr/composition-du-gouvernement",
               officialUrl: "https://www.info.gouv.fr/composition-du-gouvernement",
+              governmentData: { create: { governmentName: govName } },
             },
           });
           console.log(`   ✓ Created mandate: ${newMember.fullName} - ${newMember.mandate.title}`);

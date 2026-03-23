@@ -30,7 +30,12 @@ async function getSearchIndex() {
         },
         mandates: {
           where: { isCurrent: true },
-          select: { type: true, parliamentaryGroupId: true },
+          select: {
+            type: true,
+            parliamentaryData: {
+              select: { parliamentaryGroupId: true },
+            },
+          },
           orderBy: { startDate: "desc" },
           take: 1,
         },
@@ -58,7 +63,7 @@ async function getSearchIndex() {
     }),
     db.parliamentaryGroup.findMany({
       where: {
-        legacyMandates: { some: { isCurrent: true } },
+        mandates: { some: { mandate: { isCurrent: true } } },
       },
       select: {
         id: true,
@@ -67,7 +72,7 @@ async function getSearchIndex() {
         shortName: true,
         color: true,
         chamber: true,
-        _count: { select: { legacyMandates: { where: { isCurrent: true } } } },
+        _count: { select: { mandates: { where: { mandate: { isCurrent: true } } } } },
       },
       orderBy: { name: "asc" },
     }),
@@ -81,7 +86,7 @@ async function getSearchIndex() {
     partyShortName: p.currentParty?.shortName ?? null,
     partyColor: p.currentParty?.color ?? null,
     mandateType: p.mandates[0]?.type ?? null,
-    parliamentaryGroupId: p.mandates[0]?.parliamentaryGroupId ?? null,
+    parliamentaryGroupId: p.mandates[0]?.parliamentaryData?.parliamentaryGroupId ?? null,
   }));
 
   // Map parties to a flat shape, sorted by member count desc then name asc
@@ -104,7 +109,7 @@ async function getSearchIndex() {
     shortName: g.shortName,
     color: g.color,
     chamber: g.chamber,
-    memberCount: g._count.legacyMandates,
+    memberCount: g._count.mandates,
   }));
 
   return { politicians: politicianIndex, parties: partyIndex, groups: groupIndex };

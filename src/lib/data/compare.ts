@@ -202,7 +202,7 @@ async function getGroupPreview(idOrCode: string): Promise<ComparePreview | null>
       shortName: true,
       color: true,
       chamber: true,
-      _count: { select: { legacyMandates: { where: { isCurrent: true } } } },
+      _count: { select: { mandates: { where: { mandate: { isCurrent: true } } } } },
     },
   });
 
@@ -654,7 +654,7 @@ async function getGroupForComparison(idOrCode: string) {
         select: { name: true, shortName: true, color: true, slug: true },
       },
       _count: {
-        select: { legacyMandates: { where: { isCurrent: true } } },
+        select: { mandates: { where: { mandate: { isCurrent: true } } } },
       },
     },
   });
@@ -767,7 +767,7 @@ async function getGroupForComparison(idOrCode: string) {
   return {
     group: {
       ...group,
-      memberCount: group._count.legacyMandates,
+      memberCount: group._count.mandates,
     },
     stats: {
       avgParticipation,

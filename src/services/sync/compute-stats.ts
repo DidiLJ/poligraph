@@ -180,7 +180,8 @@ async function computePoliticianParticipation(verbose = false): Promise<Politici
         )
     ) vote_sub
     LEFT JOIN "Party" p ON p.id = pol."currentPartyId"
-    LEFT JOIN "ParliamentaryGroup" pg ON pg.id = m."parliamentaryGroupId"
+    LEFT JOIN "MandateParliamentary" mp ON mp."mandateId" = m.id
+    LEFT JOIN "ParliamentaryGroup" pg ON pg.id = mp."parliamentaryGroupId"
     WHERE pol."publicationStatus" = 'PUBLISHED'
       AND me.eligible > 0
   `;

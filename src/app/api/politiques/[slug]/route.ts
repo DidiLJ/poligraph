@@ -69,7 +69,9 @@ export const GET = withPublicRoute(async (request, context) => {
         : null,
       mandates: politician.mandates.map((m) => {
         const mandate = m as typeof m & {
-          parliamentaryGroup?: { code: string; name: string; color: string | null } | null;
+          parliamentaryData?: {
+            parliamentaryGroup?: { code: string; name: string; color: string | null } | null;
+          } | null;
         };
         return {
           id: mandate.id,
@@ -80,11 +82,11 @@ export const GET = withPublicRoute(async (request, context) => {
           startDate: mandate.startDate,
           endDate: mandate.endDate,
           isCurrent: mandate.isCurrent,
-          parliamentaryGroup: mandate.parliamentaryGroup
+          parliamentaryGroup: mandate.parliamentaryData?.parliamentaryGroup
             ? {
-                code: mandate.parliamentaryGroup.code,
-                name: mandate.parliamentaryGroup.name,
-                color: mandate.parliamentaryGroup.color,
+                code: mandate.parliamentaryData.parliamentaryGroup.code,
+                name: mandate.parliamentaryData.parliamentaryGroup.name,
+                color: mandate.parliamentaryData.parliamentaryGroup.color,
               }
             : null,
         };

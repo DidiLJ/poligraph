@@ -58,7 +58,7 @@ async function getSearchIndex() {
     }),
     db.parliamentaryGroup.findMany({
       where: {
-        mandates: { some: { isCurrent: true } },
+        legacyMandates: { some: { isCurrent: true } },
       },
       select: {
         id: true,
@@ -67,7 +67,7 @@ async function getSearchIndex() {
         shortName: true,
         color: true,
         chamber: true,
-        _count: { select: { mandates: { where: { isCurrent: true } } } },
+        _count: { select: { legacyMandates: { where: { isCurrent: true } } } },
       },
       orderBy: { name: "asc" },
     }),
@@ -104,7 +104,7 @@ async function getSearchIndex() {
     shortName: g.shortName,
     color: g.color,
     chamber: g.chamber,
-    memberCount: g._count.mandates,
+    memberCount: g._count.legacyMandates,
   }));
 
   return { politicians: politicianIndex, parties: partyIndex, groups: groupIndex };

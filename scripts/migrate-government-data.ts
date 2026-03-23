@@ -13,13 +13,13 @@ async function main() {
   console.log(`MandateGovernment migration ${DRY_RUN ? "(DRY RUN)" : ""}`);
 
   // Find mandates with governmentName but no governmentData yet
-  const mandates = await db.mandate.findMany({
-    where: {
-      governmentName: { not: null },
-      governmentData: null,
-    },
-    select: { id: true, governmentName: true },
-  });
+  // Uses raw SQL because governmentName column may already be removed from Prisma schema
+  const mandates = await db.$queryRaw<{ id: string; governmentName: string }[]>`
+    SELECT m.id, m."governmentName"
+    FROM "Mandate" m
+    LEFT JOIN "MandateGovernment" mg ON mg."mandateId" = m.id
+    WHERE m."governmentName" IS NOT NULL AND mg.id IS NULL
+  `;
 
   console.log(`Found ${mandates.length} mandates to migrate`);
 
@@ -33,7 +33,7 @@ async function main() {
     await db.mandateGovernment.create({
       data: {
         mandateId: m.id,
-        governmentName: m.governmentName!,
+        governmentName: m.governmentName,
       },
     });
     created++;

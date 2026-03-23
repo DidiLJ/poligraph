@@ -2,8 +2,11 @@
  * Enrich MandateLocal.firstElectedDate from Wikidata P39 data.
  *
  * Finds all maires with a Wikidata ExternalId but no firstElectedDate,
- * fetches their P39 (position held) claims, and sets the earliest start date
- * for Q30185 (maire de commune française).
+ * fetches their P39 (position held) claims, resolves position labels,
+ * and sets the earliest start date for any position containing "maire".
+ *
+ * Wikidata uses commune-specific positions (e.g. "maire d'Épinay-sur-Seine")
+ * rather than the generic Q30185, so we match by label instead of Q-ID.
  *
  * Usage:
  *   npx dotenv -e .env -- npx tsx scripts/enrich-first-elected.ts           # apply
@@ -12,9 +15,9 @@
 
 import { db } from "@/lib/db";
 import { WikidataService } from "@/lib/api/wikidata";
-import { WD_POSITIONS } from "@/config/wikidata";
 
 const BATCH_SIZE = 50;
+const MAIRE_Q_ID = "Q30185";
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
@@ -60,6 +63,10 @@ async function main() {
   let skipped = 0;
   const totalBatches = Math.ceil(candidates.length / BATCH_SIZE);
 
+  // Cache resolved position labels: Q-ID -> isMaire (boolean)
+  const positionLabelCache = new Map<string, boolean>();
+  positionLabelCache.set(MAIRE_Q_ID, true); // generic maire
+
   for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
     const batch = candidates.slice(i, i + BATCH_SIZE);
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
@@ -75,21 +82,37 @@ async function main() {
       wikidataIds.push(wdId);
     }
 
-    if (wikidataIds.length === 0) {
-      console.log(`Batch ${batchNum}/${totalBatches}: no Wikidata IDs, skipping`);
-      continue;
-    }
+    if (wikidataIds.length === 0) continue;
 
     // Fetch all positions from Wikidata
     const positionsMap = await wiki.getPositions(wikidataIds);
+
+    // Collect unknown position Q-IDs to resolve labels
+    const unknownPositionIds = new Set<string>();
+    for (const positions of positionsMap.values()) {
+      for (const p of positions) {
+        if (p.startDate && !positionLabelCache.has(p.positionId)) {
+          unknownPositionIds.add(p.positionId);
+        }
+      }
+    }
+
+    // Batch-resolve position labels
+    if (unknownPositionIds.size > 0) {
+      const posEntities = await wiki.getEntities([...unknownPositionIds], ["labels"]);
+      for (const [qid, entity] of posEntities) {
+        const label = (entity.labels["fr"] || entity.labels["en"] || "").toLowerCase();
+        positionLabelCache.set(qid, label.includes("maire"));
+      }
+    }
 
     for (const [wdId, positions] of positionsMap) {
       const candidate = wdIdToCandidate.get(wdId);
       if (!candidate?.localData) continue;
 
-      // Find earliest maire position start date (Q30185 = maire de commune française)
+      // Find earliest maire position start date (by label match, not just Q30185)
       const mairePositions = positions.filter(
-        (p) => p.positionId === WD_POSITIONS.MAIRE && p.startDate
+        (p) => p.startDate && positionLabelCache.get(p.positionId) === true
       );
 
       if (mairePositions.length === 0) {
@@ -118,6 +141,7 @@ async function main() {
   }
 
   console.log(`\nDone. Enriched: ${enriched}, Skipped (no maire P39): ${skipped}`);
+  console.log(`Position label cache: ${positionLabelCache.size} entries`);
 
   if (dryRun && enriched > 0) {
     console.log("\nRe-run without --dry-run to apply changes.");

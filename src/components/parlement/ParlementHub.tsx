@@ -12,7 +12,7 @@ import {
   CHAMBER_LABELS,
 } from "@/config/labels";
 import { themeToSlug } from "@/lib/theme-utils";
-import { isFeatureEnabled } from "@/lib/feature-flags";
+import { isFeatureEnabled, getFeatureValue } from "@/lib/feature-flags";
 import {
   getHubStats,
   getLastScrutinDate,
@@ -21,14 +21,58 @@ import {
   getChamberAdoptionRates,
   getLatestScrutins,
 } from "@/lib/data/scrutins";
-import { formatDate } from "@/lib/utils";
-import { Info, ArrowRight, Search, Building2 } from "lucide-react";
+import { Info, ArrowRight, Search, Building2, AlertTriangle, Calendar } from "lucide-react";
+import {
+  resolveParliamentaryPeriod,
+  PARLIAMENTARY_PERIOD_FLAG,
+  type PeriodOverride,
+  type ParliamentaryPeriodType,
+} from "@/config/parliamentary-calendar";
 
-const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+const PERIOD_STYLES: Record<
+  ParliamentaryPeriodType,
+  { bg: string; border: string; text: string; icon: string }
+> = {
+  dissolution: {
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    border: "border-amber-200 dark:border-amber-800",
+    text: "text-amber-700 dark:text-amber-300",
+    icon: "text-amber-600 dark:text-amber-400",
+  },
+  electoral: {
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    border: "border-amber-200 dark:border-amber-800",
+    text: "text-amber-700 dark:text-amber-300",
+    icon: "text-amber-600 dark:text-amber-400",
+  },
+  intersession: {
+    bg: "bg-blue-50 dark:bg-blue-950/30",
+    border: "border-blue-200 dark:border-blue-800",
+    text: "text-blue-700 dark:text-blue-300",
+    icon: "text-blue-600 dark:text-blue-400",
+  },
+  extraordinary: {
+    bg: "bg-blue-50 dark:bg-blue-950/30",
+    border: "border-blue-200 dark:border-blue-800",
+    text: "text-blue-700 dark:text-blue-300",
+    icon: "text-blue-600 dark:text-blue-400",
+  },
+  recess: {
+    bg: "bg-blue-50 dark:bg-blue-950/30",
+    border: "border-blue-200 dark:border-blue-800",
+    text: "text-blue-700 dark:text-blue-300",
+    icon: "text-blue-600 dark:text-blue-400",
+  },
+};
 
-function isInRecess(lastDate: Date | null): boolean {
-  if (!lastDate) return false;
-  return new Date().getTime() - lastDate.getTime() > FOURTEEN_DAYS_MS;
+function getPeriodIcon(type: ParliamentaryPeriodType) {
+  if (type === "dissolution" || type === "electoral") {
+    return AlertTriangle;
+  }
+  if (type === "intersession") {
+    return Calendar;
+  }
+  return Info;
 }
 
 export async function ParlementHub() {
@@ -41,8 +85,11 @@ export async function ParlementHub() {
     getLatestScrutins(),
   ]);
 
-  const showAssemblee = await isFeatureEnabled("ASSEMBLEE_SECTION");
-  const isRecess = isInRecess(lastDate);
+  const [showAssemblee, periodOverride] = await Promise.all([
+    isFeatureEnabled("ASSEMBLEE_SECTION"),
+    getFeatureValue<PeriodOverride>(PARLIAMENTARY_PERIOD_FLAG),
+  ]);
+  const period = resolveParliamentaryPeriod(lastDate, periodOverride);
 
   const anStats = chamberRates.find((c) => c.chamber === "AN");
   const senatStats = chamberRates.find((c) => c.chamber === "SENAT");
@@ -76,16 +123,20 @@ export async function ParlementHub() {
         </div>
       </div>
 
-      {/* Recess banner */}
-      {isRecess && lastDate && (
-        <div className="flex items-start gap-3 mb-8 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            Aucun scrutin enregistré depuis le {formatDate(lastDate)}. Le Parlement est probablement
-            en intersession ou en période électorale.
-          </p>
-        </div>
-      )}
+      {/* Parliamentary period banner */}
+      {period &&
+        (() => {
+          const style = PERIOD_STYLES[period.type];
+          const Icon = getPeriodIcon(period.type);
+          return (
+            <div
+              className={`flex items-start gap-3 mb-8 px-4 py-3 ${style.bg} border ${style.border} rounded-lg`}
+            >
+              <Icon className={`h-5 w-5 ${style.icon} mt-0.5 shrink-0`} />
+              <p className={`text-sm ${style.text}`}>{period.message}</p>
+            </div>
+          );
+        })()}
 
       {/* Aujourd'hui au Parlement */}
       <section className="mb-8">

@@ -23,7 +23,9 @@ function getCommuneElectionUrl(mandate: {
 }
 
 interface MandateWithGroup extends SerializedMandate {
-  parliamentaryGroup?: { code: string; name: string; color: string | null } | null;
+  parliamentaryData?: {
+    parliamentaryGroup?: { code: string; name: string; color: string | null } | null;
+  } | null;
 }
 
 interface MandateTimelineProps {
@@ -169,6 +171,7 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
               const titleIsDescriptive =
                 mandate.title && mandate.title !== typeLabel && !displayRole;
               const heading = displayRole || (titleIsDescriptive ? mandate.title : typeLabel);
+              const group = mandate.parliamentaryData?.parliamentaryGroup;
               return (
                 <div key={mandate.id} className="relative pl-6 pb-3 border-l-2 border-primary">
                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-background" />
@@ -178,15 +181,15 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
                         <p className="font-semibold text-lg">{heading}</p>
                         <div className="flex flex-wrap items-center gap-1.5 mt-1">
                           {displayRole && <Badge variant="outline">{typeLabel}</Badge>}
-                          {mandate.parliamentaryGroup && (
+                          {group && (
                             <Badge
                               variant="outline"
                               style={{
-                                borderColor: mandate.parliamentaryGroup.color || undefined,
-                                color: mandate.parliamentaryGroup.color || undefined,
+                                borderColor: group.color || undefined,
+                                color: group.color || undefined,
                               }}
                             >
-                              {mandate.parliamentaryGroup.code}
+                              {group.code}
                             </Badge>
                           )}
                         </div>
@@ -272,6 +275,7 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
                                   `${(MANDATE_TYPE_LABELS[type] || "").toLowerCase()} français`
                                   ? mandate.title
                                   : mandate.institution || mandate.constituency || null;
+                              const group = mandate.parliamentaryData?.parliamentaryGroup;
                               return (
                                 <div
                                   key={mandate.id}
@@ -283,17 +287,17 @@ export function MandateTimeline({ mandates, civility }: MandateTimelineProps) {
                                   </span>
                                   <span>·</span>
                                   <span>
-                                    {mandate.parliamentaryGroup && (
+                                    {group && (
                                       <span
                                         className="font-medium"
                                         style={{
-                                          color: mandate.parliamentaryGroup.color || undefined,
+                                          color: group.color || undefined,
                                         }}
                                       >
-                                        {mandate.parliamentaryGroup.code}
+                                        {group.code}
                                       </span>
                                     )}
-                                    {mandate.parliamentaryGroup && " · "}
+                                    {group && " · "}
                                     {detail
                                       ? `${detail} · ${formatDuration(mandate.startDate, mandate.endDate)}`
                                       : formatDuration(mandate.startDate, mandate.endDate)}

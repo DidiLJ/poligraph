@@ -280,6 +280,7 @@ async function getGroupSuggestions() {
         _count: { select: { mandates: { where: { isCurrent: true } } } },
       },
       orderBy: { name: "asc" },
+      take: 30,
     });
 
     type Pair = {

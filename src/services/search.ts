@@ -460,6 +460,7 @@ export async function getSearchFilterOptions() {
         },
       },
       orderBy: { politicians: { _count: "desc" } },
+      take: 50,
     }),
 
     // Get unique departments

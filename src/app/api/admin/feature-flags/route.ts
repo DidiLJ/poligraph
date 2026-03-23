@@ -11,6 +11,7 @@ type CreateFeatureFlagBody = z.infer<typeof createFeatureFlagSchema>;
 export const GET = withAdminAuth(async () => {
   const flags = await db.featureFlag.findMany({
     orderBy: { name: "asc" },
+    take: 100,
   });
 
   return NextResponse.json(flags);

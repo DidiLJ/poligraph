@@ -184,6 +184,7 @@ export const GET = withAdminAuth(async (_request: NextRequest, context) => {
       _count: { select: { sources: true } },
     },
     orderBy: { createdAt: "desc" },
+    take: 200,
   });
 
   if (affairs.length < 2) {

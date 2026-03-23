@@ -14,8 +14,12 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
       mandates: {
         orderBy: { startDate: "desc" },
         include: {
-          parliamentaryGroup: {
-            select: { code: true, name: true, color: true },
+          parliamentaryData: {
+            select: {
+              parliamentaryGroup: {
+                select: { code: true, name: true, color: true },
+              },
+            },
           },
         },
       },

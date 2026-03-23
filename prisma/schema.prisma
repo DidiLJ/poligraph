@@ -280,11 +280,6 @@ model Mandate {
   baseSalary      Decimal? @db.Decimal(10, 2)
   totalAllowances Decimal? @db.Decimal(10, 2)
 
-  // European Parliament specific (for MEPs)
-  europeanGroupCode String? // Legacy: group code as text, will be migrated
-  europeanGroup     EuropeanGroup? @relation("LegacyEuropeanGroup", fields: [europeanGroupId], references: [id])
-  europeanGroupId   String?
-
 
   // Data origin tracking
   source DataSource?
@@ -318,7 +313,6 @@ model Mandate {
   @@index([isCurrent])
   @@index([isCurrent, type])
   @@index([isCurrent, type, departmentCode])
-  @@index([europeanGroupId])
   @@index([departmentCode])
   @@index([partyId])
 }
@@ -399,8 +393,7 @@ model EuropeanGroup {
   legislature Int? // EP term number (e.g., 10 for 2024-2029)
 
   // Relations
-  legacyMandates Mandate[]         @relation("LegacyEuropeanGroup")
-  mandates       MandateEuropean[]
+  mandates MandateEuropean[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

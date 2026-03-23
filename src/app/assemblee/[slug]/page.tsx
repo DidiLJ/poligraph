@@ -56,13 +56,17 @@ const includeOptions = {
           mandates: {
             where: {
               type: { in: ["DEPUTE", "SENATEUR"] as MandateType[] },
-              parliamentaryGroupId: { not: null },
+              parliamentaryData: { isNot: null },
             },
             orderBy: { startDate: "desc" as const },
             take: 1,
             select: {
-              parliamentaryGroup: {
-                select: { code: true, name: true, shortName: true, color: true },
+              parliamentaryData: {
+                select: {
+                  parliamentaryGroup: {
+                    select: { code: true, name: true, shortName: true, color: true },
+                  },
+                },
               },
             },
           },

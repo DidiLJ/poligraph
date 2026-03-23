@@ -47,10 +47,14 @@ const getScrutinWithRedirect = cache(async function getScrutinWithRedirect(slugO
           include: {
             currentParty: true,
             mandates: {
-              where: { isCurrent: true, parliamentaryGroupId: { not: null } },
+              where: { isCurrent: true, parliamentaryData: { isNot: null } },
               take: 1,
               select: {
-                parliamentaryGroup: { select: { code: true, name: true } },
+                parliamentaryData: {
+                  select: {
+                    parliamentaryGroup: { select: { code: true, name: true } },
+                  },
+                },
               },
             },
           },
@@ -439,7 +443,9 @@ export default async function ScrutinPage({ params }: PageProps) {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium">{vote.politician.fullName}</p>
                               {(() => {
-                                const group = vote.politician.mandates[0]?.parliamentaryGroup;
+                                const group =
+                                  vote.politician.mandates[0]?.parliamentaryData
+                                    ?.parliamentaryGroup;
                                 if (group) {
                                   return (
                                     <p className="text-xs text-muted-foreground" title={group.name}>

@@ -826,6 +826,13 @@ export const THEME_CATEGORY_ICONS: Record<ThemeCategory, string> = {
   TRANSPORTS: "🚆",
 };
 
+export function dissidenceLabel(rate: number): string {
+  if (rate < 5) return "Très discipliné";
+  if (rate < 15) return "Discipliné";
+  if (rate < 30) return "Modérément indépendant";
+  return "Indépendant";
+}
+
 // ============================================
 // ELECTIONS
 // ============================================

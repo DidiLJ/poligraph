@@ -282,7 +282,7 @@ model Mandate {
 
   // European Parliament specific (for MEPs)
   europeanGroupCode String? // Legacy: group code as text, will be migrated
-  europeanGroup     EuropeanGroup? @relation(fields: [europeanGroupId], references: [id])
+  europeanGroup     EuropeanGroup? @relation("LegacyEuropeanGroup", fields: [europeanGroupId], references: [id])
   europeanGroupId   String?
 
 
@@ -306,6 +306,9 @@ model Mandate {
 
   // Parliamentary mandate extension (1:1)
   parliamentaryData MandateParliamentary?
+
+  // European Parliament mandate extension (1:1)
+  europeanData MandateEuropean?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -363,6 +366,20 @@ model MandateParliamentary {
   @@index([parliamentaryGroupId])
 }
 
+// European Parliament mandate extension - 1:1 with Mandate for European Parliament group membership
+model MandateEuropean {
+  id                String        @id @default(cuid())
+  mandate           Mandate       @relation(fields: [mandateId], references: [id], onDelete: Cascade)
+  mandateId         String        @unique
+  europeanGroup     EuropeanGroup @relation(fields: [europeanGroupId], references: [id])
+  europeanGroupId   String
+  europeanGroupCode String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([europeanGroupId])
+}
+
 // European Parliament political groups
 model EuropeanGroup {
   id        String  @id @default(cuid())
@@ -382,7 +399,8 @@ model EuropeanGroup {
   legislature Int? // EP term number (e.g., 10 for 2024-2029)
 
   // Relations
-  mandates Mandate[]
+  legacyMandates Mandate[]         @relation("LegacyEuropeanGroup")
+  mandates       MandateEuropean[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

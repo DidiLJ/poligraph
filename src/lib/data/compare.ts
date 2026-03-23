@@ -202,7 +202,7 @@ async function getGroupPreview(idOrCode: string): Promise<ComparePreview | null>
       shortName: true,
       color: true,
       chamber: true,
-      _count: { select: { mandates: { where: { isCurrent: true } } } },
+      _count: { select: { mandates: { where: { mandate: { isCurrent: true } } } } },
     },
   });
 
@@ -270,8 +270,12 @@ const POLITICIAN_COMPARISON_SELECT = {
       governmentData: {
         select: { governmentName: true },
       },
-      parliamentaryGroup: {
-        select: { name: true, shortName: true, color: true },
+      parliamentaryData: {
+        select: {
+          parliamentaryGroup: {
+            select: { name: true, shortName: true, color: true },
+          },
+        },
       },
     },
   },
@@ -402,8 +406,12 @@ async function getMinistreForComparison(slug: string) {
           },
           constituency: true,
           departmentCode: true,
-          parliamentaryGroup: {
-            select: { name: true, shortName: true, color: true },
+          parliamentaryData: {
+            select: {
+              parliamentaryGroup: {
+                select: { name: true, shortName: true, color: true },
+              },
+            },
           },
         },
       },
@@ -646,7 +654,7 @@ async function getGroupForComparison(idOrCode: string) {
         select: { name: true, shortName: true, color: true, slug: true },
       },
       _count: {
-        select: { mandates: { where: { isCurrent: true } } },
+        select: { mandates: { where: { mandate: { isCurrent: true } } } },
       },
     },
   });
@@ -655,7 +663,7 @@ async function getGroupForComparison(idOrCode: string) {
 
   // Get member votes through current mandates
   const memberMandates = await db.mandate.findMany({
-    where: { parliamentaryGroupId: group.id, isCurrent: true },
+    where: { parliamentaryData: { parliamentaryGroupId: group.id }, isCurrent: true },
     select: {
       politician: {
         select: {
@@ -727,7 +735,7 @@ async function getGroupForComparison(idOrCode: string) {
       politician: {
         mandates: {
           some: {
-            parliamentaryGroupId: group.id,
+            parliamentaryData: { parliamentaryGroupId: group.id },
             isCurrent: true,
           },
         },
@@ -744,7 +752,7 @@ async function getGroupForComparison(idOrCode: string) {
       politician: {
         mandates: {
           some: {
-            parliamentaryGroupId: group.id,
+            parliamentaryData: { parliamentaryGroupId: group.id },
             isCurrent: true,
           },
         },

@@ -152,9 +152,11 @@ export default async function PoliticianPage({ params }: PageProps) {
   const currentMandate = politician.mandates.find((m) => m.isCurrent);
   const currentGroup = (
     currentMandate as typeof currentMandate & {
-      parliamentaryGroup?: { code: string; name: string; color: string | null } | null;
+      parliamentaryData?: {
+        parliamentaryGroup?: { code: string; name: string; color: string | null } | null;
+      } | null;
     }
-  )?.parliamentaryGroup;
+  )?.parliamentaryData?.parliamentaryGroup;
   const isActiveParliamentarian = politician.mandates.some(
     (m) => m.isCurrent && (m.type === "DEPUTE" || m.type === "SENATEUR")
   );

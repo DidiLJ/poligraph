@@ -257,7 +257,6 @@ async function syncSenator(
         ? `https://www.senat.fr${sen.url}`
         : `https://www.senat.fr/senateur/${sen.matricule}/`,
       externalId: `senat-${sen.matricule}`,
-      parliamentaryGroupId: groupId,
     };
 
     if (existing) {
@@ -299,11 +298,25 @@ async function syncSenator(
         }
         await db.mandate.update({
           where: { id: existingMandate.id },
-          data: updateData,
+          data: {
+            ...updateData,
+            parliamentaryData: groupId
+              ? {
+                  upsert: {
+                    create: { parliamentaryGroupId: groupId },
+                    update: { parliamentaryGroupId: groupId },
+                  },
+                }
+              : undefined,
+          },
         });
       } else {
         await db.mandate.create({
-          data: { ...mandateData, politicianId: existing.id },
+          data: {
+            ...mandateData,
+            politicianId: existing.id,
+            parliamentaryData: groupId ? { create: { parliamentaryGroupId: groupId } } : undefined,
+          },
         });
       }
 
@@ -313,7 +326,14 @@ async function syncSenator(
       const newPolitician = await db.politician.create({
         data: {
           ...politicianData,
-          mandates: { create: mandateData },
+          mandates: {
+            create: {
+              ...mandateData,
+              parliamentaryData: groupId
+                ? { create: { parliamentaryGroupId: groupId } }
+                : undefined,
+            },
+          },
         },
       });
 

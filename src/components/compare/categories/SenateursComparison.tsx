@@ -115,7 +115,7 @@ export function SenateursComparison({ left, right }: Props) {
 }
 
 function SenateurInfoCard({ data }: { data: PoliticianComparisonData }) {
-  const group = data.currentMandate.parliamentaryGroup;
+  const group = data.currentMandate.parliamentaryData?.parliamentaryGroup;
 
   return (
     <div className="bg-muted rounded-lg p-4">

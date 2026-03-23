@@ -286,7 +286,7 @@ model Mandate {
   europeanGroupId   String?
 
   // National parliamentary group (for deputies & senators)
-  parliamentaryGroup   ParliamentaryGroup? @relation(fields: [parliamentaryGroupId], references: [id])
+  parliamentaryGroup   ParliamentaryGroup? @relation("LegacyMandateGroup", fields: [parliamentaryGroupId], references: [id])
   parliamentaryGroupId String?
 
   // Data origin tracking
@@ -306,6 +306,9 @@ model Mandate {
 
   // Government mandate extension (1:1)
   governmentData MandateGovernment?
+
+  // Parliamentary mandate extension (1:1)
+  parliamentaryData MandateParliamentary?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -349,6 +352,19 @@ model MandateGovernment {
   governmentName String   // "Gouvernement Borne", etc.
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// Parliamentary mandate extension - 1:1 with Mandate for parliamentary group membership
+model MandateParliamentary {
+  id                   String             @id @default(cuid())
+  mandate              Mandate            @relation(fields: [mandateId], references: [id], onDelete: Cascade)
+  mandateId            String             @unique
+  parliamentaryGroup   ParliamentaryGroup @relation(fields: [parliamentaryGroupId], references: [id])
+  parliamentaryGroupId String
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([parliamentaryGroupId])
 }
 
 // European Parliament political groups
@@ -400,7 +416,8 @@ model ParliamentaryGroup {
   defaultPartyId String?
 
   // Relations
-  mandates Mandate[]
+  legacyMandates Mandate[]              @relation("LegacyMandateGroup")
+  mandates       MandateParliamentary[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

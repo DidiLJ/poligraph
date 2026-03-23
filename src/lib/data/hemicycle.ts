@@ -40,7 +40,7 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
   const groups = await db.parliamentaryGroup.findMany({
     where: {
       chamber: "AN",
-      mandates: { some: { isCurrent: true, type: "DEPUTE" } },
+      legacyMandates: { some: { isCurrent: true, type: "DEPUTE" } },
     },
     select: {
       code: true,
@@ -48,7 +48,7 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
       shortName: true,
       color: true,
       politicalPosition: true,
-      mandates: {
+      legacyMandates: {
         where: { isCurrent: true, type: "DEPUTE" },
         take: 1000,
         select: {
@@ -86,7 +86,7 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
       shortName: g.shortName,
       color: g.color || "#AAAAAA",
       politicalPosition: g.politicalPosition,
-      deputies: g.mandates.map((m) => {
+      deputies: g.legacyMandates.map((m) => {
         const affairs = m.politician.affairs;
         let maxCertainty: CertaintyLevel | null = null;
         let activeCount = 0;

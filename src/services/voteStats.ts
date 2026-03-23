@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { Chamber, MandateType, Prisma } from "@/generated/prisma";
+import type { ThemeCategory } from "@/generated/prisma";
+import { THEME_CATEGORY_LABELS, THEME_CATEGORY_ICONS } from "@/config/labels";
 
 // ============================================
 // Types
@@ -461,6 +463,7 @@ export interface ParticipationRankingEntry {
   votesCount: number;
   eligibleScrutins: number;
   participationRate: number;
+  dissidenceRate: number | null;
 }
 
 export interface ParticipationRankingResult {
@@ -625,6 +628,9 @@ export interface PoliticianParliamentaryCardData {
   participationRate: number;
   rank: number;
   totalPeers: number;
+  dissidenceRate: number | null;
+  dissidenceCount: number | null;
+  dissidenceTotal: number | null;
 }
 
 /**
@@ -662,6 +668,9 @@ export async function getPoliticianParliamentaryCard(
     participationRate: entry.participationRate,
     rank: higherCount + 1,
     totalPeers,
+    dissidenceRate: entry.dissidenceRate,
+    dissidenceCount: entry.dissidenceCount,
+    dissidenceTotal: entry.dissidenceTotal,
   };
 }
 
@@ -706,6 +715,66 @@ async function getLegislativeStats(): Promise<LegislativeStatsResult> {
 }
 
 // ============================================
+// Per-politician theme distribution
+// ============================================
+
+export interface PoliticianThemeDistribution {
+  theme: string;
+  label: string;
+  icon: string;
+  pour: number;
+  contre: number;
+  abstention: number;
+  total: number;
+}
+
+export async function getPoliticianThemeDistribution(
+  politicianId: string
+): Promise<PoliticianThemeDistribution[]> {
+  const entry = await db.politicianParticipation.findUnique({
+    where: { politicianId },
+    select: { themeDistribution: true },
+  });
+
+  if (!entry?.themeDistribution) return [];
+
+  const dist = entry.themeDistribution as Record<
+    string,
+    { pour: number; contre: number; abstention: number; total: number }
+  >;
+
+  return Object.entries(dist)
+    .map(([theme, counts]) => ({
+      theme,
+      label: THEME_CATEGORY_LABELS[theme as ThemeCategory] || theme,
+      icon: THEME_CATEGORY_ICONS[theme as ThemeCategory] || "",
+      ...counts,
+    }))
+    .sort((a, b) => b.total - a.total);
+}
+
+// ============================================
+// Group dissidence stats
+// ============================================
+
+export interface GroupDissidenceStats {
+  groupId: string;
+  groupCode: string;
+  groupName: string;
+  groupColor: string | null;
+  groupChamber: string;
+  avgDissidenceRate: number;
+  memberCount: number;
+}
+
+async function getGroupDissidenceStats(chamber: "AN" | "SENAT"): Promise<GroupDissidenceStats[]> {
+  const key = `group-dissidence-${chamber}`;
+  const snapshot = await db.statsSnapshot.findUnique({ where: { key } });
+  if (snapshot) return snapshot.data as unknown as GroupDissidenceStats[];
+  return [];
+}
+
+// ============================================
 // Export
 // ============================================
 
@@ -717,4 +786,6 @@ export const voteStatsService = {
   getGroupParticipationStats,
   getPoliticianParliamentaryCard,
   getLegislativeStats,
+  getPoliticianThemeDistribution,
+  getGroupDissidenceStats,
 };

@@ -205,7 +205,6 @@ async function syncDeputy(
       sourceUrl: `https://www.assemblee-nationale.fr/dyn/deputes/${dep.id}`,
       officialUrl: `https://www.assemblee-nationale.fr/dyn/deputes/${dep.id}`,
       externalId: `${dep.id}-leg${dep.legislature}`,
-      parliamentaryGroupId: groupId,
     };
 
     if (existing) {
@@ -229,7 +228,17 @@ async function syncDeputy(
       if (existingMandate) {
         await db.mandate.update({
           where: { id: existingMandate.id },
-          data: mandateData,
+          data: {
+            ...mandateData,
+            parliamentaryData: groupId
+              ? {
+                  upsert: {
+                    create: { parliamentaryGroupId: groupId },
+                    update: { parliamentaryGroupId: groupId },
+                  },
+                }
+              : undefined,
+          },
         });
       } else {
         // Mark old mandates as not current
@@ -239,7 +248,11 @@ async function syncDeputy(
         });
 
         await db.mandate.create({
-          data: { ...mandateData, politicianId: existing.id },
+          data: {
+            ...mandateData,
+            politicianId: existing.id,
+            parliamentaryData: groupId ? { create: { parliamentaryGroupId: groupId } } : undefined,
+          },
         });
       }
 
@@ -250,7 +263,12 @@ async function syncDeputy(
         data: {
           ...politicianData,
           mandates: {
-            create: mandateData,
+            create: {
+              ...mandateData,
+              parliamentaryData: groupId
+                ? { create: { parliamentaryGroupId: groupId } }
+                : undefined,
+            },
           },
         },
       });

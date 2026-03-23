@@ -270,14 +270,14 @@ async function getPartySuggestions() {
 async function getGroupSuggestions() {
   try {
     const groups = await db.parliamentaryGroup.findMany({
-      where: { mandates: { some: { isCurrent: true } } },
+      where: { mandates: { some: { mandate: { isCurrent: true } } } },
       select: {
         id: true,
         code: true,
         name: true,
         shortName: true,
         politicalPosition: true,
-        _count: { select: { mandates: { where: { isCurrent: true } } } },
+        _count: { select: { mandates: { where: { mandate: { isCurrent: true } } } } },
       },
       orderBy: { name: "asc" },
       take: 30,

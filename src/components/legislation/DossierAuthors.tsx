@@ -16,11 +16,13 @@ interface DossierAuthor {
     civility: string | null;
     currentParty: { shortName: string; color: string | null } | null;
     mandates?: {
-      parliamentaryGroup: {
-        code: string;
-        name: string;
-        shortName: string | null;
-        color: string | null;
+      parliamentaryData: {
+        parliamentaryGroup: {
+          code: string;
+          name: string;
+          shortName: string | null;
+          color: string | null;
+        } | null;
       } | null;
     }[];
   };
@@ -41,7 +43,7 @@ function AuthorEntry({
   const party = author.politician.currentParty;
   const partyColor = party?.color ? ensureContrast(party.color) : undefined;
   const chamberLabel = author.chamber ? CHAMBER_LABELS[author.chamber] : null;
-  const group = author.politician.mandates?.[0]?.parliamentaryGroup;
+  const group = author.politician.mandates?.[0]?.parliamentaryData?.parliamentaryGroup;
   const groupColor = group?.color ? ensureContrast(group.color) : undefined;
 
   return (

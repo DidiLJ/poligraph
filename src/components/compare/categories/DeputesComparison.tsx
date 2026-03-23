@@ -115,7 +115,7 @@ export function DeputesComparison({ left, right }: Props) {
 }
 
 function DeputeInfoCard({ data }: { data: PoliticianComparisonData }) {
-  const group = data.currentMandate.parliamentaryGroup;
+  const group = data.currentMandate.parliamentaryData?.parliamentaryGroup;
 
   return (
     <div className="bg-muted rounded-lg p-4">

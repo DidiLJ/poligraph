@@ -40,7 +40,7 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
   const groups = await db.parliamentaryGroup.findMany({
     where: {
       chamber: "AN",
-      mandates: { some: { isCurrent: true, type: "DEPUTE" } },
+      mandates: { some: { mandate: { isCurrent: true, type: "DEPUTE" } } },
     },
     select: {
       code: true,
@@ -49,22 +49,26 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
       color: true,
       politicalPosition: true,
       mandates: {
-        where: { isCurrent: true, type: "DEPUTE" },
+        where: { mandate: { isCurrent: true, type: "DEPUTE" } },
         take: 1000,
         select: {
-          politician: {
+          mandate: {
             select: {
-              id: true,
-              slug: true,
-              firstName: true,
-              lastName: true,
-              photoUrl: true,
-              affairs: {
-                where: {
-                  publicationStatus: "PUBLISHED",
-                  involvement: "DIRECT",
+              politician: {
+                select: {
+                  id: true,
+                  slug: true,
+                  firstName: true,
+                  lastName: true,
+                  photoUrl: true,
+                  affairs: {
+                    where: {
+                      publicationStatus: "PUBLISHED",
+                      involvement: "DIRECT",
+                    },
+                    select: { status: true },
+                  },
                 },
-                select: { status: true },
               },
             },
           },
@@ -86,7 +90,7 @@ export async function getHemicycleData(): Promise<HemicycleGroup[]> {
       shortName: g.shortName,
       color: g.color || "#AAAAAA",
       politicalPosition: g.politicalPosition,
-      deputies: g.mandates.map((m) => {
+      deputies: g.mandates.map(({ mandate: m }) => {
         const affairs = m.politician.affairs;
         let maxCertainty: CertaintyLevel | null = null;
         let activeCount = 0;

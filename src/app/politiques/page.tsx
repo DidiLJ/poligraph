@@ -64,7 +64,50 @@ const SORT_CONFIGS: Record<SortOption, unknown> = {
   "alpha-desc": { lastName: "desc" },
   recent: { createdAt: "desc" },
   affairs: [{ affairs: { _count: "desc" } }, { lastName: "asc" }],
+  dissidence: [{ lastName: "asc" }], // placeholder — handled by special code path
 };
+
+// Shared include block — used by both normal and dissidence query paths
+const POLITICIAN_INCLUDE = {
+  currentParty: true,
+  _count: {
+    select: {
+      affairs: { where: CONVICTION_BADGE_WHERE },
+    },
+  },
+  affairs: {
+    where: CONVICTION_BADGE_WHERE,
+    select: { id: true },
+    take: 1,
+  },
+  mandates: {
+    where: { isCurrent: true },
+    orderBy: { startDate: "desc" as const },
+    take: 1,
+    select: {
+      type: true,
+      title: true,
+      constituency: true,
+    },
+  },
+  declarations: {
+    where: { type: "INTERETS" as const },
+    select: { id: true },
+    take: 1,
+  },
+  partyHistory: {
+    where: {
+      endDate: null,
+      role: { not: "MEMBRE" as const },
+    },
+    take: 1,
+    include: {
+      party: {
+        select: { name: true, shortName: true },
+      },
+    },
+  },
+} as const;
 
 // Core query logic shared by cached and uncached paths
 async function queryPoliticians(
@@ -130,6 +173,67 @@ async function queryPoliticians(
 
   const where = conditions.length > 0 ? { AND: conditions } : {};
 
+  // Special path for dissidence sort — queries PoliticianParticipation for ordered IDs
+  if (sortOption === "dissidence") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ppWhere: Record<string, any> = { dissidenceRate: { not: null } };
+    if (mandateFilter === "depute") ppWhere.chamber = "AN";
+    else if (mandateFilter === "senateur") ppWhere.chamber = "SENAT";
+
+    const [ppRows, ppTotal] = await Promise.all([
+      db.politicianParticipation.findMany({
+        where: ppWhere,
+        orderBy: [{ dissidenceRate: "desc" }, { lastName: "asc" }],
+        select: { politicianId: true },
+        skip,
+        take: limit,
+      }),
+      db.politicianParticipation.count({ where: ppWhere }),
+    ]);
+
+    const orderedIds = ppRows.map((p) => p.politicianId);
+
+    const dissidentPoliticians = await db.politician.findMany({
+      where: { id: { in: orderedIds }, publicationStatus: "PUBLISHED" },
+      include: POLITICIAN_INCLUDE,
+    });
+
+    const idIndex = new Map(orderedIds.map((id, i) => [id, i]));
+    dissidentPoliticians.sort((a, b) => (idIndex.get(a.id) ?? 0) - (idIndex.get(b.id) ?? 0));
+
+    const dissidentsWithConviction = dissidentPoliticians.map((p) => {
+      const significantRole = p.partyHistory[0] || null;
+      const mandate = p.mandates[0] || null;
+      const isActiveParliamentarian =
+        mandate !== null && (mandate.type === "DEPUTE" || mandate.type === "SENATEUR");
+      const hasDeclaration = p.declarations.length > 0;
+      return {
+        ...p,
+        hasCritiqueAffair: p.affairs.length > 0,
+        affairs: undefined,
+        currentMandate: mandate,
+        mandates: undefined,
+        declarations: undefined,
+        partyHistory: undefined,
+        missingDeclaration: isActiveParliamentarian && !hasDeclaration,
+        significantPartyRole: significantRole
+          ? {
+              role: significantRole.role,
+              partyName: significantRole.party.name,
+              partyShortName: significantRole.party.shortName,
+            }
+          : null,
+      };
+    });
+
+    return {
+      politicians: dissidentsWithConviction,
+      total: ppTotal,
+      page,
+      totalPages: Math.ceil(ppTotal / limit),
+    };
+  }
+
   // Get order by config
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const orderBy = (SORT_CONFIGS[sortOption] || SORT_CONFIGS.alpha) as any;
@@ -137,46 +241,7 @@ async function queryPoliticians(
   const [politicians, total] = await Promise.all([
     db.politician.findMany({
       where,
-      include: {
-        currentParty: true,
-        _count: {
-          select: {
-            affairs: { where: CONVICTION_BADGE_WHERE },
-          },
-        },
-        affairs: {
-          where: CONVICTION_BADGE_WHERE,
-          select: { id: true },
-          take: 1,
-        },
-        mandates: {
-          where: { isCurrent: true },
-          orderBy: { startDate: "desc" },
-          take: 1,
-          select: {
-            type: true,
-            title: true,
-            constituency: true,
-          },
-        },
-        declarations: {
-          where: { type: "INTERETS" },
-          select: { id: true },
-          take: 1,
-        },
-        partyHistory: {
-          where: {
-            endDate: null,
-            role: { not: "MEMBRE" },
-          },
-          take: 1,
-          include: {
-            party: {
-              select: { name: true, shortName: true },
-            },
-          },
-        },
-      },
+      include: POLITICIAN_INCLUDE,
       orderBy,
       skip,
       take: limit,

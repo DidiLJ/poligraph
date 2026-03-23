@@ -276,11 +276,6 @@ model Mandate {
   endDate   DateTime?
   isCurrent Boolean   @default(true)
 
-  // Salary info (monthly, in euros)
-  baseSalary      Decimal? @db.Decimal(10, 2)
-  totalAllowances Decimal? @db.Decimal(10, 2)
-
-
   // Data origin tracking
   source DataSource?
 

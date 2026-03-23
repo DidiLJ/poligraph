@@ -112,11 +112,6 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
       ...affair,
       fineAmount: affair.fineAmount ? Number(affair.fineAmount) : null,
     })),
-    mandates: politician.mandates.map((mandate) => ({
-      ...mandate,
-      baseSalary: mandate.baseSalary ? Number(mandate.baseSalary) : null,
-      totalAllowances: mandate.totalAllowances ? Number(mandate.totalAllowances) : null,
-    })),
   };
 });
 

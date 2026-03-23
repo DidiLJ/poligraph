@@ -86,11 +86,8 @@ export type {
   PlatformUpdateType,
 };
 
-// Serialized types (with Decimal converted to number for client components)
-export type SerializedMandate = Omit<Mandate, "baseSalary" | "totalAllowances"> & {
-  baseSalary: number | null;
-  totalAllowances: number | null;
-};
+// Serialized types (for client components)
+export type SerializedMandate = Mandate;
 
 export type SerializedAffair = Omit<Affair, "fineAmount"> & {
   fineAmount: number | null;

@@ -1515,11 +1515,21 @@ model PoliticianParticipation {
   groupName      String?
   groupColor     String?
 
+  // Dissidence stats (null = no group or insufficient data)
+  dissidenceRate  Float? // 0-100, % of votes against group majority
+  dissidenceCount Int? // Number of dissident votes
+  dissidenceTotal Int? // Total votes with group majority available
+
+  // Thematic vote distribution (JSON blob)
+  // Shape: { "ECONOMIE_BUDGET": { pour: 12, contre: 3, abstention: 1, total: 16 }, ... }
+  themeDistribution Json?
+
   computedAt DateTime @default(now())
 
   @@unique([politicianId]) // One row per politician
   @@index([chamber, participationRate]) // Fast filtered+sorted pagination
   @@index([participationRate]) // Fast global ranking
+  @@index([chamber, dissidenceRate]) // Fast dissidence ranking
 }
 
 /// Key-value store for aggregate stats (party/group participation, etc.).

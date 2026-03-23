@@ -4,7 +4,9 @@ import { VOTE_POSITION_DOT_COLORS } from "@/config/labels";
 import { VotePositionBadge, ParliamentaryCard } from "@/components/votes";
 import type { PoliticianVotingStats } from "@/services/voteStats";
 import type { PoliticianParliamentaryCardData } from "@/services/voteStats";
+import type { PoliticianThemeDistribution } from "@/services/voteStats";
 import type { VotePosition } from "@/types";
+import { ThemeDistributionChart } from "./ThemeDistributionChart";
 
 interface VotesSectionProps {
   slug: string;
@@ -33,6 +35,7 @@ interface VotesSectionProps {
     color: string | null;
   } | null;
   isChamberPresident?: boolean;
+  themeDistribution?: PoliticianThemeDistribution[];
 }
 
 export function VotesSection({
@@ -42,6 +45,7 @@ export function VotesSection({
   currentMandate,
   currentGroup,
   isChamberPresident,
+  themeDistribution,
 }: VotesSectionProps) {
   return (
     <div className="space-y-8">
@@ -123,6 +127,36 @@ export function VotesSection({
               </div>
             )}
 
+            {/* Dissidence bar (only if group data available) */}
+            {!isChamberPresident && parliamentaryCard?.dissidenceRate != null && (
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span id="dissidence-label" className="text-muted-foreground">
+                    Taux de dissidence
+                  </span>
+                  <span className="font-medium">{parliamentaryCard.dissidenceRate}%</span>
+                </div>
+                <div
+                  className="h-2 bg-gray-100 rounded-full overflow-hidden"
+                  role="progressbar"
+                  aria-labelledby="dissidence-label"
+                  aria-valuenow={parliamentaryCard.dissidenceRate}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="h-full bg-amber-500"
+                    style={{ width: `${Math.min(parliamentaryCard.dissidenceRate, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {parliamentaryCard.dissidenceCount} vote
+                  {(parliamentaryCard.dissidenceCount ?? 0) > 1 ? "s" : ""} contre la majorité du
+                  groupe sur {parliamentaryCard.dissidenceTotal}
+                </p>
+              </div>
+            )}
+
             {/* Recent votes */}
             {voteData.recentVotes.length > 0 && (
               <div>
@@ -148,6 +182,11 @@ export function VotesSection({
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Theme distribution */}
+      {themeDistribution && themeDistribution.length > 0 && (
+        <ThemeDistributionChart themes={themeDistribution} />
       )}
     </div>
   );

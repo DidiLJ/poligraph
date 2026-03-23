@@ -93,9 +93,15 @@ async function divisiveVotes(recent: RecentlyPosted): Promise<TweetDraft[]> {
           politician: {
             select: {
               mandates: {
-                where: { isCurrent: true, parliamentaryGroupId: { not: null } },
+                where: { isCurrent: true, parliamentaryData: { isNot: null } },
                 take: 1,
-                select: { parliamentaryGroup: { select: { name: true, code: true } } },
+                select: {
+                  parliamentaryData: {
+                    select: {
+                      parliamentaryGroup: { select: { name: true, code: true } },
+                    },
+                  },
+                },
               },
             },
           },
@@ -118,7 +124,7 @@ async function divisiveVotes(recent: RecentlyPosted): Promise<TweetDraft[]> {
     >();
     for (const v of s.votes) {
       if (v.position === "ABSENT" || v.position === "NON_VOTANT") continue;
-      const group = v.politician.mandates[0]?.parliamentaryGroup;
+      const group = v.politician.mandates[0]?.parliamentaryData?.parliamentaryGroup;
       const code = group?.code || "NI";
       const name = group?.name || "Non-inscrits";
       const entry = groupVotes.get(code) || {

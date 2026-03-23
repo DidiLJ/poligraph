@@ -230,11 +230,17 @@ async function syncMEP(
       await db.mandate.update({
         where: { id: existingMandate.id },
         data: {
-          europeanGroupCode,
-          europeanGroupId: europeanGroupId || undefined,
           externalId: europarlId,
           sourceUrl: `https://www.europarl.europa.eu/meps/fr/${europarlId}`,
           officialUrl: `https://www.europarl.europa.eu/meps/fr/${europarlId}`,
+          europeanData: europeanGroupId
+            ? {
+                upsert: {
+                  create: { europeanGroupId, europeanGroupCode },
+                  update: { europeanGroupId, europeanGroupCode },
+                },
+              }
+            : undefined,
         },
       });
       mandateResult = "updated";
@@ -250,14 +256,15 @@ async function syncMEP(
           title: mandateTitle,
           institution: mandateInstitution,
           constituency,
-          europeanGroupCode,
-          europeanGroupId: europeanGroupId || undefined,
           startDate,
           isCurrent: true,
           source: DataSource.PARLEMENT_EUROPEEN,
           externalId: europarlId,
           sourceUrl: `https://www.europarl.europa.eu/meps/fr/${europarlId}`,
           officialUrl: `https://www.europarl.europa.eu/meps/fr/${europarlId}`,
+          europeanData: europeanGroupId
+            ? { create: { europeanGroupId, europeanGroupCode } }
+            : undefined,
         },
       });
       mandateResult = "created";
@@ -343,7 +350,9 @@ export async function getEuroparlStats() {
       isCurrent: true,
     },
     include: {
-      europeanGroup: true,
+      europeanData: {
+        include: { europeanGroup: true },
+      },
     },
   });
 
@@ -353,7 +362,7 @@ export async function getEuroparlStats() {
     { code: string; name: string; color: string | null; count: number }
   >();
   for (const mandate of mandatesWithGroups) {
-    const group = mandate.europeanGroup;
+    const group = mandate.europeanData?.europeanGroup;
     const key = group?.id || "unknown";
     const existing = groupCounts.get(key);
     if (existing) {

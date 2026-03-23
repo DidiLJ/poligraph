@@ -267,7 +267,9 @@ const POLITICIAN_COMPARISON_SELECT = {
       endDate: true,
       constituency: true,
       departmentCode: true,
-      governmentName: true,
+      governmentData: {
+        select: { governmentName: true },
+      },
       parliamentaryGroup: {
         select: { name: true, shortName: true, color: true },
       },
@@ -395,7 +397,9 @@ async function getMinistreForComparison(slug: string) {
           isCurrent: true,
           startDate: true,
           endDate: true,
-          governmentName: true,
+          governmentData: {
+            select: { governmentName: true },
+          },
           constituency: true,
           departmentCode: true,
           parliamentaryGroup: {

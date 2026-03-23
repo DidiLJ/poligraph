@@ -12,6 +12,14 @@ describe("hexToRgb", () => {
     expect(hexToRgb("#FF0000")).toEqual({ r: 255, g: 0, b: 0 });
   });
 
+  it("parses pure green correctly", () => {
+    expect(hexToRgb("#00FF00")).toEqual({ r: 0, g: 255, b: 0 });
+  });
+
+  it("parses pure blue correctly", () => {
+    expect(hexToRgb("#0000FF")).toEqual({ r: 0, g: 0, b: 255 });
+  });
+
   it("parses black correctly", () => {
     expect(hexToRgb("#000000")).toEqual({ r: 0, g: 0, b: 0 });
   });

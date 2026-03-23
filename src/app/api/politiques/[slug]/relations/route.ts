@@ -109,7 +109,9 @@ export const GET = withPublicRoute(async (request, context) => {
           isCurrent: true,
           constituency: true,
           departmentCode: true,
-          governmentName: true,
+          governmentData: {
+            select: { governmentName: true },
+          },
         },
       },
       partyHistory: { select: { partyId: true } },
@@ -141,13 +143,13 @@ export const GET = withPublicRoute(async (request, context) => {
   // --- SAME_GOVERNMENT ---
   if (requestedTypes.includes("SAME_GOVERNMENT")) {
     const govMandates = politician.mandates.filter(
-      (m) => GOVERNMENT_TYPES.includes(m.type) && m.governmentName
+      (m) => GOVERNMENT_TYPES.includes(m.type) && m.governmentData?.governmentName
     );
 
     // Group by government name for distinct clusters
     const govGroups = new Map<string, (typeof politician.mandates)[number][]>();
     for (const m of govMandates) {
-      const name = m.governmentName!;
+      const name = m.governmentData!.governmentName;
       if (!govGroups.has(name)) govGroups.set(name, []);
       govGroups.get(name)!.push(m);
     }
@@ -159,7 +161,7 @@ export const GET = withPublicRoute(async (request, context) => {
           id: { not: politician.id },
           mandates: {
             some: {
-              governmentName: govName,
+              governmentData: { governmentName: govName },
               type: { in: GOVERNMENT_TYPES },
             },
           },

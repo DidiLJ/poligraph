@@ -135,7 +135,10 @@ async function investigateRaphaelGlucksmann() {
   console.log("\n  Mandates:");
   for (const m of glucksmann.mandates) {
     const status = m.isCurrent ? "[CURRENT]" : "";
-    const group = m.europeanGroupCode ? `(${m.europeanGroupCode})` : "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const group = (m as any).europeanData?.europeanGroupCode
+      ? `(${(m as any).europeanData.europeanGroupCode})`
+      : "";
     console.log(`    - ${m.type}: ${m.title} ${group} ${status}`);
     console.log(
       `      ${m.startDate?.toISOString().slice(0, 10) || "?"} -> ${m.endDate?.toISOString().slice(0, 10) || "ongoing"}`

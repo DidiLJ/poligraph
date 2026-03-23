@@ -121,7 +121,6 @@ function ResultIcon({
   // Politician with photo
   if (result.icon === "user" && result.photoUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={result.photoUrl}
         alt={result.label || "Photo du politicien"}

@@ -28,7 +28,11 @@ import { FactChecksTab } from "@/components/politicians/FactChecksTab";
 import { CareerTimeline } from "@/components/politicians/CareerTimeline";
 import { AffairsSection } from "@/components/politicians/AffairsSection";
 import { VotesSection } from "@/components/politicians/VotesSection";
-import { getPoliticianVotingStats, getPoliticianParliamentaryCard } from "@/services/voteStats";
+import {
+  getPoliticianVotingStats,
+  getPoliticianParliamentaryCard,
+  voteStatsService,
+} from "@/services/voteStats";
 import { getPolitician } from "@/lib/data/politicians";
 import { FollowButton } from "@/components/politicians/FollowButton";
 import { CopyableId } from "@/components/politicians/CopyableId";
@@ -55,7 +59,7 @@ async function getVoteStats(politicianId: string) {
   cacheTag("votes", "politicians");
   cacheLife("minutes");
 
-  const [stats, recentVotes] = await Promise.all([
+  const [stats, recentVotes, themeDistribution] = await Promise.all([
     getPoliticianVotingStats(politicianId),
     db.vote.findMany({
       where: { politicianId },
@@ -72,9 +76,10 @@ async function getVoteStats(politicianId: string) {
       orderBy: { scrutin: { votingDate: "desc" } },
       take: 5,
     }),
+    voteStatsService.getPoliticianThemeDistribution(politicianId),
   ]);
 
-  return { stats, recentVotes };
+  return { stats, recentVotes, themeDistribution };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -566,6 +571,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                     }
                     currentGroup={currentGroup ?? null}
                     isChamberPresident={isChamberPresident}
+                    themeDistribution={voteData?.themeDistribution}
                   />
                 ) : null
               }

@@ -121,10 +121,10 @@ function MinistreInfoCard({ data }: { data: MinistreComparisonData }) {
           <span className="text-muted-foreground shrink-0">Fonction</span>
           <span className="font-medium text-right">{data.currentMandate.title}</span>
         </li>
-        {data.currentMandate.governmentName && (
+        {data.currentMandate.governmentData?.governmentName && (
           <li className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground">Gouvernement</span>
-            <span className="font-medium">{data.currentMandate.governmentName}</span>
+            <span className="font-medium">{data.currentMandate.governmentData.governmentName}</span>
           </li>
         )}
         <li className="flex items-center justify-between gap-2">
@@ -159,7 +159,8 @@ function ParcoursTimeline({ data }: { data: MinistreComparisonData }) {
               <p className="text-sm font-medium">{mandate.title}</p>
               <p className="text-xs text-muted-foreground">
                 {MANDATE_TYPE_LABELS[mandate.type as MandateType]}
-                {mandate.governmentName && ` — ${mandate.governmentName}`}
+                {mandate.governmentData?.governmentName &&
+                  ` — ${mandate.governmentData.governmentName}`}
               </p>
               <p className="text-xs text-muted-foreground">
                 {formatDate(mandate.startDate)}

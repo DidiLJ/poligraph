@@ -5,7 +5,8 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
-import { getGroupeDetail } from "@/lib/data/groupes";
+import { getGroupeDetail, getGroupKeyVotes } from "@/lib/data/groupes";
+import { VoteCard } from "@/components/votes";
 import { CHAMBER_SHORT_LABELS } from "@/config/labels";
 import { Users, TrendingUp, Target, Activity } from "lucide-react";
 
@@ -33,6 +34,7 @@ export default async function GroupeDetailPage({ params }: PageProps) {
 
   if (!group) notFound();
 
+  const groupKeyVotes = await getGroupKeyVotes(group.id);
   const stats = group.stats[0];
 
   return (
@@ -96,6 +98,33 @@ export default async function GroupeDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Key Votes */}
+      {groupKeyVotes.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Votes marquants</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {groupKeyVotes.map((gp) => (
+              <VoteCard
+                key={gp.scrutin.id}
+                id={gp.scrutin.id}
+                externalId=""
+                slug={gp.scrutin.slug}
+                title={gp.scrutin.title}
+                votingDate={gp.scrutin.votingDate}
+                legislature={0}
+                chamber="AN"
+                votesFor={gp.scrutin.votesFor}
+                votesAgainst={gp.scrutin.votesAgainst}
+                votesAbstain={gp.scrutin.votesAbstain}
+                result={gp.scrutin.result}
+                sourceUrl={null}
+                theme={gp.scrutin.theme}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Members */}

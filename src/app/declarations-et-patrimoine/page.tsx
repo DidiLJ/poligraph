@@ -69,8 +69,8 @@ export default async function DeclarationsPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <Breadcrumb items={[{ label: "Déclarations et patrimoine" }]} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb items={[{ label: "Déclarations et patrimoine" }]} />
         <CollectionPageJsonLd
           name="Déclarations HATVP des élus français"
           description="Déclarations d'intérêts et de patrimoine des députés, sénateurs et ministres français. Données officielles de la HATVP."

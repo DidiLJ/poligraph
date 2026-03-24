@@ -131,10 +131,10 @@ export default async function AssembleePage({ searchParams }: PageProps) {
 
   return (
     <>
-      <Breadcrumb
-        items={[{ label: "Parlement", href: "/parlement" }, { label: "Dossiers législatifs" }]}
-      />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb
+          items={[{ label: "Parlement", href: "/parlement" }, { label: "Dossiers législatifs" }]}
+        />
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">

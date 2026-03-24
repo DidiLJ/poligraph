@@ -143,7 +143,7 @@ export default async function PartyPage({ params }: PageProps) {
         dissolutionDate={party.dissolvedDate?.toISOString().split("T")[0]}
         sameAs={sameAsUrls.length > 0 ? sameAsUrls : undefined}
       />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb
           items={[{ label: "Partis", href: "/partis" }, { label: party.shortName || party.name }]}
         />

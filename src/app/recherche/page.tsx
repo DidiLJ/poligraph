@@ -29,8 +29,8 @@ function SearchLoading() {
 export default function RecherchePage() {
   return (
     <>
-      <Breadcrumb items={[{ label: "Recherche" }]} />
-      <div className="container mx-auto px-4 py-10">
+      <div className="container mx-auto px-4 pt-6 pb-10">
+        <Breadcrumb items={[{ label: "Recherche" }]} />
         <h1 className="text-3xl font-display font-extrabold tracking-tight mb-8 max-w-2xl mx-auto">
           Recherche
         </h1>

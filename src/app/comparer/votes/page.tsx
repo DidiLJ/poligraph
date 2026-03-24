@@ -355,8 +355,8 @@ export default async function VotesComparisonPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <Breadcrumb items={[{ label: "Comparer", href: "/comparer" }, { label: "Votes" }]} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb items={[{ label: "Comparer", href: "/comparer" }, { label: "Votes" }]} />
         {/* Back link */}
         <Link
           href={backUrl}

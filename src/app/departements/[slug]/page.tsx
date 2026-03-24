@@ -72,7 +72,7 @@ export default async function DepartmentPage({ params }: PageProps) {
   });
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pt-4 pb-8">
       <Breadcrumb
         items={[{ label: "Départements", href: "/departements" }, { label: departmentName }]}
       />

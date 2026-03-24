@@ -184,7 +184,7 @@ export default async function DossierDetailPage({ params }: PageProps) {
         legislationIdentifier={dossier.number || dossier.externalId}
         url={`${SITE_URL}/parlement/dossiers/${dossier.slug || dossier.externalId}`}
       />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb
           items={[
             { label: "Parlement", href: "/parlement" },

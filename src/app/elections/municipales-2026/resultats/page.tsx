@@ -48,9 +48,9 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
 
   if (!data) {
     return (
-      <main id="main-content" className="container mx-auto px-4 max-w-6xl py-12 text-center">
+      <div className="container mx-auto px-4 max-w-6xl py-12 text-center">
         <p className="text-muted-foreground">Aucun résultat disponible pour le moment.</p>
-      </main>
+      </div>
     );
   }
 
@@ -67,7 +67,7 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
   }
 
   return (
-    <main id="main-content" className="container mx-auto px-4 max-w-6xl">
+    <div className="container mx-auto px-4 max-w-6xl">
       <Breadcrumb
         items={[
           { label: "Élections", href: "/elections" },
@@ -265,6 +265,6 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           )}
         </nav>
       )}
-    </main>
+    </div>
   );
 }

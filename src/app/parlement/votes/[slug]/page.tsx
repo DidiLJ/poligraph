@@ -217,7 +217,7 @@ export default async function ScrutinPage({ params }: PageProps) {
           url={`${SITE_URL}/parlement/votes/${scrutin.slug}`}
         />
       )}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb
           items={[
             { label: "Parlement", href: "/parlement" },

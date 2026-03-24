@@ -235,7 +235,7 @@ export default async function PoliticianPage({ params }: PageProps) {
           .filter((url): url is string => url != null)}
         memberOf={memberOfOrgs.length > 0 ? memberOfOrgs : undefined}
       />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb
           items={[{ label: "Politiques", href: "/politiques" }, { label: politician.fullName }]}
         />

@@ -47,7 +47,7 @@ export default async function ParitePage() {
   }));
 
   return (
-    <main id="main-content" className="container mx-auto px-4 max-w-6xl">
+    <div className="container mx-auto px-4 max-w-6xl">
       <Breadcrumb
         items={[
           { label: "Élections", href: "/elections" },
@@ -197,6 +197,6 @@ export default async function ParitePage() {
           </div>
         </section>
       )}
-    </main>
+    </div>
   );
 }

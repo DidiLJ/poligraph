@@ -54,8 +54,8 @@ export default async function ElectionsPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <Breadcrumb items={[{ label: "Élections" }]} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb items={[{ label: "Élections" }]} />
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">

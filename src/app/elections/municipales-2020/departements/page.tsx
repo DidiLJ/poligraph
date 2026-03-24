@@ -15,14 +15,14 @@ export default async function DepartmentsPage() {
 
   return (
     <>
-      <Breadcrumb
-        items={[
-          { label: "Élections", href: "/elections" },
-          { label: "Municipales 2020", href: "/elections/municipales-2020" },
-          { label: "Départements" },
-        ]}
-      />
-      <main id="main-content" className="container mx-auto px-4 py-8 max-w-6xl">
+      <main id="main-content" className="container mx-auto px-4 pt-4 pb-8 max-w-6xl">
+        <Breadcrumb
+          items={[
+            { label: "Élections", href: "/elections" },
+            { label: "Municipales 2020", href: "/elections/municipales-2020" },
+            { label: "Départements" },
+          ]}
+        />
         <h1 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight mb-2">
           Résultats par département
         </h1>

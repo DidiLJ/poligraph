@@ -465,8 +465,8 @@ export default async function PolitiquesPage({ searchParams }: PageProps) {
         url={`${SITE_URL}/politiques`}
         numberOfItems={total}
       />
-      <Breadcrumb items={[{ label: "Politiques" }]} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb items={[{ label: "Politiques" }]} />
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">

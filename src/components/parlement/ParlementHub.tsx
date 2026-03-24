@@ -157,7 +157,6 @@ export async function ParlementHub() {
             result={keyVotes.hero.result}
             theme={keyVotes.hero.theme}
             summary={keyVotes.hero.summary}
-            citizenImpact={keyVotes.hero.citizenImpact}
           />
         </section>
       )}

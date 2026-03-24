@@ -74,7 +74,7 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
     {
       value: stats.voteCount,
       label: "Votes",
-      href: "/votes",
+      href: "/parlement/votes",
       icon: Vote,
       description: "Scrutins parlementaires",
     },

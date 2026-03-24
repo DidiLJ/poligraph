@@ -250,7 +250,7 @@ function VotesContent({ votes }: { votes: VoteItem[] }) {
         {votes.map((vote) => (
           <li key={vote.id}>
             <Link
-              href={`/votes/${vote.slug || vote.id}`}
+              href={`/parlement/votes/${vote.slug || vote.id}`}
               prefetch={false}
               className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group"
             >
@@ -290,7 +290,7 @@ function VotesContent({ votes }: { votes: VoteItem[] }) {
       </ul>
       <div className="p-4 border-t bg-muted/30">
         <Button variant="ghost" asChild className="w-full sm:w-auto">
-          <Link href="/votes" className="flex items-center gap-2">
+          <Link href="/parlement/votes" className="flex items-center gap-2">
             Voir tous les votes
             <ChevronRight className="h-4 w-4" />
           </Link>
@@ -318,7 +318,7 @@ function DossiersContent({ dossiers }: { dossiers: DossierItem[] }) {
         {dossiers.map((dossier) => (
           <li key={dossier.id}>
             <Link
-              href={`/assemblee/${dossier.slug || dossier.id}`}
+              href={`/parlement/dossiers/${dossier.slug || dossier.id}`}
               prefetch={false}
               className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors group"
             >
@@ -349,7 +349,7 @@ function DossiersContent({ dossiers }: { dossiers: DossierItem[] }) {
       </ul>
       <div className="p-4 border-t bg-muted/30">
         <Button variant="ghost" asChild className="w-full sm:w-auto">
-          <Link href="/assemblee" className="flex items-center gap-2">
+          <Link href="/parlement/dossiers" className="flex items-center gap-2">
             Voir tous les dossiers
             <ChevronRight className="h-4 w-4" />
           </Link>

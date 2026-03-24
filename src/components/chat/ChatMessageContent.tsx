@@ -58,7 +58,7 @@ function renderInlineFormatting(text: string): React.ReactNode {
 
       // Handle raw links in the remaining text (including partial paths like /politiques/)
       const linkParts = part.split(
-        /(\/politiques(?:\/[^\s,.)]*)?|\/partis(?:\/[^\s,.)]*)?|\/affaires(?:\/[^\s,.)]*)?|\/assemblee(?:\/[^\s,.)]*)?|\/votes(?:\/[^\s,.)]*)?|\/statistiques|\/institutions|https?:\/\/[^\s,.)]+)/g
+        /(\/politiques(?:\/[^\s,.)]*)?|\/partis(?:\/[^\s,.)]*)?|\/affaires(?:\/[^\s,.)]*)?|\/parlement\/dossiers(?:\/[^\s,.)]*)?|\/parlement\/votes(?:\/[^\s,.)]*)?|\/statistiques|\/institutions|https?:\/\/[^\s,.)]+)/g
       );
 
       return linkParts.map((linkPart, linkIndex) => {
@@ -66,8 +66,8 @@ function renderInlineFormatting(text: string): React.ReactNode {
           linkPart.startsWith("/politiques") ||
           linkPart.startsWith("/partis") ||
           linkPart.startsWith("/affaires") ||
-          linkPart.startsWith("/assemblee") ||
-          linkPart.startsWith("/votes") ||
+          linkPart.startsWith("/parlement/dossiers") ||
+          linkPart.startsWith("/parlement/votes") ||
           linkPart.startsWith("/statistiques") ||
           linkPart.startsWith("/institutions");
         const isExternalLink = linkPart.startsWith("http");
@@ -79,16 +79,17 @@ function renderInlineFormatting(text: string): React.ReactNode {
             label = "Voir tous les élus";
           else if (linkPart === "/affaires" || linkPart === "/affaires/")
             label = "Voir toutes les affaires";
-          else if (linkPart === "/assemblee" || linkPart === "/assemblee/")
+          else if (linkPart === "/parlement/dossiers" || linkPart === "/parlement/dossiers/")
             label = "Voir les dossiers législatifs";
-          else if (linkPart === "/votes" || linkPart === "/votes/") label = "Voir les votes";
+          else if (linkPart === "/parlement/votes" || linkPart === "/parlement/votes/")
+            label = "Voir les votes";
           else if (linkPart === "/statistiques") label = "Voir les statistiques";
           else if (linkPart === "/institutions") label = "Voir les institutions";
           else if (linkPart.startsWith("/politiques/"))
             label = linkPart.split("/").pop() || linkPart;
           else if (linkPart.startsWith("/partis/")) label = linkPart.split("/").pop() || linkPart;
-          else if (linkPart.startsWith("/votes/")) label = "Voir ce vote";
-          else if (linkPart.startsWith("/assemblee/")) label = "Voir ce dossier";
+          else if (linkPart.startsWith("/parlement/votes/")) label = "Voir ce vote";
+          else if (linkPart.startsWith("/parlement/dossiers/")) label = "Voir ce dossier";
           else if (isExternalLink) label = "Source officielle";
 
           // Clean trailing slash for href
@@ -154,7 +155,7 @@ export function ChatMessageContent({ content }: { content: string }) {
           // Generate friendly label based on path
           let label = linkContent;
           if (url === "/affaires") label = "Voir toutes les affaires";
-          else if (url === "/assemblee") label = "Voir tous les dossiers législatifs";
+          else if (url === "/parlement/dossiers") label = "Voir tous les dossiers législatifs";
           else if (url === "/politiques") label = "Voir tous les élus";
           else if (url === "/statistiques") label = "Voir les statistiques";
           else if (url === "/institutions") label = "Comprendre les institutions";

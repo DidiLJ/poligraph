@@ -158,7 +158,11 @@ export const FOOTER_SECTIONS: FooterSection[] = [
     title: "Parlement",
     links: [
       { href: "/parlement", label: "Travail parlementaire" },
-      { href: "/assemblee", label: "Dossiers législatifs", featureFlag: "ASSEMBLEE_SECTION" },
+      {
+        href: "/parlement/dossiers",
+        label: "Dossiers législatifs",
+        featureFlag: "ASSEMBLEE_SECTION",
+      },
       { href: "/declarations-et-patrimoine", label: "Patrimoine & déclarations" },
       { href: "/statistiques", label: "Statistiques", featureFlag: "STATISTIQUES_SECTION" },
     ],

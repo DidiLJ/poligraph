@@ -20,14 +20,14 @@ export async function DailyVotesPage({ date, isToday }: DailyVotesPageProps) {
 
   const formatted = formatDateFrUTC(date);
   const title = isToday ? "Votes du jour" : `Votes du ${formatted}`;
-  const canonicalPath = isToday ? "/votes/aujourd-hui" : `/votes/${date}`;
+  const canonicalPath = isToday ? "/parlement/votes/aujourd-hui" : `/parlement/votes/${date}`;
 
   return (
     <>
       <BreadcrumbJsonLd
         items={[
           { name: "Accueil", url: SITE_URL },
-          { name: "Votes", url: `${SITE_URL}/votes` },
+          { name: "Votes", url: `${SITE_URL}/parlement/votes` },
           { name: title, url: `${SITE_URL}${canonicalPath}` },
         ]}
       />
@@ -44,7 +44,7 @@ export async function DailyVotesPage({ date, isToday }: DailyVotesPageProps) {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Link href="/votes" className="hover:text-foreground transition-colors">
+            <Link href="/parlement/votes" className="hover:text-foreground transition-colors">
               Votes
             </Link>
             <span>/</span>
@@ -175,7 +175,7 @@ function EmptyState({ prevDate }: { prevDate: string | null }) {
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         {prevDate && (
           <Link
-            href={`/votes/${prevDate}`}
+            href={`/parlement/votes/${prevDate}`}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:underline"
             prefetch={false}
           >
@@ -184,7 +184,7 @@ function EmptyState({ prevDate }: { prevDate: string | null }) {
           </Link>
         )}
         <Link
-          href="/votes"
+          href="/parlement/votes"
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
           prefetch={false}
         >

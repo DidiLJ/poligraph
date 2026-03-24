@@ -14,7 +14,7 @@ export function TodayVotesWidget({ total, adopted, rejected }: TodayVotesWidgetP
     <section className="py-6">
       <div className="container mx-auto px-4">
         <Link
-          href="/votes/aujourd-hui"
+          href="/parlement/votes/aujourd-hui"
           className="group flex items-center justify-between gap-4 px-5 py-4 rounded-xl border bg-card hover:bg-accent/40 transition-colors"
           prefetch={false}
         >

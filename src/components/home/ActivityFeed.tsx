@@ -15,7 +15,7 @@ export function ActivityFeed({ recap }: ActivityFeedProps) {
     items.push({
       label: `${n} vote${n > 1 ? "s" : ""} cette semaine`,
       count: n,
-      href: "/votes",
+      href: "/parlement/votes",
       color: "bg-blue-500",
     });
   }

@@ -168,7 +168,7 @@ export function VotesSection({
                         className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${VOTE_POSITION_DOT_COLORS[vote.position]}`}
                       />
                       <Link
-                        href={`/votes/${vote.scrutin.id}`}
+                        href={`/parlement/votes/${vote.scrutin.id}`}
                         prefetch={false}
                         className="flex-1 hover:underline"
                       >

@@ -552,7 +552,7 @@ function AffairRow({ result }: { result: AffairResult }) {
 function ScrutinRow({ result }: { result: ScrutinResult }) {
   return (
     <Link
-      href={`/votes/${result.slug || result.id}`}
+      href={`/parlement/votes/${result.slug || result.id}`}
       className="flex items-start gap-3 py-3 hover:bg-accent/40 rounded-lg transition-colors px-3 -mx-3"
       prefetch={false}
     >
@@ -608,7 +608,7 @@ function FactCheckRow({ result }: { result: FactCheckResult }) {
 function DossierRow({ result }: { result: DossierResult }) {
   return (
     <Link
-      href={`/assemblee/${result.slug}`}
+      href={`/parlement/dossiers/${result.slug}`}
       className="flex items-center gap-3 py-3 hover:bg-accent/40 rounded-lg transition-colors px-3 -mx-3"
       prefetch={false}
     >

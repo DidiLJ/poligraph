@@ -143,7 +143,7 @@ export async function ParlementHub() {
         <h2 className="text-lg font-semibold mb-3">Aujourd{"'"}hui au Parlement</h2>
         {today.total > 0 ? (
           <Link
-            href="/votes/aujourd-hui"
+            href="/parlement/votes/aujourd-hui"
             className="block p-4 bg-muted/50 rounded-lg border hover:bg-muted/80 transition-colors"
           >
             <div className="flex items-center gap-6">
@@ -173,7 +173,7 @@ export async function ParlementHub() {
         )}
         {showAssemblee && (
           <Link
-            href="/assemblee"
+            href="/parlement/dossiers"
             className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
           >
             Dossiers législatifs récemment mis à jour
@@ -191,7 +191,11 @@ export async function ParlementHub() {
           </p>
           <div className="flex flex-wrap gap-2">
             {themeCounts.map((t) => (
-              <Link key={t.theme} href={`/votes/themes/${themeToSlug(t.theme)}`} prefetch={false}>
+              <Link
+                key={t.theme}
+                href={`/parlement/votes/themes/${themeToSlug(t.theme)}`}
+                prefetch={false}
+              >
                 <Badge
                   variant="outline"
                   className={`cursor-pointer hover:opacity-80 transition-opacity ${THEME_CATEGORY_COLORS[t.theme]}`}

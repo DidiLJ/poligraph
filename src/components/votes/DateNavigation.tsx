@@ -16,7 +16,7 @@ export function DateNavigation({ prevDate, nextDate, currentDate, isToday }: Dat
     <div className="flex items-center justify-between gap-2 sm:gap-4">
       {prevDate ? (
         <Link
-          href={`/votes/${prevDate}`}
+          href={`/parlement/votes/${prevDate}`}
           className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           prefetch={false}
           aria-label={`Votes du ${formatDateFrUTC(prevDate)}`}
@@ -48,7 +48,7 @@ export function DateNavigation({ prevDate, nextDate, currentDate, isToday }: Dat
 
       {nextDate ? (
         <Link
-          href={`/votes/${nextDate}`}
+          href={`/parlement/votes/${nextDate}`}
           className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
           prefetch={false}
           aria-label={`Votes du ${formatDateFrUTC(nextDate)}`}

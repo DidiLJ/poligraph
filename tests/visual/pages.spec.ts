@@ -133,7 +133,7 @@ test.describe("Chatbot Page", () => {
 
 test.describe("Assemblee Page", () => {
   test("renders legislative dossiers", async ({ page }) => {
-    await page.goto("/assemblee");
+    await page.goto("/parlement/dossiers");
     await page.waitForLoadState("networkidle");
 
     await expect(page.locator("h1")).toContainText(/assemblée/i);

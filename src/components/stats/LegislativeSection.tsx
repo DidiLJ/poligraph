@@ -37,7 +37,7 @@ function KeyVotesList({ votes }: { votes: KeyVote[] }) {
       {votes.map((v) => (
         <div key={v.id} className="flex flex-col gap-1">
           <Link
-            href={`/votes/${v.slug || v.id}`}
+            href={`/parlement/votes/${v.slug || v.id}`}
             prefetch={false}
             className="text-sm font-medium hover:underline leading-snug"
           >

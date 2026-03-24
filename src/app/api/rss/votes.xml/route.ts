@@ -29,7 +29,7 @@ export const GET = withPublicRoute(async () => {
 
       return {
         title: s.title,
-        link: `${SITE_URL}/votes/${s.slug}`,
+        link: `${SITE_URL}/parlement/votes/${s.slug}`,
         description: `${resultLabel} — ${desc}`,
         pubDate: s.votingDate,
         guid: `${SITE_URL}/votes/${s.slug}`,

@@ -400,7 +400,7 @@ export default function AssembleeNationalePage() {
                   Voir les députés
                 </Link>
                 <Link
-                  href="/votes?chamber=AN"
+                  href="/parlement/votes?chamber=AN"
                   className="inline-flex items-center px-4 py-2 border rounded-md text-sm hover:bg-muted"
                 >
                   Voir les votes AN

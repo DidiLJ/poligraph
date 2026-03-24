@@ -472,7 +472,11 @@ function ActivityDetail({ item }: { item: ActivityItem }) {
           </span>{" "}
           sur{" "}
           {slug ? (
-            <Link href={`/votes/${slug}`} className="text-primary hover:underline" prefetch={false}>
+            <Link
+              href={`/parlement/votes/${slug}`}
+              className="text-primary hover:underline"
+              prefetch={false}
+            >
               {title}
             </Link>
           ) : (

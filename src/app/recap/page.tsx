@@ -204,7 +204,7 @@ export default async function RecapPage({ searchParams }: PageProps) {
                             <div className="min-w-0 flex-1">
                               {s.slug ? (
                                 <Link
-                                  href={`/votes/${s.slug}`}
+                                  href={`/parlement/votes/${s.slug}`}
                                   className="text-sm font-medium hover:underline line-clamp-2"
                                   prefetch={false}
                                 >
@@ -250,7 +250,7 @@ export default async function RecapPage({ searchParams }: PageProps) {
                   </div>
                   {data.votes.total > 8 && (
                     <Link
-                      href="/votes"
+                      href="/parlement/votes"
                       className="block text-sm text-primary hover:underline mt-4"
                       prefetch={false}
                     >

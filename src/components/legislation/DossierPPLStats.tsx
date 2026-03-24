@@ -136,7 +136,7 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
               {topDossiers.map((dossier, i) => (
                 <Link
                   key={dossier.slug}
-                  href={`/assemblee/${dossier.slug}`}
+                  href={`/parlement/dossiers/${dossier.slug}`}
                   prefetch={false}
                   className="block group"
                 >

@@ -166,7 +166,7 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <Link
-                          href={`/votes/${vote.scrutin.id}`}
+                          href={`/parlement/votes/${vote.scrutin.id}`}
                           className="font-medium hover:underline line-clamp-2"
                         >
                           {vote.scrutin.title}

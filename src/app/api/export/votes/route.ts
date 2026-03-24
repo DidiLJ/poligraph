@@ -54,7 +54,7 @@ export const GET = withPublicRoute(async (request) => {
     totalVotes: s.votesFor + s.votesAgainst + s.votesAbstain,
     result: VOTING_RESULT_LABELS[s.result],
     sourceUrl: s.sourceUrl || "",
-    pageUrl: `${SITE_URL}/votes/${s.slug || s.id}`,
+    pageUrl: `${SITE_URL}/parlement/votes/${s.slug || s.id}`,
   }));
 
   const columns = [

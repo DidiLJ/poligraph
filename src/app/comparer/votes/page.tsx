@@ -507,7 +507,7 @@ export default async function VotesComparisonPage({ searchParams }: PageProps) {
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1 min-w-0">
                   <Link
-                    href={`/votes/${cv.slug || cv.scrutinId}`}
+                    href={`/parlement/votes/${cv.slug || cv.scrutinId}`}
                     className="font-medium text-sm hover:underline line-clamp-2"
                   >
                     {cv.title}

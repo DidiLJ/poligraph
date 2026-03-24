@@ -433,14 +433,22 @@ export async function getChamberAdoptionRates(): Promise<
 // Key votes (parlement-riche hub)
 // ---------------------------------------------------------------------------
 
+type KeyVote = DailyScrutin & { score: number; citizenImpact: string | null };
+
 /** Key votes from last N days for the hub hero + grid. */
 export async function getKeyVotes(): Promise<{
-  hero: (DailyScrutin & { score: number }) | null;
-  grid: Array<DailyScrutin & { score: number }>;
+  hero: KeyVote | null;
+  grid: KeyVote[];
 }> {
   "use cache";
   cacheTag("votes", "votes-key");
   cacheLife("minutes");
+
+  const keySelect = {
+    ...DAILY_SELECT,
+    citizenImpact: true,
+    importance: { select: { score: true } },
+  } as const;
 
   const windowStart = new Date();
   windowStart.setDate(windowStart.getDate() - KEY_VOTES_HUB_WINDOW_DAYS);
@@ -452,10 +460,7 @@ export async function getKeyVotes(): Promise<{
     },
     orderBy: [{ votingDate: "desc" }, { importance: { score: "desc" } }],
     take: KEY_VOTES_GRID_COUNT + 1,
-    select: {
-      ...DAILY_SELECT,
-      importance: { select: { score: true } },
-    },
+    select: keySelect,
   });
 
   if (keyVotes.length === 0) {
@@ -466,10 +471,7 @@ export async function getKeyVotes(): Promise<{
       },
       orderBy: { importance: { score: "desc" } },
       take: KEY_VOTES_GRID_COUNT + 1,
-      select: {
-        ...DAILY_SELECT,
-        importance: { select: { score: true } },
-      },
+      select: keySelect,
     });
 
     const mapped = fallback.map((s) => ({

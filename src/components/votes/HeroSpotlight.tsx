@@ -16,6 +16,7 @@ interface HeroSpotlightProps {
   result: VotingResult;
   theme: ThemeCategory | null;
   summary: string | null;
+  citizenImpact: string | null;
 }
 
 export function HeroSpotlight({
@@ -29,11 +30,14 @@ export function HeroSpotlight({
   result,
   theme,
   summary,
+  citizenImpact,
 }: HeroSpotlightProps) {
   const href = `/parlement/votes/${slug || id}`;
   const total = votesFor + votesAgainst + votesAbstain;
   const forPct = total > 0 ? (votesFor / total) * 100 : 0;
   const againstPct = total > 0 ? (votesAgainst / total) * 100 : 0;
+  // Prefer citizenImpact (citizen-friendly, formatted) over raw summary
+  const displayText = citizenImpact || summary;
 
   return (
     <Link
@@ -50,7 +54,11 @@ export function HeroSpotlight({
         {title}
       </h2>
 
-      {summary && <p className="text-sm text-slate-300 line-clamp-3 mb-4">{summary}</p>}
+      {displayText && (
+        <p className="text-sm text-slate-300 line-clamp-3 mb-4">
+          {displayText.replace(/[#*_]/g, "").trim()}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center gap-4 mb-4">
         <VotingResultBadge result={result} />

@@ -24,8 +24,7 @@ export function ScrutinContext({
   votesDetailSlot,
 }: ScrutinContextProps) {
   const hasEnBref = summary || citizenImpact;
-  const showEnjeuxTab = isKeyVote;
-  const hasEnjeuxContent = isKeyVote && analysis;
+  const showEnjeuxTab = isKeyVote && analysis;
 
   if (!hasEnBref && !showEnjeuxTab && !votesDetailSlot) return null;
 
@@ -55,15 +54,7 @@ export function ScrutinContext({
 
       {showEnjeuxTab && (
         <TabsContent value="enjeux">
-          {hasEnjeuxContent ? (
-            <EnjeuxContent analysis={analysis!} />
-          ) : (
-            <Card className="border-dashed">
-              <CardContent className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">Analyse en cours de génération</p>
-              </CardContent>
-            </Card>
-          )}
+          <EnjeuxContent analysis={analysis!} />
         </TabsContent>
       )}
 

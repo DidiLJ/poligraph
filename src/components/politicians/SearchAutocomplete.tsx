@@ -60,7 +60,7 @@ function ResultAvatar({ photoUrl, fullName }: { photoUrl: string | null; fullNam
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={normalizedUrl}
-        alt=""
+        alt={fullName}
         className={cn(
           "w-full h-full object-cover transition-opacity duration-200",
           isLoaded ? "opacity-100" : "opacity-0"

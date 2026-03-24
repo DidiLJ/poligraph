@@ -13,22 +13,26 @@ interface IncumbentMaireCardProps {
     photoUrl: string | null;
   };
   isRunningAgain: boolean;
-  /** Result status when T1 results are available */
+  /** Result status when results are available */
   resultStatus?: "reelected" | "runoff" | "defeated" | null;
+  /** Whether both rounds are over */
+  electionCompleted?: boolean;
 }
 
 export function IncumbentMaireCard({
   maire,
   isRunningAgain,
   resultStatus,
+  electionCompleted,
 }: IncumbentMaireCardProps) {
   const startYear = maire.firstElectedDate?.getFullYear() ?? maire.mandateStart?.getFullYear();
   const partyName = maire.party?.shortName ?? maire.partyLabel;
+  const isFemale = maire.gender === "F";
 
   return (
     <div className="border rounded-xl p-4 bg-card">
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-        Maire sortant{maire.gender === "F" ? "e" : ""}
+        Maire sortant{isFemale ? "e" : ""}
       </p>
       <div className="flex items-center justify-between gap-4">
         <div>
@@ -45,20 +49,34 @@ export function IncumbentMaireCard({
         <div className="flex items-center gap-2 shrink-0">
           {resultStatus === "reelected" ? (
             <Badge variant="default" className="bg-emerald-600">
-              Réélu{maire.gender === "F" ? "e" : ""}
+              Réélu{isFemale ? "e" : ""}
             </Badge>
           ) : resultStatus === "defeated" ? (
-            <Badge variant="destructive">Battu{maire.gender === "F" ? "e" : ""}</Badge>
+            <Badge variant="destructive">Battu{isFemale ? "e" : ""}</Badge>
           ) : resultStatus === "runoff" ? (
             <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200">
               2nd tour
             </Badge>
           ) : isRunningAgain ? (
             <Badge variant="default" className="bg-emerald-600">
-              Se représente
+              {electionCompleted ? (
+                <>
+                  S{"'"}est représenté{isFemale ? "e" : ""}
+                </>
+              ) : (
+                "Se représente"
+              )}
             </Badge>
           ) : (
-            <Badge variant="secondary">Ne se représente pas</Badge>
+            <Badge variant="secondary">
+              {electionCompleted ? (
+                <>
+                  Ne s{"'"}est pas représenté{isFemale ? "e" : ""}
+                </>
+              ) : (
+                "Ne se représente pas"
+              )}
+            </Badge>
           )}
         </div>
       </div>

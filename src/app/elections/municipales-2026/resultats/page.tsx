@@ -11,14 +11,13 @@ import { CommuneSearch } from "@/components/elections/municipales/CommuneSearch"
 export const revalidate = 60;
 
 interface PageProps {
-  searchParams: Promise<{ page?: string; dept?: string; filtre?: string }>;
+  searchParams: Promise<{ page?: string; dept?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const params = await searchParams;
   const cp = new URLSearchParams();
   if (params.dept) cp.set("dept", params.dept);
-  if (params.filtre) cp.set("filtre", params.filtre);
   const qs = cp.toString();
 
   return {
@@ -42,10 +41,8 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
   const rawPage = parseInt(sp.page || "1", 10);
   const page = Number.isFinite(rawPage) && rawPage >= 1 ? rawPage : 1;
   const dept = sp.dept || undefined;
-  const electedOnly = sp.filtre === "elus-t1";
-
   const [data, stats] = await Promise.all([
-    getResultatsListing({ page, dept, electedOnly }),
+    getResultatsListing({ page, dept }),
     getResultatsStats(),
   ]);
 
@@ -59,12 +56,12 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
 
   const { communes, total, totalPages, round2Date } = data;
   const daysLeft = round2Date ? daysUntil(round2Date) : null;
+  const round2Passed = round2Date && new Date(round2Date) < new Date();
 
-  function buildUrl(params: { page?: number; dept?: string; filtre?: string }) {
+  function buildUrl(params: { page?: number; dept?: string }) {
     const p = new URLSearchParams();
     if (params.page && params.page > 1) p.set("page", String(params.page));
     if (params.dept) p.set("dept", params.dept);
-    if (params.filtre) p.set("filtre", params.filtre);
     const qs = p.toString();
     return `/elections/municipales-2026/resultats${qs ? `?${qs}` : ""}`;
   }
@@ -85,7 +82,6 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
         <p className="text-muted-foreground">
           {total.toLocaleString("fr-FR")} commune{total > 1 ? "s" : ""} dépouillées
           {dept && DEPARTMENTS[dept] ? ` en ${DEPARTMENTS[dept].name}` : ""}
-          {electedOnly ? " (avec une liste élue au T1)" : ""}
         </p>
       </section>
 
@@ -95,13 +91,20 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-              {stats.eluesT1.toLocaleString("fr-FR")} liste{stats.eluesT1 > 1 ? "s" : ""} élue
-              {stats.eluesT1 > 1 ? "s" : ""} au T1
+              {stats.eluesT1.toLocaleString("fr-FR")} élue{stats.eluesT1 > 1 ? "s" : ""} au T1
             </Badge>
-            <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
-              <Clock className="h-3.5 w-3.5 text-sky-600" />
-              {stats.auSecondTour.toLocaleString("fr-FR")} au 2nd tour
-            </Badge>
+            {round2Passed ? (
+              <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                {stats.auSecondTour.toLocaleString("fr-FR")} élue
+                {stats.auSecondTour > 1 ? "s" : ""} au T2
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
+                <Clock className="h-3.5 w-3.5 text-sky-600" />
+                {stats.auSecondTour.toLocaleString("fr-FR")} au 2nd tour
+              </Badge>
+            )}
             <span className="text-muted-foreground">
               Participation moy. : {stats.participationMoyenne.toFixed(1)} %
             </span>
@@ -125,38 +128,13 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
 
       {/* Filters */}
       <section className="flex flex-wrap items-center gap-2 mb-6">
-        <Link
-          href={buildUrl({ dept, filtre: undefined })}
-          prefetch={false}
-          className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm border transition-colors ${
-            !electedOnly
-              ? "bg-primary text-primary-foreground border-primary"
-              : "hover:bg-muted border-border"
-          }`}
-        >
-          Toutes
-        </Link>
-        <Link
-          href={buildUrl({ dept, filtre: "elus-t1" })}
-          prefetch={false}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
-            electedOnly
-              ? "bg-emerald-600 text-white border-emerald-600"
-              : "hover:bg-muted border-border"
-          }`}
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Listes élues au T1
-        </Link>
-
         {/* Department filter */}
         {dept && (
           <>
-            <div className="h-6 border-l border-border mx-1" />
             <div className="flex items-center gap-1.5">
               <Badge variant="secondary">{DEPARTMENTS[dept]?.name ?? dept}</Badge>
               <Link
-                href={buildUrl({ filtre: electedOnly ? "elus-t1" : undefined })}
+                href={buildUrl({})}
                 prefetch={false}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
@@ -217,7 +195,11 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
                       </div>
                       {commune.hasElected ? (
                         <Badge className="mt-2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 text-xs">
-                          Liste élue au 1er tour
+                          {commune.hasT2 ? "Élue au 2nd tour" : "Élue au 1er tour"}
+                        </Badge>
+                      ) : commune.hasT2 ? (
+                        <Badge variant="outline" className="mt-2 text-xs text-muted-foreground">
+                          Résultat T2 - {commune.listCount} listes
                         </Badge>
                       ) : (
                         <Badge
@@ -250,7 +232,6 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
               href={buildUrl({
                 page: page - 1,
                 dept,
-                filtre: electedOnly ? "elus-t1" : undefined,
               })}
               className="inline-flex items-center gap-1 px-4 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
               prefetch={false}
@@ -271,7 +252,6 @@ export default async function ResultatsPage({ searchParams }: PageProps) {
               href={buildUrl({
                 page: page + 1,
                 dept,
-                filtre: electedOnly ? "elus-t1" : undefined,
               })}
               className="inline-flex items-center gap-1 px-4 py-2 border rounded-md hover:bg-muted transition-colors text-sm"
               prefetch={false}

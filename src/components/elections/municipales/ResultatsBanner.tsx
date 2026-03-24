@@ -9,10 +9,13 @@ interface ResultatsBannerProps {
     partyLabel: string | null;
     round1Pct: number;
     round1Votes: number;
+    round2Pct?: number | null;
+    round2Votes?: number | null;
     isElected: boolean;
   } | null;
   /** Participation data */
   participation: {
+    round?: number;
     registeredVoters: number;
     actualVoters: number;
     participationRate: number;
@@ -23,6 +26,8 @@ interface ResultatsBannerProps {
   qualifiedCount: number;
   /** Round 2 date if applicable */
   round2Date?: string | null;
+  /** Whether both rounds are over */
+  electionCompleted?: boolean;
 }
 
 export function ResultatsBanner({
@@ -31,11 +36,17 @@ export function ResultatsBanner({
   listCount,
   qualifiedCount,
   round2Date,
+  electionCompleted,
 }: ResultatsBannerProps) {
   // No results at all: don't render
   if (!topList && !participation) return null;
 
   const isElected = topList?.isElected ?? false;
+  const hasT2 = topList?.round2Votes != null;
+
+  // Display T2 results when available, otherwise T1
+  const displayPct = hasT2 ? topList!.round2Pct! : topList?.round1Pct;
+  const displayVotes = hasT2 ? topList!.round2Votes! : topList?.round1Votes;
 
   // Participation-only state (partial import)
   if (!topList && participation) {
@@ -91,10 +102,11 @@ export function ResultatsBanner({
           </div>
           <div className="text-right shrink-0">
             <p className="text-3xl font-extrabold tabular-nums tracking-tight">
-              {topList.round1Pct.toFixed(2)} %
+              {displayPct != null ? displayPct.toFixed(2) : "—"} %
             </p>
             <p className="text-sm opacity-80 tabular-nums">
-              {topList.round1Votes.toLocaleString("fr-FR")} voix
+              {displayVotes != null ? displayVotes.toLocaleString("fr-FR") : "—"} voix
+              {hasT2 && <span className="ml-1 opacity-70">(T2)</span>}
             </p>
           </div>
         </div>
@@ -107,7 +119,9 @@ export function ResultatsBanner({
                 <p className="font-bold text-lg tabular-nums">
                   {participation.participationRate.toFixed(1)} %
                 </p>
-                <p className="text-muted-foreground text-xs">Participation</p>
+                <p className="text-muted-foreground text-xs">
+                  Participation{participation.round === 2 ? " (T2)" : ""}
+                </p>
               </div>
               <div className="h-8 border-l border-border" />
               <div className="text-center">
@@ -128,9 +142,11 @@ export function ResultatsBanner({
             {isElected ? (
               <>
                 <p className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  Élu au 1er tour
+                  {hasT2 ? "Élu au 2nd tour" : "Élu au 1er tour"}
                 </p>
-                <p className="text-muted-foreground text-xs">Majorité absolue</p>
+                <p className="text-muted-foreground text-xs">
+                  {hasT2 ? "Majorité relative" : "Majorité absolue"}
+                </p>
               </>
             ) : round2Date ? (
               <>
@@ -140,6 +156,13 @@ export function ResultatsBanner({
                 <p className="text-muted-foreground text-xs">
                   {qualifiedCount} liste{qualifiedCount > 1 ? "s" : ""} qualifiée
                   {qualifiedCount > 1 ? "s" : ""}
+                </p>
+              </>
+            ) : electionCompleted ? (
+              <>
+                <p className="font-semibold text-muted-foreground">Résultats T2</p>
+                <p className="text-muted-foreground text-xs">
+                  {qualifiedCount} liste{qualifiedCount > 1 ? "s" : ""} en lice
                 </p>
               </>
             ) : (

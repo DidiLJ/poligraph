@@ -27,9 +27,7 @@ import {
 
 const URLS = {
   t1: "https://www.data.gouv.fr/fr/datasets/r/4feeef01-24f7-4d5a-914f-8aa806f31ec2",
-  // T2 CSV URL: published day after T2 vote on data.gouv.fr
-  // Update this once the resource is live
-  t2: "",
+  t2: "https://www.data.gouv.fr/fr/datasets/r/6ff67a28-01bf-459e-beca-dd7aa8132dc1",
 };
 
 const ELECTION_SLUG = "municipales-2026";

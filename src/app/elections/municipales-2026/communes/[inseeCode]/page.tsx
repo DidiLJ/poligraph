@@ -113,8 +113,14 @@ export default async function CommuneDetailPage({ params }: PageProps) {
         {commune.hasResults &&
           (() => {
             const electedList = commune.lists.find((l) => l.isElected);
-            const topList = electedList || commune.lists[0];
+            // For T2: sort by round2Pct to find the leading list
+            const topList =
+              electedList ||
+              (commune.hasT2Results
+                ? [...commune.lists].sort((a, b) => (b.round2Pct ?? 0) - (a.round2Pct ?? 0))[0]
+                : commune.lists[0]);
             const qualifiedCount = commune.lists.filter((l) => l.round1Qualified).length;
+            const round2Passed = commune.round2Date && new Date(commune.round2Date) < new Date();
 
             return (
               <ResultatsBanner
@@ -126,6 +132,8 @@ export default async function CommuneDetailPage({ params }: PageProps) {
                         partyLabel: topList.partyLabel,
                         round1Pct: topList.round1Pct,
                         round1Votes: topList.round1Votes!,
+                        round2Pct: topList.round2Pct,
+                        round2Votes: topList.round2Votes,
                         isElected: topList.isElected,
                       }
                     : null
@@ -133,6 +141,7 @@ export default async function CommuneDetailPage({ params }: PageProps) {
                 participation={commune.participation}
                 listCount={commune.stats.listCount}
                 qualifiedCount={qualifiedCount}
+                electionCompleted={!!round2Passed}
                 round2Date={
                   !electedList && commune.round2Date && new Date(commune.round2Date) > new Date()
                     ? new Date(commune.round2Date).toLocaleDateString("fr-FR", {
@@ -169,29 +178,37 @@ export default async function CommuneDetailPage({ params }: PageProps) {
           })()}
 
         {/* Incumbent mayor */}
-        {commune.incumbentMaire && (
-          <div className="mb-6">
-            <IncumbentMaireCard
-              maire={commune.incumbentMaire.maire}
-              isRunningAgain={commune.incumbentMaire.isRunningAgain}
-              resultStatus={
-                commune.hasResults &&
-                commune.incumbentMaire.isRunningAgain &&
-                commune.incumbentMaire.candidacy
-                  ? (() => {
-                      const maireList = commune.lists.find(
-                        (l) => l.name === commune.incumbentMaire!.candidacy!.listName
-                      );
-                      if (!maireList || maireList.round1Pct == null) return null;
-                      if (maireList.isElected) return "reelected" as const;
-                      if (maireList.round1Qualified) return "runoff" as const;
-                      return "defeated" as const;
-                    })()
-                  : null
-              }
-            />
-          </div>
-        )}
+        {commune.incumbentMaire &&
+          (() => {
+            const round2Passed = commune.round2Date && new Date(commune.round2Date) < new Date();
+            return (
+              <div className="mb-6">
+                <IncumbentMaireCard
+                  maire={commune.incumbentMaire.maire}
+                  isRunningAgain={commune.incumbentMaire.isRunningAgain}
+                  electionCompleted={!!round2Passed}
+                  resultStatus={
+                    commune.hasResults &&
+                    commune.incumbentMaire.isRunningAgain &&
+                    commune.incumbentMaire.candidacy
+                      ? (() => {
+                          const maireList = commune.lists.find(
+                            (l) => l.name === commune.incumbentMaire!.candidacy!.listName
+                          );
+                          if (!maireList || maireList.round1Pct == null) return null;
+                          if (maireList.isElected) return "reelected" as const;
+                          // T2 results available: qualified but not elected = defeated
+                          if (commune.hasT2Results && maireList.round2Pct != null)
+                            return "defeated" as const;
+                          if (maireList.round1Qualified) return "runoff" as const;
+                          return "defeated" as const;
+                        })()
+                      : null
+                  }
+                />
+              </div>
+            );
+          })()}
 
         {/* Radiographie */}
         <section className="mb-8">

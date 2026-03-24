@@ -15,7 +15,6 @@ import { getScrutins, getLegislatures, getChambers, getThemeCounts } from "@/lib
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import type { VotingResult, Chamber, ThemeCategory } from "@/types";
-import { ArrowLeft } from "lucide-react";
 
 interface ScrutinsListingProps {
   searchParams: {
@@ -80,15 +79,6 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
         numberOfItems={total}
       />
       <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <Link
-          href="/parlement"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Parlement
-        </Link>
-
         {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>

@@ -83,6 +83,12 @@ export const NAV_SECONDARY: NavItem[] = [
     icon: "search",
     description: "Recherche avancée",
   },
+  {
+    href: "/parlement/groupes",
+    label: "Groupes parlementaires",
+    icon: "landmark",
+    description: "Groupes de l'AN et du Sénat",
+  },
 ];
 
 /** @deprecated Use NAV_PRIMARY instead */

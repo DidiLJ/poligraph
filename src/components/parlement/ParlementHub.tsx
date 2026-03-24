@@ -19,7 +19,7 @@ import {
   getHubStats,
   getLastScrutinDate,
   getTodayVotesByChamber,
-  getThemeCounts,
+  getThemeCountsWithKeyVotes,
   getChamberAdoptionRates,
   getLatestScrutins,
   getKeyVotes,
@@ -84,7 +84,7 @@ export async function ParlementHub() {
       getHubStats(),
       getLastScrutinDate(),
       getTodayVotesByChamber(),
-      getThemeCounts(),
+      getThemeCountsWithKeyVotes(),
       getChamberAdoptionRates(),
       getLatestScrutins(),
       getKeyVotes(),
@@ -248,7 +248,9 @@ export async function ParlementHub() {
                   variant="outline"
                   className={`cursor-pointer hover:opacity-80 transition-opacity ${THEME_CATEGORY_COLORS[t.theme]}`}
                 >
-                  {THEME_CATEGORY_ICONS[t.theme]} {THEME_CATEGORY_LABELS[t.theme]} ({t._count})
+                  {THEME_CATEGORY_ICONS[t.theme]} {THEME_CATEGORY_LABELS[t.theme]}
+                  {t.keyVotes > 0 && <span className="ml-1 font-bold">{t.keyVotes} clés</span>} (
+                  {t.total})
                 </Badge>
               </Link>
             ))}
@@ -329,6 +331,17 @@ export async function ParlementHub() {
             </Link>
           </CardContent>
         </Card>
+      </section>
+
+      {/* Groupes parlementaires */}
+      <section className="mb-8">
+        <Link
+          href="/parlement/groupes"
+          className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+        >
+          Groupes parlementaires
+          <ArrowRight className="h-3 w-3" />
+        </Link>
       </section>
 
       {/* Search */}

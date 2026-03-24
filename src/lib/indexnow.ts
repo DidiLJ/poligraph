@@ -77,9 +77,9 @@ export async function submitRecentToIndexNow(lookbackHours = 12): Promise<{ subm
     }),
   ]);
 
-  urls.push(...scrutins.map((s) => `${SITE_URL}/votes/${s.slug}`));
+  urls.push(...scrutins.map((s) => `${SITE_URL}/parlement/votes/${s.slug}`));
   urls.push(...affairs.map((a) => `${SITE_URL}/affaires/${a.slug}`));
-  urls.push(...dossiers.map((d) => `${SITE_URL}/assemblee/${d.slug}`));
+  urls.push(...dossiers.map((d) => `${SITE_URL}/parlement/dossiers/${d.slug}`));
   urls.push(...politicians.map((p) => `${SITE_URL}/politiques/${p.slug}`));
 
   if (urls.length > 0) {

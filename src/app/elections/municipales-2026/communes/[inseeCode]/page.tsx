@@ -1,13 +1,18 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { getCommune, getCommuneHistorique2020 } from "@/lib/data/municipales";
+import {
+  getCommune,
+  getCommuneHistorique2020,
+  getCommuneHistorique2014,
+} from "@/lib/data/municipales";
 import { CommuneRadiographie } from "@/components/elections/municipales/CommuneRadiographie";
 import { ListCard } from "@/components/elections/municipales/ListCard";
 import { AlerteCumul } from "@/components/elections/municipales/PoliticianBridge";
 import { IncumbentMaireCard } from "@/components/elections/municipales/IncumbentMaireCard";
 import { NATIONAL_MANDATE_TYPES } from "@/config/labels";
 import { HistoriqueSection2020 } from "@/components/elections/municipales/HistoriqueSection2020";
+import { HistoriqueSection2014 } from "@/components/elections/municipales/HistoriqueSection2014";
 import { ResultatsBanner } from "@/components/elections/municipales/ResultatsBanner";
 import { EventJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -56,6 +61,7 @@ export default async function CommuneDetailPage({ params }: PageProps) {
   const { inseeCode } = await params;
   const commune = await getCommune(inseeCode);
   const historique2020 = await getCommuneHistorique2020(inseeCode);
+  const historique2014 = await getCommuneHistorique2014(inseeCode);
 
   if (!commune) {
     notFound();
@@ -204,6 +210,13 @@ export default async function CommuneDetailPage({ params }: PageProps) {
         {historique2020 && (
           <section className="mb-8">
             <HistoriqueSection2020 data={historique2020} />
+          </section>
+        )}
+
+        {/* Historique 2014 */}
+        {historique2014 && (
+          <section className="mb-8">
+            <HistoriqueSection2014 data={historique2014} />
           </section>
         )}
 

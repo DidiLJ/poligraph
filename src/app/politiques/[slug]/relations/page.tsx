@@ -1,9 +1,9 @@
 import { cache } from "react";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { RelationsClient } from "./RelationsClient";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -61,24 +61,13 @@ export default async function RelationsPage({ params }: PageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="text-sm text-muted-foreground mb-6">
-        <ol className="flex items-center gap-2">
-          <li>
-            <Link href="/politiques" className="hover:text-foreground">
-              Représentants
-            </Link>
-          </li>
-          <li>/</li>
-          <li>
-            <Link href={`/politiques/${slug}`} className="hover:text-foreground">
-              {politician.fullName}
-            </Link>
-          </li>
-          <li>/</li>
-          <li className="text-foreground">Relations</li>
-        </ol>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Politiques", href: "/politiques" },
+          { label: politician.fullName, href: `/politiques/${slug}` },
+          { label: "Relations" },
+        ]}
+      />
 
       {/* Header */}
       <div className="mb-8">

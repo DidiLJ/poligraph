@@ -15,8 +15,9 @@ import {
 import type { DossierTimelineEntry } from "@/types/legislation";
 import { AMENDMENT_STATUS_LABELS, AMENDMENT_STATUS_COLORS } from "@/config/labels";
 import { VotingResultBadge } from "@/components/votes";
-import { ExternalLink, ArrowLeft, Calendar, FileText, Vote } from "lucide-react";
-import { LegislationJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { ExternalLink, Calendar, FileText, Vote } from "lucide-react";
+import { LegislationJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { formatDate } from "@/lib/utils";
 import type { MandateType } from "@/generated/prisma";
@@ -183,25 +184,14 @@ export default async function DossierDetailPage({ params }: PageProps) {
         legislationIdentifier={dossier.number || dossier.externalId}
         url={`${SITE_URL}/parlement/dossiers/${dossier.slug || dossier.externalId}`}
       />
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Dossiers", url: `${SITE_URL}/parlement/dossiers` },
-          {
-            name: dossier.shortTitle || dossier.title,
-            url: `${SITE_URL}/parlement/dossiers/${dossier.slug || dossier.externalId}`,
-          },
-        ]}
-      />
       <div className="container mx-auto px-4 py-8">
-        {/* Back link */}
-        <Link
-          href="/parlement/dossiers"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour aux dossiers
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Parlement", href: "/parlement" },
+            { label: "Dossiers législatifs", href: "/parlement/dossiers" },
+            { label: dossier.shortTitle || dossier.title },
+          ]}
+        />
 
         {/* Header */}
         <div className="mb-8">

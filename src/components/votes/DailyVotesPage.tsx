@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { VoteCard } from "./VoteCard";
 import { DateNavigation } from "./DateNavigation";
-import { BreadcrumbJsonLd, CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getScrutinsByDate, getAdjacentVoteDates } from "@/lib/data/scrutins";
 import { CHAMBER_LABELS } from "@/config/labels";
 import { SITE_URL } from "@/config/site";
@@ -24,13 +25,6 @@ export async function DailyVotesPage({ date, isToday }: DailyVotesPageProps) {
 
   return (
     <>
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Votes", url: `${SITE_URL}/parlement/votes` },
-          { name: title, url: `${SITE_URL}${canonicalPath}` },
-        ]}
-      />
       {data.total > 0 && (
         <CollectionPageJsonLd
           name={`Votes parlementaires du ${formatted}`}
@@ -43,13 +37,13 @@ export async function DailyVotesPage({ date, isToday }: DailyVotesPageProps) {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Link href="/parlement/votes" className="hover:text-foreground transition-colors">
-              Votes
-            </Link>
-            <span>/</span>
-            <span>{isToday ? "Aujourd'hui" : formatted}</span>
-          </div>
+          <Breadcrumb
+            items={[
+              { label: "Parlement", href: "/parlement" },
+              { label: "Votes", href: "/parlement/votes" },
+              { label: isToday ? "Aujourd'hui" : formatted },
+            ]}
+          />
 
           <h1 className="text-3xl font-display font-extrabold tracking-tight mb-4">{title}</h1>
 

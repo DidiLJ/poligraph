@@ -26,7 +26,8 @@ import type { AffairStatus } from "@/types";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { PoliticalPositionBadge } from "@/components/partis/PoliticalPositionBadge";
 import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
-import { OrganizationJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { OrganizationJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ensureContrast } from "@/lib/contrast";
 import { SITE_URL } from "@/config/site";
 import { db } from "@/lib/db";
@@ -142,23 +143,10 @@ export default async function PartyPage({ params }: PageProps) {
         dissolutionDate={party.dissolvedDate?.toISOString().split("T")[0]}
         sameAs={sameAsUrls.length > 0 ? sameAsUrls : undefined}
       />
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Partis", url: `${SITE_URL}/partis` },
-          { name: party.shortName, url: `${SITE_URL}/partis/${party.slug}` },
-        ]}
-      />
-
       <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <nav className="text-sm text-muted-foreground mb-6">
-          <Link href="/partis" className="hover:text-foreground">
-            Partis
-          </Link>
-          <span className="mx-2">/</span>
-          <span>{party.shortName}</span>
-        </nav>
+        <Breadcrumb
+          items={[{ label: "Partis", href: "/partis" }, { label: party.shortName || party.name }]}
+        />
 
         {/* Header */}
         <div className="mb-8">

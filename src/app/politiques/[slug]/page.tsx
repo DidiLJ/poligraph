@@ -16,7 +16,8 @@ import { ensureContrast } from "@/lib/contrast";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { MandateTimeline } from "@/components/politicians/MandateTimeline";
 import { InteractiveTimeline } from "@/components/politicians/InteractiveTimeline";
-import { PersonJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { PersonJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { DeclarationCard } from "@/components/declarations/DeclarationCard";
 import { MarkdownText } from "@/components/ui/markdown";
 import type { DeclarationDetails } from "@/types/hatvp";
@@ -234,23 +235,10 @@ export default async function PoliticianPage({ params }: PageProps) {
           .filter((url): url is string => url != null)}
         memberOf={memberOfOrgs.length > 0 ? memberOfOrgs : undefined}
       />
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Politiques", url: `${SITE_URL}/politiques` },
-          { name: politician.fullName, url: `${SITE_URL}/politiques/${politician.slug}` },
-        ]}
-      />
-
       <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <nav className="text-sm text-muted-foreground mb-6">
-          <Link href="/politiques" className="hover:text-foreground">
-            Politiques
-          </Link>
-          <span className="mx-2">/</span>
-          <span>{politician.fullName}</span>
-        </nav>
+        <Breadcrumb
+          items={[{ label: "Politiques", href: "/politiques" }, { label: politician.fullName }]}
+        />
 
         {/* Header */}
         <div className="flex items-start gap-6 mb-8">

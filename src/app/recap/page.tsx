@@ -10,6 +10,7 @@ import { getWeeklyRecap, getWeekStart, getWeekEnd, getISOWeekNumber } from "@/li
 import { PLATFORM_UPDATE_TYPE_LABELS, PLATFORM_UPDATE_TYPE_ICONS } from "@/config/labels";
 import { CERTAINTY_LABELS, CERTAINTY_COLORS, type CertaintyLevel } from "@/config/certainty";
 import { NewsletterCTA } from "./NewsletterCTA";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 300;
 
@@ -90,6 +91,7 @@ export default async function RecapPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <Breadcrumb items={[{ label: "Le récap" }]} />
       {/* ── Masthead ────────────────────────────────── */}
       <section className="relative overflow-hidden border-b bg-gradient-to-br from-primary/5 via-background to-accent/10">
         <HexPattern className="absolute inset-0 opacity-[0.03] text-primary" />

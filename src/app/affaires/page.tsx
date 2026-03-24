@@ -35,6 +35,7 @@ import {
 import { AffairModeToggle } from "@/components/affairs/AffairModeToggle";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { AffairStatus, Involvement } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
@@ -175,6 +176,7 @@ export default async function AffairesPage({ searchParams }: PageProps) {
         url={`${SITE_URL}/affaires`}
         numberOfItems={totalAffairs}
       />
+      <Breadcrumb items={[{ label: "Affaires" }]} />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>

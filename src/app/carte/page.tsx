@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CarteClient } from "./CarteClient";
 import { getElectionMapData } from "@/services/electionMap";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 300; // ISR: re-check feature flag every 5 minutes
 
@@ -25,18 +26,21 @@ export default async function CartePage() {
   const { departments, totalSeats } = await getElectionMapData();
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
-          Carte des Résultats Électoraux
-        </h1>
-        <p className="text-muted-foreground">
-          Visualisez les résultats des législatives 2024 par département. Cliquez sur un département
-          pour voir les détails.
-        </p>
-      </div>
+    <>
+      <Breadcrumb items={[{ label: "Carte" }]} />
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+            Carte des Résultats Électoraux
+          </h1>
+          <p className="text-muted-foreground">
+            Visualisez les résultats des législatives 2024 par département. Cliquez sur un
+            département pour voir les détails.
+          </p>
+        </div>
 
-      <CarteClient initialDepartments={departments} totalSeats={totalSeats} />
-    </div>
+        <CarteClient initialDepartments={departments} totalSeats={totalSeats} />
+      </div>
+    </>
   );
 }

@@ -20,6 +20,7 @@ import {
   type GroupComparisonData,
   type PartyVoteComparisonRow,
 } from "@/lib/data/compare";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 300;
 
@@ -71,46 +72,49 @@ export default async function ComparerPage({ searchParams }: PageProps) {
   const selectorLabel = cat === "partis" ? "Parti" : cat === "groupes" ? "Groupe" : "Politique";
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">Comparer</h1>
-        <p className="text-sm text-muted-foreground">
-          Comparez des représentants, partis ou groupes parlementaires.
-        </p>
-        <div className="mt-4">
-          <CompareCategoryPicker />
-        </div>
-      </div>
-
-      {/* Selectors */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        <div>
-          <h2 className="text-sm font-medium mb-2 text-muted-foreground">{selectorLabel} 1</h2>
-          <CompareSelector category={cat} side="a" preview={previewA} />
-        </div>
-        <div>
-          <h2 className="text-sm font-medium mb-2 text-muted-foreground">{selectorLabel} 2</h2>
-          <CompareSelector category={cat} side="b" preview={previewB} />
-        </div>
-      </div>
-
-      {/* VS separator + sticky mobile bar */}
-      <CompareHeader left={previewA} right={previewB} />
-
-      {/* Comparison content */}
-      {comparison ? (
-        <ComparisonContent category={cat} data={comparison} />
-      ) : !previewA && !previewB ? (
-        <SuggestedComparisons category={cat} key={cat} />
-      ) : (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg">
-            Sélectionnez un deuxième {selectorLabel.toLowerCase()} pour lancer la comparaison
+    <>
+      <Breadcrumb items={[{ label: "Comparer" }]} />
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">Comparer</h1>
+          <p className="text-sm text-muted-foreground">
+            Comparez des représentants, partis ou groupes parlementaires.
           </p>
+          <div className="mt-4">
+            <CompareCategoryPicker />
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* Selectors */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <h2 className="text-sm font-medium mb-2 text-muted-foreground">{selectorLabel} 1</h2>
+            <CompareSelector category={cat} side="a" preview={previewA} />
+          </div>
+          <div>
+            <h2 className="text-sm font-medium mb-2 text-muted-foreground">{selectorLabel} 2</h2>
+            <CompareSelector category={cat} side="b" preview={previewB} />
+          </div>
+        </div>
+
+        {/* VS separator + sticky mobile bar */}
+        <CompareHeader left={previewA} right={previewB} />
+
+        {/* Comparison content */}
+        {comparison ? (
+          <ComparisonContent category={cat} data={comparison} />
+        ) : !previewA && !previewB ? (
+          <SuggestedComparisons category={cat} key={cat} />
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            <p className="text-lg">
+              Sélectionnez un deuxième {selectorLabel.toLowerCase()} pour lancer la comparaison
+            </p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

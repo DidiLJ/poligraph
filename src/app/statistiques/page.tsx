@@ -15,6 +15,7 @@ import { JudicialSection } from "@/components/stats/JudicialSection";
 import { FactCheckSection } from "@/components/stats/FactCheckSection";
 import { ParticipationSection } from "@/components/stats/ParticipationSection";
 import { getHemicycleData } from "@/lib/data/hemicycle";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 300;
 
@@ -57,50 +58,53 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">Statistiques</h1>
-      <p className="text-muted-foreground mb-8">
-        Vue d&apos;ensemble des données sur la vie politique française
-      </p>
+    <>
+      <Breadcrumb items={[{ label: "Statistiques" }]} />
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">Statistiques</h1>
+        <p className="text-muted-foreground mb-8">
+          Vue d&apos;ensemble des données sur la vie politique française
+        </p>
 
-      <StatsTabs
-        judicialContent={
-          <JudicialSection
-            certaintyCounts={judicialData.certaintyCounts}
-            uniqueCondamnes={judicialData.uniqueCondamnes}
-            uniqueMisEnCause={judicialData.uniqueMisEnCause}
-            byStatus={judicialData.byStatus}
-            byCategory={judicialData.byCategory}
-            critiqueByCategory={judicialData.critiqueByCategory}
-            hemicycleGroups={hemicycleData}
-            victimStats={victimStats}
-          />
-        }
-        factCheckContent={
-          <FactCheckSection
-            total={factCheckData.total}
-            groups={factCheckData.groups}
-            bySource={factCheckData.bySource}
-            mostReliablePoliticians={factCheckData.mostReliablePoliticians}
-            leastReliablePoliticians={factCheckData.leastReliablePoliticians}
-            mostReliableParties={factCheckData.mostReliableParties}
-            leastReliableParties={factCheckData.leastReliableParties}
-          />
-        }
-        legislativeContent={<LegislativeSection stats={legislativeData} />}
-        participationContent={
-          <ParticipationSection
-            ranking={participationData.ranking}
-            groupStatsAN={participationData.groupStatsAN}
-            groupStatsSENAT={participationData.groupStatsSENAT}
-            groupDissidenceAN={participationData.groupDissidenceAN}
-            groupDissidenceSENAT={participationData.groupDissidenceSENAT}
-            chamber={pChamber}
-            page={pPage}
-            sortDirection={pSort}
-          />
-        }
-      />
-    </div>
+        <StatsTabs
+          judicialContent={
+            <JudicialSection
+              certaintyCounts={judicialData.certaintyCounts}
+              uniqueCondamnes={judicialData.uniqueCondamnes}
+              uniqueMisEnCause={judicialData.uniqueMisEnCause}
+              byStatus={judicialData.byStatus}
+              byCategory={judicialData.byCategory}
+              critiqueByCategory={judicialData.critiqueByCategory}
+              hemicycleGroups={hemicycleData}
+              victimStats={victimStats}
+            />
+          }
+          factCheckContent={
+            <FactCheckSection
+              total={factCheckData.total}
+              groups={factCheckData.groups}
+              bySource={factCheckData.bySource}
+              mostReliablePoliticians={factCheckData.mostReliablePoliticians}
+              leastReliablePoliticians={factCheckData.leastReliablePoliticians}
+              mostReliableParties={factCheckData.mostReliableParties}
+              leastReliableParties={factCheckData.leastReliableParties}
+            />
+          }
+          legislativeContent={<LegislativeSection stats={legislativeData} />}
+          participationContent={
+            <ParticipationSection
+              ranking={participationData.ranking}
+              groupStatsAN={participationData.groupStatsAN}
+              groupStatsSENAT={participationData.groupStatsSENAT}
+              groupDissidenceAN={participationData.groupDissidenceAN}
+              groupDissidenceSENAT={participationData.groupDissidenceSENAT}
+              chamber={pChamber}
+              page={pPage}
+              sortDirection={pSort}
+            />
+          }
+        />
+      </div>
+    </>
   );
 }

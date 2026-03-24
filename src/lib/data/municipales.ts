@@ -144,6 +144,7 @@ export interface CommuneResultRow {
   topPct: number | null;
   topVotes: number | null;
   hasElected: boolean;
+  hasT2: boolean;
   listCount: number;
 }
 
@@ -180,23 +181,26 @@ export async function getResultatsListing(options: {
       co.name,
       co."departmentCode",
       co.population,
-      cer."participationRate"::float AS "participationRate",
+      COALESCE(cer2."participationRate", cer1."participationRate")::float AS "participationRate",
       top_list."listName" AS "topListName",
       top_list."leaderName" AS "topLeaderName",
-      top_list."round1Pct"::float AS "topPct",
-      top_list."round1Votes"::int AS "topVotes",
+      COALESCE(top_list."round2Pct", top_list."round1Pct")::float AS "topPct",
+      COALESCE(top_list."round2Votes", top_list."round1Votes")::int AS "topVotes",
       COALESCE(top_list."isElected", false) AS "hasElected",
+      (top_list."round2Pct" IS NOT NULL) AS "hasT2",
       (SELECT COUNT(DISTINCT c2."listName")::int FROM "Candidacy" c2 WHERE c2."communeId" = co.id AND c2."electionId" = ${election.id}) AS "listCount"
     FROM "Commune" co
-    INNER JOIN "CommuneElectionRound" cer
-      ON cer."communeId" = co.id AND cer."electionId" = ${election.id} AND cer.round = 1
+    INNER JOIN "CommuneElectionRound" cer1
+      ON cer1."communeId" = co.id AND cer1."electionId" = ${election.id} AND cer1.round = 1
+    LEFT JOIN "CommuneElectionRound" cer2
+      ON cer2."communeId" = co.id AND cer2."electionId" = ${election.id} AND cer2.round = 2
     LEFT JOIN LATERAL (
-      SELECT c."listName", c."round1Pct", c."round1Votes", c."isElected",
+      SELECT c."listName", c."round1Pct", c."round1Votes", c."round2Pct", c."round2Votes", c."isElected",
              STRING_AGG(CASE WHEN c."listPosition" = 1 THEN c."candidateName" END, ', ') AS "leaderName"
       FROM "Candidacy" c
       WHERE c."communeId" = co.id AND c."electionId" = ${election.id} AND c."round1Pct" IS NOT NULL
-      GROUP BY c."listName", c."round1Pct", c."round1Votes", c."isElected"
-      ORDER BY c."round1Pct" DESC
+      GROUP BY c."listName", c."round1Pct", c."round1Votes", c."round2Pct", c."round2Votes", c."isElected"
+      ORDER BY COALESCE(c."round2Pct", c."round1Pct") DESC
       LIMIT 1
     ) top_list ON true
     WHERE 1=1 ${deptFilter} ${electedFilter}
@@ -244,7 +248,9 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
       lists: [] as never[],
       incumbentMaire: null,
       hasResults: false,
+      hasT2Results: false,
       participation: null,
+      participationT1: null,
       stats: {
         listCount: 0,
         candidateCount: 0,
@@ -307,16 +313,14 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
   // Fetch incumbent maire (sequential to respect pool limit of 2)
   const incumbentMaire = await getIncumbentMaire(inseeCode, election.id);
 
-  // Fetch T1 participation (sequential to respect pool limit of 2)
-  const communeRound = await db.communeElectionRound.findUnique({
-    where: {
-      communeId_electionId_round: {
-        communeId: inseeCode,
-        electionId: election.id,
-        round: 1,
-      },
-    },
+  // Fetch participation (T2 if available, otherwise T1)
+  const communeRounds = await db.communeElectionRound.findMany({
+    where: { communeId: inseeCode, electionId: election.id },
+    orderBy: { round: "desc" },
   });
+  const communeRoundT2 = communeRounds.find((r) => r.round === 2);
+  const communeRoundT1 = communeRounds.find((r) => r.round === 1);
+  const latestRound = communeRoundT2 ?? communeRoundT1 ?? null;
 
   // Group candidacies by list
   type EnrichedCandidacy = (typeof candidacies)[number] & {
@@ -388,11 +392,20 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
     lists,
     incumbentMaire,
     hasResults,
-    participation: communeRound
+    hasT2Results: candidacies.some((c) => c.round2Votes !== null),
+    participation: latestRound
       ? {
-          registeredVoters: communeRound.registeredVoters ?? 0,
-          actualVoters: communeRound.actualVoters ?? 0,
-          participationRate: Number(communeRound.participationRate ?? 0),
+          round: latestRound.round,
+          registeredVoters: latestRound.registeredVoters ?? 0,
+          actualVoters: latestRound.actualVoters ?? 0,
+          participationRate: Number(latestRound.participationRate ?? 0),
+        }
+      : null,
+    participationT1: communeRoundT1
+      ? {
+          registeredVoters: communeRoundT1.registeredVoters ?? 0,
+          actualVoters: communeRoundT1.actualVoters ?? 0,
+          participationRate: Number(communeRoundT1.participationRate ?? 0),
         }
       : null,
     stats: {

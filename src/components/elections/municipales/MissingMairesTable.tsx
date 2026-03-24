@@ -28,7 +28,7 @@ export function MissingMairesTable({ maires }: MissingMairesTableProps) {
   if (maires.length === 0) {
     return (
       <p className="text-muted-foreground text-center py-8">
-        Tous les maires en exercice se représentent.
+        Tous les maires en exercice se sont représentés.
       </p>
     );
   }

@@ -139,6 +139,34 @@ export async function getGroupesListing(
   }));
 }
 
+/** Top 5 votes where this group had a distinctive position (high cohesion). */
+export async function getGroupKeyVotes(groupId: string, limit = 5) {
+  "use cache";
+  cacheTag("votes", "groupes");
+  cacheLife("hours");
+
+  return db.scrutinGroupPosition.findMany({
+    where: { groupId },
+    orderBy: { cohesionPct: "desc" },
+    take: limit,
+    include: {
+      scrutin: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          votingDate: true,
+          votesFor: true,
+          votesAgainst: true,
+          votesAbstain: true,
+          result: true,
+          theme: true,
+        },
+      },
+    },
+  });
+}
+
 export async function getGroupeDetail(slug: string) {
   "use cache";
   cacheTag("votes", "groupes");

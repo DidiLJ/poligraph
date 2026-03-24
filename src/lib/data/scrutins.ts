@@ -291,6 +291,36 @@ export async function getThemeCounts() {
   return counts.filter((c) => c.theme !== null) as { theme: ThemeCategory; _count: number }[];
 }
 
+/** Theme counts including key vote counts for the hub. */
+export async function getThemeCountsWithKeyVotes() {
+  "use cache";
+  cacheTag("votes", "votes-key");
+  cacheLife("minutes");
+
+  const [allCounts, keyCounts] = await Promise.all([
+    db.scrutin.groupBy({
+      by: ["theme"],
+      _count: true,
+      orderBy: { _count: { theme: "desc" } },
+    }),
+    db.scrutin.groupBy({
+      by: ["theme"],
+      where: { importance: { isKeyVote: true } },
+      _count: true,
+    }),
+  ]);
+
+  const keyMap = new Map(keyCounts.filter((c) => c.theme).map((c) => [c.theme!, c._count]));
+
+  return allCounts
+    .filter((c) => c.theme !== null)
+    .map((c) => ({
+      theme: c.theme!,
+      total: c._count,
+      keyVotes: keyMap.get(c.theme!) ?? 0,
+    }));
+}
+
 // ---------------------------------------------------------------------------
 // Hub page — data functions
 // ---------------------------------------------------------------------------

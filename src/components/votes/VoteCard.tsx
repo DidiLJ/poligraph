@@ -45,7 +45,7 @@ export function VoteCard({
   theme,
 }: VoteCardProps) {
   // Use slug for URL if available, fallback to id
-  const href = `/votes/${slug || id}`;
+  const href = `/parlement/votes/${slug || id}`;
   const total = votesFor + votesAgainst + votesAbstain;
   const forPercent = total > 0 ? (votesFor / total) * 100 : 0;
   const againstPercent = total > 0 ? (votesAgainst / total) * 100 : 0;

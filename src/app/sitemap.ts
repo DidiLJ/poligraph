@@ -68,7 +68,7 @@ async function buildStaticAndPoliticiansSitemap(): Promise<MetadataRoute.Sitemap
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/assemblee`,
+      url: `${SITE_URL}/parlement/dossiers`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.8,
@@ -265,13 +265,13 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
 
   const themePages: MetadataRoute.Sitemap = [
     {
-      url: `${SITE_URL}/votes/themes`,
+      url: `${SITE_URL}/parlement/votes/themes`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     },
     ...getAllThemeSlugs().map((slug) => ({
-      url: `${SITE_URL}/votes/themes/${slug}`,
+      url: `${SITE_URL}/parlement/votes/themes/${slug}`,
       lastModified: new Date(),
       changeFrequency: "weekly" as const,
       priority: 0.6,
@@ -300,7 +300,7 @@ async function buildDossiersSitemap(): Promise<MetadataRoute.Sitemap> {
   return dossiers
     .filter((d) => d.slug)
     .map((d) => ({
-      url: `${SITE_URL}/assemblee/${d.slug}`,
+      url: `${SITE_URL}/parlement/dossiers/${d.slug}`,
       lastModified: d.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.6,
@@ -319,7 +319,7 @@ async function buildScrutinsSitemap(): Promise<MetadataRoute.Sitemap> {
   return scrutins
     .filter((s) => s.slug)
     .map((s) => ({
-      url: `${SITE_URL}/votes/${s.slug}`,
+      url: `${SITE_URL}/parlement/votes/${s.slug}`,
       lastModified: s.updatedAt,
       changeFrequency: "monthly" as const,
       priority: 0.4,

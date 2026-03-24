@@ -458,7 +458,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                           {politician.dossierAuthors.map((da) => (
                             <Link
                               key={da.dossier.slug}
-                              href={`/assemblee/${da.dossier.slug}`}
+                              href={`/parlement/dossiers/${da.dossier.slug}`}
                               prefetch={false}
                               className="flex items-start justify-between gap-3 py-2 border-b last:border-0 hover:bg-muted/50 -mx-2 px-2 rounded transition-colors"
                             >

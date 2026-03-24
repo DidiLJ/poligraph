@@ -129,7 +129,7 @@ export function VoteConcordanceSection({
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <Link
-                        href={`/votes/${vote.slug || vote.scrutinId}`}
+                        href={`/parlement/votes/${vote.slug || vote.scrutinId}`}
                         className="font-medium text-sm hover:underline text-primary line-clamp-1"
                         prefetch={false}
                       >

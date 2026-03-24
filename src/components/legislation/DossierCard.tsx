@@ -42,7 +42,7 @@ export function DossierCard({
   compact = false,
 }: DossierCardProps) {
   // Use slug for URL if available, fallback to id
-  const href = `/assemblee/${slug || id}`;
+  const href = `/parlement/dossiers/${slug || id}`;
   const displayTitle = shortTitle || title;
   const displayDate = adoptionDate || filingDate;
 

@@ -193,7 +193,7 @@ async function buildContext(results: SearchResult[], query: string): Promise<str
       lowerQuery.includes("législat")
     ) {
       statsInfo += `- Total dossiers législatifs: ${stats.totalDossiers}\n`;
-      statsInfo += `- Rubrique complète: /assemblee\n`;
+      statsInfo += `- Rubrique complète: /parlement/dossiers\n`;
     }
     if (lowerQuery.includes("vote") || lowerQuery.includes("scrutin")) {
       statsInfo += `- Total votes enregistrés: ${stats.totalVotes}\n`;
@@ -228,7 +228,7 @@ async function buildContext(results: SearchResult[], query: string): Promise<str
         section += result.content;
         const dossierUrl = metadata.slug || metadata.id;
         if (dossierUrl) {
-          section += `\n→ Voir ce dossier: /assemblee/${dossierUrl}`;
+          section += `\n→ Voir ce dossier: /parlement/dossiers/${dossierUrl}`;
         }
         if (metadata.sourceUrl) {
           section += `\n→ Source officielle AN: ${metadata.sourceUrl}`;
@@ -241,7 +241,7 @@ async function buildContext(results: SearchResult[], query: string): Promise<str
         section += result.content;
         const scrutinUrl = metadata.slug || metadata.id;
         if (scrutinUrl) {
-          section += `\n→ Voir ce vote: /votes/${scrutinUrl}`;
+          section += `\n→ Voir ce vote: /parlement/votes/${scrutinUrl}`;
         }
         if (metadata.sourceUrl) {
           section += `\n→ Source officielle AN: ${metadata.sourceUrl}`;

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { VoteCard } from "@/components/votes";
+import { HeroSpotlight } from "@/components/votes/HeroSpotlight";
+import { KeyVoteCard } from "@/components/votes/KeyVoteCard";
 import { ParlementSearch } from "./ParlementSearch";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { FAQJsonLd } from "@/components/seo/JsonLd";
@@ -20,6 +22,7 @@ import {
   getThemeCounts,
   getChamberAdoptionRates,
   getLatestScrutins,
+  getKeyVotes,
 } from "@/lib/data/scrutins";
 import { Info, ArrowRight, Search, Building2, AlertTriangle, Calendar } from "lucide-react";
 import {
@@ -76,14 +79,16 @@ function getPeriodIcon(type: ParliamentaryPeriodType) {
 }
 
 export async function ParlementHub() {
-  const [hubStats, lastDate, today, themeCounts, chamberRates, latestScrutins] = await Promise.all([
-    getHubStats(),
-    getLastScrutinDate(),
-    getTodayVotesByChamber(),
-    getThemeCounts(),
-    getChamberAdoptionRates(),
-    getLatestScrutins(),
-  ]);
+  const [hubStats, lastDate, today, themeCounts, chamberRates, latestScrutins, keyVotes] =
+    await Promise.all([
+      getHubStats(),
+      getLastScrutinDate(),
+      getTodayVotesByChamber(),
+      getThemeCounts(),
+      getChamberAdoptionRates(),
+      getLatestScrutins(),
+      getKeyVotes(),
+    ]);
 
   const [showAssemblee, periodOverride] = await Promise.all([
     isFeatureEnabled("ASSEMBLEE_SECTION"),
@@ -137,6 +142,49 @@ export async function ParlementHub() {
             </div>
           );
         })()}
+
+      {/* Hero Spotlight */}
+      {keyVotes.hero && (
+        <section className="mb-8" aria-label="Vote clé de la semaine">
+          <HeroSpotlight
+            id={keyVotes.hero.id}
+            slug={keyVotes.hero.slug}
+            title={keyVotes.hero.title}
+            votingDate={keyVotes.hero.votingDate}
+            votesFor={keyVotes.hero.votesFor}
+            votesAgainst={keyVotes.hero.votesAgainst}
+            votesAbstain={keyVotes.hero.votesAbstain}
+            result={keyVotes.hero.result}
+            theme={keyVotes.hero.theme}
+            summary={keyVotes.hero.summary}
+          />
+        </section>
+      )}
+
+      {/* Key Votes Grid */}
+      {keyVotes.grid.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-3">Votes clés récents</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {keyVotes.grid.map((s) => (
+              <KeyVoteCard
+                key={s.id}
+                id={s.id}
+                slug={s.slug}
+                title={s.title}
+                votingDate={s.votingDate}
+                votesFor={s.votesFor}
+                votesAgainst={s.votesAgainst}
+                votesAbstain={s.votesAbstain}
+                result={s.result}
+                theme={s.theme}
+                summary={s.summary}
+                isKeyVote
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Aujourd'hui au Parlement */}
       <section className="mb-8">

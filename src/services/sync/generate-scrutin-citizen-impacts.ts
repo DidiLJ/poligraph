@@ -3,11 +3,7 @@
  */
 
 import { db } from "@/lib/db";
-import {
-  generateCitizenImpact,
-  HAIKU_MODEL,
-  type CitizenImpactInput,
-} from "@/services/scrutin-citizen-impact";
+import { generateCitizenImpact, type CitizenImpactInput } from "@/services/scrutin-citizen-impact";
 import { fetchScrutinContext } from "@/services/scrutin-context-fetcher";
 import { AI_RATE_LIMIT_MS, AI_429_BACKOFF_MS } from "@/config/rate-limits";
 
@@ -164,7 +160,7 @@ export async function generateScrutinCitizenImpacts(options?: {
         links,
       };
 
-      const result = await generateCitizenImpact(input, HAIKU_MODEL);
+      const result = await generateCitizenImpact(input);
 
       if (result.confidence < 40) {
         stats.skipped++;

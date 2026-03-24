@@ -135,7 +135,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       return {
         title: `Votes du ${formatted}`,
         description: `Scrutins de l'Assemblée nationale et du Sénat du ${formatted}. Résultats, résumés et détails des votes parlementaires.`,
-        alternates: { canonical: `/votes/${slug}` },
+        alternates: { canonical: `/parlement/votes/${slug}` },
       };
     }
   }
@@ -162,7 +162,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: scrutin.title,
     description,
-    alternates: { canonical: `/votes/${scrutin.slug}` },
+    alternates: { canonical: `/parlement/votes/${scrutin.slug}` },
     ...(isThinContent && { robots: { index: false, follow: true } }),
   };
 }
@@ -182,7 +182,7 @@ export default async function ScrutinPage({ params }: PageProps) {
 
   // Redirect legacy URLs to canonical slug URL
   if (redirect && redirect !== slug) {
-    permanentRedirect(`/votes/${redirect}`);
+    permanentRedirect(`/parlement/votes/${redirect}`);
   }
 
   if (!scrutin) {
@@ -211,8 +211,11 @@ export default async function ScrutinPage({ params }: PageProps) {
       <BreadcrumbJsonLd
         items={[
           { name: "Accueil", url: SITE_URL },
-          { name: "Votes", url: `${SITE_URL}/votes` },
-          { name: scrutin.title, url: `${SITE_URL}/votes/${scrutin.slug || scrutin.externalId}` },
+          { name: "Votes", url: `${SITE_URL}/parlement/votes` },
+          {
+            name: scrutin.title,
+            url: `${SITE_URL}/parlement/votes/${scrutin.slug || scrutin.externalId}`,
+          },
         ]}
       />
       {scrutin.summary && (
@@ -220,13 +223,13 @@ export default async function ScrutinPage({ params }: PageProps) {
           headline={scrutin.title}
           description={scrutin.citizenImpact?.replace(/\*\*/g, "").split(/[.!?]\s/)[0] || undefined}
           datePublished={scrutin.votingDate.toISOString()}
-          url={`${SITE_URL}/votes/${scrutin.slug}`}
+          url={`${SITE_URL}/parlement/votes/${scrutin.slug}`}
         />
       )}
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="text-sm text-muted-foreground mb-6">
-          <Link href="/votes" className="hover:text-foreground">
+          <Link href="/parlement/votes" className="hover:text-foreground">
             Votes
           </Link>
           <span className="mx-2">/</span>
@@ -252,7 +255,7 @@ export default async function ScrutinPage({ params }: PageProps) {
             <Badge variant="outline">{scrutin.legislature}e législature</Badge>
             {scrutin.theme && (
               <Link
-                href={`/votes/themes/${scrutin.theme.toLowerCase().replace(/_/g, "-")}`}
+                href={`/parlement/votes/themes/${scrutin.theme.toLowerCase().replace(/_/g, "-")}`}
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors hover:opacity-80 ${THEME_CATEGORY_COLORS[scrutin.theme]}`}
               >
                 {THEME_CATEGORY_LABELS[scrutin.theme]}
@@ -335,7 +338,7 @@ export default async function ScrutinPage({ params }: PageProps) {
         {/* Dossier législatif lié */}
         {scrutin.dossierLegislatif && (
           <Link
-            href={`/assemblee/${scrutin.dossierLegislatif.slug}`}
+            href={`/parlement/dossiers/${scrutin.dossierLegislatif.slug}`}
             className="flex items-center gap-3 mb-8 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors group"
           >
             <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -481,7 +484,7 @@ export default async function ScrutinPage({ params }: PageProps) {
 
         {/* Back link */}
         <div className="mt-8 text-center">
-          <Link href="/votes" className="text-primary hover:underline">
+          <Link href="/parlement/votes" className="text-primary hover:underline">
             ← Retour aux scrutins
           </Link>
         </div>

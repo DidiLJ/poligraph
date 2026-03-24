@@ -126,9 +126,24 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/votes/:path*",
+        destination: "/parlement/votes/:path*",
+        statusCode: 308,
+      },
+      {
+        source: "/assemblee/:path*",
+        destination: "/parlement/dossiers/:path*",
+        statusCode: 308,
+      },
+      {
         source: "/votes",
-        destination: "/parlement",
-        permanent: true,
+        destination: "/parlement/votes",
+        statusCode: 308,
+      },
+      {
+        source: "/assemblee",
+        destination: "/parlement/dossiers",
+        statusCode: 308,
       },
     ];
   },

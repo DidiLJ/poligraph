@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: "Votes par thématique",
   description:
     "Explorez les scrutins parlementaires classés par thématique : économie, santé, sécurité, environnement et plus. Découvrez les votes de vos représentants par sujet.",
-  alternates: { canonical: "/votes/themes" },
+  alternates: { canonical: "/parlement/votes/themes" },
 };
 
 export default async function ThemesListingPage() {
@@ -61,7 +61,7 @@ export default async function ThemesListingPage() {
         items={[
           { name: "Accueil", url: SITE_URL },
           { name: "Parlement", url: `${SITE_URL}/parlement` },
-          { name: "Thématiques", url: `${SITE_URL}/votes/themes` },
+          { name: "Thématiques", url: `${SITE_URL}/parlement/votes/themes` },
         ]}
       />
 
@@ -80,7 +80,7 @@ export default async function ThemesListingPage() {
           const colorClass = THEME_CATEGORY_COLORS[theme];
 
           return (
-            <Link key={theme} href={`/votes/themes/${slug}`}>
+            <Link key={theme} href={`/parlement/votes/themes/${slug}`}>
               <Card className="hover:shadow-md transition-shadow h-full">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-3 mb-3">

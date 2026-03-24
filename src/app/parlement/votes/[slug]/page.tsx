@@ -279,12 +279,90 @@ export default async function ScrutinPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Context: Summary, Citizen Impact, Analysis (tabbed) */}
+        {/* Context: Summary, Citizen Impact, Analysis, Votes détaillés (tabbed) */}
         <ScrutinContext
           summary={scrutin.summary}
           citizenImpact={scrutin.citizenImpact}
           analysis={analysis}
           isKeyVote={isKeyVote}
+          votesDetailSlot={
+            scrutin.votes.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
+                {(["POUR", "CONTRE", "ABSTENTION", "NON_VOTANT", "ABSENT"] as VotePosition[]).map(
+                  (position) => {
+                    const votes = votesByPosition[position] || [];
+                    return (
+                      <Card key={position}>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">
+                              <VotePositionBadge position={position} />
+                            </CardTitle>
+                            <span className="text-sm text-muted-foreground">{votes.length}</span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {votes.length > 0 ? (
+                            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                              {votes.map((vote) => (
+                                <Link
+                                  key={vote.id}
+                                  href={`/politiques/${vote.politician.slug}`}
+                                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
+                                >
+                                  <PoliticianAvatar
+                                    photoUrl={vote.politician.photoUrl}
+                                    firstName={vote.politician.firstName}
+                                    lastName={vote.politician.lastName}
+                                    size="sm"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium">
+                                      {vote.politician.fullName}
+                                    </p>
+                                    {(() => {
+                                      const group =
+                                        vote.politician.mandates[0]?.parliamentaryData
+                                          ?.parliamentaryGroup;
+                                      if (group) {
+                                        return (
+                                          <p
+                                            className="text-xs text-muted-foreground"
+                                            title={group.name}
+                                          >
+                                            {group.code}
+                                          </p>
+                                        );
+                                      }
+                                      if (vote.politician.currentParty) {
+                                        return (
+                                          <p
+                                            className="text-xs text-muted-foreground"
+                                            title={vote.politician.currentParty.name}
+                                          >
+                                            {vote.politician.currentParty.shortName}
+                                          </p>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+                                  </div>
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Aucun député
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                )}
+              </div>
+            ) : undefined
+          }
         />
 
         {/* Dossier législatif lié */}
@@ -373,75 +451,6 @@ export default async function ScrutinPage({ params }: PageProps) {
             </div>
           </CardContent>
         </Card>
-
-        {/* Votes by position */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {(["POUR", "CONTRE", "ABSTENTION", "NON_VOTANT", "ABSENT"] as VotePosition[]).map(
-            (position) => {
-              const votes = votesByPosition[position] || [];
-              return (
-                <Card key={position}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">
-                        <VotePositionBadge position={position} />
-                      </CardTitle>
-                      <span className="text-sm text-muted-foreground">{votes.length}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {votes.length > 0 ? (
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                        {votes.map((vote) => (
-                          <Link
-                            key={vote.id}
-                            href={`/politiques/${vote.politician.slug}`}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
-                          >
-                            <PoliticianAvatar
-                              photoUrl={vote.politician.photoUrl}
-                              firstName={vote.politician.firstName}
-                              lastName={vote.politician.lastName}
-                              size="sm"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">{vote.politician.fullName}</p>
-                              {(() => {
-                                const group =
-                                  vote.politician.mandates[0]?.parliamentaryData
-                                    ?.parliamentaryGroup;
-                                if (group) {
-                                  return (
-                                    <p className="text-xs text-muted-foreground" title={group.name}>
-                                      {group.code}
-                                    </p>
-                                  );
-                                }
-                                if (vote.politician.currentParty) {
-                                  return (
-                                    <p
-                                      className="text-xs text-muted-foreground"
-                                      title={vote.politician.currentParty.name}
-                                    >
-                                      {vote.politician.currentParty.shortName}
-                                    </p>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">Aucun député</p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            }
-          )}
-        </div>
 
         {/* Back link */}
         <div className="mt-8 text-center">

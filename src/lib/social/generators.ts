@@ -172,7 +172,7 @@ async function divisiveVotes(recent: RecentlyPosted): Promise<TweetDraft[]> {
       content += `\n${topPourGroup.name} : ${Math.round(topPourGroup.pct * 100)}% pour · ${topContreGroup.name} : ${Math.round(topContreGroup.pct * 100)}% contre`;
     }
 
-    const link = `${SITE_URL}/votes/${s.slug || s.id}`;
+    const link = `${SITE_URL}/parlement/votes/${s.slug || s.id}`;
     content += `\n\n→ ${link}`;
 
     drafts.push({ content, link, entityId });

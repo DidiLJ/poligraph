@@ -103,7 +103,7 @@ function buildVotesHtml(recap: WeeklyRecapData): string {
       const title = escapeHtml(s.title);
       const total = s.votesFor + s.votesAgainst + s.votesAbstain;
       const ratio = total > 0 ? `${s.votesFor}/${s.votesAgainst}/${s.votesAbstain}` : "";
-      const link = s.slug ? `${SITE_URL}/votes/${s.slug}` : null;
+      const link = s.slug ? `${SITE_URL}/parlement/votes/${s.slug}` : null;
       const titleHtml = link
         ? `<a href="${link}" style="color: #1e3a5f; text-decoration: none; font-weight: 600;">${title}</a>`
         : `<span style="font-weight: 600;">${title}</span>`;
@@ -259,7 +259,7 @@ function buildPlainText(input: RenderInput): string {
         `  ${s.chamber} · Pour: ${s.votesFor} / Contre: ${s.votesAgainst} / Abst: ${s.votesAbstain}`
       );
       if (s.slug) {
-        lines.push(`  ${SITE_URL}/votes/${s.slug}`);
+        lines.push(`  ${SITE_URL}/parlement/votes/${s.slug}`);
       }
     }
     lines.push("");

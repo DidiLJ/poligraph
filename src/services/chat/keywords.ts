@@ -233,7 +233,7 @@ export async function searchDatabaseByKeywords(query: string): Promise<string | 
             `Statut : ${status}` +
             (d.category ? ` | Catégorie : ${d.category}` : "") +
             (d.filingDate ? `\nDate : ${d.filingDate.toLocaleDateString("fr-FR")}` : "") +
-            `\n→ /assemblee/${dossierLink}`
+            `\n→ /parlement/dossiers/${dossierLink}`
         );
       }
 
@@ -266,7 +266,7 @@ export async function searchDatabaseByKeywords(query: string): Promise<string | 
           `**Vote : ${s.title.slice(0, 100)}${s.title.length > 100 ? "…" : ""}**\n` +
             `Date : ${s.votingDate.toLocaleDateString("fr-FR")} — ${adopted}\n` +
             `Pour : ${s.votesFor}, Contre : ${s.votesAgainst}, Abstention : ${s.votesAbstain}\n` +
-            `→ /votes/${scrutinLink}`
+            `→ /parlement/votes/${scrutinLink}`
         );
       }
     }

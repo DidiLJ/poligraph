@@ -354,9 +354,9 @@ const PATTERNS: QueryPattern[] = [
         result += `• **${title}**\n`;
         if (d.category) result += `  Catégorie : ${d.category}\n`;
         if (d.filingDate) result += `  Date : ${d.filingDate.toLocaleDateString("fr-FR")}\n`;
-        result += `  → /assemblee/${link}\n`;
+        result += `  → /parlement/dossiers/${link}\n`;
       }
-      result += `\n→ Tous les dossiers : /assemblee`;
+      result += `\n→ Tous les dossiers : /parlement/dossiers`;
       return result;
     },
   },
@@ -386,9 +386,9 @@ const PATTERNS: QueryPattern[] = [
         result += `• **${title}**\n`;
         result += `  ${s.votingDate.toLocaleDateString("fr-FR")} — ${adopted}\n`;
         result += `  Pour : ${s.votesFor} | Contre : ${s.votesAgainst} | Abstention : ${s.votesAbstain}\n`;
-        result += `  → /votes/${link}\n`;
+        result += `  → /parlement/votes/${link}\n`;
       }
-      result += `\n→ Tous les scrutins : /votes`;
+      result += `\n→ Tous les scrutins : /parlement/votes`;
       return result;
     },
   },
@@ -734,7 +734,7 @@ async function fetchPoliticianVotes(
     const link = v.scrutin.slug || v.scrutin.id;
     result += `• ${voteLabels[v.position] || v.position} — ${title}\n`;
     result += `  ${v.scrutin.votingDate.toLocaleDateString("fr-FR")}\n`;
-    result += `  → /votes/${link}\n`;
+    result += `  → /parlement/votes/${link}\n`;
   }
   result += `\n→ Fiche complète : /politiques/${politician.slug}`;
   return result;

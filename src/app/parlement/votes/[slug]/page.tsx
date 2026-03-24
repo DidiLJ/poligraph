@@ -13,7 +13,8 @@ import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
 import { ExternalLink, Calendar, Users, Sparkles, Lightbulb, FileText } from "lucide-react";
 import { StatusBadge } from "@/components/legislation";
 import { MarkdownText } from "@/components/ui/markdown";
-import { BreadcrumbJsonLd, ArticleJsonLd } from "@/components/seo/JsonLd";
+import { ArticleJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { VotePosition } from "@/types";
 import { SITE_URL } from "@/config/site";
 
@@ -208,16 +209,6 @@ export default async function ScrutinPage({ params }: PageProps) {
 
   return (
     <>
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Votes", url: `${SITE_URL}/parlement/votes` },
-          {
-            name: scrutin.title,
-            url: `${SITE_URL}/parlement/votes/${scrutin.slug || scrutin.externalId}`,
-          },
-        ]}
-      />
       {scrutin.summary && (
         <ArticleJsonLd
           headline={scrutin.title}
@@ -227,14 +218,13 @@ export default async function ScrutinPage({ params }: PageProps) {
         />
       )}
       <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <nav className="text-sm text-muted-foreground mb-6">
-          <Link href="/parlement/votes" className="hover:text-foreground">
-            Votes
-          </Link>
-          <span className="mx-2">/</span>
-          <span>Scrutin n°{scrutin.externalId}</span>
-        </nav>
+        <Breadcrumb
+          items={[
+            { label: "Parlement", href: "/parlement" },
+            { label: "Votes", href: "/parlement/votes" },
+            { label: `Scrutin n°${scrutin.externalId}` },
+          ]}
+        />
 
         {/* Header */}
         <div className="mb-8">

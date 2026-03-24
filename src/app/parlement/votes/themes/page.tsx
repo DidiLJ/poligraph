@@ -3,7 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { themeToSlug } from "@/lib/theme-utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import {
   THEME_CATEGORY_LABELS,
@@ -11,7 +11,6 @@ import {
   THEME_CATEGORY_COLORS,
 } from "@/config/labels";
 import type { ThemeCategory } from "@/types";
-import { SITE_URL } from "@/config/site";
 
 export const revalidate = 3600;
 
@@ -57,11 +56,11 @@ export default async function ThemesListingPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <BreadcrumbJsonLd
+      <Breadcrumb
         items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Parlement", url: `${SITE_URL}/parlement` },
-          { name: "Thématiques", url: `${SITE_URL}/parlement/votes/themes` },
+          { label: "Parlement", href: "/parlement" },
+          { label: "Votes", href: "/parlement/votes" },
+          { label: "Thématiques" },
         ]}
       />
 

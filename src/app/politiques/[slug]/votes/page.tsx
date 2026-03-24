@@ -9,6 +9,7 @@ import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { VoteStats, VotePositionBadge, VotingResultBadge } from "@/components/votes";
 import { formatDate } from "@/lib/utils";
 import { ArrowLeft, ExternalLink, Info } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { feminizeRole } from "@/config/labels";
 import { getPoliticianVotingStats } from "@/services/voteStats";
 
@@ -102,18 +103,13 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="text-sm text-muted-foreground mb-6">
-        <Link href="/politiques" className="hover:text-foreground">
-          Politiques
-        </Link>
-        <span className="mx-2">/</span>
-        <Link href={`/politiques/${slug}`} className="hover:text-foreground">
-          {politician.fullName}
-        </Link>
-        <span className="mx-2">/</span>
-        <span>Votes</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Politiques", href: "/politiques" },
+          { label: politician.fullName, href: `/politiques/${slug}` },
+          { label: "Votes" },
+        ]}
+      />
 
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">

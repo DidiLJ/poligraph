@@ -30,7 +30,8 @@ import { SentenceDetails } from "@/components/affairs/SentenceDetails";
 import { StatusTooltip } from "@/components/affairs/StatusTooltip";
 import { AffairTimeline } from "@/components/affairs/AffairTimeline";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
-import { ArticleJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { ArticleJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { AffairCategory, Involvement } from "@/types";
 import type { Prisma } from "@/generated/prisma";
 import { SITE_URL } from "@/config/site";
@@ -169,32 +170,8 @@ export default async function AffairDetailPage({ params }: PageProps) {
           url: `${SITE_URL}/politiques/${affair.politician.slug}`,
         }}
       />
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Affaires", url: `${SITE_URL}/affaires` },
-          { name: affair.title, url: `${SITE_URL}/affaires/${affair.slug}` },
-        ]}
-      />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Breadcrumb */}
-        <nav className="text-sm text-muted-foreground mb-6">
-          <ol className="flex items-center gap-2">
-            <li>
-              <Link href="/" className="hover:text-foreground">
-                Accueil
-              </Link>
-            </li>
-            <li>/</li>
-            <li>
-              <Link href="/affaires" className="hover:text-foreground">
-                Affaires
-              </Link>
-            </li>
-            <li>/</li>
-            <li className="text-foreground">{affair.title}</li>
-          </ol>
-        </nav>
+        <Breadcrumb items={[{ label: "Affaires", href: "/affaires" }, { label: affair.title }]} />
 
         {/* Header */}
         <div className="mb-8">

@@ -7,6 +7,7 @@ import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { ensureContrast } from "@/lib/contrast";
 import { getDepartmentBySlug, DEPARTMENTS } from "@/config/departments";
 import { getDeputesByDepartment, getSenateursByDepartment } from "@/lib/data/departments";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -72,14 +73,9 @@ export default async function DepartmentPage({ params }: PageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="text-sm text-muted-foreground mb-6">
-        <Link href="/departements" className="hover:text-foreground">
-          Départements
-        </Link>
-        <span className="mx-2">/</span>
-        <span>{departmentName}</span>
-      </nav>
+      <Breadcrumb
+        items={[{ label: "Départements", href: "/departements" }, { label: departmentName }]}
+      />
 
       <div className="mb-8">
         <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
@@ -207,13 +203,6 @@ export default async function DepartmentPage({ params }: PageProps) {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Back link */}
-      <div className="mt-8">
-        <Link href="/departements" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Retour à la liste des départements
-        </Link>
       </div>
     </div>
   );

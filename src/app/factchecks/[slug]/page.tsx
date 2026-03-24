@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
 import { FACTCHECK_RATING_LABELS, FACTCHECK_RATING_COLORS } from "@/config/labels";
-import { BreadcrumbJsonLd, ClaimReviewJsonLd } from "@/components/seo/JsonLd";
+import { ClaimReviewJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 
 export const revalidate = 3600; // ISR: revalidate every hour
@@ -90,15 +91,8 @@ export default async function FactCheckDetailPage({ params }: PageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Fact-checks", url: `${SITE_URL}/factchecks` },
-          {
-            name: factCheck.title,
-            url: `${SITE_URL}/factchecks/${factCheck.slug}`,
-          },
-        ]}
+      <Breadcrumb
+        items={[{ label: "Fact-checks", href: "/factchecks" }, { label: factCheck.title }]}
       />
       <ClaimReviewJsonLd
         url={`${SITE_URL}/factchecks/${factCheck.slug}`}
@@ -110,14 +104,6 @@ export default async function FactCheckDetailPage({ params }: PageProps) {
         source={factCheck.source}
         sourceUrl={factCheck.sourceUrl}
       />
-
-      {/* Back link */}
-      <Link
-        href="/factchecks"
-        className="text-sm text-muted-foreground hover:text-foreground mb-6 inline-block"
-      >
-        ← Tous les fact-checks
-      </Link>
 
       {/* Source */}
       <p className="text-sm text-muted-foreground mb-4">{factCheck.source}</p>

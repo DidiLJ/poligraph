@@ -7,7 +7,8 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
-import { BreadcrumbJsonLd, CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ensureContrast } from "@/lib/contrast";
 import { stripMarkdown } from "@/lib/utils";
 import { SITE_URL } from "@/config/site";
@@ -264,16 +265,6 @@ export default async function PartyAffairsPage({ params }: PageProps) {
 
   return (
     <>
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Affaires judiciaires", url: `${SITE_URL}/affaires` },
-          {
-            name: party.name,
-            url: `${SITE_URL}/affaires/parti/${party.slug}`,
-          },
-        ]}
-      />
       <CollectionPageJsonLd
         name={`Affaires judiciaires — ${party.name}`}
         description={summaryParts.join(" ")}
@@ -286,24 +277,12 @@ export default async function PartyAffairsPage({ params }: PageProps) {
       />
 
       <div className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <nav className="text-sm text-muted-foreground mb-6">
-          <ol className="flex items-center gap-2">
-            <li>
-              <Link href="/" className="hover:text-foreground">
-                Accueil
-              </Link>
-            </li>
-            <li>/</li>
-            <li>
-              <Link href="/affaires" className="hover:text-foreground">
-                Affaires judiciaires
-              </Link>
-            </li>
-            <li>/</li>
-            <li className="text-foreground">{party.shortName}</li>
-          </ol>
-        </nav>
+        <Breadcrumb
+          items={[
+            { label: "Affaires", href: "/affaires" },
+            { label: party.shortName || party.name },
+          ]}
+        />
 
         {/* Party header */}
         <div className="mb-8">

@@ -4,11 +4,10 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { themeFromSlug, getAllThemeSlugs, themeToSlug } from "@/lib/theme-utils";
 import { VoteCard } from "@/components/votes";
-import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_ICONS } from "@/config/labels";
 import { formatDate } from "@/lib/utils";
-import { SITE_URL } from "@/config/site";
 
 export const revalidate = 3600;
 
@@ -101,12 +100,12 @@ export default async function ThemePage({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <BreadcrumbJsonLd
+      <Breadcrumb
         items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Parlement", url: `${SITE_URL}/parlement` },
-          { name: "Thématiques", url: `${SITE_URL}/parlement/votes/themes` },
-          { name: label, url: `${SITE_URL}/parlement/votes/themes/${themeToSlug(theme)}` },
+          { label: "Parlement", href: "/parlement" },
+          { label: "Votes", href: "/parlement/votes" },
+          { label: "Thématiques", href: "/parlement/votes/themes" },
+          { label },
         ]}
       />
 

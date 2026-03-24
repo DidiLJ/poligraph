@@ -8,4 +8,6 @@ export const ROUTES = {
   voteTheme: (slug: string) => `/parlement/votes/themes/${slug}`,
   dossiers: "/parlement/dossiers",
   dossierDetail: (slug: string) => `/parlement/dossiers/${slug}`,
+  groupes: "/parlement/groupes",
+  groupeDetail: (slug: string) => `/parlement/groupes/${slug}`,
 } as const;

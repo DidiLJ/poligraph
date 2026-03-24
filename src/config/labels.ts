@@ -20,6 +20,8 @@ import type {
   SourceType,
   PublicationStatus,
   PlatformUpdateType,
+  GroupPosition,
+  AnalysisSourceType,
 } from "@/types";
 
 export const AFFAIR_STATUS_LABELS: Record<AffairStatus, string> = {
@@ -1178,4 +1180,21 @@ export const PLATFORM_UPDATE_TYPE_ICONS: Record<PlatformUpdateType, string> = {
   NEW_FEATURE: "✨",
   IMPROVEMENT: "🔧",
   RELEASE: "🚀",
+};
+
+export const GROUP_POSITION_LABELS: Record<GroupPosition, string> = {
+  POUR: "Pour",
+  CONTRE: "Contre",
+  ABSTENTION: "Abstention",
+};
+
+export const GROUP_POSITION_COLORS: Record<GroupPosition, string> = {
+  POUR: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+  CONTRE: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+  ABSTENTION: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
+};
+
+export const ANALYSIS_SOURCE_TYPE_LABELS: Record<AnalysisSourceType, string> = {
+  DEBATE_TRANSCRIPT: "Débats parlementaires",
+  STRUCTURED_DATA: "Données structurées",
 };

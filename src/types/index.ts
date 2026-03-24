@@ -35,6 +35,8 @@ import type {
   SourceType,
   PublicationStatus,
   PlatformUpdateType,
+  GroupPosition,
+  AnalysisSourceType,
 } from "@/generated/prisma";
 
 // Compare types
@@ -84,6 +86,8 @@ export type {
   SourceType,
   PublicationStatus,
   PlatformUpdateType,
+  GroupPosition,
+  AnalysisSourceType,
 };
 
 // Serialized types (for client components)

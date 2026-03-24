@@ -1,3 +1,4 @@
+import type React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ interface ScrutinContextProps {
   citizenImpact: string | null;
   analysis: ScrutinAnalysisData | null;
   isKeyVote: boolean;
+  votesDetailSlot?: React.ReactNode;
 }
 
 export function ScrutinContext({
@@ -19,20 +21,20 @@ export function ScrutinContext({
   citizenImpact,
   analysis,
   isKeyVote,
+  votesDetailSlot,
 }: ScrutinContextProps) {
   const hasEnBref = summary || citizenImpact;
-  const hasEnjeux = isKeyVote && analysis;
+  const showEnjeuxTab = isKeyVote;
+  const hasEnjeuxContent = isKeyVote && analysis;
 
-  if (!hasEnBref && !hasEnjeux) return null;
+  if (!hasEnBref && !showEnjeuxTab && !votesDetailSlot) return null;
 
-  const showTabs = hasEnBref && hasEnjeux;
+  const tabCount = (hasEnBref ? 1 : 0) + (showEnjeuxTab ? 1 : 0) + (votesDetailSlot ? 1 : 0);
 
-  if (!showTabs) {
+  // Single section, no tabs needed
+  if (tabCount <= 1 && !showEnjeuxTab && !votesDetailSlot) {
     if (hasEnBref) {
       return <EnBrefContent summary={summary} citizenImpact={citizenImpact} />;
-    }
-    if (hasEnjeux) {
-      return <EnjeuxContent analysis={analysis!} />;
     }
     return null;
   }
@@ -40,17 +42,32 @@ export function ScrutinContext({
   return (
     <Tabs defaultValue="en-bref" className="mb-8">
       <TabsList variant="line">
-        <TabsTrigger value="en-bref">En bref</TabsTrigger>
-        <TabsTrigger value="enjeux">Les enjeux</TabsTrigger>
+        {hasEnBref && <TabsTrigger value="en-bref">En bref</TabsTrigger>}
+        {showEnjeuxTab && <TabsTrigger value="enjeux">Les enjeux</TabsTrigger>}
+        {votesDetailSlot && <TabsTrigger value="votes">Votes détaillés</TabsTrigger>}
       </TabsList>
 
-      <TabsContent value="en-bref">
-        <EnBrefContent summary={summary} citizenImpact={citizenImpact} />
-      </TabsContent>
+      {hasEnBref && (
+        <TabsContent value="en-bref">
+          <EnBrefContent summary={summary} citizenImpact={citizenImpact} />
+        </TabsContent>
+      )}
 
-      <TabsContent value="enjeux">
-        <EnjeuxContent analysis={analysis!} />
-      </TabsContent>
+      {showEnjeuxTab && (
+        <TabsContent value="enjeux">
+          {hasEnjeuxContent ? (
+            <EnjeuxContent analysis={analysis!} />
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="py-8 text-center">
+                <p className="text-sm text-muted-foreground">Analyse en cours de génération</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      )}
+
+      {votesDetailSlot && <TabsContent value="votes">{votesDetailSlot}</TabsContent>}
     </Tabs>
   );
 }

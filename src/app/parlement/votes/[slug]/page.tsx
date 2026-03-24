@@ -23,6 +23,17 @@ import { SITE_URL } from "@/config/site";
 // Matches bare YYYY-MM-DD (never collides with scrutin slugs which are YYYY-MM-DD-title)
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Parse externalId into human-readable label: "VTANR5L17V5729" → "Vote n°5729" */
+function formatExternalId(externalId: string, chamber: string): string {
+  // AN format: VTANR5L17V5729 → extract vote number after last "V"
+  const anMatch = externalId.match(/V(\d+)$/);
+  if (anMatch) return `Vote n°${anMatch[1]}`;
+  // Senate format: "2024-63" → extract number after dash
+  const senatMatch = externalId.match(/-(\d+)$/);
+  if (senatMatch) return `Vote n°${senatMatch[1]}`;
+  return `Scrutin ${chamber === "AN" ? "AN" : "Sénat"} ${externalId}`;
+}
+
 export const revalidate = 3600; // ISR: revalidate every hour
 
 export async function generateStaticParams() {
@@ -232,7 +243,7 @@ export default async function ScrutinPage({ params }: PageProps) {
           items={[
             { label: "Parlement", href: "/parlement" },
             { label: "Votes", href: "/parlement/votes" },
-            { label: `Scrutin n°${scrutin.externalId}` },
+            { label: formatExternalId(scrutin.externalId, scrutin.chamber) },
           ]}
         />
 

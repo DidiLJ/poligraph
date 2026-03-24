@@ -40,7 +40,7 @@ describe("callMistral", () => {
       })
     );
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const body = JSON.parse(mockFetch.mock.calls[0]![1].body);
     expect(body.model).toBe("mistral-large-latest");
     expect(body.max_tokens).toBe(500);
   });

@@ -91,6 +91,28 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
+    name: "compute-group-positions",
+    run: async () => {
+      const { computeGroupPositions } = await import("@/services/sync/compute-group-positions");
+      return computeGroupPositions();
+    },
+  },
+  {
+    name: "sync-debate-transcripts",
+    run: async () => {
+      const { syncDebateTranscripts } = await import("@/services/sync/debate-transcripts");
+      return syncDebateTranscripts();
+    },
+  },
+  {
+    name: "generate-scrutin-analysis",
+    run: async () => {
+      if (!process.env.MISTRAL_API_KEY) return { skipped: "no MISTRAL_API_KEY" };
+      const { generateScrutinAnalysis } = await import("@/services/sync/scrutin-analysis");
+      return generateScrutinAnalysis({ limit: 5 });
+    },
+  },
+  {
     name: "embeddings-factchecks",
     run: async () => {
       const { indexAllOfType } = await import("@/services/embeddings");

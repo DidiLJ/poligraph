@@ -10,11 +10,13 @@ import { DailyVotesPage } from "@/components/votes/DailyVotesPage";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { formatDate } from "@/lib/utils";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
-import { ExternalLink, Calendar, Users, Sparkles, Lightbulb, FileText } from "lucide-react";
+import { ExternalLink, Calendar, Users, FileText } from "lucide-react";
 import { StatusBadge } from "@/components/legislation";
-import { MarkdownText } from "@/components/ui/markdown";
 import { ArticleJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { getScrutinGroupPositions, getScrutinAnalysis } from "@/lib/data/groupes";
+import { GroupPositions } from "@/components/votes/GroupPositions";
+import { ScrutinContext } from "@/components/votes/ScrutinContext";
 import type { VotePosition } from "@/types";
 import { SITE_URL } from "@/config/site";
 
@@ -74,6 +76,7 @@ const getScrutinWithRedirect = cache(async function getScrutinWithRedirect(slugO
         status: true,
       },
     },
+    importance: { select: { isKeyVote: true } },
   } as const;
 
   // 1. Try by slug first (canonical URL - most common case)
@@ -190,6 +193,13 @@ export default async function ScrutinPage({ params }: PageProps) {
     notFound();
   }
 
+  const [groupPositions, analysis] = await Promise.all([
+    getScrutinGroupPositions(scrutin.id),
+    getScrutinAnalysis(scrutin.id),
+  ]);
+
+  const isKeyVote = !!scrutin.importance?.isKeyVote;
+
   // Group votes by position
   const votesByPosition = scrutin.votes.reduce(
     (acc, vote) => {
@@ -269,61 +279,13 @@ export default async function ScrutinPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* AI Summary */}
-        {scrutin.summary && (
-          <Card className="mb-8 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold">En bref</h2>
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <Sparkles className="h-3 w-3" />
-                  Résumé IA
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                {scrutin.summary.split("\n").map((line, i) => {
-                  if (line.startsWith("**") && line.endsWith("**")) {
-                    return (
-                      <p key={i} className="font-semibold mt-3 mb-1">
-                        {line.replace(/\*\*/g, "")}
-                      </p>
-                    );
-                  }
-                  if (line.startsWith("\u2022 ")) {
-                    return (
-                      <p key={i} className="ml-4 text-muted-foreground">
-                        {line}
-                      </p>
-                    );
-                  }
-                  if (line.trim() === "") return null;
-                  return <p key={i}>{line}</p>;
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Citizen Impact */}
-        {scrutin.citizenImpact && (
-          <Card className="mb-8 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                <h2 className="text-lg font-semibold">Ce que ça change pour vous</h2>
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <Sparkles className="h-3 w-3" />
-                  Décryptage IA
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <MarkdownText className="text-sm">{scrutin.citizenImpact}</MarkdownText>
-            </CardContent>
-          </Card>
-        )}
+        {/* Context: Summary, Citizen Impact, Analysis (tabbed) */}
+        <ScrutinContext
+          summary={scrutin.summary}
+          citizenImpact={scrutin.citizenImpact}
+          analysis={analysis}
+          isKeyVote={isKeyVote}
+        />
 
         {/* Dossier législatif lié */}
         {scrutin.dossierLegislatif && (
@@ -347,6 +309,15 @@ export default async function ScrutinPage({ params }: PageProps) {
               <StatusBadge status={scrutin.dossierLegislatif.status} />
             </div>
           </Link>
+        )}
+
+        {/* Group Positions */}
+        {groupPositions.length > 0 && (
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <GroupPositions positions={groupPositions} />
+            </CardContent>
+          </Card>
         )}
 
         {/* Results summary */}

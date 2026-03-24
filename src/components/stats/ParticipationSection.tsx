@@ -25,7 +25,7 @@ interface ParticipationSectionProps {
 }
 
 function dissidenceColor(rate: number): string {
-  if (rate < 5) return "text-blue-600 dark:text-blue-400";
+  if (rate < 5) return "text-primary";
   if (rate < 15) return "text-green-600 dark:text-green-400";
   if (rate < 30) return "text-yellow-600 dark:text-yellow-400";
   return "text-orange-600 dark:text-orange-400";

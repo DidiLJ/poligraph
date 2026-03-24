@@ -2,9 +2,9 @@ import { Municipales2020Nav } from "@/components/elections/municipales/Municipal
 
 export default function Municipales2020Layout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div>
       <Municipales2020Nav />
-      {children}
-    </>
+      <div className="pt-8">{children}</div>
+    </div>
   );
 }

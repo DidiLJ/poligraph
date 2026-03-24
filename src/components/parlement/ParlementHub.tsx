@@ -49,19 +49,19 @@ const PERIOD_STYLES: Record<
     bg: "bg-blue-50 dark:bg-blue-950/30",
     border: "border-blue-200 dark:border-blue-800",
     text: "text-blue-700 dark:text-blue-300",
-    icon: "text-blue-600 dark:text-blue-400",
+    icon: "text-primary",
   },
   extraordinary: {
     bg: "bg-blue-50 dark:bg-blue-950/30",
     border: "border-blue-200 dark:border-blue-800",
     text: "text-blue-700 dark:text-blue-300",
-    icon: "text-blue-600 dark:text-blue-400",
+    icon: "text-primary",
   },
   recess: {
     bg: "bg-blue-50 dark:bg-blue-950/30",
     border: "border-blue-200 dark:border-blue-800",
     text: "text-blue-700 dark:text-blue-300",
-    icon: "text-blue-600 dark:text-blue-400",
+    icon: "text-primary",
   },
 };
 
@@ -227,13 +227,13 @@ export async function ParlementHub() {
                   <span className="text-2xl font-bold text-blue-900 dark:text-blue-100">
                     {anStats.total.toLocaleString("fr-FR")}
                   </span>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">scrutins</span>
+                  <span className="text-xs text-primary ml-1">scrutins</span>
                 </div>
                 <div>
                   <span className="text-lg font-semibold text-blue-900 dark:text-blue-100">
                     {anStats.adoptionRate}%
                   </span>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">adoptés</span>
+                  <span className="text-xs text-primary ml-1">adoptés</span>
                 </div>
               </div>
             )}

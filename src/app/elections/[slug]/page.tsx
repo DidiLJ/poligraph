@@ -276,6 +276,14 @@ export default async function ElectionDetailPage({ params }: PageProps) {
                     Voir les résultats &rarr;
                   </Link>
                 )}
+                {slug === "municipales-2014" && (
+                  <Link
+                    href="/elections/municipales-2014"
+                    className="shrink-0 text-sm font-medium text-primary hover:underline"
+                  >
+                    Voir les résultats &rarr;
+                  </Link>
+                )}
               </div>
             )}
 

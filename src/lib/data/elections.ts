@@ -301,6 +301,195 @@ export const getCommuneResults2020 = cache(async function getCommuneResults2020(
 });
 
 // ============================================
+// Municipales 2014 — Types
+// ============================================
+
+export interface Municipales2014Stats {
+  totalCandidacies: number;
+  totalCommunes: number;
+  electedCount: number;
+}
+
+export interface DepartmentResult2014 {
+  departmentCode: string;
+  departmentName: string;
+  communeCount: number;
+  candidacyCount: number;
+}
+
+export interface CommuneListResult2014 {
+  listName: string;
+  partyLabel: string | null;
+  candidateName: string;
+  round1Votes: number | null;
+  round1Pct: number | null;
+  round2Votes: number | null;
+  round2Pct: number | null;
+  isElected: boolean;
+}
+
+export interface CommuneResult2014 {
+  inseeCode: string;
+  communeName: string;
+  departmentCode: string;
+  departmentName: string;
+  population: number | null;
+  totalSeats: number | null;
+  lists: CommuneListResult2014[];
+}
+
+// ============================================
+// Municipales 2014 — Helper
+// ============================================
+
+const getElection2014Id = cache(async function getElection2014Id(): Promise<string | null> {
+  const election = await db.election.findUnique({
+    where: { slug: "municipales-2014" },
+    select: { id: true },
+  });
+  return election?.id ?? null;
+});
+
+// ============================================
+// Municipales 2014 — Stats
+// ============================================
+
+export const getMunicipales2014Stats = cache(
+  async function getMunicipales2014Stats(): Promise<Municipales2014Stats | null> {
+    const electionId = await getElection2014Id();
+    if (!electionId) return null;
+
+    const [totalCandidacies, communeGroups, electedCount] = await Promise.all([
+      db.candidacy.count({ where: { electionId } }),
+      db.candidacy.groupBy({
+        by: ["communeId"],
+        where: { electionId, communeId: { not: null } },
+      }),
+      db.candidacy.count({ where: { electionId, isElected: true } }),
+    ]);
+
+    return {
+      totalCandidacies,
+      totalCommunes: communeGroups.length,
+      electedCount,
+    };
+  }
+);
+
+// ============================================
+// Municipales 2014 — Rounds
+// ============================================
+
+export const getMunicipales2014Rounds = cache(async function getMunicipales2014Rounds(): Promise<
+  ElectionRoundData[]
+> {
+  const electionId = await getElection2014Id();
+  if (!electionId) return [];
+
+  const rounds = await db.electionRound.findMany({
+    where: { electionId },
+    orderBy: { round: "asc" },
+  });
+
+  return rounds.map((r) => ({
+    round: r.round,
+    date: r.date,
+    registeredVoters: r.registeredVoters,
+    actualVoters: r.actualVoters,
+    participationRate: r.participationRate ? Number(r.participationRate) : null,
+    blankVotes: r.blankVotes,
+    nullVotes: r.nullVotes,
+  }));
+});
+
+// ============================================
+// Municipales 2014 — Department results
+// ============================================
+
+export const getDepartmentResults2014 = cache(async function getDepartmentResults2014(): Promise<
+  DepartmentResult2014[]
+> {
+  const electionId = await getElection2014Id();
+  if (!electionId) return [];
+
+  const rows = await db.$queryRaw<DepartmentResult2014[]>(Prisma.sql`
+    SELECT
+      co."departmentCode" AS "departmentCode",
+      co."departmentName" AS "departmentName",
+      COUNT(DISTINCT co.id)::int AS "communeCount",
+      COUNT(c.id)::int AS "candidacyCount"
+    FROM "Candidacy" c
+    JOIN "Commune" co ON c."communeId" = co.id
+    WHERE c."electionId" = ${electionId}
+    GROUP BY co."departmentCode", co."departmentName"
+    ORDER BY co."departmentCode" ASC
+  `);
+
+  return rows;
+});
+
+// ============================================
+// Municipales 2014 — Commune results
+// ============================================
+
+export const getCommuneResults2014 = cache(async function getCommuneResults2014(
+  inseeCode: string
+): Promise<CommuneResult2014 | null> {
+  const electionId = await getElection2014Id();
+  if (!electionId) return null;
+
+  const commune = await db.commune.findUnique({
+    where: { id: inseeCode },
+    select: {
+      id: true,
+      name: true,
+      departmentCode: true,
+      departmentName: true,
+      population: true,
+      totalSeats: true,
+    },
+  });
+  if (!commune) return null;
+
+  // 2014 import has one candidacy per list (tête de liste only)
+  const candidacies = await db.candidacy.findMany({
+    where: { electionId, communeId: inseeCode },
+    select: {
+      candidateName: true,
+      listName: true,
+      partyLabel: true,
+      round1Votes: true,
+      round1Pct: true,
+      round2Votes: true,
+      round2Pct: true,
+      isElected: true,
+    },
+    orderBy: [{ isElected: "desc" }, { round1Pct: "desc" }],
+  });
+
+  const lists: CommuneListResult2014[] = candidacies.map((c) => ({
+    listName: c.listName || c.candidateName,
+    partyLabel: c.partyLabel,
+    candidateName: c.candidateName,
+    round1Votes: c.round1Votes,
+    round1Pct: c.round1Pct ? Number(c.round1Pct) : null,
+    round2Votes: c.round2Votes,
+    round2Pct: c.round2Pct ? Number(c.round2Pct) : null,
+    isElected: c.isElected,
+  }));
+
+  return {
+    inseeCode: commune.id,
+    communeName: commune.name,
+    departmentCode: commune.departmentCode,
+    departmentName: commune.departmentName,
+    population: commune.population,
+    totalSeats: commune.totalSeats,
+    lists,
+  };
+});
+
+// ============================================
 // 5. getUpcomingElections
 // ============================================
 

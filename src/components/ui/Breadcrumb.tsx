@@ -24,7 +24,10 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
           url: `${SITE_URL}${item.href || ""}`,
         }))}
       />
-      <nav aria-label="Fil d'Ariane" className="text-sm text-muted-foreground mb-6">
+      <nav
+        aria-label="Fil d'Ariane"
+        className="container mx-auto px-4 pt-6 text-sm text-muted-foreground mb-6"
+      >
         <ol className="flex items-center gap-1 flex-wrap">
           {allItems.map((item, i) => {
             const isLast = i === allItems.length - 1;

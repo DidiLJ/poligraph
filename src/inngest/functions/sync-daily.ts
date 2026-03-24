@@ -113,6 +113,13 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
+    name: "compute-group-stats",
+    run: async () => {
+      const { computeGroupStats } = await import("@/services/sync/compute-group-stats");
+      return computeGroupStats();
+    },
+  },
+  {
     name: "embeddings-factchecks",
     run: async () => {
       const { indexAllOfType } = await import("@/services/embeddings");

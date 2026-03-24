@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `Votes du jour — ${formatted}`,
     description: `Scrutins de l'Assemblée nationale et du Sénat du ${formatted}. Résultats, résumés et détails des votes parlementaires.`,
-    alternates: { canonical: "/votes/aujourd-hui" },
+    alternates: { canonical: "/parlement/votes/aujourd-hui" },
   };
 }
 

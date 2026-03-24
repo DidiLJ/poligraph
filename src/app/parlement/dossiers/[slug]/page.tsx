@@ -157,7 +157,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: dossier.shortTitle || dossier.title,
     description: dossier.summary || `Dossier législatif ${dossier.number || dossier.externalId}`,
-    alternates: { canonical: `/assemblee/${dossier.slug}` },
+    alternates: { canonical: `/parlement/dossiers/${dossier.slug}` },
   };
 }
 
@@ -167,7 +167,7 @@ export default async function DossierDetailPage({ params }: PageProps) {
 
   // Redirect legacy URLs to canonical slug URL
   if (redirect && redirect !== slug) {
-    permanentRedirect(`/assemblee/${redirect}`);
+    permanentRedirect(`/parlement/dossiers/${redirect}`);
   }
 
   if (!dossier) {
@@ -181,22 +181,22 @@ export default async function DossierDetailPage({ params }: PageProps) {
         description={dossier.summary || undefined}
         datePublished={dossier.filingDate?.toISOString().split("T")[0]}
         legislationIdentifier={dossier.number || dossier.externalId}
-        url={`${SITE_URL}/assemblee/${dossier.slug || dossier.externalId}`}
+        url={`${SITE_URL}/parlement/dossiers/${dossier.slug || dossier.externalId}`}
       />
       <BreadcrumbJsonLd
         items={[
           { name: "Accueil", url: SITE_URL },
-          { name: "Assemblée", url: `${SITE_URL}/assemblee` },
+          { name: "Dossiers", url: `${SITE_URL}/parlement/dossiers` },
           {
             name: dossier.shortTitle || dossier.title,
-            url: `${SITE_URL}/assemblee/${dossier.slug || dossier.externalId}`,
+            url: `${SITE_URL}/parlement/dossiers/${dossier.slug || dossier.externalId}`,
           },
         ]}
       />
       <div className="container mx-auto px-4 py-8">
         {/* Back link */}
         <Link
-          href="/assemblee"
+          href="/parlement/dossiers"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -287,7 +287,7 @@ export default async function DossierDetailPage({ params }: PageProps) {
                   return (
                     <Link
                       key={scrutin.slug}
-                      href={`/votes/${scrutin.slug}`}
+                      href={`/parlement/votes/${scrutin.slug}`}
                       prefetch={false}
                       className="block p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >

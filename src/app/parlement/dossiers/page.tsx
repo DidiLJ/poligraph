@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   title: "En direct de l'Assemblée",
   description:
     "Suivez les textes en discussion à l'Assemblée nationale : projets de loi, propositions, résumés simplifiés",
-  alternates: { canonical: "/assemblee" },
+  alternates: { canonical: "/parlement/dossiers" },
 };
 
 interface PageProps {
@@ -99,8 +99,8 @@ async function getThemeCounts() {
 
 function buildUrl(params: Record<string, string>) {
   const filtered = Object.entries(params).filter(([, v]) => v);
-  if (filtered.length === 0) return "/assemblee";
-  return `/assemblee?${filtered.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&")}`;
+  if (filtered.length === 0) return "/parlement/dossiers";
+  return `/parlement/dossiers?${filtered.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&")}`;
 }
 
 export default async function AssembleePage({ searchParams }: PageProps) {

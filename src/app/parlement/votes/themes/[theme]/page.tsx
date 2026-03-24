@@ -31,7 +31,7 @@ export async function generateMetadata({
   return {
     title: `Votes ${label}`,
     description: `Tous les scrutins parlementaires sur le thème ${label}. Résultats des votes de l'Assemblée nationale et du Sénat.`,
-    alternates: { canonical: `/votes/themes/${slug}` },
+    alternates: { canonical: `/parlement/votes/themes/${slug}` },
   };
 }
 
@@ -95,7 +95,7 @@ export default async function ThemePage({
 
   // Pagination URL builder
   const buildPageUrl = (p: number) => {
-    const base = `/votes/themes/${themeToSlug(theme)}`;
+    const base = `/parlement/votes/themes/${themeToSlug(theme)}`;
     return p > 1 ? `${base}?page=${p}` : base;
   };
 
@@ -105,8 +105,8 @@ export default async function ThemePage({
         items={[
           { name: "Accueil", url: SITE_URL },
           { name: "Parlement", url: `${SITE_URL}/parlement` },
-          { name: "Thématiques", url: `${SITE_URL}/votes/themes` },
-          { name: label, url: `${SITE_URL}/votes/themes/${themeToSlug(theme)}` },
+          { name: "Thématiques", url: `${SITE_URL}/parlement/votes/themes` },
+          { name: label, url: `${SITE_URL}/parlement/votes/themes/${themeToSlug(theme)}` },
         ]}
       />
 
@@ -217,7 +217,7 @@ export default async function ThemePage({
 
       {/* Back link */}
       <div className="mt-8 text-center">
-        <Link href="/votes/themes" className="text-primary hover:underline text-sm">
+        <Link href="/parlement/votes/themes" className="text-primary hover:underline text-sm">
           Voir toutes les thématiques
         </Link>
       </div>

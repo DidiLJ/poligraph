@@ -1,7 +1,5 @@
 import { Metadata } from "next";
 import { getDepartmentResults2020 } from "@/lib/data/elections";
-import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
-import { SITE_URL } from "@/config/site";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 3600;
@@ -17,17 +15,6 @@ export default async function DepartmentsPage() {
 
   return (
     <>
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Élections", url: `${SITE_URL}/elections` },
-          { name: "Municipales 2020", url: `${SITE_URL}/elections/municipales-2020` },
-          {
-            name: "Départements",
-            url: `${SITE_URL}/elections/municipales-2020/departements`,
-          },
-        ]}
-      />
       <Breadcrumb
         items={[
           { label: "Élections", href: "/elections" },

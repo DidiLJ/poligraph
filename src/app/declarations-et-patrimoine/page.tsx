@@ -4,12 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { SeoIntro } from "@/components/seo/SeoIntro";
-import {
-  BreadcrumbJsonLd,
-  CollectionPageJsonLd,
-  FAQJsonLd,
-  ItemListJsonLd,
-} from "@/components/seo/JsonLd";
+import { CollectionPageJsonLd, FAQJsonLd, ItemListJsonLd } from "@/components/seo/JsonLd";
 import { formatCompactCurrency } from "@/lib/utils";
 import { ensureContrast } from "@/lib/contrast";
 import {
@@ -76,13 +71,6 @@ export default async function DeclarationsPage({ searchParams }: PageProps) {
     <>
       <Breadcrumb items={[{ label: "Déclarations et patrimoine" }]} />
       <div className="container mx-auto px-4 py-8">
-        {/* SEO structured data */}
-        <BreadcrumbJsonLd
-          items={[
-            { name: "Accueil", url: SITE_URL },
-            { name: "Déclarations HATVP", url: `${SITE_URL}/declarations-et-patrimoine` },
-          ]}
-        />
         <CollectionPageJsonLd
           name="Déclarations HATVP des élus français"
           description="Déclarations d'intérêts et de patrimoine des députés, sénateurs et ministres français. Données officielles de la HATVP."

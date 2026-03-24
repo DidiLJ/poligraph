@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { ParlementHub, ScrutinsListing } from "@/components/parlement";
 import { getHubStats } from "@/lib/data/scrutins";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 300;
 
@@ -59,8 +60,18 @@ export default async function ParlementPage({ searchParams }: PageProps) {
     params.page;
 
   if (hasFilters) {
-    return <ScrutinsListing searchParams={params} />;
+    return (
+      <>
+        <Breadcrumb items={[{ label: "Parlement" }]} />
+        <ScrutinsListing searchParams={params} />
+      </>
+    );
   }
 
-  return <ParlementHub />;
+  return (
+    <>
+      <Breadcrumb items={[{ label: "Parlement" }]} />
+      <ParlementHub />
+    </>
+  );
 }

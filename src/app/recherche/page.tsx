@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
 import { SearchClient } from "./SearchClient";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 interface Props {
   searchParams: Promise<{ q?: string }>;
@@ -27,13 +28,16 @@ function SearchLoading() {
 
 export default function RecherchePage() {
   return (
-    <div className="container mx-auto px-4 py-10">
-      <h1 className="text-3xl font-display font-extrabold tracking-tight mb-8 max-w-2xl mx-auto">
-        Recherche
-      </h1>
-      <Suspense fallback={<SearchLoading />}>
-        <SearchClient />
-      </Suspense>
-    </div>
+    <>
+      <Breadcrumb items={[{ label: "Recherche" }]} />
+      <div className="container mx-auto px-4 py-10">
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-8 max-w-2xl mx-auto">
+          Recherche
+        </h1>
+        <Suspense fallback={<SearchLoading />}>
+          <SearchClient />
+        </Suspense>
+      </div>
+    </>
   );
 }

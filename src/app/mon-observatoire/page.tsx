@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { WatchlistContent } from "./WatchlistContent";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const metadata: Metadata = {
   title: "Mon Observatoire",
@@ -12,11 +13,16 @@ export const metadata: Metadata = {
 
 export default function MonObservatoirePage() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">Mon Observatoire</h1>
-      <Suspense>
-        <WatchlistContent />
-      </Suspense>
-    </div>
+    <>
+      <Breadcrumb items={[{ label: "Mon observatoire" }]} />
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
+          Mon Observatoire
+        </h1>
+        <Suspense>
+          <WatchlistContent />
+        </Suspense>
+      </div>
+    </>
   );
 }

@@ -10,6 +10,7 @@ import { ExportButton } from "@/components/ui/ExportButton";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 // Minimum members to show a party in filters (avoid cluttering with old/small parties)
 const MIN_PARTY_MEMBERS = 2;
@@ -464,6 +465,7 @@ export default async function PolitiquesPage({ searchParams }: PageProps) {
         url={`${SITE_URL}/politiques`}
         numberOfItems={total}
       />
+      <Breadcrumb items={[{ label: "Politiques" }]} />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>

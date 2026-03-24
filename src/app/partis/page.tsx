@@ -11,6 +11,7 @@ import { SITE_URL } from "@/config/site";
 import { getParties, getPartiesStats } from "@/lib/data/partis";
 import type { SortOption, StatusFilter } from "@/lib/data/partis";
 import type { PoliticalPosition } from "@/types";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 300; // 5 minutes, cohérent avec l'API
 
@@ -51,6 +52,7 @@ export default async function PartiesPage({ searchParams }: PageProps) {
         url={`${SITE_URL}/partis`}
         numberOfItems={parties.length}
       />
+      <Breadcrumb items={[{ label: "Partis" }]} />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">

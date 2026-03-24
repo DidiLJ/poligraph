@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SimplePagination } from "@/components/ui/SimplePagination";
 import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
@@ -353,217 +354,228 @@ export default async function VotesComparisonPage({ searchParams }: PageProps) {
   const backUrl = `/comparer?cat=${cat}&a=${slugA}&b=${slugB}`;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Back link */}
-      <Link
-        href={backUrl}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Retour à la comparaison
-      </Link>
-
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
-          Concordance des votes
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {leftName} vs {rightName}
-        </p>
-      </div>
-
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Card className="border-l-4" style={{ borderLeftColor: COMPARISON_ACCENT.total!.border }}>
-          <CardContent className="p-3 py-3">
-            <div
-              className="text-3xl font-display font-extrabold tracking-tight"
-              style={{ color: COMPARISON_ACCENT.total!.border }}
-            >
-              {stats.total}
-            </div>
-            <div className="text-sm font-semibold mt-0.5 leading-tight">
-              {isPartyMode ? "Scrutins comparés" : "Votes en commun"}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4" style={{ borderLeftColor: COMPARISON_ACCENT.agree!.border }}>
-          <CardContent className="p-3 py-3">
-            <div
-              className="text-3xl font-display font-extrabold tracking-tight"
-              style={{ color: COMPARISON_ACCENT.agree!.border }}
-            >
-              {stats.agree}
-            </div>
-            <div className="text-sm font-semibold mt-0.5 leading-tight">D&apos;accord</div>
-          </CardContent>
-        </Card>
-        <Card
-          className="border-l-4"
-          style={{ borderLeftColor: COMPARISON_ACCENT.disagree!.border }}
+    <>
+      <Breadcrumb items={[{ label: "Comparer", href: "/comparer" }, { label: "Votes" }]} />
+      <div className="container mx-auto px-4 py-8">
+        {/* Back link */}
+        <Link
+          href={backUrl}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"
         >
-          <CardContent className="p-3 py-3">
-            <div
-              className="text-3xl font-display font-extrabold tracking-tight"
-              style={{ color: COMPARISON_ACCENT.disagree!.border }}
-            >
-              {stats.disagree}
-            </div>
-            <div className="text-sm font-semibold mt-0.5 leading-tight">En désaccord</div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4" style={{ borderLeftColor: COMPARISON_ACCENT.partial!.border }}>
-          <CardContent className="p-3 py-3">
-            <div
-              className="text-3xl font-display font-extrabold tracking-tight"
-              style={{ color: COMPARISON_ACCENT.partial!.border }}
-            >
-              {stats.partial}
-            </div>
-            <div className="text-sm font-semibold mt-0.5 leading-tight">Partiellement</div>
-          </CardContent>
-        </Card>
-      </div>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Retour à la comparaison
+        </Link>
 
-      {/* Agreement bar */}
-      {stats.total > 0 && (
-        <div className="bg-muted rounded-lg p-4 mb-6">
-          <div className="flex justify-between mb-2 text-sm">
-            <span>Taux de concordance</span>
-            <span className="font-display font-extrabold">{agreementRate}%</span>
-          </div>
-          <div className="h-4 rounded-full overflow-hidden bg-gray-200 flex">
-            <div
-              className="bg-green-500 transition-all"
-              style={{ width: `${(stats.agree / stats.total) * 100}%` }}
-              title={`D'accord: ${stats.agree}`}
-            />
-            <div
-              className="bg-yellow-500 transition-all"
-              style={{ width: `${(stats.partial / stats.total) * 100}%` }}
-              title={`Partiellement: ${stats.partial}`}
-            />
-            <div
-              className="bg-red-500 transition-all"
-              style={{ width: `${(stats.disagree / stats.total) * 100}%` }}
-              title={`En désaccord: ${stats.disagree}`}
-            />
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-green-500" /> D&apos;accord
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-yellow-500" /> Partiellement
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-red-500" /> Désaccord
-            </span>
-          </div>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
+            Concordance des votes
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {leftName} vs {rightName}
+          </p>
         </div>
-      )}
 
-      {/* Filters */}
-      <div className="mb-6">
-        <VoteComparisonFilters />
-      </div>
+        {/* Stats cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <Card className="border-l-4" style={{ borderLeftColor: COMPARISON_ACCENT.total!.border }}>
+            <CardContent className="p-3 py-3">
+              <div
+                className="text-3xl font-display font-extrabold tracking-tight"
+                style={{ color: COMPARISON_ACCENT.total!.border }}
+              >
+                {stats.total}
+              </div>
+              <div className="text-sm font-semibold mt-0.5 leading-tight">
+                {isPartyMode ? "Scrutins comparés" : "Votes en commun"}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4" style={{ borderLeftColor: COMPARISON_ACCENT.agree!.border }}>
+            <CardContent className="p-3 py-3">
+              <div
+                className="text-3xl font-display font-extrabold tracking-tight"
+                style={{ color: COMPARISON_ACCENT.agree!.border }}
+              >
+                {stats.agree}
+              </div>
+              <div className="text-sm font-semibold mt-0.5 leading-tight">D&apos;accord</div>
+            </CardContent>
+          </Card>
+          <Card
+            className="border-l-4"
+            style={{ borderLeftColor: COMPARISON_ACCENT.disagree!.border }}
+          >
+            <CardContent className="p-3 py-3">
+              <div
+                className="text-3xl font-display font-extrabold tracking-tight"
+                style={{ color: COMPARISON_ACCENT.disagree!.border }}
+              >
+                {stats.disagree}
+              </div>
+              <div className="text-sm font-semibold mt-0.5 leading-tight">En désaccord</div>
+            </CardContent>
+          </Card>
+          <Card
+            className="border-l-4"
+            style={{ borderLeftColor: COMPARISON_ACCENT.partial!.border }}
+          >
+            <CardContent className="p-3 py-3">
+              <div
+                className="text-3xl font-display font-extrabold tracking-tight"
+                style={{ color: COMPARISON_ACCENT.partial!.border }}
+              >
+                {stats.partial}
+              </div>
+              <div className="text-sm font-semibold mt-0.5 leading-tight">Partiellement</div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Filtered count */}
-      {(search || (filter && filter !== "all")) && (
-        <p className="text-sm text-muted-foreground mb-4">
-          {totalFiltered} résultat{totalFiltered !== 1 ? "s" : ""}
-          {search && <> pour &quot;{search}&quot;</>}
-          {filter && filter !== "all" && (
-            <>
-              {" "}
-              — filtre :{" "}
-              {filter === "agree"
-                ? "d'accord"
-                : filter === "disagree"
-                  ? "désaccord"
-                  : "partiellement"}
-            </>
-          )}
-        </p>
-      )}
+        {/* Agreement bar */}
+        {stats.total > 0 && (
+          <div className="bg-muted rounded-lg p-4 mb-6">
+            <div className="flex justify-between mb-2 text-sm">
+              <span>Taux de concordance</span>
+              <span className="font-display font-extrabold">{agreementRate}%</span>
+            </div>
+            <div className="h-4 rounded-full overflow-hidden bg-gray-200 flex">
+              <div
+                className="bg-green-500 transition-all"
+                style={{ width: `${(stats.agree / stats.total) * 100}%` }}
+                title={`D'accord: ${stats.agree}`}
+              />
+              <div
+                className="bg-yellow-500 transition-all"
+                style={{ width: `${(stats.partial / stats.total) * 100}%` }}
+                title={`Partiellement: ${stats.partial}`}
+              />
+              <div
+                className="bg-red-500 transition-all"
+                style={{ width: `${(stats.disagree / stats.total) * 100}%` }}
+                title={`En désaccord: ${stats.disagree}`}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-green-500" /> D&apos;accord
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-yellow-500" /> Partiellement
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-red-500" /> Désaccord
+              </span>
+            </div>
+          </div>
+        )}
 
-      {/* Vote list */}
-      {paginatedVotes.length > 0 ? (
-        <div className="space-y-2">
-          {paginatedVotes.map((cv) => (
-            <div
-              key={cv.scrutinId}
-              className={`p-3 rounded-lg border ${
-                cv.agreement === "agree"
-                  ? "bg-green-500/10 border-green-500/30 dark:bg-green-500/10 dark:border-green-500/20"
-                  : cv.agreement === "disagree"
-                    ? "bg-red-500/10 border-red-500/30 dark:bg-red-500/10 dark:border-red-500/20"
-                    : "bg-yellow-500/10 border-yellow-500/30 dark:bg-yellow-500/10 dark:border-yellow-500/20"
-              }`}
-            >
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/parlement/votes/${cv.slug || cv.scrutinId}`}
-                    className="font-medium text-sm hover:underline line-clamp-2"
-                  >
-                    {cv.title}
-                  </Link>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDate(new Date(cv.votingDate))}
-                  </p>
-                </div>
-                <div className="flex gap-4 flex-shrink-0">
-                  <div className="text-center">
-                    <p className="text-xs font-medium text-muted-foreground mb-0.5 md:hidden">
-                      {leftName.split(" ").pop()}
-                    </p>
-                    <span
-                      className={`inline-block w-3 h-3 rounded-full ${VOTE_POSITION_DOT_COLORS[cv.leftPosition as VotePosition] || "bg-gray-400"}`}
-                    />
-                    <p className="text-xs mt-1">
-                      {VOTE_POSITION_LABELS[cv.leftPosition as VotePosition] || cv.leftPosition}
+        {/* Filters */}
+        <div className="mb-6">
+          <VoteComparisonFilters />
+        </div>
+
+        {/* Filtered count */}
+        {(search || (filter && filter !== "all")) && (
+          <p className="text-sm text-muted-foreground mb-4">
+            {totalFiltered} résultat{totalFiltered !== 1 ? "s" : ""}
+            {search && <> pour &quot;{search}&quot;</>}
+            {filter && filter !== "all" && (
+              <>
+                {" "}
+                — filtre :{" "}
+                {filter === "agree"
+                  ? "d'accord"
+                  : filter === "disagree"
+                    ? "désaccord"
+                    : "partiellement"}
+              </>
+            )}
+          </p>
+        )}
+
+        {/* Vote list */}
+        {paginatedVotes.length > 0 ? (
+          <div className="space-y-2">
+            {paginatedVotes.map((cv) => (
+              <div
+                key={cv.scrutinId}
+                className={`p-3 rounded-lg border ${
+                  cv.agreement === "agree"
+                    ? "bg-green-500/10 border-green-500/30 dark:bg-green-500/10 dark:border-green-500/20"
+                    : cv.agreement === "disagree"
+                      ? "bg-red-500/10 border-red-500/30 dark:bg-red-500/10 dark:border-red-500/20"
+                      : "bg-yellow-500/10 border-yellow-500/30 dark:bg-yellow-500/10 dark:border-yellow-500/20"
+                }`}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/parlement/votes/${cv.slug || cv.scrutinId}`}
+                      className="font-medium text-sm hover:underline line-clamp-2"
+                    >
+                      {cv.title}
+                    </Link>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatDate(new Date(cv.votingDate))}
                     </p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs font-medium text-muted-foreground mb-0.5 md:hidden">
-                      {rightName.split(" ").pop()}
-                    </p>
-                    <span
-                      className={`inline-block w-3 h-3 rounded-full ${VOTE_POSITION_DOT_COLORS[cv.rightPosition as VotePosition] || "bg-gray-400"}`}
-                    />
-                    <p className="text-xs mt-1">
-                      {VOTE_POSITION_LABELS[cv.rightPosition as VotePosition] || cv.rightPosition}
-                    </p>
+                  <div className="flex gap-4 flex-shrink-0">
+                    <div className="text-center">
+                      <p className="text-xs font-medium text-muted-foreground mb-0.5 md:hidden">
+                        {leftName.split(" ").pop()}
+                      </p>
+                      <span
+                        className={`inline-block w-3 h-3 rounded-full ${VOTE_POSITION_DOT_COLORS[cv.leftPosition as VotePosition] || "bg-gray-400"}`}
+                      />
+                      <p className="text-xs mt-1">
+                        {VOTE_POSITION_LABELS[cv.leftPosition as VotePosition] || cv.leftPosition}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-medium text-muted-foreground mb-0.5 md:hidden">
+                        {rightName.split(" ").pop()}
+                      </p>
+                      <span
+                        className={`inline-block w-3 h-3 rounded-full ${VOTE_POSITION_DOT_COLORS[cv.rightPosition as VotePosition] || "bg-gray-400"}`}
+                      />
+                      <p className="text-xs mt-1">
+                        {VOTE_POSITION_LABELS[cv.rightPosition as VotePosition] || cv.rightPosition}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>Aucun vote trouvé</p>
-          {(search || (filter && filter !== "all")) && (
-            <Link
-              href={buildUrl({ search: undefined, filter: undefined })}
-              className="text-primary hover:underline mt-2 inline-block"
-            >
-              Effacer les filtres
-            </Link>
-          )}
-        </div>
-      )}
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>Aucun vote trouvé</p>
+            {(search || (filter && filter !== "all")) && (
+              <Link
+                href={buildUrl({ search: undefined, filter: undefined })}
+                className="text-primary hover:underline mt-2 inline-block"
+              >
+                Effacer les filtres
+              </Link>
+            )}
+          </div>
+        )}
 
-      {/* Pagination */}
-      <SimplePagination
-        page={page}
-        totalPages={totalPages}
-        buildUrl={(p) => buildUrl({ page: String(p) })}
-      />
-    </div>
+        {/* Pagination */}
+        <SimplePagination
+          page={page}
+          totalPages={totalPages}
+          buildUrl={(p) => buildUrl({ page: String(p) })}
+        />
+      </div>
+    </>
   );
 }

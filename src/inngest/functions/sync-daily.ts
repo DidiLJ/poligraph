@@ -84,6 +84,13 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
+    name: "compute-importance-scores",
+    run: async () => {
+      const { computeImportanceScores } = await import("@/services/sync/scrutin-importance");
+      return computeImportanceScores();
+    },
+  },
+  {
     name: "embeddings-factchecks",
     run: async () => {
       const { indexAllOfType } = await import("@/services/embeddings");

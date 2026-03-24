@@ -13,9 +13,9 @@ import {
   UserCheck,
   Scale,
   MessageCircleQuestion,
-  ChevronRight,
 } from "lucide-react";
 import { FAQJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const metadata: Metadata = {
   title: "L'Assemblée nationale — Fonctionnement et votes",
@@ -93,22 +93,12 @@ export default function AssembleeNationalePage() {
         ]}
       />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Breadcrumb */}
-        <nav aria-label="Fil d'Ariane" className="mb-6">
-          <ol className="flex items-center gap-1 text-sm text-muted-foreground">
-            <li>
-              <Link href="/institutions" className="hover:text-foreground transition-colors">
-                Institutions
-              </Link>
-            </li>
-            <li>
-              <ChevronRight className="h-4 w-4" />
-            </li>
-            <li className="text-foreground font-medium" aria-current="page">
-              Assemblée nationale
-            </li>
-          </ol>
-        </nav>
+        <Breadcrumb
+          items={[
+            { label: "Institutions", href: "/institutions" },
+            { label: "Assemblée nationale" },
+          ]}
+        />
 
         {/* Header */}
         <div className="mb-10">

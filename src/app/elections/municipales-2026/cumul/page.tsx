@@ -1,6 +1,6 @@
 import { Metadata } from "next";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getCumulCandidates, getMissingMaires } from "@/lib/data/municipales";
 import { CumulTable } from "@/components/elections/municipales/CumulTable";
 import { MissingMairesTable } from "@/components/elections/municipales/MissingMairesTable";
@@ -59,33 +59,13 @@ export default async function CumulPage() {
 
   return (
     <main id="main-content" className="container mx-auto px-4 max-w-6xl">
-      {/* Breadcrumb */}
-      <nav aria-label="Fil d'Ariane" className="py-4">
-        <ol className="flex items-center gap-2 text-sm text-muted-foreground">
-          <li>
-            <Link href="/" className="hover:text-foreground transition-colors">
-              Accueil
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li>
-            <Link href="/elections" className="hover:text-foreground transition-colors">
-              Élections
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li>
-            <Link
-              href="/elections/municipales-2026"
-              className="hover:text-foreground transition-colors"
-            >
-              Municipales 2026
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li className="text-foreground font-medium">Cumul des mandats</li>
-        </ol>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Élections", href: "/elections" },
+          { label: "Municipales 2026", href: "/elections/municipales-2026" },
+          { label: "Cumul" },
+        ]}
+      />
 
       {/* Hero */}
       <section className="py-4">

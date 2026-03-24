@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ParityChart } from "@/components/elections/municipales/ParityChart";
 import { getMunicipalesStats, getParityBySize, getParityOutliers } from "@/lib/data/municipales";
 
@@ -47,33 +48,13 @@ export default async function ParitePage() {
 
   return (
     <main id="main-content" className="container mx-auto px-4 max-w-6xl">
-      {/* Breadcrumb */}
-      <nav aria-label="Fil d'Ariane" className="py-4">
-        <ol className="flex items-center gap-2 text-sm text-muted-foreground">
-          <li>
-            <Link href="/" className="hover:text-foreground transition-colors">
-              Accueil
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li>
-            <Link href="/elections" className="hover:text-foreground transition-colors">
-              Élections
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li>
-            <Link
-              href="/elections/municipales-2026"
-              className="hover:text-foreground transition-colors"
-            >
-              Municipales 2026
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li className="text-foreground font-medium">Parité</li>
-        </ol>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Élections", href: "/elections" },
+          { label: "Municipales 2026", href: "/elections/municipales-2026" },
+          { label: "Parité" },
+        ]}
+      />
 
       {/* Hero — global parity rate */}
       <section className="py-4">

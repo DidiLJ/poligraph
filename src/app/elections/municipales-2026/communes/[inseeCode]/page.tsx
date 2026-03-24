@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { getCommune, getCommuneHistorique2020 } from "@/lib/data/municipales";
 import { CommuneRadiographie } from "@/components/elections/municipales/CommuneRadiographie";
@@ -10,7 +9,8 @@ import { IncumbentMaireCard } from "@/components/elections/municipales/Incumbent
 import { NATIONAL_MANDATE_TYPES } from "@/config/labels";
 import { HistoriqueSection2020 } from "@/components/elections/municipales/HistoriqueSection2020";
 import { ResultatsBanner } from "@/components/elections/municipales/ResultatsBanner";
-import { EventJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { EventJsonLd } from "@/components/seo/JsonLd";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { db } from "@/lib/db";
 
@@ -74,46 +74,14 @@ export default async function CommuneDetailPage({ params }: PageProps) {
           url={communeUrl}
         />
       )}
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Élections", url: `${SITE_URL}/elections` },
-          {
-            name: "Municipales 2026",
-            url: `${SITE_URL}/elections/municipales-2026`,
-          },
-          { name: commune.name, url: communeUrl },
-        ]}
-      />
       <main className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Breadcrumb */}
-        <nav aria-label="Fil d'Ariane" className="mb-6">
-          <ol className="flex items-center gap-2 text-sm text-muted-foreground">
-            <li>
-              <Link href="/" className="hover:text-foreground transition-colors">
-                Accueil
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li>
-              <Link href="/elections" className="hover:text-foreground transition-colors">
-                Élections
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li>
-              <Link
-                href="/elections/municipales-2026"
-                className="hover:text-foreground transition-colors"
-                prefetch={false}
-              >
-                Municipales 2026
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li className="text-foreground font-medium">{commune.name}</li>
-          </ol>
-        </nav>
+        <Breadcrumb
+          items={[
+            { label: "Élections", href: "/elections" },
+            { label: "Municipales 2026", href: "/elections/municipales-2026" },
+            { label: commune.name },
+          ]}
+        />
 
         {/* Header */}
         <div className="mb-8">

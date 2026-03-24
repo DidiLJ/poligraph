@@ -126,6 +126,8 @@
     "sync:elections:municipales:stats": "tsx scripts/sync-candidatures.ts --stats",
     "sync:municipales-2020": "tsx scripts/sync-municipales-2020.ts",
     "sync:municipales-2020:stats": "tsx scripts/sync-municipales-2020.ts --stats",
+    "sync:municipales-2014": "tsx scripts/sync-municipales-2014.ts",
+    "sync:municipales-2014:stats": "tsx scripts/sync-municipales-2014.ts --stats",
     "sync:resultats-t1": "tsx scripts/sync-resultats-t1.ts",
     "sync:resultats-t1:dry": "tsx scripts/sync-resultats-t1.ts --dry-run",
     "sync:resultats-csv": "tsx scripts/sync-resultats-csv.ts",

@@ -21,8 +21,9 @@ import { ElectionScrutinInfo } from "@/components/elections/ElectionScrutinInfo"
 import { AddToCalendar } from "@/components/elections/AddToCalendar";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { ELECTION_GUIDES } from "@/config/election-guides";
-import { EventJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { EventJsonLd } from "@/components/seo/JsonLd";
 import { PoligraphBadge } from "@/components/elections/PoligraphBadge";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { ElectionStatus } from "@/types";
 import { SITE_URL } from "@/config/site";
 
@@ -211,35 +212,13 @@ export default async function ElectionDetailPage({ params }: PageProps) {
         location="France"
         url={`${SITE_URL}/elections/${election.slug}`}
       />
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Accueil", url: SITE_URL },
-          { name: "Élections", url: `${SITE_URL}/elections` },
-          {
-            name: election.shortTitle || election.title,
-            url: `${SITE_URL}/elections/${election.slug}`,
-          },
-        ]}
-      />
       <main id="main-content" className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Breadcrumb */}
-        <nav aria-label="Fil d'Ariane" className="mb-6">
-          <ol className="flex items-center gap-2 text-sm text-muted-foreground">
-            <li>
-              <Link href="/" className="hover:text-foreground transition-colors">
-                Accueil
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li>
-              <Link href="/elections" className="hover:text-foreground transition-colors">
-                Élections
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li className="text-foreground font-medium">{election.shortTitle || election.title}</li>
-          </ol>
-        </nav>
+        <Breadcrumb
+          items={[
+            { label: "Élections", href: "/elections" },
+            { label: election.shortTitle || election.title },
+          ]}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main column */}

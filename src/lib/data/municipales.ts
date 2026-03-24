@@ -1134,3 +1134,98 @@ export const getCommuneHistorique2020 = cache(async function getCommuneHistoriqu
     electedMayor: electedMayor ? { fullName: electedMayor.candidateName, gender: null } : null,
   };
 });
+
+// ============================================
+// Municipales 2014 - Historical data
+// ============================================
+
+export interface Historique2014 {
+  participationT1: number;
+  registeredVoters: number;
+  winningList: {
+    name: string;
+    nuance: string | null;
+    pct: number;
+    seatsWon: number | null;
+  };
+  totalLists: number;
+  hadSecondRound: boolean;
+  participationT2: number | null;
+  electedMayor: { fullName: string; gender: string | null } | null;
+}
+
+export const getCommuneHistorique2014 = cache(async function getCommuneHistorique2014(
+  inseeCode: string
+): Promise<Historique2014 | null> {
+  const election = await db.election.findUnique({
+    where: { slug: "municipales-2014" },
+    select: { id: true },
+  });
+  if (!election) return null;
+
+  const listCount = await db.candidacy.count({
+    where: { electionId: election.id, communeId: inseeCode },
+  });
+  if (listCount === 0) return null;
+
+  const topList = await db.candidacy.findFirst({
+    where: { electionId: election.id, communeId: inseeCode },
+    orderBy: [{ isElected: "desc" }, { round1Pct: "desc" }],
+    select: {
+      candidateName: true,
+      listName: true,
+      partyLabel: true,
+      round1Pct: true,
+      isElected: true,
+    },
+  });
+  if (!topList) return null;
+
+  const t2Count = await db.candidacy.count({
+    where: {
+      electionId: election.id,
+      communeId: inseeCode,
+      round2Votes: { not: null },
+    },
+  });
+  const hadSecondRound = t2Count > 0;
+
+  const round1 = await db.electionRound.findUnique({
+    where: { electionId_round: { electionId: election.id, round: 1 } },
+    select: { participationRate: true, registeredVoters: true },
+  });
+
+  let participationT2: number | null = null;
+  if (hadSecondRound) {
+    const round2 = await db.electionRound.findUnique({
+      where: { electionId_round: { electionId: election.id, round: 2 } },
+      select: { participationRate: true },
+    });
+    participationT2 = round2?.participationRate ? Number(round2.participationRate) : null;
+  }
+
+  const electedMayor = await db.candidacy.findFirst({
+    where: {
+      electionId: election.id,
+      communeId: inseeCode,
+      isElected: true,
+    },
+    orderBy: { round1Pct: "desc" },
+    select: { candidateName: true },
+  });
+
+  return {
+    participationT1: round1?.participationRate ? Number(round1.participationRate) : 0,
+    registeredVoters: round1?.registeredVoters ?? 0,
+    winningList: {
+      name: topList.listName ?? topList.candidateName,
+      nuance: topList.partyLabel,
+      pct: topList.round1Pct ? Number(topList.round1Pct) : 0,
+      seatsWon: null,
+    },
+    totalLists: listCount,
+    hadSecondRound,
+    participationT2,
+    electedMayor: electedMayor ? { fullName: electedMayor.candidateName, gender: null } : null,
+  };
+});

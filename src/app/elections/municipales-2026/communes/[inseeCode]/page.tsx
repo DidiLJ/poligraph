@@ -80,7 +80,7 @@ export default async function CommuneDetailPage({ params }: PageProps) {
           url={communeUrl}
         />
       )}
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-4 pt-4 pb-8 max-w-6xl">
         <Breadcrumb
           items={[
             { label: "Élections", href: "/elections" },
@@ -268,7 +268,7 @@ export default async function CommuneDetailPage({ params }: PageProps) {
             <p className="text-muted-foreground">Aucune liste déposée pour le moment.</p>
           )}
         </section>
-      </main>
+      </div>
     </>
   );
 }

@@ -212,7 +212,7 @@ export default async function ElectionDetailPage({ params }: PageProps) {
         location="France"
         url={`${SITE_URL}/elections/${election.slug}`}
       />
-      <main id="main-content" className="container mx-auto px-4 py-8 max-w-6xl">
+      <main id="main-content" className="container mx-auto px-4 pt-4 pb-8 max-w-6xl">
         <Breadcrumb
           items={[
             { label: "Élections", href: "/elections" },

@@ -142,12 +142,7 @@ export default async function RootLayout({
                 aria-hidden="true"
               />
               <Header />
-              <main
-                id="main-content"
-                role="main"
-                className="flex-1 overflow-x-hidden"
-                tabIndex={-1}
-              >
+              <main id="main-content" role="main" className="flex-1 overflow-x-clip" tabIndex={-1}>
                 {children}
               </main>
               <Footer />

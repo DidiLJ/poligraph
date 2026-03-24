@@ -73,8 +73,8 @@ export default async function ComparerPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <Breadcrumb items={[{ label: "Comparer" }]} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb items={[{ label: "Comparer" }]} />
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">Comparer</h1>

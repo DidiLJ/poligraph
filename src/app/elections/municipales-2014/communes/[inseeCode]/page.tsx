@@ -62,7 +62,7 @@ export default async function Commune2014DetailPage({ params }: PageProps) {
   }
 
   return (
-    <main className="container mx-auto px-4 py-8 max-w-6xl">
+    <main className="container mx-auto px-4 pt-4 pb-8 max-w-6xl">
       <Breadcrumb
         items={[
           { label: "Élections", href: "/elections" },

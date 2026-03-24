@@ -17,8 +17,8 @@ export default async function MonDeputePage() {
   if (!(await isFeatureEnabled("MON_DEPUTE_SECTION"))) notFound();
   return (
     <>
-      <Breadcrumb items={[{ label: "Mon député" }]} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb items={[{ label: "Mon député" }]} />
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">

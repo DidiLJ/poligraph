@@ -90,7 +90,7 @@ export default async function FactCheckDetailPage({ params }: PageProps) {
   const ratingColor = FACTCHECK_RATING_COLORS[factCheck.verdictRating];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 pt-4 pb-8 max-w-3xl">
       <Breadcrumb
         items={[{ label: "Fact-checks", href: "/factchecks" }, { label: factCheck.title }]}
       />

@@ -23,7 +23,7 @@ export default async function Municipales2020Page() {
   ]);
 
   return (
-    <main id="main-content" className="container mx-auto px-4 pt-6 max-w-6xl">
+    <main id="main-content" className="container mx-auto px-4 pt-4 max-w-6xl">
       <Breadcrumb
         items={[{ label: "Élections", href: "/elections" }, { label: "Municipales 2020" }]}
       />

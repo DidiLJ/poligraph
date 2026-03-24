@@ -52,8 +52,8 @@ export default async function PartiesPage({ searchParams }: PageProps) {
         url={`${SITE_URL}/partis`}
         numberOfItems={parties.length}
       />
-      <Breadcrumb items={[{ label: "Partis" }]} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb items={[{ label: "Partis" }]} />
         <div className="mb-6">
           <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
             Partis politiques

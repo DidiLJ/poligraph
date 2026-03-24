@@ -81,7 +81,7 @@ export default async function MairesPage({ searchParams }: PageProps) {
     .sort((a, b) => a.name.localeCompare(b.name, "fr"));
 
   return (
-    <main id="main-content" className="container mx-auto px-4 max-w-6xl">
+    <div className="container mx-auto px-4 max-w-6xl">
       <Breadcrumb
         items={[
           { label: "Élections", href: "/elections" },
@@ -230,6 +230,6 @@ export default async function MairesPage({ searchParams }: PageProps) {
           )}
         </nav>
       )}
-    </main>
+    </div>
   );
 }

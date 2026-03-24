@@ -176,8 +176,8 @@ export default async function AffairesPage({ searchParams }: PageProps) {
         url={`${SITE_URL}/affaires`}
         numberOfItems={totalAffairs}
       />
-      <Breadcrumb items={[{ label: "Affaires" }]} />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-4 pb-8">
+        <Breadcrumb items={[{ label: "Affaires" }]} />
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">

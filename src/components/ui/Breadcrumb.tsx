@@ -26,7 +26,7 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
       />
       <nav
         aria-label="Fil d'Ariane"
-        className="container mx-auto px-4 pt-6 text-sm text-muted-foreground mb-6"
+        className="container mx-auto px-4 text-sm text-muted-foreground pt-2 mb-4"
       >
         <ol className="flex items-center gap-1 flex-wrap">
           {allItems.map((item, i) => {

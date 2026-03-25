@@ -21,7 +21,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { DeclarationCard } from "@/components/declarations/DeclarationCard";
 import { MarkdownText } from "@/components/ui/markdown";
 import type { DeclarationDetails } from "@/types/hatvp";
-import { Scale, FileText } from "lucide-react";
+import { Scale, FileText, Mail, Globe, Facebook } from "lucide-react";
 import { StatusBadge } from "@/components/legislation";
 import { BetaDisclaimer } from "@/components/BetaDisclaimer";
 import { ProfileTabs } from "@/components/politicians/ProfileTabs";
@@ -303,6 +303,74 @@ export default async function PoliticianPage({ params }: PageProps) {
                   </Badge>
                 ))}
             </div>
+            {(politician.contactEmail ||
+              politician.contactTwitter ||
+              politician.contactFacebook ||
+              politician.contactWebsite) && (
+              <div className="flex items-center gap-3 mt-2">
+                {politician.contactEmail && (
+                  <a
+                    href={`mailto:${politician.contactEmail}`}
+                    aria-label={`Envoyer un email a ${politician.fullName}`}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Mail className="h-4 w-4" />
+                  </a>
+                )}
+                {politician.contactTwitter && (
+                  <a
+                    href={
+                      politician.contactTwitter.startsWith("http")
+                        ? politician.contactTwitter
+                        : `https://x.com/${politician.contactTwitter.replace("@", "")}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Profil X de ${politician.fullName}`}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                  </a>
+                )}
+                {politician.contactFacebook && (
+                  <a
+                    href={
+                      politician.contactFacebook.startsWith("http")
+                        ? politician.contactFacebook
+                        : `https://facebook.com/${politician.contactFacebook}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Page Facebook de ${politician.fullName}`}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Facebook className="h-4 w-4" />
+                  </a>
+                )}
+                {politician.contactWebsite && (
+                  <a
+                    href={
+                      politician.contactWebsite.startsWith("http")
+                        ? politician.contactWebsite
+                        : `https://${politician.contactWebsite}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Site web de ${politician.fullName}`}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Globe className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            )}
             {politician.birthDate && (
               <p className="text-muted-foreground mt-2">
                 {politician.civility === "Mme" ? "Née" : "Né"} le {formatDate(politician.birthDate)}

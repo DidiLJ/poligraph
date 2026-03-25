@@ -35,6 +35,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { AffairCategory, Involvement } from "@/types";
 import type { Prisma } from "@/generated/prisma";
 import { SITE_URL } from "@/config/site";
+import { ShareBar } from "@/components/ui/ShareBar";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -168,6 +169,13 @@ export default async function AffairDetailPage({ params }: PageProps) {
         about={{
           name: affair.politician.fullName,
           url: `${SITE_URL}/politiques/${affair.politician.slug}`,
+        }}
+      />
+      <ShareBar
+        data={{
+          title: affair.title,
+          text: `Affaire judiciaire : ${affair.title} (${AFFAIR_STATUS_LABELS[affair.status]})`,
+          url: `${SITE_URL}/affaires/${affair.slug}`,
         }}
       />
       <div className="container mx-auto px-4 pt-4 pb-8 max-w-4xl">

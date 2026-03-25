@@ -24,6 +24,7 @@ import { GroupPositions } from "@/components/votes/GroupPositions";
 import { ScrutinContext } from "@/components/votes/ScrutinContext";
 import type { VotePosition } from "@/types";
 import { SITE_URL } from "@/config/site";
+import { ShareBar } from "@/components/ui/ShareBar";
 
 // Matches bare YYYY-MM-DD (never collides with scrutin slugs which are YYYY-MM-DD-title)
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -243,6 +244,13 @@ export default async function ScrutinPage({ params }: PageProps) {
           url={`${SITE_URL}/parlement/votes/${scrutin.slug}`}
         />
       )}
+      <ShareBar
+        data={{
+          title: scrutin.title,
+          text: `${formatExternalId(scrutin.externalId, scrutin.chamber)} : ${scrutin.title} (${scrutin.result === "ADOPTED" ? "Adopté" : "Rejeté"}, ${scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat"})`,
+          url: `${SITE_URL}/parlement/votes/${scrutin.slug}`,
+        }}
+      />
       <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb
           items={[

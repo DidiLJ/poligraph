@@ -177,7 +177,16 @@ export async function generateScrutinAnalysis(
       });
 
       const text = extractMistralText(response);
-      const parsed = parseMistralJSON<AnalysisOutput>(text);
+      const raw = parseMistralJSON<Record<string, unknown>>(text);
+      // Mistral sometimes returns arrays instead of strings
+      const parsed: AnalysisOutput = {
+        argumentsFor: Array.isArray(raw.argumentsFor)
+          ? raw.argumentsFor.join(" ")
+          : String(raw.argumentsFor ?? ""),
+        argumentsAgainst: Array.isArray(raw.argumentsAgainst)
+          ? raw.argumentsAgainst.join(" ")
+          : String(raw.argumentsAgainst ?? ""),
+      };
       const validation = validateAnalysisOutput(parsed);
 
       if (!validation.valid) {

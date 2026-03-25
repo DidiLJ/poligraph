@@ -1,6 +1,7 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import type { Chamber, VotingResult, ThemeCategory } from "@/generated/prisma";
+import { KEY_VOTES_HUB_WINDOW_DAYS, KEY_VOTES_GRID_COUNT } from "@/config/scrutin-importance";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -290,6 +291,36 @@ export async function getThemeCounts() {
   return counts.filter((c) => c.theme !== null) as { theme: ThemeCategory; _count: number }[];
 }
 
+/** Theme counts including key vote counts for the hub. */
+export async function getThemeCountsWithKeyVotes() {
+  "use cache";
+  cacheTag("votes", "votes-key");
+  cacheLife("minutes");
+
+  const [allCounts, keyCounts] = await Promise.all([
+    db.scrutin.groupBy({
+      by: ["theme"],
+      _count: true,
+      orderBy: { _count: { theme: "desc" } },
+    }),
+    db.scrutin.groupBy({
+      by: ["theme"],
+      where: { importance: { isKeyVote: true } },
+      _count: true,
+    }),
+  ]);
+
+  const keyMap = new Map(keyCounts.filter((c) => c.theme).map((c) => [c.theme!, c._count]));
+
+  return allCounts
+    .filter((c) => c.theme !== null)
+    .map((c) => ({
+      theme: c.theme!,
+      total: c._count,
+      keyVotes: keyMap.get(c.theme!) ?? 0,
+    }));
+}
+
 // ---------------------------------------------------------------------------
 // Hub page — data functions
 // ---------------------------------------------------------------------------
@@ -396,4 +427,63 @@ export async function getChamberAdoptionRates(): Promise<
     adopted,
     adoptionRate: total > 0 ? Math.round((adopted / total) * 100) : 0,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Key votes (parlement-riche hub)
+// ---------------------------------------------------------------------------
+
+/** Key votes from last N days for the hub hero + grid. */
+export async function getKeyVotes(): Promise<{
+  hero: (DailyScrutin & { score: number }) | null;
+  grid: Array<DailyScrutin & { score: number }>;
+}> {
+  "use cache";
+  cacheTag("votes", "votes-key");
+  cacheLife("minutes");
+
+  const windowStart = new Date();
+  windowStart.setDate(windowStart.getDate() - KEY_VOTES_HUB_WINDOW_DAYS);
+
+  const keyVotes = await db.scrutin.findMany({
+    where: {
+      importance: { isKeyVote: true },
+      votingDate: { gte: windowStart },
+    },
+    orderBy: [{ votingDate: "desc" }, { importance: { score: "desc" } }],
+    take: KEY_VOTES_GRID_COUNT + 1,
+    select: {
+      ...DAILY_SELECT,
+      importance: { select: { score: true } },
+    },
+  });
+
+  if (keyVotes.length === 0) {
+    const fallback = await db.scrutin.findMany({
+      where: {
+        importance: { isNot: null },
+        votingDate: { gte: windowStart },
+      },
+      orderBy: { importance: { score: "desc" } },
+      take: KEY_VOTES_GRID_COUNT + 1,
+      select: {
+        ...DAILY_SELECT,
+        importance: { select: { score: true } },
+      },
+    });
+
+    const mapped = fallback.map((s) => ({
+      ...s,
+      score: s.importance?.score ?? 0,
+    }));
+
+    return { hero: mapped[0] ?? null, grid: mapped.slice(1) };
+  }
+
+  const mapped = keyVotes.map((s) => ({
+    ...s,
+    score: s.importance?.score ?? 0,
+  }));
+
+  return { hero: mapped[0] ?? null, grid: mapped.slice(1) };
 }

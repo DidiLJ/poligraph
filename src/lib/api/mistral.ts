@@ -1,0 +1,80 @@
+const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
+
+function getApiKey(): string {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) throw new Error("MISTRAL_API_KEY environment variable is not set");
+  return apiKey;
+}
+
+export interface MistralOptions {
+  model?: string;
+  maxTokens?: number;
+  system?: string;
+  temperature?: number;
+  responseFormat?: { type: "json_object" };
+}
+
+export interface MistralMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface MistralResponse {
+  choices: Array<{
+    message: { role: string; content: string };
+    finish_reason: string;
+  }>;
+  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+}
+
+export async function callMistral(
+  messages: MistralMessage[],
+  options: MistralOptions = {}
+): Promise<MistralResponse> {
+  const {
+    model = "mistral-large-latest",
+    maxTokens = 2000,
+    system,
+    temperature,
+    responseFormat,
+  } = options;
+
+  const allMessages: MistralMessage[] = system
+    ? [{ role: "system", content: system }, ...messages]
+    : messages;
+
+  const body: Record<string, unknown> = {
+    model,
+    max_tokens: maxTokens,
+    messages: allMessages,
+  };
+  if (temperature !== undefined) body.temperature = temperature;
+  if (responseFormat) body.response_format = responseFormat;
+
+  const response = await fetch(MISTRAL_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getApiKey()}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown error");
+    throw new Error(`Mistral API error ${response.status}: ${errorText}`);
+  }
+
+  return response.json();
+}
+
+export function extractMistralText(response: MistralResponse): string {
+  return response.choices[0]?.message.content ?? "";
+}
+
+export function parseMistralJSON<T = unknown>(text: string): T {
+  let cleaned = text.trim();
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) cleaned = fenceMatch[1]!.trim();
+  return JSON.parse(cleaned) as T;
+}

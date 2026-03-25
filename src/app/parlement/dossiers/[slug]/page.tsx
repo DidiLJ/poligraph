@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { Metadata } from "next";
-import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +10,11 @@ import {
   CategoryBadge,
   DossierTimeline,
   DossierAuthors,
+  DossierVotesList,
 } from "@/components/legislation";
 import type { DossierTimelineEntry } from "@/types/legislation";
 import { AMENDMENT_STATUS_LABELS, AMENDMENT_STATUS_COLORS } from "@/config/labels";
-import { VotingResultBadge } from "@/components/votes";
+
 import { ExternalLink, Calendar, FileText, Vote } from "lucide-react";
 import { LegislationJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -267,42 +267,7 @@ export default async function DossierDetailPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {dossier.scrutins.map((scrutin) => {
-                  const total = scrutin.votesFor + scrutin.votesAgainst + scrutin.votesAbstain;
-                  const forPct = total > 0 ? (scrutin.votesFor / total) * 100 : 0;
-                  const againstPct = total > 0 ? (scrutin.votesAgainst / total) * 100 : 0;
-                  const abstainPct = total > 0 ? (scrutin.votesAbstain / total) * 100 : 0;
-
-                  return (
-                    <Link
-                      key={scrutin.slug}
-                      href={`/parlement/votes/${scrutin.slug}`}
-                      prefetch={false}
-                      className="block p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-sm font-medium flex-1 min-w-0 leading-snug">
-                          {scrutin.title}
-                        </p>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(scrutin.votingDate)}
-                          </span>
-                          <VotingResultBadge result={scrutin.result} />
-                        </div>
-                      </div>
-                      {total > 0 && (
-                        <div className="flex h-2 rounded-full overflow-hidden">
-                          <div className="bg-green-500" style={{ width: `${forPct}%` }} />
-                          <div className="bg-red-500" style={{ width: `${againstPct}%` }} />
-                          <div className="bg-yellow-500" style={{ width: `${abstainPct}%` }} />
-                        </div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
+              <DossierVotesList votes={dossier.scrutins} />
             </CardContent>
           </Card>
         )}

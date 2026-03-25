@@ -10,16 +10,29 @@ import { DailyVotesPage } from "@/components/votes/DailyVotesPage";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { formatDate } from "@/lib/utils";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
-import { ExternalLink, Calendar, Users, Sparkles, Lightbulb, FileText } from "lucide-react";
+import { ExternalLink, Calendar, Users, FileText } from "lucide-react";
 import { StatusBadge } from "@/components/legislation";
-import { MarkdownText } from "@/components/ui/markdown";
 import { ArticleJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { getScrutinGroupPositions, getScrutinAnalysis } from "@/lib/data/groupes";
+import { GroupPositions } from "@/components/votes/GroupPositions";
+import { ScrutinContext } from "@/components/votes/ScrutinContext";
 import type { VotePosition } from "@/types";
 import { SITE_URL } from "@/config/site";
 
 // Matches bare YYYY-MM-DD (never collides with scrutin slugs which are YYYY-MM-DD-title)
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Parse externalId into human-readable label: "VTANR5L17V5729" → "Vote n°5729" */
+function formatExternalId(externalId: string, chamber: string): string {
+  // AN format: VTANR5L17V5729 → extract vote number after last "V"
+  const anMatch = externalId.match(/V(\d+)$/);
+  if (anMatch) return `Vote n°${anMatch[1]}`;
+  // Senate format: "2024-63" → extract number after dash
+  const senatMatch = externalId.match(/-(\d+)$/);
+  if (senatMatch) return `Vote n°${senatMatch[1]}`;
+  return `Scrutin ${chamber === "AN" ? "AN" : "Sénat"} ${externalId}`;
+}
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -74,6 +87,7 @@ const getScrutinWithRedirect = cache(async function getScrutinWithRedirect(slugO
         status: true,
       },
     },
+    importance: { select: { isKeyVote: true } },
   } as const;
 
   // 1. Try by slug first (canonical URL - most common case)
@@ -190,6 +204,13 @@ export default async function ScrutinPage({ params }: PageProps) {
     notFound();
   }
 
+  const [groupPositions, analysis] = await Promise.all([
+    getScrutinGroupPositions(scrutin.id),
+    getScrutinAnalysis(scrutin.id),
+  ]);
+
+  const isKeyVote = !!scrutin.importance?.isKeyVote;
+
   // Group votes by position
   const votesByPosition = scrutin.votes.reduce(
     (acc, vote) => {
@@ -222,7 +243,7 @@ export default async function ScrutinPage({ params }: PageProps) {
           items={[
             { label: "Parlement", href: "/parlement" },
             { label: "Votes", href: "/parlement/votes" },
-            { label: `Scrutin n°${scrutin.externalId}` },
+            { label: formatExternalId(scrutin.externalId, scrutin.chamber) },
           ]}
         />
 
@@ -269,61 +290,91 @@ export default async function ScrutinPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* AI Summary */}
-        {scrutin.summary && (
-          <Card className="mb-8 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold">En bref</h2>
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <Sparkles className="h-3 w-3" />
-                  Résumé IA
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                {scrutin.summary.split("\n").map((line, i) => {
-                  if (line.startsWith("**") && line.endsWith("**")) {
+        {/* Context: Summary, Citizen Impact, Analysis, Votes détaillés (tabbed) */}
+        <ScrutinContext
+          summary={scrutin.summary}
+          citizenImpact={scrutin.citizenImpact}
+          analysis={analysis}
+          isKeyVote={isKeyVote}
+          votesDetailSlot={
+            scrutin.votes.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
+                {(["POUR", "CONTRE", "ABSTENTION", "NON_VOTANT", "ABSENT"] as VotePosition[]).map(
+                  (position) => {
+                    const votes = votesByPosition[position] || [];
                     return (
-                      <p key={i} className="font-semibold mt-3 mb-1">
-                        {line.replace(/\*\*/g, "")}
-                      </p>
+                      <Card key={position}>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">
+                              <VotePositionBadge position={position} />
+                            </CardTitle>
+                            <span className="text-sm text-muted-foreground">{votes.length}</span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {votes.length > 0 ? (
+                            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                              {votes.map((vote) => (
+                                <Link
+                                  key={vote.id}
+                                  href={`/politiques/${vote.politician.slug}`}
+                                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
+                                >
+                                  <PoliticianAvatar
+                                    photoUrl={vote.politician.photoUrl}
+                                    firstName={vote.politician.firstName}
+                                    lastName={vote.politician.lastName}
+                                    size="sm"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium">
+                                      {vote.politician.fullName}
+                                    </p>
+                                    {(() => {
+                                      const group =
+                                        vote.politician.mandates[0]?.parliamentaryData
+                                          ?.parliamentaryGroup;
+                                      if (group) {
+                                        return (
+                                          <p
+                                            className="text-xs text-muted-foreground"
+                                            title={group.name}
+                                          >
+                                            {group.code}
+                                          </p>
+                                        );
+                                      }
+                                      if (vote.politician.currentParty) {
+                                        return (
+                                          <p
+                                            className="text-xs text-muted-foreground"
+                                            title={vote.politician.currentParty.name}
+                                          >
+                                            {vote.politician.currentParty.shortName}
+                                          </p>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+                                  </div>
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Aucun député
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
                     );
                   }
-                  if (line.startsWith("\u2022 ")) {
-                    return (
-                      <p key={i} className="ml-4 text-muted-foreground">
-                        {line}
-                      </p>
-                    );
-                  }
-                  if (line.trim() === "") return null;
-                  return <p key={i}>{line}</p>;
-                })}
+                )}
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Citizen Impact */}
-        {scrutin.citizenImpact && (
-          <Card className="mb-8 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                <h2 className="text-lg font-semibold">Ce que ça change pour vous</h2>
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <Sparkles className="h-3 w-3" />
-                  Décryptage IA
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <MarkdownText className="text-sm">{scrutin.citizenImpact}</MarkdownText>
-            </CardContent>
-          </Card>
-        )}
+            ) : undefined
+          }
+        />
 
         {/* Dossier législatif lié */}
         {scrutin.dossierLegislatif && (
@@ -347,6 +398,15 @@ export default async function ScrutinPage({ params }: PageProps) {
               <StatusBadge status={scrutin.dossierLegislatif.status} />
             </div>
           </Link>
+        )}
+
+        {/* Group Positions */}
+        {groupPositions.length > 0 && (
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <GroupPositions positions={groupPositions} />
+            </CardContent>
+          </Card>
         )}
 
         {/* Results summary */}
@@ -402,75 +462,6 @@ export default async function ScrutinPage({ params }: PageProps) {
             </div>
           </CardContent>
         </Card>
-
-        {/* Votes by position */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {(["POUR", "CONTRE", "ABSTENTION", "NON_VOTANT", "ABSENT"] as VotePosition[]).map(
-            (position) => {
-              const votes = votesByPosition[position] || [];
-              return (
-                <Card key={position}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">
-                        <VotePositionBadge position={position} />
-                      </CardTitle>
-                      <span className="text-sm text-muted-foreground">{votes.length}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {votes.length > 0 ? (
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                        {votes.map((vote) => (
-                          <Link
-                            key={vote.id}
-                            href={`/politiques/${vote.politician.slug}`}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
-                          >
-                            <PoliticianAvatar
-                              photoUrl={vote.politician.photoUrl}
-                              firstName={vote.politician.firstName}
-                              lastName={vote.politician.lastName}
-                              size="sm"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">{vote.politician.fullName}</p>
-                              {(() => {
-                                const group =
-                                  vote.politician.mandates[0]?.parliamentaryData
-                                    ?.parliamentaryGroup;
-                                if (group) {
-                                  return (
-                                    <p className="text-xs text-muted-foreground" title={group.name}>
-                                      {group.code}
-                                    </p>
-                                  );
-                                }
-                                if (vote.politician.currentParty) {
-                                  return (
-                                    <p
-                                      className="text-xs text-muted-foreground"
-                                      title={vote.politician.currentParty.name}
-                                    >
-                                      {vote.politician.currentParty.shortName}
-                                    </p>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">Aucun député</p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            }
-          )}
-        </div>
 
         {/* Back link */}
         <div className="mt-8 text-center">

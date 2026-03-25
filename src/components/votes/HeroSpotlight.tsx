@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { VotingResultBadge } from "./VoteBadge";
+import { MarkdownText } from "@/components/ui/markdown";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
 import { Calendar, Users, Star } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -51,9 +52,9 @@ export function HeroSpotlight({
       </h2>
 
       {summary && (
-        <p className="text-sm text-slate-300 line-clamp-3 mb-4">
-          {summary.split("\n").filter(Boolean).join(" ")}
-        </p>
+        <div className="text-sm text-slate-300 line-clamp-4 mb-4 [&_ul]:list-disc [&_ul]:ml-4 [&_li]:mb-0.5">
+          <MarkdownText>{summary}</MarkdownText>
+        </div>
       )}
 
       <div className="flex flex-wrap items-center gap-4 mb-4">

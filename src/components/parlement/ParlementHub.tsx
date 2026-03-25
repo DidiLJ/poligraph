@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { VoteCard } from "@/components/votes";
 import { HeroSpotlight } from "@/components/votes/HeroSpotlight";
 import { KeyVoteCard } from "@/components/votes/KeyVoteCard";
-import { ParlementSearch } from "./ParlementSearch";
+import { DossierCard } from "@/components/legislation";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { FAQJsonLd } from "@/components/seo/JsonLd";
 import {
@@ -14,17 +13,17 @@ import {
   CHAMBER_LABELS,
 } from "@/config/labels";
 import { themeToSlug } from "@/lib/theme-utils";
-import { isFeatureEnabled, getFeatureValue } from "@/lib/feature-flags";
+import { getFeatureValue } from "@/lib/feature-flags";
 import {
   getHubStats,
   getLastScrutinDate,
   getTodayVotesByChamber,
   getThemeCountsWithKeyVotes,
   getChamberAdoptionRates,
-  getLatestScrutins,
   getKeyVotes,
 } from "@/lib/data/scrutins";
-import { Info, ArrowRight, Search, Building2, AlertTriangle, Calendar } from "lucide-react";
+import { getLatestDossiers } from "@/lib/data/legislation";
+import { Info, ArrowRight, Building2, AlertTriangle, Calendar } from "lucide-react";
 import {
   resolveParliamentaryPeriod,
   PARLIAMENTARY_PERIOD_FLAG,
@@ -79,48 +78,28 @@ function getPeriodIcon(type: ParliamentaryPeriodType) {
 }
 
 export async function ParlementHub() {
-  const [hubStats, lastDate, today, themeCounts, chamberRates, latestScrutins, keyVotes] =
+  const [hubStats, lastDate, today, themeCounts, chamberRates, keyVotes, latestDossiers] =
     await Promise.all([
       getHubStats(),
       getLastScrutinDate(),
       getTodayVotesByChamber(),
       getThemeCountsWithKeyVotes(),
       getChamberAdoptionRates(),
-      getLatestScrutins(),
       getKeyVotes(),
+      getLatestDossiers(6),
     ]);
 
-  const [showAssemblee, periodOverride] = await Promise.all([
-    isFeatureEnabled("ASSEMBLEE_SECTION"),
-    getFeatureValue<PeriodOverride>(PARLIAMENTARY_PERIOD_FLAG),
-  ]);
+  const periodOverride = await getFeatureValue<PeriodOverride>(PARLIAMENTARY_PERIOD_FLAG);
   const period = resolveParliamentaryPeriod(lastDate, periodOverride);
 
   const anStats = chamberRates.find((c) => c.chamber === "AN");
   const senatStats = chamberRates.find((c) => c.chamber === "SENAT");
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <FAQJsonLd
-        questions={[
-          {
-            question: "Comment fonctionne le Parlement français ?",
-            answer:
-              "Le Parlement français est composé de deux chambres : l'Assemblée nationale (577 députés élus au suffrage universel direct) et le Sénat (348 sénateurs élus au suffrage indirect). Ensemble, ils votent les lois et contrôlent l'action du gouvernement.",
-          },
-          {
-            question: "Comment suivre les votes parlementaires ?",
-            answer: `Poligraph recense ${hubStats.totalScrutins.toLocaleString("fr-FR")} scrutins et ${hubStats.totalDossiers.toLocaleString("fr-FR")} dossiers législatifs. Vous pouvez explorer les votes par thème, par chambre, ou rechercher un scrutin par mot-clé.`,
-          },
-        ]}
-      />
+    <div className="container mx-auto px-4">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">Parlement</h1>
-        <p className="text-sm text-muted-foreground">
-          {hubStats.totalScrutins.toLocaleString("fr-FR")} scrutins,{" "}
-          {hubStats.totalDossiers.toLocaleString("fr-FR")} dossiers suivis
-        </p>
         <div className="sr-only">
           <SeoIntro
             text={`Portail parlementaire : ${hubStats.totalScrutins.toLocaleString("fr-FR")} scrutins de l'Assemblée nationale et du Sénat, ${hubStats.totalDossiers.toLocaleString("fr-FR")} dossiers législatifs suivis.`}
@@ -142,6 +121,54 @@ export async function ParlementHub() {
             </div>
           );
         })()}
+
+      <FAQJsonLd
+        questions={[
+          {
+            question: "Comment fonctionne le Parlement français ?",
+            answer:
+              "Le Parlement français est composé de deux chambres : l'Assemblée nationale (577 députés élus au suffrage universel direct) et le Sénat (348 sénateurs élus au suffrage indirect). Ensemble, ils votent les lois et contrôlent l'action du gouvernement.",
+          },
+          {
+            question: "Comment suivre les votes parlementaires ?",
+            answer: `Poligraph recense ${hubStats.totalScrutins.toLocaleString("fr-FR")} scrutins et ${hubStats.totalDossiers.toLocaleString("fr-FR")} dossiers législatifs. Vous pouvez explorer les votes par thème, par chambre, ou rechercher un scrutin par mot-clé.`,
+          },
+        ]}
+      />
+
+      {/* Pedagogy */}
+      <details className="mb-8 bg-muted/50 rounded-lg border">
+        <summary className="px-4 py-3 cursor-pointer text-sm font-medium hover:bg-muted/80 rounded-lg transition-colors">
+          Comment fonctionne le Parlement ?
+        </summary>
+        <div className="px-4 pb-4 pt-2 text-sm text-muted-foreground space-y-2">
+          <p>
+            Le Parlement français est composé de deux chambres : l{"'"}Assemblée nationale (577
+            députés) et le Sénat (348 sénateurs). Ensemble, ils votent les lois et contrôlent l{"'"}
+            action du gouvernement.
+          </p>
+          <p className="font-medium">Parcours d{"'"}un texte de loi :</p>
+          <ol className="list-decimal list-inside space-y-1 ml-2">
+            <li>
+              <strong>Dépôt</strong> : un projet (gouvernement) ou une proposition (parlementaire)
+              est déposé
+            </li>
+            <li>
+              <strong>Commission</strong> : examen en commission spécialisée, amendements
+            </li>
+            <li>
+              <strong>Hémicycle</strong> : débat et vote en séance publique
+            </li>
+            <li>
+              <strong>Navette</strong> : le texte fait la navette entre les deux chambres jusqu{"'"}
+              à accord
+            </li>
+            <li>
+              <strong>Promulgation</strong> : le Président de la République promulgue la loi
+            </li>
+          </ol>
+        </div>
+      </details>
 
       {/* Hero Spotlight */}
       {keyVotes.hero && (
@@ -218,15 +245,6 @@ export async function ParlementHub() {
           </Link>
         ) : (
           <p className="text-sm text-muted-foreground">Pas de scrutin aujourd{"'"}hui</p>
-        )}
-        {showAssemblee && (
-          <Link
-            href="/parlement/dossiers"
-            className="inline-flex items-center gap-1 mt-3 text-sm text-primary hover:underline"
-          >
-            Dossiers législatifs récemment mis à jour
-            <ArrowRight className="h-3 w-3" />
-          </Link>
         )}
       </section>
 
@@ -333,97 +351,40 @@ export async function ParlementHub() {
         </Card>
       </section>
 
-      {/* Groupes parlementaires */}
-      <section className="mb-8">
-        <Link
-          href="/parlement/groupes"
-          className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-        >
-          Groupes parlementaires
-          <ArrowRight className="h-3 w-3" />
-        </Link>
-      </section>
-
-      {/* Search */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
-          <Search className="h-5 w-5" />
-          Rechercher un scrutin
-        </h2>
-        <p className="text-xs text-muted-foreground mb-3">
-          Recherchez par sujet, thème ou mot-clé dans les résumés et impacts citoyens
-        </p>
-        <ParlementSearch />
-      </section>
-
-      {/* Latest scrutins */}
-      {latestScrutins.length > 0 && (
+      {/* Dossiers législatifs */}
+      {latestDossiers.length > 0 && (
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Derniers scrutins</h2>
+            <h2 className="text-lg font-semibold">Dossiers législatifs</h2>
             <Link
-              href="/parlement?page=1"
+              href="/parlement/dossiers"
               className="text-sm text-primary hover:underline flex items-center gap-1"
             >
-              Voir tous les scrutins <ArrowRight className="h-3 w-3" />
+              Tous les dossiers <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {latestScrutins.map((s) => (
-              <VoteCard
-                key={s.id}
-                id={s.id}
-                externalId={s.externalId}
-                slug={s.slug}
-                title={s.title}
-                votingDate={s.votingDate}
-                legislature={s.legislature}
-                chamber={s.chamber}
-                votesFor={s.votesFor}
-                votesAgainst={s.votesAgainst}
-                votesAbstain={s.votesAbstain}
-                result={s.result}
-                sourceUrl={s.sourceUrl}
-                theme={s.theme}
+            {latestDossiers.map((d) => (
+              <DossierCard
+                key={d.id}
+                id={d.id}
+                externalId={d.externalId}
+                slug={d.slug}
+                title={d.title}
+                shortTitle={d.shortTitle}
+                number={d.number}
+                status={d.status}
+                category={d.category}
+                theme={d.theme}
+                summary={d.summary}
+                filingDate={d.filingDate}
+                adoptionDate={d.adoptionDate}
+                amendmentCount={d._count.amendments}
               />
             ))}
           </div>
         </section>
       )}
-
-      {/* Pedagogy */}
-      <details className="mb-8 bg-muted/50 rounded-lg border">
-        <summary className="px-4 py-3 cursor-pointer text-sm font-medium hover:bg-muted/80 rounded-lg transition-colors">
-          Comment fonctionne le Parlement ?
-        </summary>
-        <div className="px-4 pb-4 pt-2 text-sm text-muted-foreground space-y-2">
-          <p>
-            Le Parlement français est composé de deux chambres : l{"'"}Assemblée nationale (577
-            députés) et le Sénat (348 sénateurs). Ensemble, ils votent les lois et contrôlent l{"'"}
-            action du gouvernement.
-          </p>
-          <p className="font-medium">Parcours d{"'"}un texte de loi :</p>
-          <ol className="list-decimal list-inside space-y-1 ml-2">
-            <li>
-              <strong>Dépôt</strong> : un projet (gouvernement) ou une proposition (parlementaire)
-              est déposé
-            </li>
-            <li>
-              <strong>Commission</strong> : examen en commission spécialisée, amendements
-            </li>
-            <li>
-              <strong>Hémicycle</strong> : débat et vote en séance publique
-            </li>
-            <li>
-              <strong>Navette</strong> : le texte fait la navette entre les deux chambres jusqu{"'"}
-              à accord
-            </li>
-            <li>
-              <strong>Promulgation</strong> : le Président de la République promulgue la loi
-            </li>
-          </ol>
-        </div>
-      </details>
     </div>
   );
 }

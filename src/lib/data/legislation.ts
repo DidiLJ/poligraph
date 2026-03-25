@@ -35,6 +35,34 @@ export interface PPLStats {
   topDossiers: TopDossier[];
 }
 
+// ─── Latest Dossiers (for hub) ───────────────────────
+
+export async function getLatestDossiers(limit = 6) {
+  "use cache";
+  cacheTag("legislation");
+  cacheLife("minutes");
+
+  return db.legislativeDossier.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      externalId: true,
+      slug: true,
+      title: true,
+      shortTitle: true,
+      number: true,
+      status: true,
+      category: true,
+      theme: true,
+      summary: true,
+      filingDate: true,
+      adoptionDate: true,
+      _count: { select: { amendments: true } },
+    },
+  });
+}
+
 // ─── Queries ─────────────────────────────────────────
 
 export async function getPPLStats(): Promise<PPLStats> {

@@ -41,6 +41,13 @@ model Politician {
   blobPhotoUrl String? // Vercel Blob cached photo URL
   officialId   String?   @unique // DEPRECATED: use externalIds instead
 
+  // Contact info (populated from Datan CSV for deputies)
+  contactEmail    String?
+  contactTwitter  String?
+  contactFacebook String?
+  contactWebsite  String?
+  contactOverride Boolean  @default(false) // true = don't overwrite from sync
+
   // AI-generated biography
   biography            String?   @db.Text
   biographyGeneratedAt DateTime?

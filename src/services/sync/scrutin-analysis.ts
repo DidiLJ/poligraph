@@ -171,7 +171,7 @@ export async function generateScrutinAnalysis(
 
       const response = await callMistral([{ role: "user", content: prompt }], {
         model: "mistral-large-latest",
-        maxTokens: 1000,
+        maxTokens: 1500,
         temperature: 0.3,
         responseFormat: { type: "json_object" },
       });

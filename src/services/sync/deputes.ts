@@ -87,6 +87,9 @@ async function syncGroups(deputies: DeputeCSV[]): Promise<{
   const csvToGroupId = new Map<string, string>();
   const csvToPartyId = new Map<string, string | null>();
 
+  // Extract legislature from first deputy (all share the same)
+  const csvLegislature = deputies[0]?.legislature ? parseInt(deputies[0].legislature, 10) : null;
+
   for (const [csvAbrev, fullName] of uniqueGroups) {
     const config: ParliamentaryGroupConfig | undefined = ASSEMBLY_GROUPS[csvAbrev];
     const groupCode = config?.code || csvAbrev;
@@ -100,6 +103,7 @@ async function syncGroups(deputies: DeputeCSV[]): Promise<{
       chamber: Chamber.AN,
       politicalPosition: config?.politicalPosition || null,
       wikidataId: config?.wikidataId || null,
+      ...(csvLegislature ? { legislature: csvLegislature } : {}),
     };
 
     let group = await db.parliamentaryGroup.findUnique({

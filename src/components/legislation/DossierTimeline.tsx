@@ -102,10 +102,50 @@ function PhaseHeader({ entry }: { entry: DossierTimelineEntry }) {
 }
 
 /**
- * Individual event within a phase — a dated legislative act.
+ * Group consecutive events with the same label into a single entry with count + date range.
+ * e.g. 15x "Discussion en séance publique" → 1 row with "15 séances, 12 mai - 22 mai 2025"
  */
-function EventRow({ entry, isLast }: { entry: FlatEntry; isLast: boolean }) {
-  const dateStr = formatDate(entry.date);
+interface GroupedEvent {
+  label: string;
+  code: string;
+  chamber: string;
+  dates: string[];
+  count: number;
+}
+
+function groupConsecutiveEvents(events: FlatEntry[]): GroupedEvent[] {
+  const groups: GroupedEvent[] = [];
+  for (const event of events) {
+    const last = groups[groups.length - 1];
+    if (last && last.label === event.label) {
+      if (event.date) last.dates.push(event.date);
+      last.count++;
+    } else {
+      groups.push({
+        label: event.label,
+        code: event.code,
+        chamber: event.chamber,
+        dates: event.date ? [event.date] : [],
+        count: 1,
+      });
+    }
+  }
+  return groups;
+}
+
+function formatDateRange(dates: string[]): string | null {
+  if (dates.length === 0) return null;
+  if (dates.length === 1) return formatDate(dates[0]!);
+  const sorted = [...dates].sort();
+  return `${formatDate(sorted[0]!)} - ${formatDate(sorted[sorted.length - 1]!)}`;
+}
+
+/**
+ * Individual event within a phase — a dated legislative act (possibly grouped).
+ */
+function EventRow({ group, isLast }: { group: GroupedEvent; isLast: boolean }) {
+  const dateDisplay =
+    group.count > 1 ? formatDateRange(group.dates) : formatDate(group.dates[0] ?? null);
 
   return (
     <div className={`flex items-start gap-3 ml-[7px] ${isLast ? "" : "pb-3"}`}>
@@ -116,9 +156,12 @@ function EventRow({ entry, isLast }: { entry: FlatEntry; isLast: boolean }) {
 
       {/* Content */}
       <div className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-2">
-        <span className="text-sm leading-snug">{entry.label}</span>
-        {dateStr && (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
+        <span className="text-sm leading-snug">{group.label}</span>
+        {group.count > 1 && (
+          <span className="text-xs font-medium text-muted-foreground">({group.count} séances)</span>
+        )}
+        {dateDisplay && (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{dateDisplay}</span>
         )}
       </div>
     </div>
@@ -155,17 +198,21 @@ export function DossierTimeline({ entries }: { entries: DossierTimelineEntry[] }
                 <PhaseHeader entry={phase} />
 
                 {/* Events list with colored left border */}
-                {events.length > 0 && (
-                  <div className={`ml-[7px] border-l-2 ${lineColor} pl-5 mt-1 space-y-0`}>
-                    {events.map((event, j) => (
-                      <EventRow
-                        key={`${event.code}-${j}`}
-                        entry={event}
-                        isLast={j === events.length - 1}
-                      />
-                    ))}
-                  </div>
-                )}
+                {events.length > 0 &&
+                  (() => {
+                    const grouped = groupConsecutiveEvents(events);
+                    return (
+                      <div className={`ml-[7px] border-l-2 ${lineColor} pl-5 mt-1 space-y-0`}>
+                        {grouped.map((group, j) => (
+                          <EventRow
+                            key={`${group.code}-${j}`}
+                            group={group}
+                            isLast={j === grouped.length - 1}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
               </div>
             );
           })}

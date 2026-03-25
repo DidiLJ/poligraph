@@ -5,3 +5,4 @@ export { DossierTimeline } from "./DossierTimeline";
 export { DossierAuthors } from "./DossierAuthors";
 export { DossierFilterBar } from "./DossierFilterBar";
 export { DossierPPLStats } from "./DossierPPLStats";
+export { DossierVotesList } from "./DossierVotesList";

@@ -35,6 +35,15 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
+    name: "summaries-dossiers",
+    run: async () => {
+      if (!process.env.MISTRAL_API_KEY) return { skipped: "no MISTRAL_API_KEY" };
+      const { generateDossierSummaries } =
+        await import("@/services/sync/generate-dossier-summaries");
+      return generateDossierSummaries({ limit: 10 });
+    },
+  },
+  {
     name: "reconcile-scrutin-dossier",
     run: async () => {
       const { reconcileScrutinDossier } = await import("@/services/sync/reconcile-scrutin-dossier");
@@ -81,6 +90,42 @@ const DAILY_STEPS: DailyStep[] = [
     run: async () => {
       const { classifyThemes } = await import("@/services/sync/classify-themes");
       return classifyThemes({ limit: 30 });
+    },
+  },
+  {
+    name: "compute-importance-scores",
+    run: async () => {
+      const { computeImportanceScores } = await import("@/services/sync/scrutin-importance");
+      return computeImportanceScores();
+    },
+  },
+  {
+    name: "compute-group-positions",
+    run: async () => {
+      const { computeGroupPositions } = await import("@/services/sync/compute-group-positions");
+      return computeGroupPositions();
+    },
+  },
+  {
+    name: "sync-debate-transcripts",
+    run: async () => {
+      const { syncDebateTranscripts } = await import("@/services/sync/debate-transcripts");
+      return syncDebateTranscripts();
+    },
+  },
+  {
+    name: "generate-scrutin-analysis",
+    run: async () => {
+      if (!process.env.MISTRAL_API_KEY) return { skipped: "no MISTRAL_API_KEY" };
+      const { generateScrutinAnalysis } = await import("@/services/sync/scrutin-analysis");
+      return generateScrutinAnalysis({ limit: 5 });
+    },
+  },
+  {
+    name: "compute-group-stats",
+    run: async () => {
+      const { computeGroupStats } = await import("@/services/sync/compute-group-stats");
+      return computeGroupStats();
     },
   },
   {

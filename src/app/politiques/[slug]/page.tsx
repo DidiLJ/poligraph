@@ -307,12 +307,13 @@ export default async function PoliticianPage({ params }: PageProps) {
               politician.contactTwitter ||
               politician.contactFacebook ||
               politician.contactWebsite) && (
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-1 mt-2">
                 {politician.contactEmail && (
                   <a
                     href={`mailto:${politician.contactEmail}`}
-                    aria-label={`Envoyer un email a ${politician.fullName}`}
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    aria-label={`Envoyer un email à ${politician.fullName}`}
+                    title="Email"
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                   >
                     <Mail className="h-4 w-4" />
                   </a>
@@ -327,7 +328,8 @@ export default async function PoliticianPage({ params }: PageProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Profil X de ${politician.fullName}`}
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    title="X (Twitter)"
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                   >
                     <svg
                       className="h-4 w-4"
@@ -349,7 +351,8 @@ export default async function PoliticianPage({ params }: PageProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Page Facebook de ${politician.fullName}`}
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    title="Facebook"
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                   >
                     <Facebook className="h-4 w-4" />
                   </a>
@@ -364,7 +367,8 @@ export default async function PoliticianPage({ params }: PageProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Site web de ${politician.fullName}`}
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    title="Site web"
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
                   >
                     <Globe className="h-4 w-4" />
                   </a>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SimplePagination } from "@/components/ui/SimplePagination";
 import { VoteCard } from "@/components/votes";
 import { VotesSearchInput } from "@/components/votes/VotesSearchInput";
+import { ThemeGrid } from "@/components/votes/ThemeGrid";
 import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/ui/ExportButton";
 import {
@@ -11,10 +12,22 @@ import {
   THEME_CATEGORY_ICONS,
   THEME_CATEGORY_COLORS,
 } from "@/config/labels";
-import { getScrutins, getLegislatures, getChambers, getThemeCounts } from "@/lib/data/scrutins";
+import {
+  getScrutins,
+  getLegislatures,
+  getChambers,
+  getThemeCounts,
+  getTypeCounts,
+} from "@/lib/data/scrutins";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
-import type { VotingResult, Chamber, ThemeCategory } from "@/types";
+import type { VotingResult, Chamber, ThemeCategory, ScrutinType } from "@/types";
+
+// Map URL param values to data layer params
+const TYPE_TAB_MAP: Record<string, { type?: ScrutinType; excludeType?: ScrutinType }> = {
+  votes: { excludeType: "AMENDEMENT" },
+  amendements: { type: "AMENDEMENT" },
+};
 
 interface ScrutinsListingProps {
   searchParams: {
@@ -23,6 +36,7 @@ interface ScrutinsListingProps {
     legislature?: string;
     chamber?: string;
     theme?: string;
+    type?: string;
     search?: string;
   };
 }
@@ -35,14 +49,25 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
   const chamber = (params.chamber || undefined) as Chamber | undefined;
   const theme = (params.theme || undefined) as ThemeCategory | undefined;
   const search = params.search || undefined;
+  const typeTab = params.type || "votes"; // default to "votes" (non-amendments)
 
-  const [{ scrutins, total, totalPages, stats }, legislatures, chambers, themeCounts] =
+  // Resolve type/excludeType from tab param
+  const typeFilter = TYPE_TAB_MAP[typeTab] ?? {};
+
+  const [{ scrutins, total, totalPages, stats }, legislatures, chambers, themeCounts, typeCounts] =
     await Promise.all([
-      getScrutins({ page, limit, result, legislature, chamber, theme, search }),
+      getScrutins({ page, limit, result, legislature, chamber, theme, search, ...typeFilter }),
       getLegislatures(),
       getChambers(),
       getThemeCounts(),
+      getTypeCounts(),
     ]);
+
+  // Compute tab counts from type distribution
+  const typeCountMap = new Map(typeCounts.map((c) => [c.type, c._count]));
+  const totalAll = typeCounts.reduce((sum, c) => sum + c._count, 0);
+  const amendementCount = typeCountMap.get("AMENDEMENT") ?? 0;
+  const votesCount = totalAll - amendementCount;
 
   const buildUrl = (newParams: Record<string, string | undefined>) => {
     const current = new URLSearchParams();
@@ -51,6 +76,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
     if (legislature) current.set("legislature", String(legislature));
     if (chamber) current.set("chamber", chamber);
     if (theme) current.set("theme", theme);
+    if (typeTab && typeTab !== "votes") current.set("type", typeTab);
 
     for (const [key, value] of Object.entries(newParams)) {
       if (value) {
@@ -65,17 +91,35 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
     }
 
     const qs = current.toString();
-    return `/parlement${qs ? `?${qs}` : ""}`;
+    return `/parlement/votes${qs ? `?${qs}` : ""}`;
   };
 
   const hasMultipleChambers = chambers.length > 1;
+
+  // Prepare theme grid data
+  const themeGridItems = themeCounts.map((t) => ({
+    theme: t.theme,
+    label: THEME_CATEGORY_LABELS[t.theme],
+    icon: THEME_CATEGORY_ICONS[t.theme],
+    colorClass: THEME_CATEGORY_COLORS[t.theme],
+    count: t._count,
+    isActive: theme === t.theme,
+    href: buildUrl({ theme: theme === t.theme ? undefined : t.theme }),
+  }));
+
+  // Type tabs
+  const tabs = [
+    { key: "votes", label: "Textes de loi", count: votesCount },
+    { key: "amendements", label: "Amendements", count: amendementCount },
+    { key: "tous", label: "Tous", count: totalAll },
+  ];
 
   return (
     <>
       <CollectionPageJsonLd
         name="Votes parlementaires"
         description="Scrutins de l'Assemblée nationale et du Sénat. Résultats, résumés et détails des votes parlementaires."
-        url={`${SITE_URL}/parlement`}
+        url={`${SITE_URL}/parlement/votes`}
         numberOfItems={total}
       />
       <div className="container mx-auto px-4 py-8">
@@ -86,7 +130,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
               Votes parlementaires
             </h1>
             <p className="text-muted-foreground">
-              {total.toLocaleString("fr-FR")} scrutins analysés.{" "}
+              {total.toLocaleString("fr-FR")} scrutins.{" "}
               {stats.ADOPTED ? `${Math.round((stats.ADOPTED / total) * 100)}% adoptés.` : ""}{" "}
               Découvrez comment votent vos représentants.
             </p>
@@ -118,28 +162,58 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
           </div>
         </div>
 
+        {/* Type tabs */}
+        <div className="flex border-b mb-6">
+          {tabs.map((tab) => {
+            const isActive = typeTab === tab.key || (tab.key === "votes" && !params.type);
+            return (
+              <Link
+                key={tab.key}
+                href={buildUrl({
+                  type: tab.key === "votes" ? undefined : tab.key,
+                  page: undefined,
+                })}
+                className={`flex-1 md:flex-none px-4 py-3 text-sm font-medium text-center transition-colors min-h-[44px] ${
+                  isActive
+                    ? "border-b-2 border-primary text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}{" "}
+                <span className="text-muted-foreground">({tab.count.toLocaleString("fr-FR")})</span>
+              </Link>
+            );
+          })}
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-muted rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold">{total}</p>
+            <p className="text-2xl font-bold">{total.toLocaleString("fr-FR")}</p>
             <p className="text-sm text-muted-foreground">Scrutins</p>
           </div>
-          <div className="bg-green-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{stats.ADOPTED || 0}</p>
-            <p className="text-sm text-muted-foreground">Adoptés</p>
+          <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+              {(stats.ADOPTED || 0).toLocaleString("fr-FR")}
+            </p>
+            <p className="text-sm text-green-700/70 dark:text-green-400/70">Adoptés</p>
           </div>
-          <div className="bg-red-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{stats.REJECTED || 0}</p>
-            <p className="text-sm text-muted-foreground">Rejetés</p>
+          <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-red-700 dark:text-red-400">
+              {(stats.REJECTED || 0).toLocaleString("fr-FR")}
+            </p>
+            <p className="text-sm text-red-700/70 dark:text-red-400/70">Rejetés</p>
           </div>
-          <div className="bg-blue-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-primary">{legislatures.length}</p>
-            <p className="text-sm text-muted-foreground">Législatures</p>
+          <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+              {legislatures.length}
+            </p>
+            <p className="text-sm text-blue-700/70 dark:text-blue-400/70">Législatures</p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-4 mb-6">
+        <div className="flex flex-wrap gap-3 mb-6">
           {/* Search */}
           <VotesSearchInput value={search || ""} />
 
@@ -147,7 +221,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
           <div className="flex gap-2">
             <Link
               href={buildUrl({ result: undefined })}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm min-h-[40px] flex items-center transition-colors ${
                 !result ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
               }`}
             >
@@ -157,7 +231,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
               <Link
                 key={r}
                 href={buildUrl({ result: r })}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm min-h-[40px] flex items-center transition-colors ${
                   result === r ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
                 }`}
               >
@@ -171,7 +245,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
             <div className="flex gap-2">
               <Link
                 href={buildUrl({ chamber: undefined })}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm min-h-[40px] flex items-center transition-colors ${
                   !chamber ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
                 }`}
               >
@@ -183,7 +257,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                   href={buildUrl({
                     chamber: chamber === c.chamber ? undefined : c.chamber,
                   })}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  className={`px-4 py-2 rounded-lg text-sm min-h-[40px] flex items-center transition-colors ${
                     chamber === c.chamber
                       ? c.chamber === "AN"
                         ? "bg-blue-600 text-white"
@@ -193,7 +267,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                         : "bg-rose-50 text-rose-700 hover:bg-rose-100"
                   }`}
                 >
-                  {CHAMBER_LABELS[c.chamber]} ({c._count})
+                  {CHAMBER_LABELS[c.chamber]} ({c._count.toLocaleString("fr-FR")})
                 </Link>
               ))}
             </div>
@@ -209,53 +283,26 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                     legislature:
                       legislature === leg.legislature ? undefined : String(leg.legislature),
                   })}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  className={`px-4 py-2 rounded-lg text-sm min-h-[40px] flex items-center transition-colors ${
                     legislature === leg.legislature
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted hover:bg-muted/80"
                   }`}
                 >
-                  {leg.legislature}e ({leg._count})
+                  {leg.legislature}e ({leg._count.toLocaleString("fr-FR")})
                 </Link>
               ))}
             </div>
           )}
         </div>
 
-        {/* Theme filter */}
+        {/* Theme filter grid */}
         {themeCounts.length > 0 && (
-          <div className="mb-6">
-            <p className="text-sm font-medium mb-2">Filtrer par thème</p>
-            <div className="flex flex-wrap gap-2">
-              <Link href={buildUrl({ theme: undefined })}>
-                <Badge variant={!theme ? "default" : "outline"} className="cursor-pointer">
-                  Tous
-                </Badge>
-              </Link>
-              {themeCounts.map((t) => {
-                const isActive = theme === t.theme;
-                const colorClass = THEME_CATEGORY_COLORS[t.theme];
-                const icon = THEME_CATEGORY_ICONS[t.theme];
-                const label = THEME_CATEGORY_LABELS[t.theme];
-
-                return (
-                  <Link
-                    key={t.theme}
-                    href={buildUrl({
-                      theme: isActive ? undefined : t.theme,
-                    })}
-                  >
-                    <Badge
-                      variant={isActive ? "default" : "outline"}
-                      className={`cursor-pointer ${isActive ? colorClass : ""}`}
-                    >
-                      {icon} {label} ({t._count})
-                    </Badge>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
+          <ThemeGrid
+            themes={themeGridItems}
+            clearHref={buildUrl({ theme: undefined })}
+            hasActiveTheme={!!theme}
+          />
         )}
 
         {/* Active filters */}
@@ -268,7 +315,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                   href={buildUrl({ search: undefined })}
                   className="ml-1 hover:text-destructive"
                 >
-                  ×
+                  x
                 </Link>
               </Badge>
             )}
@@ -279,7 +326,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                   href={buildUrl({ chamber: undefined })}
                   className="ml-1 hover:text-destructive"
                 >
-                  ×
+                  x
                 </Link>
               </Badge>
             )}
@@ -290,7 +337,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                   href={buildUrl({ result: undefined })}
                   className="ml-1 hover:text-destructive"
                 >
-                  ×
+                  x
                 </Link>
               </Badge>
             )}
@@ -298,7 +345,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
               <Badge variant="secondary" className="gap-1">
                 {THEME_CATEGORY_ICONS[theme]} {THEME_CATEGORY_LABELS[theme]}
                 <Link href={buildUrl({ theme: undefined })} className="ml-1 hover:text-destructive">
-                  ×
+                  x
                 </Link>
               </Badge>
             )}
@@ -309,12 +356,18 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                   href={buildUrl({ legislature: undefined })}
                   className="ml-1 hover:text-destructive"
                 >
-                  ×
+                  x
                 </Link>
               </Badge>
             )}
             <Link
-              href="/parlement"
+              href={buildUrl({
+                result: undefined,
+                legislature: undefined,
+                chamber: undefined,
+                theme: undefined,
+                search: undefined,
+              })}
               scroll={false}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
@@ -342,6 +395,8 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                 result={scrutin.result}
                 sourceUrl={scrutin.sourceUrl}
                 theme={scrutin.theme}
+                type={scrutin.type}
+                dossier={scrutin.dossierLegislatif}
               />
             ))}
           </div>
@@ -350,7 +405,12 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
             <p>Aucun scrutin trouvé</p>
             {(result || legislature || search || theme) && (
               <Link
-                href="/parlement"
+                href={buildUrl({
+                  result: undefined,
+                  legislature: undefined,
+                  theme: undefined,
+                  search: undefined,
+                })}
                 scroll={false}
                 className="text-primary hover:underline mt-2 inline-block"
               >

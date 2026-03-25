@@ -22,6 +22,7 @@ import type {
   PlatformUpdateType,
   GroupPosition,
   AnalysisSourceType,
+  ScrutinType,
 } from "@/types";
 
 export const AFFAIR_STATUS_LABELS: Record<AffairStatus, string> = {
@@ -631,6 +632,26 @@ export const CHAMBER_COLORS: Record<Chamber, string> = {
   AN: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700",
   SENAT:
     "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700",
+};
+
+// ============================================
+// SCRUTIN TYPE (amendment/final/motion/article)
+// ============================================
+
+export const SCRUTIN_TYPE_LABELS: Record<ScrutinType, string> = {
+  AMENDEMENT: "Amendement",
+  FINAL: "Texte final",
+  MOTION: "Motion",
+  ARTICLE: "Article",
+  AUTRE: "Autre",
+};
+
+export const SCRUTIN_TYPE_COLORS: Record<ScrutinType, string> = {
+  FINAL: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
+  MOTION: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
+  ARTICLE: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300",
+  AMENDEMENT: "bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400",
+  AUTRE: "bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400",
 };
 
 // ============================================

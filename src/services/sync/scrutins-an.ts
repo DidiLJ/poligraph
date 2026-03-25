@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { syncMetadata, hashFile, hashVotes, ProgressTracker } from "@/lib/sync";
 import { generateDateSlug, generateUniqueSlug } from "@/lib/utils";
 import { VotePosition, VotingResult, DataSource } from "@/generated/prisma";
+import { classifyScrutinTitle } from "@/lib/scrutin-type";
 import * as fs from "fs";
 import * as path from "path";
 import * as https from "https";
@@ -359,6 +360,7 @@ export async function syncScrutinsAN(
             votesAbstain,
             result: parseVotingResult(s.sort?.code || "rejeté"),
             sourceUrl,
+            type: classifyScrutinTitle(s.titre),
           };
 
           let scrutin;

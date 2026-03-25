@@ -7,7 +7,8 @@ interface MarkdownTextProps {
 
 /**
  * Simple markdown renderer for basic formatting
- * Supports: **bold**, *italic*, [links](url), bullet points (• or -)
+ * Supports: **bold**, *italic*, [links](url), bullet points (• or -),
+ * nested lists, --- horizontal rules, **heading** lines
  */
 export function MarkdownText({ children, className }: MarkdownTextProps) {
   // Parse markdown to HTML
@@ -21,14 +22,69 @@ export function MarkdownText({ children, className }: MarkdownTextProps) {
   );
 }
 
-/**
- * Parse basic markdown to HTML
- */
-function parseMarkdown(text: string): string {
-  let html = text;
+/** Check if a trimmed line is a bullet item (top-level or nested). */
+function isBulletLine(line: string): boolean {
+  const t = line.trim();
+  return t.startsWith("•") || t.startsWith("- ") || t.startsWith("* ") || t === "-" || t === "*";
+}
 
-  // Escape HTML entities first (security)
-  html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+/** Remove bullet prefix from a line. */
+function stripBullet(line: string): string {
+  return line.trim().replace(/^[•\-*]\s*/, "");
+}
+
+/** Detect indentation level (number of leading spaces / 2). */
+function indentLevel(line: string): number {
+  const match = line.match(/^(\s*)/);
+  return match ? Math.floor(match[1]!.length / 2) : 0;
+}
+
+/**
+ * Convert an array of bullet lines into a nested <ul> HTML string.
+ */
+function buildList(lines: string[]): string {
+  let html = '<ul class="list-disc pl-4 space-y-1">';
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i]!;
+    const level = indentLevel(line);
+    const content = applyInlineFormatting(stripBullet(line));
+
+    if (level === 0) {
+      // Collect sub-items (indented lines following this one)
+      const subLines: string[] = [];
+      let j = i + 1;
+      while (j < lines.length && indentLevel(lines[j]!) > 0) {
+        subLines.push(lines[j]!);
+        j++;
+      }
+
+      if (subLines.length > 0) {
+        // Dedent sub-lines by removing 2 leading spaces
+        const dedented = subLines.map((l) => l.replace(/^ {1,2}/, ""));
+        html += `<li>${content}${buildList(dedented)}</li>`;
+      } else {
+        html += `<li>${content}</li>`;
+      }
+      i = j;
+    } else {
+      // Shouldn't happen at top level, but handle gracefully
+      html += `<li>${content}</li>`;
+      i++;
+    }
+  }
+
+  html += "</ul>";
+  return html;
+}
+
+/**
+ * Apply inline formatting (bold, italic, links) to a text string.
+ * Must be called AFTER HTML escaping.
+ */
+function applyInlineFormatting(text: string): string {
+  let html = text;
 
   // Bold: **text** or __text__
   html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
@@ -38,7 +94,7 @@ function parseMarkdown(text: string): string {
   html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
   html = html.replace(/_([^_]+)_/g, "<em>$1</em>");
 
-  // Links: [text](url) — internal links stay in-page, external open new tab
+  // Links: [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText, url: string) => {
     const isInternal = url.startsWith("/");
     if (!isInternal) {
@@ -55,42 +111,49 @@ function parseMarkdown(text: string): string {
     return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${linkText}</a>`;
   });
 
-  // Convert line breaks to paragraphs
-  const paragraphs = html.split(/\n\n+/);
+  return html;
+}
 
-  html = paragraphs
+/**
+ * Parse basic markdown to HTML
+ */
+function parseMarkdown(text: string): string {
+  // Escape HTML entities first (security)
+  let escaped = text;
+  escaped = escaped.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // Split into paragraph blocks (double newline)
+  const paragraphs = escaped.split(/\n\n+/);
+
+  return paragraphs
     .map((para) => {
       const trimmed = para.trim();
       if (!trimmed) return "";
 
-      // Check if it's a list (starts with bullet or dash)
-      const lines = trimmed.split("\n");
-      const isList = lines.every(
-        (line) =>
-          line.trim().startsWith("•") ||
-          line.trim().startsWith("-") ||
-          line.trim().startsWith("*") ||
-          line.trim() === ""
-      );
+      // Horizontal rule: --- or *** or ___
+      if (/^[-*_]{3,}$/.test(trimmed)) {
+        return '<hr class="my-4 border-border" />';
+      }
 
-      if (isList && lines.some((l) => l.trim())) {
-        const items = lines
-          .filter((line) => line.trim())
-          .map((line) => {
-            // Remove bullet/dash prefix
-            const content = line.trim().replace(/^[•\-*]\s*/, "");
-            return `<li>${content}</li>`;
-          })
-          .join("");
-        return `<ul class="list-disc pl-4 space-y-1">${items}</ul>`;
+      const lines = trimmed.split("\n");
+
+      // Check if block is a bullet list
+      const nonEmptyLines = lines.filter((l) => l.trim());
+      const isList = nonEmptyLines.length > 0 && nonEmptyLines.every((l) => isBulletLine(l));
+
+      if (isList) {
+        return buildList(nonEmptyLines);
+      }
+
+      // Check for standalone bold heading: a single line that is entirely bold
+      if (lines.length === 1 && /^\*\*[^*]+\*\*\s*$/.test(trimmed)) {
+        return `<h4 class="font-semibold mt-4 mb-1">${applyInlineFormatting(trimmed)}</h4>`;
       }
 
       // Regular paragraph - preserve single line breaks
-      const withBreaks = trimmed.replace(/\n/g, "<br />");
-      return `<p>${withBreaks}</p>`;
+      const formatted = lines.map((l) => applyInlineFormatting(l.trim())).join("<br />");
+      return `<p>${formatted}</p>`;
     })
     .filter(Boolean)
     .join("");
-
-  return html;
 }

@@ -23,7 +23,7 @@ export function ScrutinContext({
   isKeyVote,
   votesDetailSlot,
 }: ScrutinContextProps) {
-  const hasEnBref = summary || citizenImpact;
+  const hasEnBref = !!citizenImpact;
   const showEnjeuxTab = isKeyVote && analysis;
 
   if (!hasEnBref && !showEnjeuxTab && !votesDetailSlot) return null;
@@ -64,61 +64,29 @@ export function ScrutinContext({
 }
 
 function EnBrefContent({
-  summary,
   citizenImpact,
 }: {
   summary: string | null;
   citizenImpact: string | null;
 }) {
-  return (
-    <div className="space-y-4">
-      {summary && (
-        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold">Résumé</h3>
-              <Badge variant="outline" className="gap-1 text-xs">
-                <Sparkles className="h-3 w-3" />
-                IA
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              {summary.split("\n").map((line, i) => {
-                if (line.startsWith("**") && line.endsWith("**")) {
-                  return (
-                    <p key={i} className="font-semibold mt-3 mb-1">
-                      {line.replace(/\*\*/g, "")}
-                    </p>
-                  );
-                }
-                if (line.trim() === "") return null;
-                return <p key={i}>{line}</p>;
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  if (!citizenImpact) return null;
 
-      {citizenImpact && (
-        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              <h3 className="text-lg font-semibold">Ce que ça change pour vous</h3>
-              <Badge variant="outline" className="gap-1 text-xs">
-                <Sparkles className="h-3 w-3" />
-                Décryptage IA
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <MarkdownText className="text-sm">{citizenImpact}</MarkdownText>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+  return (
+    <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <h3 className="text-lg font-semibold">Ce que ça change pour vous</h3>
+          <Badge variant="outline" className="gap-1 text-xs">
+            <Sparkles className="h-3 w-3" />
+            Décryptage IA
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <MarkdownText className="text-sm">{citizenImpact}</MarkdownText>
+      </CardContent>
+    </Card>
   );
 }
 

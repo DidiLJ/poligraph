@@ -9,7 +9,12 @@ import { VotingResultBadge, VotePositionBadge } from "@/components/votes";
 import { DailyVotesPage } from "@/components/votes/DailyVotesPage";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { formatDate } from "@/lib/utils";
-import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
+import {
+  THEME_CATEGORY_LABELS,
+  THEME_CATEGORY_COLORS,
+  SCRUTIN_TYPE_LABELS,
+  SCRUTIN_TYPE_COLORS,
+} from "@/config/labels";
 import { ExternalLink, Calendar, Users, FileText } from "lucide-react";
 import { StatusBadge } from "@/components/legislation";
 import { ArticleJsonLd } from "@/components/seo/JsonLd";
@@ -255,6 +260,13 @@ export default async function ScrutinPage({ params }: PageProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            {scrutin.type && scrutin.type !== "AUTRE" && (
+              <span
+                className={`px-2 py-0.5 rounded text-xs font-medium ${SCRUTIN_TYPE_COLORS[scrutin.type]}`}
+              >
+                {SCRUTIN_TYPE_LABELS[scrutin.type]}
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
               {formatDate(scrutin.votingDate)}
@@ -290,9 +302,33 @@ export default async function ScrutinPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Context: Summary, Citizen Impact, Analysis, Votes détaillés (tabbed) */}
+        {/* Dossier législatif lié */}
+        {scrutin.dossierLegislatif && (
+          <Link
+            href={`/parlement/dossiers/${scrutin.dossierLegislatif.slug}`}
+            className="flex items-center gap-3 mb-8 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors group"
+          >
+            <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-muted-foreground">Dossier législatif</p>
+              <p className="font-medium group-hover:underline">
+                {scrutin.dossierLegislatif.shortTitle || scrutin.dossierLegislatif.title}
+              </p>
+            </div>
+            <div className="shrink-0 flex items-center gap-2">
+              {scrutin.dossierLegislatif.number && (
+                <Badge variant="secondary" className="font-mono text-xs">
+                  {scrutin.dossierLegislatif.number}
+                </Badge>
+              )}
+              <StatusBadge status={scrutin.dossierLegislatif.status} />
+            </div>
+          </Link>
+        )}
+
+        {/* Context: Citizen Impact, Analysis, Votes détaillés (tabbed) */}
         <ScrutinContext
-          summary={scrutin.summary}
+          summary={null}
           citizenImpact={scrutin.citizenImpact}
           analysis={analysis}
           isKeyVote={isKeyVote}
@@ -375,30 +411,6 @@ export default async function ScrutinPage({ params }: PageProps) {
             ) : undefined
           }
         />
-
-        {/* Dossier législatif lié */}
-        {scrutin.dossierLegislatif && (
-          <Link
-            href={`/parlement/dossiers/${scrutin.dossierLegislatif.slug}`}
-            className="flex items-center gap-3 mb-8 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors group"
-          >
-            <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-muted-foreground">Dossier législatif</p>
-              <p className="font-medium group-hover:underline">
-                {scrutin.dossierLegislatif.shortTitle || scrutin.dossierLegislatif.title}
-              </p>
-            </div>
-            <div className="shrink-0 flex items-center gap-2">
-              {scrutin.dossierLegislatif.number && (
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {scrutin.dossierLegislatif.number}
-                </Badge>
-              )}
-              <StatusBadge status={scrutin.dossierLegislatif.status} />
-            </div>
-          </Link>
-        )}
 
         {/* Group Positions */}
         {groupPositions.length > 0 && (

@@ -1,10 +1,19 @@
 import { db } from "@/lib/db";
-import { Prisma } from "@/generated/prisma";
+import { Prisma, type ScrutinType } from "@/generated/prisma";
 import {
   IMPORTANCE_WEIGHTS,
   KEY_VOTE_THRESHOLD,
   VOTE_TYPE_SCORES,
+  AUTO_KEY_VOTE_PATTERNS,
 } from "@/config/scrutin-importance";
+
+const SCRUTIN_TYPE_TO_VOTE_TYPE: Record<ScrutinType, string> = {
+  FINAL: "final",
+  ARTICLE: "article",
+  AMENDEMENT: "amendment",
+  MOTION: "motion",
+  AUTRE: "default",
+};
 
 export interface SignalInput {
   votesFor: number;
@@ -69,7 +78,9 @@ export async function computeImportanceScores(): Promise<{
   const scrutins = await db.scrutin.findMany({
     select: {
       id: true,
+      title: true,
       chamber: true,
+      type: true,
       votesFor: true,
       votesAgainst: true,
       votesAbstain: true,
@@ -104,12 +115,14 @@ export async function computeImportanceScores(): Promise<{
         pressMentions: pressMap.get(s.id) ?? 0,
         hasDossier: !!s.dossierLegislatifId,
         hasCitizenImpact: !!s.citizenImpact,
-        voteType: "default",
+        voteType: s.type ? SCRUTIN_TYPE_TO_VOTE_TYPE[s.type] : "default",
       });
 
       const score = computeScore(signals);
       const wasKeyVote = s.importance?.isKeyVote ?? false;
-      const isKeyVote = wasKeyVote || score >= KEY_VOTE_THRESHOLD;
+      const titleLower = s.title.toLowerCase();
+      const autoPromoted = AUTO_KEY_VOTE_PATTERNS.some((p) => p.test(titleLower));
+      const isKeyVote = wasKeyVote || autoPromoted || score >= KEY_VOTE_THRESHOLD;
 
       if (isKeyVote && !wasKeyVote) promoted++;
       scored++;

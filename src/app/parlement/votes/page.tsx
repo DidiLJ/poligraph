@@ -11,6 +11,7 @@ interface PageProps {
     legislature?: string;
     chamber?: string;
     theme?: string;
+    type?: string;
     search?: string;
   }>;
 }
@@ -18,6 +19,7 @@ interface PageProps {
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const params = await searchParams;
   const canonicalParams = new URLSearchParams();
+  if (params.type) canonicalParams.set("type", params.type);
   if (params.theme) canonicalParams.set("theme", params.theme);
   if (params.legislature) canonicalParams.set("legislature", params.legislature);
   if (params.chamber) canonicalParams.set("chamber", params.chamber);

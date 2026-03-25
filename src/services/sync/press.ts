@@ -15,7 +15,9 @@ import {
   findPartyMentions,
 } from "@/lib/name-matching";
 import { loadMentionBlocklist } from "@/lib/identity/mention-blocklist";
-import { isPoliticallyRelevant } from "@/config/press-keywords";
+import { verifyMentions } from "@/services/sync/press-mention-verify";
+import { MANDATE_TYPE_LABELS } from "@/config/labels";
+import type { MandateType } from "@/generated/prisma";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,9 +29,6 @@ export interface PressSyncOptions {
   feed?: string;
 }
 
-/** Max last-name-only matches per article before discarding them all (safety net) */
-const MAX_LASTNAME_ONLY_MENTIONS = 8;
-
 export interface PressSyncStats {
   feedsFetched: number;
   articlesTotal: number;
@@ -37,8 +36,7 @@ export interface PressSyncStats {
   articlesSkipped: number;
   mentionsCreated: number;
   mentionsBlocked: number;
-  articlesFullNameOnly: number;
-  mentionsFilteredCap: number;
+  mentionsRejectedByAI: number;
   partyMentionsCreated: number;
   errors: string[];
 }
@@ -57,16 +55,27 @@ export async function syncPress(options: PressSyncOptions = {}): Promise<PressSy
     articlesSkipped: 0,
     mentionsCreated: 0,
     mentionsBlocked: 0,
-    articlesFullNameOnly: 0,
-    mentionsFilteredCap: 0,
+    mentionsRejectedByAI: 0,
     partyMentionsCreated: 0,
     errors: [],
   };
 
-  // Build indices + blocklist
+  // Build indices + blocklist + role context for AI verification
   const parties = await buildPartyIndex();
   const politicians = await buildPoliticianIndex();
   const blocklist = await loadMentionBlocklist(DataSource.PRESS);
+
+  // Build politician ID → role map for AI context
+  const mandates = await db.mandate.findMany({
+    where: { isCurrent: true },
+    select: { politicianId: true, type: true },
+  });
+  const roleMap = new Map<string, string>();
+  for (const m of mandates) {
+    if (!roleMap.has(m.politicianId)) {
+      roleMap.set(m.politicianId, MANDATE_TYPE_LABELS[m.type as MandateType] ?? m.type);
+    }
+  }
 
   // Fetch RSS feeds
   const rssClient = new RSSClient({ rateLimitMs: RSS_RATE_LIMIT_MS });
@@ -99,32 +108,41 @@ export async function syncPress(options: PressSyncOptions = {}): Promise<PressSy
 
         // Find politician and party mentions with false-positive filtering
         const searchText = `${item.title} ${item.description || ""}`;
-        const politicalContext = isPoliticallyRelevant(searchText);
-
-        // Layer 1: non-political articles only get full-name matches
-        let detectedMentions = findMentions(searchText, politicians, {
-          fullNameOnly: !politicalContext,
+        // Full-name-only matching: eliminates all last-name false positives
+        // (e.g. "Patrick Bruel" article linked to Jérôme Bruel)
+        const detectedMentions = findMentions(searchText, politicians, {
+          fullNameOnly: true,
         });
-        if (!politicalContext) stats.articlesFullNameOnly++;
 
-        // Layer 2: cap last-name-only matches (safety net for pathological cases)
-        const lastnameOnlyCount = detectedMentions.filter(
-          (m) => !m.matchedName.includes(" ")
-        ).length;
-        if (lastnameOnlyCount > MAX_LASTNAME_ONLY_MENTIONS) {
-          const before = detectedMentions.length;
-          detectedMentions = detectedMentions.filter((m) => m.matchedName.includes(" "));
-          stats.mentionsFilteredCap += before - detectedMentions.length;
-        }
-
-        // Layer 3: blocklist (manual admin unlinks)
-        const mentions = detectedMentions.filter((m) => {
+        // Blocklist filter (manual admin unlinks)
+        const afterBlocklist = detectedMentions.filter((m) => {
           if (blocklist.isBlocked(m.matchedName, m.politicianId)) {
             stats.mentionsBlocked++;
             return false;
           }
           return true;
         });
+
+        // AI verification: confirm each mention refers to the right person
+        let mentions = afterBlocklist;
+        if (afterBlocklist.length > 0) {
+          const verified = await verifyMentions({
+            articleTitle: item.title,
+            articleDescription: item.description || "",
+            mentions: afterBlocklist.map((m) => ({
+              politicianId: m.politicianId,
+              matchedName: m.matchedName,
+              role: roleMap.get(m.politicianId) ?? "politicien",
+            })),
+          });
+          const rejected = verified.filter((v) => !v.confirmed);
+          stats.mentionsRejectedByAI += rejected.length;
+          const confirmedIds = new Set(
+            verified.filter((v) => v.confirmed).map((v) => v.politicianId)
+          );
+          mentions = afterBlocklist.filter((m) => confirmedIds.has(m.politicianId));
+        }
+
         const partyMentions = findPartyMentions(searchText, parties);
 
         if (dryRun) {

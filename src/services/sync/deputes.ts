@@ -184,6 +184,13 @@ async function syncDeputy(
     const anNumericId = dep.id.replace("PA", "");
     const photoUrl = `https://www.assemblee-nationale.fr/dyn/static/tribun/17/photos/carre/${anNumericId}.jpg`;
 
+    const contactData = {
+      contactEmail: dep.mail || null,
+      contactTwitter: dep.twitter || null,
+      contactFacebook: dep.facebook || null,
+      contactWebsite: dep.website || null,
+    };
+
     const politicianData = {
       slug,
       civility: dep.civ || null,
@@ -215,7 +222,10 @@ async function syncDeputy(
       // Update politician
       await db.politician.update({
         where: { id: existing.id },
-        data: politicianData,
+        data: {
+          ...politicianData,
+          ...(existing.contactOverride ? {} : contactData),
+        },
       });
 
       // Update party affiliation via service (real party, not group)
@@ -266,6 +276,7 @@ async function syncDeputy(
       const newPolitician = await db.politician.create({
         data: {
           ...politicianData,
+          ...contactData,
           mandates: {
             create: {
               ...mandateData,

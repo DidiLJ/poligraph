@@ -203,6 +203,7 @@ export const DATA_SOURCES = [
   { href: "https://www.wikidata.org", label: "Wikidata" },
   { href: "https://www.europarl.europa.eu", label: "Parlement européen" },
   { href: "https://toolbox.google.com/factcheck/explorer", label: "Google Fact Check" },
+  { href: "https://datan.fr", label: "Datan" },
 ] as const;
 
 // RSS feeds for footer

@@ -104,6 +104,16 @@ const DATA_SOURCES = [
     fields: ["Statut PEP", "Identifiants croisés", "Jeux de données"],
     color: "#1a1a2e",
   },
+  {
+    name: "Datan",
+    shortName: "Datan",
+    description:
+      "Statistiques parlementaires et informations de contact des deputes, publiees en open data sur data.gouv.fr",
+    url: "https://www.data.gouv.fr/fr/datasets/deputes-actifs-de-lassemblee-nationale-informations-et-statistiques/",
+    frequency: "Hebdomadaire",
+    fields: ["Contact", "Reseaux sociaux", "Statistiques"],
+    color: "#5770BE",
+  },
 ];
 
 const METHODOLOGY_POINTS = [
@@ -525,10 +535,10 @@ export default function SourcesPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-2">
-                Notre base de données est enrichie en croisant <strong>9 sources</strong>{" "}
+                Notre base de données est enrichie en croisant <strong>10 sources</strong>{" "}
                 différentes (Assemblée nationale, Sénat, Gouvernement, Parlement européen, HATVP,
-                Wikidata, NosDéputés, presse, fact-checks). Chaque source apporte des informations
-                complémentaires.
+                Wikidata, NosDéputés, presse, fact-checks, Datan). Chaque source apporte des
+                informations complémentaires.
               </p>
               <p className="text-sm text-muted-foreground">
                 Ce projet est <strong>open source</strong> et contributif. Si vous constatez une

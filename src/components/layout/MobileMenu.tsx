@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCommandPalette } from "@/components/search";
 import { MobileThemeToggle } from "@/components/theme/MobileThemeToggle";
 import { NAV_PRIMARY, NAV_SECONDARY } from "@/config/navigation";
 import {
@@ -53,6 +54,7 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
+  const { open: openPalette } = useCommandPalette();
   const flagSet = new Set(enabledFlags);
 
   const filteredPrimary = NAV_PRIMARY.filter(
@@ -129,13 +131,14 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
       {/* Mobile header icons - visible only on <lg */}
       <div className="flex lg:hidden items-center gap-2">
         {/* Search */}
-        <Link
-          href="/recherche"
+        <button
+          type="button"
+          onClick={openPalette}
           className="flex items-center justify-center h-10 w-10 rounded-lg text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors"
           aria-label="Rechercher"
         >
           <Search className="h-5 w-5" />
-        </Link>
+        </button>
 
         {/* Hamburger */}
         <button

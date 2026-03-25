@@ -618,7 +618,7 @@ function DossierRow({ result }: { result: DossierResult }) {
           {result.shortTitle || result.title}
         </span>
         {result.filingDate && (
-          <span className="text-xs text-muted-foreground">
+          <span className="block text-xs text-muted-foreground">
             {formatDateShort(result.filingDate)}
           </span>
         )}

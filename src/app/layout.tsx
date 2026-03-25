@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import { WebSiteJsonLd } from "@/components/seo/JsonLd";
 import { ChatWidget } from "@/components/chat/ChatWidget";
-import { GlobalSearchProvider } from "@/components/search";
+import { CommandPaletteProvider, CommandPalette } from "@/components/search";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UmamiAnalytics } from "@/components/analytics/UmamiAnalytics";
 import { isFeatureEnabled } from "@/lib/feature-flags";
@@ -125,7 +125,7 @@ export default async function RootLayout({
       >
         <ThemeProvider>
           <TooltipProvider>
-            <GlobalSearchProvider>
+            <CommandPaletteProvider>
               <Suspense fallback={null}>
                 <NavigationProgress />
               </Suspense>
@@ -146,8 +146,9 @@ export default async function RootLayout({
                 {children}
               </main>
               <Footer />
+              <CommandPalette />
               {chatEnabled && <ChatWidget />}
-            </GlobalSearchProvider>
+            </CommandPaletteProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

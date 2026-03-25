@@ -20,7 +20,7 @@ interface DebouncedSearchInputProps {
 export function DebouncedSearchInput({
   value,
   onSearch,
-  delay = 300,
+  delay = 800,
   placeholder = "Rechercher...",
   className,
   id,
@@ -50,6 +50,14 @@ export function DebouncedSearchInput({
     }, delay);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      onSearch(inputRef.current?.value.trim() ?? "");
+    }
+  };
+
   const handleClear = () => {
     if (inputRef.current) inputRef.current.value = "";
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -72,6 +80,7 @@ export function DebouncedSearchInput({
           defaultValue={value}
           placeholder={placeholder}
           onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-8 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 placeholder:text-muted-foreground"
         />
         {value && (

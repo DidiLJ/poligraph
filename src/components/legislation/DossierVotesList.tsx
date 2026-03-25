@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { VotingResultBadge } from "@/components/votes";
+import { VotingResultBadge } from "@/components/votes/VoteBadge";
 import type { VotingResult } from "@/types";
 
 const INITIAL_COUNT = 10;

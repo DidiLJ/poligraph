@@ -35,6 +35,15 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
+    name: "summaries-dossiers",
+    run: async () => {
+      if (!process.env.MISTRAL_API_KEY) return { skipped: "no MISTRAL_API_KEY" };
+      const { generateDossierSummaries } =
+        await import("@/services/sync/generate-dossier-summaries");
+      return generateDossierSummaries({ limit: 10 });
+    },
+  },
+  {
     name: "reconcile-scrutin-dossier",
     run: async () => {
       const { reconcileScrutinDossier } = await import("@/services/sync/reconcile-scrutin-dossier");

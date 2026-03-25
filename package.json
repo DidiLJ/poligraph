@@ -59,6 +59,8 @@
     "sync:scrutin-analysis": "tsx -e \"import {generateScrutinAnalysis} from './src/services/sync/scrutin-analysis'; generateScrutinAnalysis({limit:10}).then(console.log)\"",
     "sync:citizen-impacts": "tsx -e \"import {generateScrutinCitizenImpacts} from './src/services/sync/generate-scrutin-citizen-impacts'; generateScrutinCitizenImpacts({limit:10}).then(console.log)\"",
     "sync:citizen-impacts:force": "tsx -e \"import {generateScrutinCitizenImpacts} from './src/services/sync/generate-scrutin-citizen-impacts'; generateScrutinCitizenImpacts({limit:10,force:true}).then(console.log)\"",
+    "sync:dossier-summaries": "tsx -e \"import {generateDossierSummaries} from './src/services/sync/generate-dossier-summaries'; generateDossierSummaries({limit:20}).then(console.log)\"",
+    "sync:dossier-summaries:force": "tsx -e \"import {generateDossierSummaries} from './src/services/sync/generate-dossier-summaries'; generateDossierSummaries({limit:20,force:true}).then(console.log)\"",
     "sync:compute-stats": "tsx scripts/compute-stats.ts",
     "sync:senat:stats": "tsx scripts/sync-senat.ts --stats",
     "sync:gouvernement:stats": "tsx scripts/sync-gouvernement.ts --stats",

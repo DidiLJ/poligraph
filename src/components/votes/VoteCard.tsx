@@ -2,14 +2,16 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { VotingResultBadge } from "./VoteBadge";
 import { formatDate } from "@/lib/utils";
-import type { VotingResult, Chamber, ThemeCategory } from "@/types";
+import type { VotingResult, Chamber, ThemeCategory, ScrutinType } from "@/types";
 import {
   CHAMBER_SHORT_LABELS,
   THEME_CATEGORY_LABELS,
   THEME_CATEGORY_ICONS,
   THEME_CATEGORY_COLORS,
+  SCRUTIN_TYPE_LABELS,
+  SCRUTIN_TYPE_COLORS,
 } from "@/config/labels";
-import { Calendar, Users, ExternalLink, Building2 } from "lucide-react";
+import { Calendar, Users, ExternalLink, Building2, FileText } from "lucide-react";
 
 interface VoteCardProps {
   id: string;
@@ -26,6 +28,8 @@ interface VoteCardProps {
   sourceUrl?: string | null;
   totalVotes?: number;
   theme?: ThemeCategory | null;
+  type?: ScrutinType | null;
+  dossier?: { title: string; slug: string | null } | null;
 }
 
 export function VoteCard({
@@ -43,6 +47,8 @@ export function VoteCard({
   sourceUrl,
   totalVotes: _totalVotes,
   theme,
+  type,
+  dossier,
 }: VoteCardProps) {
   // Use slug for URL if available, fallback to id
   const href = `/parlement/votes/${slug || id}`;
@@ -59,7 +65,14 @@ export function VoteCard({
             <Link href={href} prefetch={false} className="hover:underline">
               <p className="font-medium text-sm line-clamp-2">{title}</p>
             </Link>
-            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+              {type && type !== "AUTRE" && (
+                <span
+                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${SCRUTIN_TYPE_COLORS[type]}`}
+                >
+                  {SCRUTIN_TYPE_LABELS[type]}
+                </span>
+              )}
               {chamber && (
                 <span
                   className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
@@ -87,6 +100,16 @@ export function VoteCard({
               </span>
               <span className="text-muted-foreground/60">{legislature}e législature</span>
             </div>
+            {dossier?.slug && (
+              <Link
+                href={`/parlement/dossiers/${dossier.slug}`}
+                prefetch={false}
+                className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <FileText className="h-3 w-3 shrink-0" />
+                <span className="line-clamp-1">{dossier.title}</span>
+              </Link>
+            )}
           </div>
           <div className="shrink-0 flex items-center gap-2">
             <VotingResultBadge result={result} />

@@ -132,6 +132,7 @@ function ChamberSection({ chamber, scrutins }: { chamber: Chamber; scrutins: Dai
               result={s.result}
               sourceUrl={s.sourceUrl}
               theme={s.theme}
+              type={s.type}
             />
             {s.summary && <SummaryExcerpt summary={s.summary} />}
           </div>

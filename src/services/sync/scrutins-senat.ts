@@ -12,6 +12,7 @@ import { HTTPClient } from "@/lib/api/http-client";
 import { decodeHtmlEntities, parseFrenchDate } from "@/lib/parsing";
 import { generateDateSlug, generateUniqueSlug } from "@/lib/utils";
 import { VotePosition, VotingResult, DataSource, Chamber } from "@/generated/prisma";
+import { classifyScrutinTitle } from "@/lib/scrutin-type";
 import { SENAT_RATE_LIMIT_MS } from "@/config/rate-limits";
 
 // ---------------------------------------------------------------------------
@@ -389,6 +390,7 @@ export async function syncScrutinsSenat(
               votesAbstain: metadata.votesAbstain,
               result: metadata.result,
               sourceUrl: metadata.sourceUrl,
+              type: classifyScrutinTitle(metadata.title),
             };
 
             let scrutin;

@@ -84,6 +84,7 @@ const includeOptions = {
       votesFor: true,
       votesAgainst: true,
       votesAbstain: true,
+      type: true,
     },
     orderBy: { votingDate: "desc" },
   },

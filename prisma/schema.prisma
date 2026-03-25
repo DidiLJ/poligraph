@@ -833,6 +833,9 @@ model Scrutin {
   // Thematic classification (AI-generated)
   theme ThemeCategory?
 
+  // Vote type classification (title-based)
+  type ScrutinType?
+
   // AI-generated citizen impact explanation
   citizenImpact     String?   @db.Text
   citizenImpactDate DateTime?
@@ -859,6 +862,7 @@ model Scrutin {
   @@index([chamber])
   @@index([chamber, votingDate]) // participation stats: mandate date range queries
   @@index([theme])
+  @@index([type, votingDate])
   @@index([result, votingDate]) // result filter + default date sort
   @@index([dossierLegislatifId])
 }
@@ -981,6 +985,14 @@ enum AnalysisSourceType {
 enum Chamber {
   AN // Assemblée Nationale
   SENAT // Sénat
+}
+
+enum ScrutinType {
+  AMENDEMENT // Votes on individual amendments (~81%)
+  FINAL // Final vote on projet/proposition de loi (~1%)
+  MOTION // Motion de rejet/censure/renvoi (~2%)
+  ARTICLE // Vote on specific articles (~16%)
+  AUTRE // Remainder
 }
 
 enum ThemeCategory {

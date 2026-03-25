@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { VotingResultBadge } from "@/components/votes/VoteBadge";
-import type { VotingResult } from "@/types";
+import type { VotingResult, ScrutinType } from "@/types";
 
 const INITIAL_COUNT = 10;
 
@@ -15,6 +15,7 @@ interface DossierVote {
   votesAgainst: number;
   votesAbstain: number;
   result: VotingResult;
+  type: ScrutinType | null;
 }
 
 function formatDate(d: Date | string): string {
@@ -26,13 +27,53 @@ function formatDate(d: Date | string): string {
   });
 }
 
+type Tab = "votes" | "amendements";
+
 export function DossierVotesList({ votes }: { votes: DossierVote[] }) {
+  const textVotes = votes.filter((v) => v.type !== "AMENDEMENT");
+  const amendments = votes.filter((v) => v.type === "AMENDEMENT");
+  const hasBothTypes = textVotes.length > 0 && amendments.length > 0;
+
+  const [tab, setTab] = useState<Tab>("votes");
   const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? votes : votes.slice(0, INITIAL_COUNT);
-  const remaining = votes.length - INITIAL_COUNT;
+
+  const activeList = !hasBothTypes ? votes : tab === "votes" ? textVotes : amendments;
+  const visible = showAll ? activeList : activeList.slice(0, INITIAL_COUNT);
+  const remaining = activeList.length - INITIAL_COUNT;
 
   return (
     <div>
+      {hasBothTypes && (
+        <div className="flex gap-1 mb-4 border-b">
+          <button
+            onClick={() => {
+              setTab("votes");
+              setShowAll(false);
+            }}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              tab === "votes"
+                ? "border-b-2 border-primary text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Votes ({textVotes.length})
+          </button>
+          <button
+            onClick={() => {
+              setTab("amendements");
+              setShowAll(false);
+            }}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              tab === "amendements"
+                ? "border-b-2 border-primary text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Amendements ({amendments.length})
+          </button>
+        </div>
+      )}
+
       <div className="max-h-[600px] overflow-y-auto space-y-3 pr-1">
         {visible.map((scrutin, i) => {
           const total = scrutin.votesFor + scrutin.votesAgainst + scrutin.votesAbstain;
@@ -72,7 +113,7 @@ export function DossierVotesList({ votes }: { votes: DossierVote[] }) {
           onClick={() => setShowAll(true)}
           className="mt-3 w-full py-2 text-sm text-primary hover:underline font-medium"
         >
-          Voir les {remaining} autres votes
+          Voir les {remaining} autres {tab === "amendements" ? "amendements" : "votes"}
         </button>
       )}
     </div>

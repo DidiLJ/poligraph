@@ -17,10 +17,23 @@ export const KEY_VOTE_THRESHOLD = 70;
 
 export const VOTE_TYPE_SCORES: Record<string, number> = {
   final: 1.0,
+  motion: 0.85,
+  article: 0.6,
   amendment: 0.5,
-  motion: 0.3,
   default: 0.4,
 };
+
+/**
+ * Title patterns that auto-promote a scrutin to key vote status,
+ * regardless of computed score. These are constitutional mechanisms
+ * of the highest democratic significance.
+ */
+export const AUTO_KEY_VOTE_PATTERNS = [
+  /motion\s+de\s+censure/,
+  /motion\s+de\s+rejet/,
+  /déclaration\s+de\s+politique\s+générale/,
+  /motion\s+référendaire/,
+];
 
 export const GOVERNMENT_GROUP_CODE = "EPR";
 export const CURRENT_LEGISLATURE = 17;

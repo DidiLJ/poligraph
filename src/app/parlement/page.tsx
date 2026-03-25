@@ -12,6 +12,7 @@ interface PageProps {
     legislature?: string;
     chamber?: string;
     theme?: string;
+    type?: string;
     search?: string;
   }>;
 }
@@ -24,10 +25,12 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     params.legislature ||
     params.chamber ||
     params.theme ||
+    params.type ||
     params.page;
 
   if (hasFilters) {
     const canonicalParams = new URLSearchParams();
+    if (params.type) canonicalParams.set("type", params.type);
     if (params.theme) canonicalParams.set("theme", params.theme);
     if (params.legislature) canonicalParams.set("legislature", params.legislature);
     if (params.chamber) canonicalParams.set("chamber", params.chamber);
@@ -57,6 +60,7 @@ export default async function ParlementPage({ searchParams }: PageProps) {
     params.legislature ||
     params.chamber ||
     params.theme ||
+    params.type ||
     params.page;
 
   if (hasFilters) {

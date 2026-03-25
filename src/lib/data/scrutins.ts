@@ -1,6 +1,6 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
-import type { Chamber, VotingResult, ThemeCategory } from "@/generated/prisma";
+import type { Chamber, VotingResult, ThemeCategory, ScrutinType } from "@/generated/prisma";
 import { KEY_VOTES_HUB_WINDOW_DAYS, KEY_VOTES_GRID_COUNT } from "@/config/scrutin-importance";
 
 // ---------------------------------------------------------------------------
@@ -21,6 +21,7 @@ export interface DailyScrutin {
   result: VotingResult;
   sourceUrl: string | null;
   theme: ThemeCategory | null;
+  type: ScrutinType | null;
   summary: string | null;
 }
 
@@ -63,6 +64,7 @@ const DAILY_SELECT = {
   result: true,
   sourceUrl: true,
   theme: true,
+  type: true,
   summary: true,
 } as const;
 
@@ -172,9 +174,11 @@ async function queryScrutins(params: {
   legislature?: number;
   chamber?: Chamber;
   theme?: ThemeCategory;
+  type?: ScrutinType;
+  excludeType?: ScrutinType;
   search?: string;
 }) {
-  const { page, limit, result, legislature, chamber, theme, search } = params;
+  const { page, limit, result, legislature, chamber, theme, type, excludeType, search } = params;
   const skip = (page - 1) * limit;
 
   const where = {
@@ -182,6 +186,8 @@ async function queryScrutins(params: {
     ...(legislature && { legislature }),
     ...(chamber && { chamber }),
     ...(theme && { theme }),
+    ...(type && { type }),
+    ...(excludeType && { type: { not: excludeType } }),
     ...(search && {
       OR: [
         { title: { contains: search, mode: "insensitive" as const } },
@@ -202,10 +208,15 @@ async function queryScrutins(params: {
       orderBy: { votingDate: "desc" },
       skip,
       take: limit,
+      select: {
+        ...DAILY_SELECT,
+        dossierLegislatif: { select: { title: true, slug: true } },
+      },
     }),
     db.scrutin.count({ where }),
     db.scrutin.groupBy({
       by: ["result"],
+      where,
       _count: true,
     }),
   ]);
@@ -232,6 +243,8 @@ async function getScrutinsFiltered(params: {
   legislature?: number;
   chamber?: Chamber;
   theme?: ThemeCategory;
+  type?: ScrutinType;
+  excludeType?: ScrutinType;
 }) {
   "use cache";
   cacheTag("votes");
@@ -247,6 +260,8 @@ export async function getScrutins(params: {
   legislature?: number;
   chamber?: Chamber;
   theme?: ThemeCategory;
+  type?: ScrutinType;
+  excludeType?: ScrutinType;
   search?: string;
 }) {
   if (params.search) {
@@ -289,6 +304,17 @@ export async function getThemeCounts() {
     orderBy: { _count: { theme: "desc" } },
   });
   return counts.filter((c) => c.theme !== null) as { theme: ThemeCategory; _count: number }[];
+}
+
+export async function getTypeCounts() {
+  "use cache";
+  cacheTag("votes");
+  cacheLife("minutes");
+
+  return db.scrutin.groupBy({
+    by: ["type"],
+    _count: true,
+  });
 }
 
 /** Theme counts including key vote counts for the hub. */

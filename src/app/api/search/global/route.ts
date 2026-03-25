@@ -5,7 +5,7 @@ import { withCache } from "@/lib/cache";
 import { FACTCHECK_ALLOWED_SOURCES } from "@/config/labels";
 import { withPublicRoute } from "@/lib/api/with-public-route";
 
-const LIMIT = 8;
+const MAX_LIMIT = 8;
 
 // Raw result types from $queryRaw
 interface RawPolitician {
@@ -68,6 +68,8 @@ interface RawCommune {
 
 export const GET = withPublicRoute(async (request) => {
   const query = request.nextUrl.searchParams.get("q") || "";
+  const limitParam = request.nextUrl.searchParams.get("limit");
+  const limit = Math.min(Math.max(parseInt(limitParam || String(MAX_LIMIT), 10), 1), MAX_LIMIT);
 
   if (query.length < 2) {
     return NextResponse.json({
@@ -101,7 +103,7 @@ export const GET = withPublicRoute(async (request) => {
             OR unaccent(p."lastName") ILIKE unaccent(${startsWithPattern})
             OR unaccent(p."firstName") ILIKE unaccent(${startsWithPattern}))
         ORDER BY p."prominenceScore" DESC NULLS LAST, p."lastName" ASC
-        LIMIT ${LIMIT}
+        LIMIT ${limit}
       `,
 
       // Parties: accent-insensitive on name/shortName
@@ -113,7 +115,7 @@ export const GET = withPublicRoute(async (request) => {
         WHERE unaccent(p."name") ILIKE unaccent(${pattern})
            OR unaccent(p."shortName") ILIKE unaccent(${Prisma.sql`${query}`})
         ORDER BY p."name" ASC
-        LIMIT ${LIMIT}
+        LIMIT ${limit}
       `,
 
       // Affairs: accent-insensitive on title
@@ -126,7 +128,7 @@ export const GET = withPublicRoute(async (request) => {
         WHERE a."publicationStatus" = 'PUBLISHED'
           AND unaccent(a."title") ILIKE unaccent(${pattern})
         ORDER BY a."createdAt" DESC
-        LIMIT ${LIMIT}
+        LIMIT ${limit}
       `,
 
       // Scrutins: accent-insensitive on title
@@ -135,7 +137,7 @@ export const GET = withPublicRoute(async (request) => {
         FROM "Scrutin" s
         WHERE unaccent(s."title") ILIKE unaccent(${pattern})
         ORDER BY s."votingDate" DESC
-        LIMIT ${LIMIT}
+        LIMIT ${limit}
       `,
 
       // Fact-checks: accent-insensitive on title, filtered by allowed sources
@@ -149,7 +151,7 @@ export const GET = withPublicRoute(async (request) => {
         WHERE fc."source" = ANY(${FACTCHECK_ALLOWED_SOURCES})
           AND unaccent(fc."title") ILIKE unaccent(${pattern})
         ORDER BY fc."id", fc."publishedAt" DESC
-        LIMIT ${LIMIT}
+        LIMIT ${limit}
       `,
 
       // Legislative dossiers: accent-insensitive on title/shortTitle
@@ -159,7 +161,7 @@ export const GET = withPublicRoute(async (request) => {
         WHERE unaccent(d."title") ILIKE unaccent(${pattern})
            OR unaccent(COALESCE(d."shortTitle", '')) ILIKE unaccent(${pattern})
         ORDER BY d."filingDate" DESC NULLS LAST
-        LIMIT ${LIMIT}
+        LIMIT ${limit}
       `,
 
       // Communes: accent-insensitive, startsWith for more relevant results
@@ -168,7 +170,7 @@ export const GET = withPublicRoute(async (request) => {
         FROM "Commune" c
         WHERE unaccent(c."name") ILIKE unaccent(${startsWithPattern})
         ORDER BY c."population" DESC NULLS LAST
-        LIMIT ${LIMIT}
+        LIMIT ${limit}
       `,
     ]);
 

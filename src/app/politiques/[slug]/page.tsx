@@ -38,6 +38,7 @@ import { getPolitician } from "@/lib/data/politicians";
 import { FollowButton } from "@/components/politicians/FollowButton";
 import { CopyableId } from "@/components/politicians/CopyableId";
 import { SITE_URL } from "@/config/site";
+import { ShareBar } from "@/components/ui/ShareBar";
 import { getCertaintyLevel, isActiveCertainty } from "@/config/certainty";
 
 export const revalidate = 3600; // ISR: revalidate every hour
@@ -218,6 +219,13 @@ export default async function PoliticianPage({ params }: PageProps) {
 
   return (
     <>
+      <ShareBar
+        data={{
+          title: politician.fullName,
+          text: `${politician.fullName}${currentMandate ? `, ${MANDATE_TYPE_LABELS[currentMandate.type]}` : ""}${politician.currentParty ? ` (${politician.currentParty.shortName})` : ""}`,
+          url: `${SITE_URL}/politiques/${politician.slug}`,
+        }}
+      />
       {/* JSON-LD Structured Data */}
       <PersonJsonLd
         name={politician.fullName}

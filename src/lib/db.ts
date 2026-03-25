@@ -48,6 +48,10 @@ globalForPrisma.prisma = db;
 if (!globalForPrisma.shutdownRegistered) {
   globalForPrisma.shutdownRegistered = true;
   process.on("beforeExit", async () => {
-    await globalForPrisma.pool?.end();
+    const pool = globalForPrisma.pool;
+    if (pool) {
+      globalForPrisma.pool = undefined;
+      await pool.end();
+    }
   });
 }

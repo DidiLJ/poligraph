@@ -38,6 +38,9 @@ import type {
   PlatformUpdateType,
   GroupPosition,
   AnalysisSourceType,
+  ThematicAxis,
+  QuizElectionScope,
+  ProfessionDeFoiSource,
 } from "@/generated/prisma";
 
 // Compare types
@@ -90,6 +93,9 @@ export type {
   PlatformUpdateType,
   GroupPosition,
   AnalysisSourceType,
+  ThematicAxis,
+  QuizElectionScope,
+  ProfessionDeFoiSource,
 };
 
 // Serialized types (for client components)

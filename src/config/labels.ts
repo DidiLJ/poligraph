@@ -23,6 +23,8 @@ import type {
   GroupPosition,
   AnalysisSourceType,
   ScrutinType,
+  ThematicAxis,
+  QuizElectionScope,
 } from "@/types";
 
 export const AFFAIR_STATUS_LABELS: Record<AffairStatus, string> = {
@@ -1218,4 +1220,70 @@ export const GROUP_POSITION_COLORS: Record<GroupPosition, string> = {
 export const ANALYSIS_SOURCE_TYPE_LABELS: Record<AnalysisSourceType, string> = {
   DEBATE_TRANSCRIPT: "Débats parlementaires",
   STRUCTURED_DATA: "Données structurées",
+};
+
+// ---------------------------------------------------------------------------
+// Thematic Axes (boussole politique)
+// ---------------------------------------------------------------------------
+
+export const THEMATIC_AXIS_LABELS: Record<ThematicAxis, string> = {
+  ECONOMIC_ROLE: "Rôle économique de la puissance publique",
+  SOCIETAL_NORMS: "Évolution des normes sociétales",
+  ECOLOGICAL_TRANSITION: "Transition écologique et activité économique",
+  SECURITY_LIBERTIES: "Équilibre sécurité / libertés",
+  DEMOCRACY_INSTITUTIONS: "Organisation du pouvoir et participation citoyenne",
+  EUROPEAN_INTEGRATION: "Construction européenne",
+  IMMIGRATION: "Politique migratoire",
+  FOREIGN_AFFAIRS: "Affaires internationales",
+  URBAN_PLANNING: "Aménagement du territoire communal",
+  PUBLIC_SERVICES: "Gestion des services publics locaux",
+  MOBILITY: "Déplacements communaux",
+};
+
+export const THEMATIC_AXIS_POLE_A: Record<ThematicAxis, string> = {
+  ECONOMIC_ROLE: "Intervention publique forte",
+  SOCIETAL_NORMS: "Extension des droits individuels",
+  ECOLOGICAL_TRANSITION: "Transformation rapide du modèle productif",
+  SECURITY_LIBERTIES: "Renforcement des moyens de sécurité",
+  DEMOCRACY_INSTITUTIONS: "Démocratie directe et contrôle citoyen",
+  EUROPEAN_INTEGRATION: "Approfondissement de l'intégration",
+  IMMIGRATION: "Politique d'accueil ouverte",
+  FOREIGN_AFFAIRS: "Engagement multilatéral",
+  URBAN_PLANNING: "Densification et ville compacte",
+  PUBLIC_SERVICES: "Régie directe et maîtrise publique",
+  MOBILITY: "Priorité mobilités actives et collectives",
+};
+
+export const THEMATIC_AXIS_POLE_B: Record<ThematicAxis, string> = {
+  ECONOMIC_ROLE: "Initiative privée et allègement réglementaire",
+  SOCIETAL_NORMS: "Préservation des cadres traditionnels",
+  ECOLOGICAL_TRANSITION: "Adaptation progressive et innovation technologique",
+  SECURITY_LIBERTIES: "Priorité aux garanties individuelles",
+  DEMOCRACY_INSTITUTIONS: "Efficacité des institutions représentatives",
+  EUROPEAN_INTEGRATION: "Réaffirmation de la souveraineté nationale",
+  IMMIGRATION: "Maîtrise stricte des flux",
+  FOREIGN_AFFAIRS: "Non-alignement et indépendance stratégique",
+  URBAN_PLANNING: "Préservation du cadre de vie",
+  PUBLIC_SERVICES: "Délégation et optimisation budgétaire",
+  MOBILITY: "Maintien de l'accessibilité automobile",
+};
+
+export const THEMATIC_AXIS_SCOPE: Record<ThematicAxis, QuizElectionScope> = {
+  ECONOMIC_ROLE: "COMMON",
+  SOCIETAL_NORMS: "COMMON",
+  ECOLOGICAL_TRANSITION: "COMMON",
+  SECURITY_LIBERTIES: "COMMON",
+  DEMOCRACY_INSTITUTIONS: "COMMON",
+  EUROPEAN_INTEGRATION: "NATIONAL",
+  IMMIGRATION: "NATIONAL",
+  FOREIGN_AFFAIRS: "NATIONAL",
+  URBAN_PLANNING: "MUNICIPAL",
+  PUBLIC_SERVICES: "MUNICIPAL",
+  MOBILITY: "MUNICIPAL",
+};
+
+export const QUIZ_ELECTION_SCOPE_LABELS: Record<QuizElectionScope, string> = {
+  COMMON: "Tronc commun",
+  NATIONAL: "National",
+  MUNICIPAL: "Municipal",
 };

@@ -97,10 +97,11 @@ export default async function PartyPage({ params }: PageProps) {
     notFound();
   }
 
-  const [leadershipMandates, partyRoles, pressEnabled] = await Promise.all([
+  const [leadershipMandates, partyRoles, pressEnabled, programmeEnabled] = await Promise.all([
     getPartyLeadership(party.id, party.name),
     getPartyRoles(party.id),
     isFeatureEnabled("PRESS_SECTION"),
+    isFeatureEnabled("PROGRAMMES_ENABLED"),
   ]);
   const currentLeaders = leadershipMandates.filter((m) => m.isCurrent);
   const pastLeaders = leadershipMandates.filter((m) => !m.isCurrent);
@@ -652,6 +653,16 @@ export default async function PartyPage({ params }: PageProps) {
                     >
                       Site officiel
                     </a>
+                  </div>
+                )}
+                {programmeEnabled && (
+                  <div>
+                    <Link
+                      href={`/partis/${slug}/programme`}
+                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                    >
+                      Voir le programme
+                    </Link>
                   </div>
                 )}
               </CardContent>

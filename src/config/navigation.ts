@@ -89,6 +89,13 @@ export const NAV_SECONDARY: NavItem[] = [
     icon: "landmark",
     description: "Groupes de l'AN et du Sénat",
   },
+  {
+    href: "/programmes",
+    label: "Programmes",
+    icon: "fileText",
+    description: "Programmes des partis par axe thématique",
+    featureFlag: "PROGRAMMES_ENABLED",
+  },
 ];
 
 /** @deprecated Use NAV_PRIMARY instead */
@@ -177,6 +184,7 @@ export const FOOTER_SECTIONS: FooterSection[] = [
     title: "Explorer",
     links: [
       { href: "/recap", label: "Le Recap" },
+      { href: "/programmes", label: "Programmes", featureFlag: "PROGRAMMES_ENABLED" },
       { href: "/presse", label: "Revue de presse", featureFlag: "PRESS_SECTION" },
       { href: "/departements", label: "Départements" },
       { href: "/recherche", label: "Recherche" },

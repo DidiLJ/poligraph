@@ -40,7 +40,7 @@ export const PUT = withAdminAuth(
     const platform = await db.platform.update({
       where: { id },
       data: {
-        sourceUrl: data.sourceUrl ?? existing.sourceUrl,
+        sourceUrl: data.sourceUrl !== undefined ? data.sourceUrl : existing.sourceUrl,
         publicationStatus: data.publicationStatus ?? existing.publicationStatus,
       },
     });

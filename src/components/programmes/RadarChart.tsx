@@ -7,14 +7,28 @@ import {
   PolarAngleAxis,
   ResponsiveContainer,
 } from "recharts";
-import { THEMATIC_AXIS_LABELS } from "@/config/labels";
 import type { ThematicAxis } from "@/generated/prisma";
+
+// Short labels optimized for radar readability (no truncation needed)
+const RADAR_LABELS: Record<ThematicAxis, string> = {
+  ECONOMIC_ROLE: "Économie",
+  SOCIETAL_NORMS: "Société",
+  ECOLOGICAL_TRANSITION: "Écologie",
+  SECURITY_LIBERTIES: "Sécurité / libertés",
+  DEMOCRACY_INSTITUTIONS: "Institutions",
+  EUROPEAN_INTEGRATION: "Europe",
+  IMMIGRATION: "Immigration",
+  FOREIGN_AFFAIRS: "International",
+  URBAN_PLANNING: "Urbanisme",
+  PUBLIC_SERVICES: "Services publics",
+  MOBILITY: "Mobilité",
+};
 
 interface RadarDataPoint {
   axis: ThematicAxis;
   label: string;
   value: number; // -1 to 1
-  // Normalized for radar display: 0 to 100
+  // Normalized for radar: absolute distance from center (0..100)
   display: number;
 }
 
@@ -22,11 +36,6 @@ interface RadarChartProps {
   positions: Partial<Record<ThematicAxis, number>>;
   color?: string;
   className?: string;
-}
-
-function shortenLabel(label: string): string {
-  // Take first 3 words max for readability on radar
-  return label.split(" ").slice(0, 3).join(" ");
 }
 
 export function RadarChart({ positions, color = "#3b82f6", className }: RadarChartProps) {
@@ -42,9 +51,10 @@ export function RadarChart({ positions, color = "#3b82f6", className }: RadarCha
 
   const data: RadarDataPoint[] = axes.map((axis) => ({
     axis,
-    label: shortenLabel(THEMATIC_AXIS_LABELS[axis]),
+    label: RADAR_LABELS[axis],
     value: positions[axis]!,
-    display: ((positions[axis]! + 1) / 2) * 100, // -1..1 -> 0..100
+    // Show strength of position: abs(-1)=100, abs(0)=0, abs(1)=100
+    display: Math.abs(positions[axis]!) * 100,
   }));
 
   return (
@@ -56,6 +66,9 @@ export function RadarChart({ positions, color = "#3b82f6", className }: RadarCha
           <Radar dataKey="display" stroke={color} fill={color} fillOpacity={0.2} strokeWidth={2} />
         </RechartsRadarChart>
       </ResponsiveContainer>
+      <p className="text-xs text-muted-foreground text-center mt-1">
+        Intensité des positions (centre = neutre, bord = position tranchée)
+      </p>
     </div>
   );
 }

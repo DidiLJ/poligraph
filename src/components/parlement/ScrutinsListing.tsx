@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SimplePagination } from "@/components/ui/SimplePagination";
-import { VoteCard } from "@/components/votes";
+import { VoteCard, ScrutinTypeTabs } from "@/components/votes";
 import { VotesSearchInput } from "@/components/votes/VotesSearchInput";
 import { ThemeGrid } from "@/components/votes/ThemeGrid";
 import { Badge } from "@/components/ui/badge";
@@ -109,9 +109,24 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
 
   // Type tabs
   const tabs = [
-    { key: "votes", label: "Textes de loi", count: votesCount },
-    { key: "amendements", label: "Amendements", count: amendementCount },
-    { key: "tous", label: "Tous", count: totalAll },
+    {
+      key: "votes",
+      label: "Textes de loi",
+      count: votesCount,
+      href: buildUrl({ type: undefined, page: undefined }),
+    },
+    {
+      key: "amendements",
+      label: "Amendements",
+      count: amendementCount,
+      href: buildUrl({ type: "amendements", page: undefined }),
+    },
+    {
+      key: "tous",
+      label: "Tous",
+      count: totalAll,
+      href: buildUrl({ type: "tous", page: undefined }),
+    },
   ];
 
   return (
@@ -163,28 +178,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
         </div>
 
         {/* Type tabs */}
-        <div className="flex border-b mb-6">
-          {tabs.map((tab) => {
-            const isActive = typeTab === tab.key || (tab.key === "votes" && !params.type);
-            return (
-              <Link
-                key={tab.key}
-                href={buildUrl({
-                  type: tab.key === "votes" ? undefined : tab.key,
-                  page: undefined,
-                })}
-                className={`flex-1 md:flex-none px-4 py-3 text-sm font-medium text-center transition-colors min-h-[44px] ${
-                  isActive
-                    ? "border-b-2 border-primary text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}{" "}
-                <span className="text-muted-foreground">({tab.count.toLocaleString("fr-FR")})</span>
-              </Link>
-            );
-          })}
-        </div>
+        <ScrutinTypeTabs tabs={tabs} activeKey={typeTab} />
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

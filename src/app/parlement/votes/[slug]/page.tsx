@@ -53,6 +53,7 @@ export async function generateStaticParams() {
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ type?: string }>;
 }
 
 /**
@@ -188,14 +189,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ScrutinPage({ params }: PageProps) {
+export default async function ScrutinPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
 
   // Date archive page (e.g., /votes/2026-03-04)
   if (DATE_REGEX.test(slug)) {
     const date = new Date(slug + "T00:00:00Z");
     if (!isNaN(date.getTime())) {
-      return <DailyVotesPage date={slug} />;
+      const { type: typeTab } = await searchParams;
+      return <DailyVotesPage date={slug} typeTab={typeTab} />;
     }
   }
 

@@ -20,7 +20,12 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function AujourdhuiPage() {
+export default async function AujourdhuiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
   const today = getParisToday();
-  return <DailyVotesPage date={today} isToday />;
+  const { type: typeTab } = await searchParams;
+  return <DailyVotesPage date={today} isToday typeTab={typeTab} />;
 }

@@ -4,14 +4,22 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { themeFromSlug, getAllThemeSlugs, themeToSlug } from "@/lib/theme-utils";
 import { VoteCard } from "@/components/votes";
+import { ScrutinTypeTabs } from "@/components/votes/ScrutinTypeTabs";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_ICONS } from "@/config/labels";
 import { formatDate } from "@/lib/utils";
+import type { ScrutinType } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma";
 
 export const revalidate = 3600;
 
 const PAGE_SIZE = 20;
+
+const TYPE_TAB_MAP: Record<string, { type?: ScrutinType; excludeType?: ScrutinType }> = {
+  votes: { excludeType: "AMENDEMENT" },
+  amendements: { type: "AMENDEMENT" },
+};
 
 export async function generateStaticParams() {
   return getAllThemeSlugs().map((theme) => ({ theme }));
@@ -19,18 +27,26 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ theme: string }>;
+  searchParams: Promise<{ type?: string }>;
 }): Promise<Metadata> {
   const { theme: slug } = await params;
+  const { type: typeTab } = await searchParams;
   const theme = themeFromSlug(slug);
   if (!theme) return { title: "Thème introuvable" };
 
   const label = THEME_CATEGORY_LABELS[theme];
+  const canonical =
+    typeTab && typeTab !== "votes"
+      ? `/parlement/votes/themes/${slug}?type=${typeTab}`
+      : `/parlement/votes/themes/${slug}`;
+
   return {
     title: `Votes ${label}`,
     description: `Tous les scrutins parlementaires sur le thème ${label}. Résultats des votes de l'Assemblée nationale et du Sénat.`,
-    alternates: { canonical: `/parlement/votes/themes/${slug}` },
+    alternates: { canonical },
   };
 }
 
@@ -39,10 +55,10 @@ export default async function ThemePage({
   searchParams,
 }: {
   params: Promise<{ theme: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; type?: string }>;
 }) {
   const { theme: slug } = await params;
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, type: typeTab = "votes" } = await searchParams;
   const theme = themeFromSlug(slug);
   if (!theme) notFound();
 
@@ -51,23 +67,35 @@ export default async function ThemePage({
   const label = THEME_CATEGORY_LABELS[theme];
   const icon = THEME_CATEGORY_ICONS[theme];
 
-  const [scrutins, total, resultStats, lastScrutin] = await Promise.all([
+  const typeFilter = TYPE_TAB_MAP[typeTab] ?? {};
+  const where: Prisma.ScrutinWhereInput = {
+    theme,
+    ...(typeFilter.type && { type: typeFilter.type }),
+    ...(typeFilter.excludeType && { type: { not: typeFilter.excludeType } }),
+  };
+
+  const [scrutins, total, resultStats, lastScrutin, typeCounts] = await Promise.all([
     db.scrutin.findMany({
-      where: { theme },
+      where,
       orderBy: { votingDate: "desc" },
       skip,
       take: PAGE_SIZE,
     }),
-    db.scrutin.count({ where: { theme } }),
+    db.scrutin.count({ where }),
     db.scrutin.groupBy({
       by: ["result"],
-      where: { theme },
+      where,
       _count: true,
     }),
     db.scrutin.findFirst({
-      where: { theme },
+      where,
       orderBy: { votingDate: "desc" },
       select: { votingDate: true },
+    }),
+    db.scrutin.groupBy({
+      by: ["type"],
+      where: { theme },
+      _count: true,
     }),
   ]);
 
@@ -92,11 +120,37 @@ export default async function ThemePage({
     .filter(Boolean)
     .join(" ");
 
-  // Pagination URL builder
-  const buildPageUrl = (p: number) => {
+  // Type tab counts
+  const typeCountMap = new Map(typeCounts.map((c) => [c.type, c._count]));
+  const totalAll = typeCounts.reduce((sum, c) => sum + c._count, 0);
+  const amendementCount = typeCountMap.get("AMENDEMENT") ?? 0;
+  const votesCount = totalAll - amendementCount;
+
+  const buildPageUrl = (p: number, currentTypeTab: string) => {
     const base = `/parlement/votes/themes/${themeToSlug(theme)}`;
-    return p > 1 ? `${base}?page=${p}` : base;
+    const params = new URLSearchParams();
+    if (currentTypeTab && currentTypeTab !== "votes") params.set("type", currentTypeTab);
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
   };
+
+  const buildTypeUrl = (tabKey: string) => {
+    const base = `/parlement/votes/themes/${themeToSlug(theme)}`;
+    if (tabKey === "votes") return base;
+    return `${base}?type=${tabKey}`;
+  };
+
+  const tabs = [
+    { key: "votes", label: "Textes de loi", count: votesCount, href: buildTypeUrl("votes") },
+    {
+      key: "amendements",
+      label: "Amendements",
+      count: amendementCount,
+      href: buildTypeUrl("amendements"),
+    },
+    { key: "tous", label: "Tous", count: totalAll, href: buildTypeUrl("tous") },
+  ];
 
   return (
     <div className="container mx-auto px-4 pt-4 pb-8">
@@ -113,6 +167,9 @@ export default async function ThemePage({
         {icon} {label}
       </h1>
       <SeoIntro text={introText} />
+
+      {/* Type tabs */}
+      <ScrutinTypeTabs tabs={tabs} activeKey={typeTab} />
 
       {/* Stats summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -180,6 +237,7 @@ export default async function ThemePage({
               result={scrutin.result}
               sourceUrl={scrutin.sourceUrl}
               theme={scrutin.theme}
+              type={scrutin.type}
             />
           ))}
         </div>
@@ -194,7 +252,7 @@ export default async function ThemePage({
         <nav aria-label="Pagination" className="flex justify-center gap-2 mt-8">
           {page > 1 && (
             <Link
-              href={buildPageUrl(page - 1)}
+              href={buildPageUrl(page - 1, typeTab)}
               className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80"
             >
               Précédent
@@ -205,7 +263,7 @@ export default async function ThemePage({
           </span>
           {page < totalPages && (
             <Link
-              href={buildPageUrl(page + 1)}
+              href={buildPageUrl(page + 1, typeTab)}
               className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80"
             >
               Suivant

@@ -338,7 +338,7 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
 
         {/* Context: Citizen Impact, Analysis, Votes détaillés (tabbed) */}
         <ScrutinContext
-          summary={null}
+          summary={scrutin.summary}
           citizenImpact={scrutin.citizenImpact}
           analysis={analysis}
           isKeyVote={isKeyVote}

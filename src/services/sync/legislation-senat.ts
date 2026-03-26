@@ -380,6 +380,7 @@ async function processPplPhase(
     lastName: string;
     rowKey: string;
     dossierId: string;
+    role: DossierActorRole;
   }> = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -390,7 +391,10 @@ async function processPplPhase(
       stats.ppl.dossiersMatched++;
 
       const authors = parseAuthorNames(row["Auteurs"] ?? "");
-      for (const author of authors) {
+      for (let j = 0; j < authors.length; j++) {
+        const author = authors[j]!;
+        // First 2 names in CSV = depositors (AUTEUR), rest = cosignataires
+        const role = j < 2 ? DossierActorRole.AUTEUR : DossierActorRole.COSIGNATAIRE;
         const politicianId = await lookupSenatorByExternalId(
           author.firstName,
           author.lastName,
@@ -398,19 +402,13 @@ async function processPplPhase(
         );
         if (politicianId) {
           stats.resolution.senatIdMatched++;
-          await upsertDossierAuthor(
-            dossierId,
-            politicianId,
-            DossierActorRole.AUTEUR,
-            Chamber.SENAT,
-            null,
-            stats.ppl
-          );
+          await upsertDossierAuthor(dossierId, politicianId, role, Chamber.SENAT, null, stats.ppl);
         } else {
           unmatchedAuthors.push({
             ...author,
             rowKey: `ppl-${i}`,
             dossierId,
+            role,
           });
         }
       }
@@ -434,7 +432,7 @@ async function processPplPhase(
         await upsertDossierAuthor(
           entry.dossierId,
           politicianId,
-          DossierActorRole.AUTEUR,
+          entry.role,
           Chamber.SENAT,
           null,
           stats.ppl

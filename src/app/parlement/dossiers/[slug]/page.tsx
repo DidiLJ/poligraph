@@ -231,9 +231,6 @@ export default async function DossierDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Authors */}
-        <DossierAuthors authors={dossier.authors} />
-
         {/* Summary */}
         {dossier.summary && (
           <Card className="mb-8">
@@ -250,6 +247,9 @@ export default async function DossierDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
         )}
+
+        {/* Authors */}
+        <DossierAuthors authors={dossier.authors} />
 
         {/* Legislative Timeline */}
         <div className="mb-8">

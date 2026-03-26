@@ -112,7 +112,9 @@ function EnjeuxContent({ analysis }: { analysis: ScrutinAnalysisData }) {
                 Arguments pour
               </h4>
             </div>
-            <p className="text-sm text-purple-700 dark:text-purple-300">{analysis.argumentsFor}</p>
+            <MarkdownText className="text-sm text-purple-700 dark:text-purple-300">
+              {analysis.argumentsFor}
+            </MarkdownText>
           </div>
           <div className="pl-6">
             <div className="flex items-center gap-2 mb-2">
@@ -121,9 +123,9 @@ function EnjeuxContent({ analysis }: { analysis: ScrutinAnalysisData }) {
                 Arguments contre
               </h4>
             </div>
-            <p className="text-sm text-purple-700 dark:text-purple-300">
+            <MarkdownText className="text-sm text-purple-700 dark:text-purple-300">
               {analysis.argumentsAgainst}
-            </p>
+            </MarkdownText>
           </div>
         </div>
 
@@ -133,15 +135,17 @@ function EnjeuxContent({ analysis }: { analysis: ScrutinAnalysisData }) {
             <h4 className="font-semibold text-sm text-green-700 dark:text-green-400 mb-1">
               Arguments pour
             </h4>
-            <p className="text-sm text-purple-700 dark:text-purple-300">{analysis.argumentsFor}</p>
+            <MarkdownText className="text-sm text-purple-700 dark:text-purple-300">
+              {analysis.argumentsFor}
+            </MarkdownText>
           </div>
           <div className="border-l-4 border-red-500 pl-3">
             <h4 className="font-semibold text-sm text-red-700 dark:text-red-400 mb-1">
               Arguments contre
             </h4>
-            <p className="text-sm text-purple-700 dark:text-purple-300">
+            <MarkdownText className="text-sm text-purple-700 dark:text-purple-300">
               {analysis.argumentsAgainst}
-            </p>
+            </MarkdownText>
           </div>
         </div>
 

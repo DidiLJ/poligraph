@@ -42,6 +42,29 @@ const BANNED_ADJECTIVES = [
   "admirable",
 ];
 
+/**
+ * Extract text from Mistral JSON values.
+ * Handles: string, array of strings, or {groupName: argument} objects.
+ * When Mistral returns per-group arguments, formats as "**Group**: argument" lines.
+ */
+function flattenToString(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(flattenToString).filter(Boolean).join("\n\n");
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    // Per-group format: {"EPR": "argument", "LFI": "argument"}
+    if (entries.every(([, v]) => typeof v === "string")) {
+      return entries.map(([group, text]) => `**${group}** : ${text}`).join("\n\n");
+    }
+    return entries
+      .map(([, v]) => flattenToString(v))
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  return String(value);
+}
+
 export function buildAnalysisPrompt(input: PromptInput): string {
   const sanitize = (s: string) => s.replace(/["\n\r]/g, " ").slice(0, 500);
 
@@ -98,7 +121,7 @@ export function validateAnalysisOutput(output: AnalysisOutput): {
     }
   }
 
-  if (output.argumentsFor.length > 500 || output.argumentsAgainst.length > 500) {
+  if (output.argumentsFor.length > 2000 || output.argumentsAgainst.length > 2000) {
     errors.push("conciseness");
   }
 
@@ -178,14 +201,10 @@ export async function generateScrutinAnalysis(
 
       const text = extractMistralText(response);
       const raw = parseMistralJSON<Record<string, unknown>>(text);
-      // Mistral sometimes returns arrays instead of strings
+      // Mistral may return strings, arrays, or nested objects
       const parsed: AnalysisOutput = {
-        argumentsFor: Array.isArray(raw.argumentsFor)
-          ? raw.argumentsFor.join(" ")
-          : String(raw.argumentsFor ?? ""),
-        argumentsAgainst: Array.isArray(raw.argumentsAgainst)
-          ? raw.argumentsAgainst.join(" ")
-          : String(raw.argumentsAgainst ?? ""),
+        argumentsFor: flattenToString(raw.argumentsFor),
+        argumentsAgainst: flattenToString(raw.argumentsAgainst),
       };
       const validation = validateAnalysisOutput(parsed);
 

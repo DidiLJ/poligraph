@@ -7,13 +7,21 @@ import { db } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { VoteStats, VotePositionBadge, VotingResultBadge } from "@/components/votes";
+import { ScrutinTypeTabs } from "@/components/votes/ScrutinTypeTabs";
 import { formatDate } from "@/lib/utils";
 import { ArrowLeft, ExternalLink, Info } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import { feminizeRole } from "@/config/labels";
+import { feminizeRole, SCRUTIN_TYPE_LABELS, SCRUTIN_TYPE_COLORS } from "@/config/labels";
 import { getPoliticianVotingStats } from "@/services/voteStats";
+import type { ScrutinType } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma";
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes (paginated content)
+
+const TYPE_TAB_MAP: Record<string, { type?: ScrutinType; excludeType?: ScrutinType }> = {
+  votes: { excludeType: "AMENDEMENT" },
+  amendements: { type: "AMENDEMENT" },
+};
 
 export async function generateStaticParams() {
   const politicians = await db.politician.findMany({
@@ -26,7 +34,7 @@ export async function generateStaticParams() {
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; type?: string }>;
 }
 
 const getPolitician = cache(async function getPolitician(slug: string) {
@@ -49,19 +57,37 @@ const getPolitician = cache(async function getPolitician(slug: string) {
   });
 });
 
-async function getVotes(politicianId: string, page: number, limit: number) {
+async function getVotes(
+  politicianId: string,
+  page: number,
+  limit: number,
+  typeFilter: { type?: ScrutinType; excludeType?: ScrutinType }
+) {
   const skip = (page - 1) * limit;
 
-  const [votes, total, stats] = await Promise.all([
+  const scrutinWhere: Prisma.ScrutinWhereInput = {
+    ...(typeFilter.type && { type: typeFilter.type }),
+    ...(typeFilter.excludeType && { type: { not: typeFilter.excludeType } }),
+  };
+  const hasScrutinFilter = Object.keys(scrutinWhere).length > 0;
+
+  const where: Prisma.VoteWhereInput = {
+    politicianId,
+    ...(hasScrutinFilter && { scrutin: scrutinWhere }),
+  };
+
+  const [votes, total, stats, totalAll, amendmentCount] = await Promise.all([
     db.vote.findMany({
-      where: { politicianId },
+      where,
       include: { scrutin: true },
       orderBy: { scrutin: { votingDate: "desc" } },
       skip,
       take: limit,
     }),
-    db.vote.count({ where: { politicianId } }),
+    db.vote.count({ where }),
     getPoliticianVotingStats(politicianId),
+    db.vote.count({ where: { politicianId } }),
+    db.vote.count({ where: { politicianId, scrutin: { type: "AMENDEMENT" } } }),
   ]);
 
   return {
@@ -69,6 +95,9 @@ async function getVotes(politicianId: string, page: number, limit: number) {
     total,
     totalPages: Math.ceil(total / limit),
     stats,
+    totalAll,
+    amendmentCount,
+    nonAmendmentCount: totalAll - amendmentCount,
   };
 }
 
@@ -92,6 +121,7 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page || "1", 10));
   const limit = 20;
+  const typeTab = sp.type || "votes";
 
   const politician = await getPolitician(slug);
 
@@ -99,7 +129,35 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
     notFound();
   }
 
-  const { votes, total, totalPages, stats } = await getVotes(politician.id, page, limit);
+  const typeFilter = TYPE_TAB_MAP[typeTab] ?? {};
+  const { votes, total, totalPages, stats, totalAll, amendmentCount, nonAmendmentCount } =
+    await getVotes(politician.id, page, limit, typeFilter);
+
+  const buildUrl = (p: number, tabKey: string) => {
+    const params = new URLSearchParams();
+    if (tabKey && tabKey !== "votes") params.set("type", tabKey);
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    return `/politiques/${slug}/votes${qs ? `?${qs}` : ""}`;
+  };
+
+  const tabs = [
+    {
+      key: "votes",
+      label: "Textes de loi",
+      count: nonAmendmentCount,
+      href: buildUrl(1, "votes"),
+    },
+    {
+      key: "amendements",
+      label: "Amendements",
+      count: amendmentCount,
+      href: buildUrl(1, "amendements"),
+    },
+    { key: "tous", label: "Tous", count: totalAll, href: buildUrl(1, "tous") },
+  ];
+
+  const hasMultipleTypes = amendmentCount > 0 && nonAmendmentCount > 0;
 
   return (
     <div className="container mx-auto px-4 pt-4 pb-8">
@@ -151,6 +209,9 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
         return null;
       })()}
 
+      {/* Type tabs */}
+      {hasMultipleTypes && <ScrutinTypeTabs tabs={tabs} activeKey={typeTab} />}
+
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main content */}
         <div className="lg:col-span-2">
@@ -162,12 +223,19 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <Link
-                          href={`/parlement/votes/${vote.scrutin.id}`}
+                          href={`/parlement/votes/${vote.scrutin.slug || vote.scrutin.id}`}
                           className="font-medium hover:underline line-clamp-2"
                         >
                           {vote.scrutin.title}
                         </Link>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          {vote.scrutin.type && vote.scrutin.type !== "AUTRE" && (
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-xs font-medium ${SCRUTIN_TYPE_COLORS[vote.scrutin.type]}`}
+                            >
+                              {SCRUTIN_TYPE_LABELS[vote.scrutin.type]}
+                            </span>
+                          )}
                           <span>{formatDate(vote.scrutin.votingDate)}</span>
                           <VotingResultBadge result={vote.scrutin.result} />
                           {vote.scrutin.sourceUrl && (
@@ -200,7 +268,7 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
           <SimplePagination
             page={page}
             totalPages={totalPages}
-            buildUrl={(p) => `/politiques/${slug}/votes?page=${p}`}
+            buildUrl={(p) => buildUrl(p, typeTab)}
           />
         </div>
 

@@ -4,3 +4,4 @@ export { VoteStats } from "./VoteStats";
 export { ParliamentaryCard } from "./ParliamentaryCard";
 export { DailyVotesPage } from "./DailyVotesPage";
 export { DateNavigation } from "./DateNavigation";
+export { ScrutinTypeTabs } from "./ScrutinTypeTabs";

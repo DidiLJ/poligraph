@@ -1883,6 +1883,8 @@ model Platform {
   @@unique([partyId, electionId])
   @@index([partyId])
   @@index([electionId])
+  @@index([publicationStatus])
+  @@index([electionId, publicationStatus])
 }
 
 model Proposal {

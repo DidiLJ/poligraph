@@ -121,7 +121,7 @@ export function validateAnalysisOutput(output: AnalysisOutput): {
     }
   }
 
-  if (output.argumentsFor.length > 2000 || output.argumentsAgainst.length > 2000) {
+  if (output.argumentsFor.length > 4000 || output.argumentsAgainst.length > 4000) {
     errors.push("conciseness");
   }
 

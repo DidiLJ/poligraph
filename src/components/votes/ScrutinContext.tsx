@@ -23,7 +23,7 @@ export function ScrutinContext({
   isKeyVote,
   votesDetailSlot,
 }: ScrutinContextProps) {
-  const hasEnBref = !!citizenImpact;
+  const hasEnBref = !!citizenImpact || !!summary;
   const showEnjeuxTab = isKeyVote && analysis;
 
   if (!hasEnBref && !showEnjeuxTab && !votesDetailSlot) return null;
@@ -64,27 +64,35 @@ export function ScrutinContext({
 }
 
 function EnBrefContent({
+  summary,
   citizenImpact,
 }: {
   summary: string | null;
   citizenImpact: string | null;
 }) {
-  if (!citizenImpact) return null;
+  const content = citizenImpact || summary;
+  if (!content) return null;
+
+  const isCitizenImpact = !!citizenImpact;
 
   return (
     <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-          <h3 className="text-lg font-semibold">Ce que ça change pour vous</h3>
-          <Badge variant="outline" className="gap-1 text-xs">
-            <Sparkles className="h-3 w-3" />
-            Décryptage IA
-          </Badge>
+          <h3 className="text-lg font-semibold">
+            {isCitizenImpact ? "Ce que ça change pour vous" : "Résumé"}
+          </h3>
+          {isCitizenImpact && (
+            <Badge variant="outline" className="gap-1 text-xs">
+              <Sparkles className="h-3 w-3" />
+              Décryptage IA
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent>
-        <MarkdownText className="text-sm">{citizenImpact}</MarkdownText>
+        <MarkdownText className="text-sm">{content}</MarkdownText>
       </CardContent>
     </Card>
   );

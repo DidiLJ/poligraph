@@ -221,6 +221,7 @@ model Party {
   candidacies         Candidacy[] // Election candidacies
   leadershipMandates  Mandate[] // Leadership mandates (PRESIDENT_PARTI)
   parliamentaryGroups ParliamentaryGroup[] // Parliamentary groups that map to this party
+  platforms           Platform[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1453,8 +1454,10 @@ model Election {
 
   // Relations
   candidacies           Candidacy[]
+  electoralLists        ElectoralList[]
   rounds                ElectionRound[]
   communeElectionRounds CommuneElectionRound[]
+  platforms             Platform[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1491,6 +1494,10 @@ model Candidacy {
   listName     String?
   listPosition Int?
 
+  // Electoral list entity (replaces in-memory groupBy on listName)
+  electoralList   ElectoralList? @relation(fields: [electoralListId], references: [id])
+  electoralListId String?
+
   // Constituency
   constituencyCode String?
   constituencyName String?
@@ -1514,6 +1521,31 @@ model Candidacy {
   @@index([constituencyCode])
   @@index([candidateId])
   @@index([communeId])
+  @@index([electoralListId])
+}
+
+model ElectoralList {
+  id         String   @id @default(cuid())
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  electionId String
+  commune    Commune @relation(fields: [communeId], references: [id])
+  communeId  String
+
+  listName   String
+  partyLabel String?
+  nuanceCode String?
+
+  publicationStatus PublicationStatus @default(PUBLISHED)
+
+  candidacies     Candidacy[]
+  professionDeFoi ProfessionDeFoi?
+  platform        Platform?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([electionId, communeId, listName])
+  @@index([electionId, communeId])
 }
 
 model ElectionRound {
@@ -1736,6 +1768,7 @@ model Commune {
   website             String?
 
   candidacies           Candidacy[]
+  electoralLists        ElectoralList[]
   localMandates         MandateLocal[]
   communeElectionRounds CommuneElectionRound[]
 
@@ -1824,4 +1857,84 @@ model PlatformUpdate {
 
   @@index([date])
   @@index([sourceUrl])
+}
+
+// ============================================
+// PROGRAMMES & QUIZ (boussole politique)
+// ============================================
+
+model Platform {
+  id         String   @id @default(cuid())
+  party      Party?   @relation(fields: [partyId], references: [id])
+  partyId    String?
+  electoralList   ElectoralList? @relation(fields: [electoralListId], references: [id])
+  electoralListId String?        @unique
+  election   Election @relation(fields: [electionId], references: [id])
+  electionId String
+
+  sourceUrl         String?
+  publicationStatus PublicationStatus @default(DRAFT)
+
+  proposals Proposal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([partyId, electionId])
+  @@index([partyId])
+  @@index([electionId])
+}
+
+model Proposal {
+  id         String   @id @default(cuid())
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  platformId String
+
+  axis     ThematicAxis
+  position Int // -1 = Pole A, 0 = Intermediate, 1 = Pole B
+
+  summary       String
+  sourceExcerpt String?  @db.Text
+  sourceUrl     String?
+
+  aiGenerated Boolean @default(false)
+  verifiedBy  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([platformId, axis])
+  @@index([platformId])
+  @@index([axis])
+}
+
+model QuizQuestion {
+  id    String @id @default(cuid())
+  axis  ThematicAxis
+  scope QuizElectionScope
+
+  statement String
+  order     Int
+
+  publicationStatus PublicationStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([axis, scope])
+  @@index([publicationStatus, scope])
+}
+
+model ProfessionDeFoi {
+  id              String        @id @default(cuid())
+  electoralList   ElectoralList @relation(fields: [electoralListId], references: [id], onDelete: Cascade)
+  electoralListId String        @unique
+
+  pdfUrl   String
+  falcUrl  String?
+  audioUrl String?
+  source   ProfessionDeFoiSource @default(MINISTERE_INTERIEUR)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

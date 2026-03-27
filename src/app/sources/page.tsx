@@ -423,6 +423,54 @@ export default function SourcesPage() {
         </Card>
       </section>
 
+      {/* Programmes et positions */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold mb-6">Programmes et Positions</h2>
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Poligraph analyse les programmes officiels des partis politiques et positionne leurs
+              propositions sur des axes thématiques pour permettre aux citoyens de comparer les
+              positions en un coup d{"'"}oeil.
+            </p>
+            <div>
+              <h3 className="font-semibold mb-2">Sources</h3>
+              <p className="text-sm text-muted-foreground">
+                Les positions sont extraites des programmes officiels publiés par les partis
+                (documents PDF, sites web). Chaque position est accompagnée d{"'"}un extrait du
+                texte source et d{"'"}un lien vers le document original quand il est disponible.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">Echelle de positionnement</h3>
+              <p className="text-sm text-muted-foreground">
+                Chaque axe thématique est évalué sur une échelle de 7 niveaux (-3 à +3). Les
+                extrêmes (-3, +3) représentent une position tranchée, les valeurs proches du centre
+                (-1, +1) une position modérée, et 0 une position neutre ou non exprimée.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">Critères</h3>
+              <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+                <li>
+                  <strong>Non partisan</strong> : les mêmes critères d{"'"}évaluation sont appliqués
+                  à tous les partis
+                </li>
+                <li>
+                  <strong>Extraction assistée par IA</strong> : les positions sont extraites avec l
+                  {"'"}aide de l{"'"}IA, puis vérifiées. Les positions générées par IA sont
+                  signalées comme telles
+                </li>
+                <li>
+                  <strong>Programme le plus récent</strong> : pour chaque parti, c{"'"}est le
+                  dernier programme publié qui est affiché
+                </li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* Inclusion Criteria */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">Critères de Pertinence</h2>

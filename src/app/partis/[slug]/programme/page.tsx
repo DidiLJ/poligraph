@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getParty } from "@/lib/data/partis";
 import { getPartyPlatform } from "@/lib/data/platforms";
@@ -152,9 +153,9 @@ export default async function PartyProgrammePage({ params }: PageProps) {
 
         {/* Methodology link */}
         <p className="text-sm text-muted-foreground">
-          <a href="/sources" className="text-primary hover:underline">
+          <Link href="/sources" className="text-primary hover:underline">
             Comment sont déterminées ces positions ?
-          </a>
+          </Link>
         </p>
       </div>
     </div>

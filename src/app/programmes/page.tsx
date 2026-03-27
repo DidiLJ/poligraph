@@ -56,9 +56,9 @@ export default async function ProgrammesPage() {
             Les positions affichées sont issues des derniers programmes officiels publiés par chaque
             parti. Pour la plupart, il s{"'"}agit des législatives de 2024. Ces positions sont mises
             à jour lors de chaque nouvelle élection.{" "}
-            <a href="/sources" className="text-primary hover:underline">
+            <Link href="/sources" className="text-primary hover:underline">
               En savoir plus
-            </a>
+            </Link>
           </p>
         </div>
 

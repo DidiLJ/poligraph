@@ -41,11 +41,11 @@ export const NAV_PRIMARY: NavItem[] = [
     description: "Dossiers judiciaires documentés avec sources",
   },
   {
-    href: "/elections/municipales-2026",
-    label: "Municipales 2026",
-    icon: "vote",
-    description: "Candidats, listes et résultats dans votre commune",
-    featureFlag: "MUNICIPALES_2026",
+    href: "/programmes",
+    label: "Programmes",
+    icon: "fileText",
+    description: "Programmes des partis par axe thématique",
+    featureFlag: "PROGRAMMES_ENABLED",
   },
   {
     href: "/parlement",
@@ -90,11 +90,11 @@ export const NAV_SECONDARY: NavItem[] = [
     description: "Groupes de l'AN et du Sénat",
   },
   {
-    href: "/programmes",
-    label: "Programmes",
-    icon: "fileText",
-    description: "Programmes des partis par axe thématique",
-    featureFlag: "PROGRAMMES_ENABLED",
+    href: "/elections/municipales-2026",
+    label: "Municipales 2026",
+    icon: "vote",
+    description: "Candidats, listes et résultats dans votre commune",
+    featureFlag: "MUNICIPALES_2026",
   },
 ];
 

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getParty, getPartyLeadership, getPartyRoles } from "@/lib/data/partis";
+import { getPartyPlatform } from "@/lib/data/platforms";
+import { ProgrammeCTA, ProgrammeCTAEmpty } from "@/components/programmes/ProgrammeCTA";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
@@ -97,12 +99,14 @@ export default async function PartyPage({ params }: PageProps) {
     notFound();
   }
 
-  const [leadershipMandates, partyRoles, pressEnabled, programmeEnabled] = await Promise.all([
-    getPartyLeadership(party.id, party.name),
-    getPartyRoles(party.id),
-    isFeatureEnabled("PRESS_SECTION"),
-    isFeatureEnabled("PROGRAMMES_ENABLED"),
-  ]);
+  const [leadershipMandates, partyRoles, pressEnabled, programmeEnabled, partyPlatform] =
+    await Promise.all([
+      getPartyLeadership(party.id, party.name),
+      getPartyRoles(party.id),
+      isFeatureEnabled("PRESS_SECTION"),
+      isFeatureEnabled("PROGRAMMES_ENABLED"),
+      getPartyPlatform(slug),
+    ]);
   const currentLeaders = leadershipMandates.filter((m) => m.isCurrent);
   const pastLeaders = leadershipMandates.filter((m) => !m.isCurrent);
 
@@ -204,6 +208,20 @@ export default async function PartyPage({ params }: PageProps) {
         {party.description && (
           <p className="text-muted-foreground leading-relaxed mb-8">{party.description}</p>
         )}
+
+        {/* Programme CTA */}
+        {programmeEnabled &&
+          (partyPlatform ? (
+            <ProgrammeCTA
+              partyName={party.name}
+              partySlug={slug}
+              sourceUrl={partyPlatform.sourceUrl}
+              partyWebsite={party.website}
+              electionTitle={partyPlatform.election?.title}
+            />
+          ) : (
+            <ProgrammeCTAEmpty partyName={party.name} partyWebsite={party.website} />
+          ))}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main content */}
@@ -653,16 +671,6 @@ export default async function PartyPage({ params }: PageProps) {
                     >
                       Site officiel
                     </a>
-                  </div>
-                )}
-                {programmeEnabled && (
-                  <div>
-                    <Link
-                      href={`/partis/${slug}/programme`}
-                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                    >
-                      Voir le programme
-                    </Link>
                   </div>
                 )}
               </CardContent>

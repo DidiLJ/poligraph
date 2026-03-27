@@ -50,9 +50,9 @@ describe("validateAnalysisOutput", () => {
     expect(result.errors).toContain("neutrality");
   });
 
-  it("rejects output exceeding 500 chars per argument", () => {
+  it("rejects output exceeding 4000 chars per argument", () => {
     const result = validateAnalysisOutput({
-      argumentsFor: "A".repeat(501),
+      argumentsFor: "A".repeat(4001),
       argumentsAgainst: "Short.",
     });
     expect(result.valid).toBe(false);

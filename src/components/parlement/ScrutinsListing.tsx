@@ -3,11 +3,9 @@ import { SimplePagination } from "@/components/ui/SimplePagination";
 import { VoteCard, ScrutinTypeTabs } from "@/components/votes";
 import { VotesSearchInput } from "@/components/votes/VotesSearchInput";
 import { ThemeGrid } from "@/components/votes/ThemeGrid";
-import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/ui/ExportButton";
 import {
   VOTING_RESULT_LABELS,
-  CHAMBER_LABELS,
   THEME_CATEGORY_LABELS,
   THEME_CATEGORY_ICONS,
   THEME_CATEGORY_COLORS,
@@ -22,11 +20,32 @@ import {
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import type { VotingResult, Chamber, ThemeCategory, ScrutinType } from "@/types";
+import { Building2 } from "lucide-react";
 
 // Map URL param values to data layer params
 const TYPE_TAB_MAP: Record<string, { type?: ScrutinType; excludeType?: ScrutinType }> = {
   votes: { excludeType: "AMENDEMENT" },
   amendements: { type: "AMENDEMENT" },
+};
+
+const CHAMBER_META: Record<
+  Chamber,
+  { label: string; description: string; color: string; activeColor: string; hoverColor: string }
+> = {
+  AN: {
+    label: "Assemblée nationale",
+    description: "577 députés",
+    color: "border-blue-600",
+    activeColor: "bg-blue-600 text-white border-blue-600",
+    hoverColor: "hover:bg-blue-50 dark:hover:bg-blue-950/30",
+  },
+  SENAT: {
+    label: "Sénat",
+    description: "348 sénateurs",
+    color: "border-rose-600",
+    activeColor: "bg-rose-600 text-white border-rose-600",
+    hoverColor: "hover:bg-rose-50 dark:hover:bg-rose-950/30",
+  },
 };
 
 interface ScrutinsListingProps {
@@ -129,6 +148,17 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
     },
   ];
 
+  // Dynamic title based on chamber
+  const pageTitle = chamber
+    ? `Votes ${chamber === "AN" ? "de l'Assemblée nationale" : "du Sénat"}`
+    : "Votes parlementaires";
+
+  // Adoption rate for results summary
+  const adoptedPct = total > 0 && stats.ADOPTED ? Math.round((stats.ADOPTED / total) * 100) : 0;
+
+  // Active non-chamber/non-type filters for display
+  const hasActiveFilters = !!(result || legislature || theme || search);
+
   return (
     <>
       <CollectionPageJsonLd
@@ -139,18 +169,16 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
       />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
-              Votes parlementaires
+            <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">
+              {pageTitle}
             </h1>
-            <p className="text-muted-foreground">
-              {total.toLocaleString("fr-FR")} scrutins.{" "}
-              {stats.ADOPTED ? `${Math.round((stats.ADOPTED / total) * 100)}% adoptés.` : ""}{" "}
-              Découvrez comment votent vos représentants.
+            <p className="text-muted-foreground text-sm">
+              Scrutins publics en séance - résultats, thèmes et positions des groupes
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/statistiques?tab=votes"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium transition-colors"
@@ -177,36 +205,43 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
           </div>
         </div>
 
+        {/* Chamber switcher - prominent, top-level navigation */}
+        {hasMultipleChambers && (
+          <div className="flex gap-2 mb-6">
+            <Link
+              href={buildUrl({ chamber: undefined })}
+              className={`flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border-2 transition-colors min-h-[48px] ${
+                !chamber
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border bg-background hover:bg-muted"
+              }`}
+            >
+              Tout le Parlement
+            </Link>
+            {(["AN", "SENAT"] as Chamber[]).map((c) => {
+              const meta = CHAMBER_META[c];
+              const isActive = chamber === c;
+              return (
+                <Link
+                  key={c}
+                  href={buildUrl({ chamber: isActive ? undefined : c })}
+                  className={`flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border-2 transition-colors min-h-[48px] flex-1 ${
+                    isActive ? meta.activeColor : `border-border bg-background ${meta.hoverColor}`
+                  }`}
+                >
+                  <Building2 className="h-4 w-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">{meta.label}</span>
+                  <span className="sm:hidden">{c === "AN" ? "AN" : "Sénat"}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
         {/* Type tabs */}
         <ScrutinTypeTabs tabs={tabs} activeKey={typeTab} />
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-muted rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold">{total.toLocaleString("fr-FR")}</p>
-            <p className="text-sm text-muted-foreground">Scrutins</p>
-          </div>
-          <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-green-700 dark:text-green-400">
-              {(stats.ADOPTED || 0).toLocaleString("fr-FR")}
-            </p>
-            <p className="text-sm text-green-700/70 dark:text-green-400/70">Adoptés</p>
-          </div>
-          <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-red-700 dark:text-red-400">
-              {(stats.REJECTED || 0).toLocaleString("fr-FR")}
-            </p>
-            <p className="text-sm text-red-700/70 dark:text-red-400/70">Rejetés</p>
-          </div>
-          <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-              {legislatures.length}
-            </p>
-            <p className="text-sm text-blue-700/70 dark:text-blue-400/70">Législatures</p>
-          </div>
-        </div>
-
-        {/* Filters */}
+        {/* Filters: search + result + legislature in one row */}
         <div className="flex flex-wrap gap-3 mb-6">
           {/* Search */}
           <VotesSearchInput value={search || ""} />
@@ -234,40 +269,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
             ))}
           </div>
 
-          {/* Chamber filter */}
-          {hasMultipleChambers && (
-            <div className="flex gap-2">
-              <Link
-                href={buildUrl({ chamber: undefined })}
-                className={`px-4 py-2 rounded-lg text-sm min-h-[40px] flex items-center transition-colors ${
-                  !chamber ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-                }`}
-              >
-                Toutes
-              </Link>
-              {chambers.map((c) => (
-                <Link
-                  key={c.chamber}
-                  href={buildUrl({
-                    chamber: chamber === c.chamber ? undefined : c.chamber,
-                  })}
-                  className={`px-4 py-2 rounded-lg text-sm min-h-[40px] flex items-center transition-colors ${
-                    chamber === c.chamber
-                      ? c.chamber === "AN"
-                        ? "bg-blue-600 text-white"
-                        : "bg-rose-600 text-white"
-                      : c.chamber === "AN"
-                        ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                        : "bg-rose-50 text-rose-700 hover:bg-rose-100"
-                  }`}
-                >
-                  {CHAMBER_LABELS[c.chamber]} ({c._count.toLocaleString("fr-FR")})
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {/* Legislature filter */}
+          {/* Legislature filter - no counts */}
           {legislatures.length > 1 && (
             <div className="flex gap-2">
               {legislatures.map((leg) => (
@@ -283,7 +285,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                       : "bg-muted hover:bg-muted/80"
                   }`}
                 >
-                  {leg.legislature}e ({leg._count.toLocaleString("fr-FR")})
+                  {leg.legislature}e
                 </Link>
               ))}
             </div>
@@ -299,76 +301,29 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
           />
         )}
 
-        {/* Active filters */}
-        {(result || legislature || chamber || theme || search) && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {search && (
-              <Badge variant="secondary" className="gap-1">
-                Recherche: {search}
-                <Link
-                  href={buildUrl({ search: undefined })}
-                  className="ml-1 hover:text-destructive"
-                >
-                  x
-                </Link>
-              </Badge>
-            )}
-            {chamber && (
-              <Badge variant="secondary" className="gap-1">
-                {CHAMBER_LABELS[chamber]}
-                <Link
-                  href={buildUrl({ chamber: undefined })}
-                  className="ml-1 hover:text-destructive"
-                >
-                  x
-                </Link>
-              </Badge>
-            )}
-            {result && (
-              <Badge variant="secondary" className="gap-1">
-                {VOTING_RESULT_LABELS[result]}
-                <Link
-                  href={buildUrl({ result: undefined })}
-                  className="ml-1 hover:text-destructive"
-                >
-                  x
-                </Link>
-              </Badge>
-            )}
-            {theme && (
-              <Badge variant="secondary" className="gap-1">
-                {THEME_CATEGORY_ICONS[theme]} {THEME_CATEGORY_LABELS[theme]}
-                <Link href={buildUrl({ theme: undefined })} className="ml-1 hover:text-destructive">
-                  x
-                </Link>
-              </Badge>
-            )}
-            {legislature && (
-              <Badge variant="secondary" className="gap-1">
-                {legislature}e législature
-                <Link
-                  href={buildUrl({ legislature: undefined })}
-                  className="ml-1 hover:text-destructive"
-                >
-                  x
-                </Link>
-              </Badge>
-            )}
+        {/* Results summary + clear filters */}
+        <div className="flex items-center justify-between mb-4 pb-3 border-b">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              {total.toLocaleString("fr-FR")} résultats
+            </span>
+            {adoptedPct > 0 && <span> · {adoptedPct}% adoptés</span>}
+          </p>
+          {hasActiveFilters && (
             <Link
               href={buildUrl({
                 result: undefined,
                 legislature: undefined,
-                chamber: undefined,
                 theme: undefined,
                 search: undefined,
               })}
               scroll={false}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Effacer tout
+              Effacer les filtres
             </Link>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* List */}
         {scrutins.length > 0 ? (
@@ -397,7 +352,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             <p>Aucun scrutin trouvé</p>
-            {(result || legislature || search || theme) && (
+            {hasActiveFilters && (
               <Link
                 href={buildUrl({
                   result: undefined,

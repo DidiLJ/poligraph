@@ -190,8 +190,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const total = scrutin.votesFor + scrutin.votesAgainst + scrutin.votesAbstain;
   const isThinContent = !scrutin.summary && total === 0;
 
+  const scrutinNumber = extractScrutinNumber(scrutin.externalId);
+  const chamberLabel = scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat";
+  const seoTitle = scrutinNumber
+    ? `Scrutin n° ${scrutinNumber} ${chamberLabel} - ${scrutin.title}`
+    : scrutin.title;
+
   return {
-    title: scrutin.title,
+    title: seoTitle,
     description,
     alternates: { canonical: `/parlement/votes/${scrutin.slug}` },
     ...(isThinContent && { robots: { index: false, follow: true } }),
@@ -273,16 +279,17 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
 
         {/* Header */}
         <div className="mb-8">
-          {/* Kicker: scrutin identity + chamber */}
-          <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            {extractScrutinNumber(scrutin.externalId)
-              ? `Scrutin n° ${extractScrutinNumber(scrutin.externalId)}`
-              : formatExternalId(scrutin.externalId, scrutin.chamber)}
-            {" · "}
-            {scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat"}
-          </p>
           <div className="flex items-start justify-between gap-4 mb-4">
-            <h1 className="text-2xl font-display font-extrabold tracking-tight">{scrutin.title}</h1>
+            <h1 className="text-2xl font-display font-extrabold tracking-tight">
+              <span className="block text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                {extractScrutinNumber(scrutin.externalId)
+                  ? `Scrutin n° ${extractScrutinNumber(scrutin.externalId)}`
+                  : formatExternalId(scrutin.externalId, scrutin.chamber)}
+                {" · "}
+                {scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat"}
+              </span>
+              {scrutin.title}
+            </h1>
             <VotingResultBadge result={scrutin.result} />
           </div>
 

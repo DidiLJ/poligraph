@@ -75,7 +75,7 @@ export function VoteCard({
               <p className="font-medium text-sm line-clamp-2">
                 {scrutinNumber && (
                   <span className="font-mono text-xs text-muted-foreground mr-1.5">
-                    n°{scrutinNumber}
+                    Scrutin n°{scrutinNumber}
                   </span>
                 )}
                 {title}

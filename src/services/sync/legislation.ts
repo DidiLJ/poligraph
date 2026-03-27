@@ -251,7 +251,6 @@ function generateShortTitle(title: string): string {
     .replace(/^(portant|visant \u00e0) /i, "")
     .replace(/^(pour|sur) (le|la|les|l') /i, "");
   short = short.charAt(0).toUpperCase() + short.slice(1);
-  if (short.length > 100) short = short.substring(0, 97) + "...";
   return short;
 }
 

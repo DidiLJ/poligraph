@@ -3,7 +3,7 @@ import { SimplePagination } from "@/components/ui/SimplePagination";
 import { VoteCard, ScrutinTypeTabs } from "@/components/votes";
 import { VotesSearchInput } from "@/components/votes/VotesSearchInput";
 import { ThemeGrid } from "@/components/votes/ThemeGrid";
-import { ExportButton } from "@/components/ui/ExportButton";
+
 import {
   VOTING_RESULT_LABELS,
   THEME_CATEGORY_LABELS,
@@ -193,15 +193,6 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
               </svg>
               Statistiques
             </Link>
-            <ExportButton
-              endpoint="/api/export/votes"
-              label="Export CSV"
-              params={{
-                chamber: chamber,
-                result: result,
-                legislature: legislature?.toString(),
-              }}
-            />
           </div>
         </div>
 

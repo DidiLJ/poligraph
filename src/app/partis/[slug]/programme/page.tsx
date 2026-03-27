@@ -68,7 +68,7 @@ export default async function PartyProgrammePage({ params }: PageProps) {
     <div className="container mx-auto px-4 pt-4 pb-8">
       <Breadcrumb
         items={[
-          { label: "Partis", href: "/partis" },
+          { label: "Programmes", href: "/programmes" },
           { label: party.shortName || party.name, href: `/partis/${slug}` },
           { label: "Programme" },
         ]}
@@ -149,6 +149,13 @@ export default async function PartyProgrammePage({ params }: PageProps) {
             })}
           </>
         )}
+
+        {/* Methodology link */}
+        <p className="text-sm text-muted-foreground">
+          <a href="/sources" className="text-primary hover:underline">
+            Comment sont déterminées ces positions ?
+          </a>
+        </p>
       </div>
     </div>
   );

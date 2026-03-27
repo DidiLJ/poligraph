@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { Info } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -91,9 +92,11 @@ export default async function ProgrammesPage() {
                     prefetch={false}
                   >
                     {p.party?.logoUrl && (
-                      <img
+                      <Image
                         src={p.party.logoUrl}
-                        alt=""
+                        alt={p.party.name}
+                        width={40}
+                        height={40}
                         className="h-10 w-10 rounded-full object-cover"
                       />
                     )}

@@ -56,6 +56,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           {party.logoUrl ? (
             <img
               src={party.logoUrl}
+              alt=""
               width={140}
               height={140}
               style={{ objectFit: "contain", borderRadius: 16 }}

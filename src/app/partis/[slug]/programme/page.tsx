@@ -5,6 +5,7 @@ import { getParty } from "@/lib/data/partis";
 import { getPartyPlatform } from "@/lib/data/platforms";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { RadarChart } from "@/components/programmes/RadarChart";
+import { PositionChart } from "@/components/programmes/PositionChart";
 import { ProposalCard } from "@/components/programmes/ProposalCard";
 import { THEMATIC_AXIS_SCOPE, QUIZ_ELECTION_SCOPE_LABELS } from "@/config/labels";
 import type { ThematicAxis, QuizElectionScope, Proposal } from "@/generated/prisma";
@@ -55,7 +56,7 @@ export default async function PartyProgrammePage({ params }: PageProps) {
     }
   }
 
-  // Build radar positions
+  // Build positions map for chart
   const positions: Partial<Record<ThematicAxis, number>> = {};
   if (platform) {
     for (const p of platform.proposals) {
@@ -104,6 +105,18 @@ export default async function PartyProgrammePage({ params }: PageProps) {
             {Object.keys(positions).length >= 3 && (
               <section aria-label="Radar des positions">
                 <RadarChart positions={positions} color={party.color || "#3b82f6"} />
+              </section>
+            )}
+
+            {/* Position scale */}
+            {Object.keys(positions).length > 0 && (
+              <section aria-label="Détail des positions par axe">
+                <h2 className="text-lg font-semibold mb-4">Positionnement par axe</h2>
+                <PositionChart
+                  positions={positions}
+                  color={party.color || "#3b82f6"}
+                  className="max-w-2xl"
+                />
               </section>
             )}
 

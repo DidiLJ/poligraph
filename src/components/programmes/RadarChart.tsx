@@ -8,8 +8,9 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { ThematicAxis } from "@/generated/prisma";
+import { POSITION_MAX } from "@/lib/programmes/matching";
 
-// Short labels optimized for radar readability (no truncation needed)
+// Short labels optimized for radar readability
 const RADAR_LABELS: Record<ThematicAxis, string> = {
   ECONOMIC_ROLE: "Économie",
   SOCIETAL_NORMS: "Société",
@@ -23,14 +24,6 @@ const RADAR_LABELS: Record<ThematicAxis, string> = {
   PUBLIC_SERVICES: "Services publics",
   MOBILITY: "Mobilité",
 };
-
-interface RadarDataPoint {
-  axis: ThematicAxis;
-  label: string;
-  value: number; // -1 to 1
-  // Normalized for radar: absolute distance from center (0..100)
-  display: number;
-}
 
 interface RadarChartProps {
   positions: Partial<Record<ThematicAxis, number>>;
@@ -49,12 +42,11 @@ export function RadarChart({ positions, color = "#3b82f6", className }: RadarCha
     );
   }
 
-  const data: RadarDataPoint[] = axes.map((axis) => ({
+  const data = axes.map((axis) => ({
     axis,
     label: RADAR_LABELS[axis],
-    value: positions[axis]!,
-    // Show strength of position: abs(-1)=100, abs(0)=0, abs(1)=100
-    display: Math.abs(positions[axis]!) * 100,
+    // Normalize absolute position to 0..100 (0=neutral, 100=strong stance)
+    display: (Math.abs(positions[axis]!) / POSITION_MAX) * 100,
   }));
 
   return (

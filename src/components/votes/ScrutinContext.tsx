@@ -16,6 +16,22 @@ interface ScrutinContextProps {
   votesDetailSlot?: React.ReactNode;
 }
 
+// Generic AI placeholder phrases that add no value - skip these summaries
+const GENERIC_SUMMARY_PATTERNS = [
+  "contenu exact n'est pas",
+  "contenu exact n\u2019est pas",
+  "n'est pas spécifié",
+  "n\u2019est pas spécifié",
+  "pas encore disponible",
+  "information non disponible",
+  "sujet important mais son contenu",
+];
+
+function isGenericSummary(text: string): boolean {
+  const lower = text.toLowerCase();
+  return GENERIC_SUMMARY_PATTERNS.some((p) => lower.includes(p.toLowerCase()));
+}
+
 export function ScrutinContext({
   summary,
   citizenImpact,
@@ -23,7 +39,8 @@ export function ScrutinContext({
   isKeyVote,
   votesDetailSlot,
 }: ScrutinContextProps) {
-  const hasEnBref = !!citizenImpact || !!summary;
+  const usableSummary = summary && !isGenericSummary(summary) ? summary : null;
+  const hasEnBref = !!citizenImpact || !!usableSummary;
   const showEnjeuxTab = isKeyVote && analysis;
 
   if (!hasEnBref && !showEnjeuxTab && !votesDetailSlot) return null;
@@ -33,7 +50,7 @@ export function ScrutinContext({
   // Single section, no tabs needed
   if (tabCount <= 1 && !showEnjeuxTab && !votesDetailSlot) {
     if (hasEnBref) {
-      return <EnBrefContent summary={summary} citizenImpact={citizenImpact} />;
+      return <EnBrefContent summary={usableSummary} citizenImpact={citizenImpact} />;
     }
     return null;
   }
@@ -48,7 +65,7 @@ export function ScrutinContext({
 
       {hasEnBref && (
         <TabsContent value="en-bref">
-          <EnBrefContent summary={summary} citizenImpact={citizenImpact} />
+          <EnBrefContent summary={usableSummary} citizenImpact={citizenImpact} />
         </TabsContent>
       )}
 

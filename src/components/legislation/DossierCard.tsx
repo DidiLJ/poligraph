@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { MarkdownText } from "@/components/ui/markdown";
 import { StatusBadge } from "./StatusBadge";
 import { CategoryBadge } from "./CategoryBadge";
 import type { DossierStatus, ThemeCategory } from "@/generated/prisma";
-import { ExternalLink, FileText } from "lucide-react";
+import { ExternalLink, FileText, Scale } from "lucide-react";
 
 interface DossierCardProps {
   id: string;
@@ -25,6 +24,17 @@ interface DossierCardProps {
   compact?: boolean;
 }
 
+const STATUS_BORDER_COLORS: Record<DossierStatus, string> = {
+  DEPOSE: "border-l-amber-400 dark:border-l-amber-600",
+  EN_COMMISSION: "border-l-violet-400 dark:border-l-violet-600",
+  EN_COURS: "border-l-blue-400 dark:border-l-blue-600",
+  CONSEIL_CONSTITUTIONNEL: "border-l-purple-400 dark:border-l-purple-600",
+  ADOPTE: "border-l-green-500 dark:border-l-green-600",
+  REJETE: "border-l-red-400 dark:border-l-red-600",
+  RETIRE: "border-l-gray-400 dark:border-l-gray-500",
+  CADUQUE: "border-l-gray-300 dark:border-l-gray-600",
+};
+
 export function DossierCard({
   id,
   slug,
@@ -41,7 +51,6 @@ export function DossierCard({
   amendmentCount = 0,
   compact = false,
 }: DossierCardProps) {
-  // Use slug for URL if available, fallback to id
   const href = `/parlement/dossiers/${slug || id}`;
   const displayTitle = shortTitle || title;
   const displayDate = adoptionDate || filingDate;
@@ -52,17 +61,11 @@ export function DossierCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {number && (
-              <Badge variant="secondary" className="font-mono text-xs">
-                {number}
-              </Badge>
+              <span className="font-mono text-xs font-medium text-muted-foreground">{number}</span>
             )}
             <CategoryBadge category={category} theme={theme} showIcon={false} />
           </div>
-          <Link
-            href={href}
-            prefetch={false}
-            className="text-sm font-medium hover:text-primary line-clamp-1"
-          >
+          <Link href={href} prefetch={false} className="text-sm font-medium hover:text-primary">
             {displayTitle}
           </Link>
         </div>
@@ -82,21 +85,24 @@ export function DossierCard({
   }
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card
+      className={`hover:shadow-md transition-shadow border-l-4 ${STATUS_BORDER_COLORS[status]}`}
+    >
       <CardContent className="pt-6">
         <div className="flex flex-col gap-4">
-          {/* Header with badges */}
+          {/* Header: type indicator + badges */}
           <div className="flex flex-wrap items-center gap-2">
             {number && (
-              <Badge variant="secondary" className="font-mono">
+              <span className="inline-flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground/80">
+                <Scale className="h-3.5 w-3.5" aria-hidden="true" />
                 {number}
-              </Badge>
+              </span>
             )}
             <StatusBadge status={status} showIcon />
             <CategoryBadge category={category} theme={theme} />
           </div>
 
-          {/* Title */}
+          {/* Title - no truncation */}
           <div>
             <h3 className="text-lg font-semibold mb-1">
               <Link href={href} prefetch={false} className="hover:text-primary">
@@ -104,7 +110,7 @@ export function DossierCard({
               </Link>
             </h3>
             {shortTitle && shortTitle !== title && (
-              <p className="text-sm text-muted-foreground line-clamp-2">{title}</p>
+              <p className="text-sm text-muted-foreground">{title}</p>
             )}
           </div>
 
@@ -146,6 +152,7 @@ export function DossierCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1"
+                  aria-label="Voir le dossier sur le site officiel"
                 >
                   Voir sur AN.fr
                   <ExternalLink className="h-3 w-3" />

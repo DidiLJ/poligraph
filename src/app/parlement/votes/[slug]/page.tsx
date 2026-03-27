@@ -40,6 +40,15 @@ function formatExternalId(externalId: string, chamber: string): string {
   return `Scrutin ${chamber === "AN" ? "AN" : "Sénat"} ${externalId}`;
 }
 
+/** Extract scrutin number for the kicker label: "VTANR5L17V5729" → "5729" */
+function extractScrutinNumber(externalId: string): string | null {
+  const anMatch = externalId.match(/V(\d+)$/);
+  if (anMatch?.[1]) return anMatch[1];
+  const senatMatch = externalId.match(/-(\d+)$/);
+  if (senatMatch?.[1]) return senatMatch[1];
+  return null;
+}
+
 export const revalidate = 3600; // ISR: revalidate every hour
 
 export async function generateStaticParams() {
@@ -264,6 +273,14 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
 
         {/* Header */}
         <div className="mb-8">
+          {/* Kicker: scrutin identity + chamber */}
+          <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            {extractScrutinNumber(scrutin.externalId)
+              ? `Scrutin n° ${extractScrutinNumber(scrutin.externalId)}`
+              : formatExternalId(scrutin.externalId, scrutin.chamber)}
+            {" · "}
+            {scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat"}
+          </p>
           <div className="flex items-start justify-between gap-4 mb-4">
             <h1 className="text-2xl font-display font-extrabold tracking-tight">{scrutin.title}</h1>
             <VotingResultBadge result={scrutin.result} />

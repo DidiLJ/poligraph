@@ -442,7 +442,7 @@ export default function SourcesPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Echelle de positionnement</h3>
+              <h3 className="font-semibold mb-2">Échelle de positionnement</h3>
               <p className="text-sm text-muted-foreground">
                 Chaque axe thématique est évalué sur une échelle de 7 niveaux (-3 à +3). Les
                 extrêmes (-3, +3) représentent une position tranchée, les valeurs proches du centre

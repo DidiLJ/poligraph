@@ -32,9 +32,17 @@ interface VoteCardProps {
   dossier?: { title: string; slug: string | null } | null;
 }
 
+function extractScrutinNumber(externalId: string): string | null {
+  const anMatch = externalId.match(/V(\d+)$/);
+  if (anMatch?.[1]) return anMatch[1];
+  const senatMatch = externalId.match(/-(\d+)$/);
+  if (senatMatch?.[1]) return senatMatch[1];
+  return null;
+}
+
 export function VoteCard({
   id,
-  externalId: _externalId,
+  externalId,
   slug,
   title,
   votingDate,
@@ -52,6 +60,7 @@ export function VoteCard({
 }: VoteCardProps) {
   // Use slug for URL if available, fallback to id
   const href = `/parlement/votes/${slug || id}`;
+  const scrutinNumber = extractScrutinNumber(externalId);
   const total = votesFor + votesAgainst + votesAbstain;
   const forPercent = total > 0 ? (votesFor / total) * 100 : 0;
   const againstPercent = total > 0 ? (votesAgainst / total) * 100 : 0;
@@ -63,7 +72,14 @@ export function VoteCard({
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex-1 min-w-0">
             <Link href={href} prefetch={false} className="hover:underline">
-              <p className="font-medium text-sm line-clamp-2">{title}</p>
+              <p className="font-medium text-sm line-clamp-2">
+                {scrutinNumber && (
+                  <span className="font-mono text-xs text-muted-foreground mr-1.5">
+                    n°{scrutinNumber}
+                  </span>
+                )}
+                {title}
+              </p>
             </Link>
             <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
               {type && type !== "AUTRE" && (

@@ -36,8 +36,14 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     if (params.chamber) canonicalParams.set("chamber", params.chamber);
     if (params.result) canonicalParams.set("result", params.result);
     const qs = canonicalParams.toString();
+    const chamberTitle =
+      params.chamber === "AN"
+        ? "Votes de l'Assemblée nationale"
+        : params.chamber === "SENAT"
+          ? "Votes du Sénat"
+          : "Votes parlementaires";
     return {
-      title: "Votes parlementaires",
+      title: chamberTitle,
       description:
         "Suivez les votes de l'Assemblée nationale et du Sénat. Consultez les scrutins et découvrez comment votent vos représentants.",
       alternates: { canonical: `/parlement${qs ? `?${qs}` : ""}` },

@@ -133,9 +133,9 @@ export async function getPartyPositionsForMatching(electionId: string) {
 
   return platforms.map((p) => ({
     party: p.party!,
-    positions: Object.fromEntries(
-      p.proposals.map((pr) => [pr.axis, pr.position as -1 | 0 | 1])
-    ) as Partial<Record<ThematicAxis, -1 | 0 | 1>>,
+    positions: Object.fromEntries(p.proposals.map((pr) => [pr.axis, pr.position])) as Partial<
+      Record<ThematicAxis, number>
+    >,
   }));
 }
 

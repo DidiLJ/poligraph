@@ -14,16 +14,16 @@ interface ProposalCardProps {
 
 function PositionBadge({ position, axis }: { position: number; axis: ThematicAxis }) {
   const label =
-    position === -1
+    position < 0
       ? THEMATIC_AXIS_POLE_A[axis]
-      : position === 1
+      : position > 0
         ? THEMATIC_AXIS_POLE_B[axis]
         : "Position intermédiaire";
 
   const colorClass =
-    position === -1
+    position < 0
       ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
-      : position === 1
+      : position > 0
         ? "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
         : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
 

@@ -1893,7 +1893,7 @@ model Proposal {
   platformId String
 
   axis     ThematicAxis
-  position Int // -1 = Pole A, 0 = Intermediate, 1 = Pole B
+  position Int // -3..+3 scale: negative = Pole A, 0 = neutral, positive = Pole B
 
   summary       String
   sourceExcerpt String?  @db.Text

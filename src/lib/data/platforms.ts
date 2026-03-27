@@ -101,6 +101,54 @@ export async function getPlatformsListing() {
   return queryPlatforms();
 }
 
+/**
+ * Returns the latest published platform for each party.
+ * Used by the hub page to show current positions (not election-grouped).
+ */
+export async function getLatestPlatformsPerParty() {
+  "use cache";
+  cacheTag("platforms");
+  cacheLife("minutes");
+
+  // Get all published platforms with party info
+  const allPlatforms = await db.platform.findMany({
+    where: {
+      publicationStatus: "PUBLISHED",
+      partyId: { not: null },
+    },
+    include: {
+      party: {
+        select: {
+          slug: true,
+          name: true,
+          shortName: true,
+          color: true,
+          logoUrl: true,
+        },
+      },
+      election: {
+        select: { slug: true, title: true, type: true },
+      },
+      proposals: {
+        select: { axis: true, position: true },
+      },
+      _count: { select: { proposals: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  // Keep only the latest platform per party (first occurrence since sorted by createdAt desc)
+  const seen = new Set<string>();
+  const latest = allPlatforms.filter((p) => {
+    if (!p.partyId || seen.has(p.partyId)) return false;
+    seen.add(p.partyId);
+    return true;
+  });
+
+  // Sort alphabetically by party name
+  return latest.sort((a, b) => (a.party?.name ?? "").localeCompare(b.party?.name ?? "", "fr"));
+}
+
 // --- Proposals for matching (quiz) ---
 
 export async function getPartyPositionsForMatching(electionId: string) {

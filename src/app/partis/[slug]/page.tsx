@@ -212,15 +212,19 @@ export default async function PartyPage({ params }: PageProps) {
         {/* Programme CTA */}
         {programmeEnabled &&
           (partyPlatform ? (
-            <ProgrammeCTA
-              partyName={party.name}
-              partySlug={slug}
-              sourceUrl={partyPlatform.sourceUrl}
-              partyWebsite={party.website}
-              electionTitle={partyPlatform.election?.title}
-            />
+            <div className="mb-8">
+              <ProgrammeCTA
+                partyName={party.name}
+                partySlug={slug}
+                sourceUrl={partyPlatform.sourceUrl}
+                partyWebsite={party.website}
+                electionTitle={partyPlatform.election?.title}
+              />
+            </div>
           ) : (
-            <ProgrammeCTAEmpty partyName={party.name} partyWebsite={party.website} />
+            <div className="mb-8">
+              <ProgrammeCTAEmpty partyName={party.name} partyWebsite={party.website} />
+            </div>
           ))}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

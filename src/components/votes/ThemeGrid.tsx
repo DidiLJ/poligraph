@@ -47,19 +47,14 @@ export function ThemeGrid({ themes, clearHref, hasActiveTheme }: ThemeGridProps)
           <Link
             key={t.theme}
             href={t.href}
-            className={`flex flex-col gap-1 p-3 rounded-lg min-h-[60px] transition-colors ${
+            className={`flex items-center gap-2 p-3 rounded-lg min-h-[60px] transition-colors ${
               t.isActive
                 ? "border-l-4 border-l-primary bg-primary/5 border border-primary/20"
-                : "bg-muted/50 hover:bg-muted border border-transparent"
+                : "bg-muted hover:bg-muted/80 border border-border"
             }`}
           >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{t.icon}</span>
-              <span className="text-sm font-medium">{t.label}</span>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {t.count.toLocaleString("fr-FR")} votes
-            </span>
+            <span className="text-lg">{t.icon}</span>
+            <span className="text-sm font-medium">{t.label}</span>
           </Link>
         ))}
       </div>

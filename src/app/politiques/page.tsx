@@ -6,7 +6,7 @@ import { type SortOption, type MandateFilter } from "@/components/politicians/Fi
 import { MandateType } from "@/generated/prisma";
 import { SearchForm } from "@/components/politicians/SearchForm";
 import { PoliticiansGrid } from "@/components/politicians/PoliticiansGrid";
-import { ExportButton } from "@/components/ui/ExportButton";
+
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
@@ -484,14 +484,6 @@ export default async function PolitiquesPage({ searchParams }: PageProps) {
               />
             </div>
           </div>
-          <ExportButton
-            endpoint="/api/export/politiques"
-            label="Export CSV"
-            params={{
-              partyId: partyFilter || undefined,
-              hasAffairs: convictionFilter ? "true" : undefined,
-            }}
-          />
         </div>
 
         {/* Search with autocomplete */}

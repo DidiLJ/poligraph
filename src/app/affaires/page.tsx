@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { SimplePagination } from "@/components/ui/SimplePagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExportButton } from "@/components/ui/ExportButton";
+
 import { AffairesFilterBar } from "@/components/affairs/AffairesFilterBar";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { stripMarkdown } from "@/lib/utils";
@@ -193,14 +193,6 @@ export default async function AffairesPage({ searchParams }: PageProps) {
               />
             </div>
           </div>
-          <ExportButton
-            endpoint="/api/export/affaires"
-            label="Export CSV"
-            params={{
-              status: statusFilter || undefined,
-              category: categoryFilter || undefined,
-            }}
-          />
         </div>
 
         {/* Mode toggle */}

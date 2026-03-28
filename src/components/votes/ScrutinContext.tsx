@@ -93,8 +93,8 @@ function EnBrefContent({
   const isCitizenImpact = !!citizenImpact;
 
   return (
-    <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
-      <CardHeader className="pb-2">
+    <Card className="gap-2 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
+      <CardHeader className="pb-0">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400" />
           <h3 className="text-lg font-semibold">

@@ -17,6 +17,7 @@ interface KeyVoteCardProps {
   result: VotingResult;
   theme: ThemeCategory | null;
   summary: string | null;
+  citizenImpact: string | null;
   isKeyVote?: boolean;
 }
 
@@ -31,6 +32,7 @@ export function KeyVoteCard({
   result,
   theme,
   summary,
+  citizenImpact,
   isKeyVote = true,
 }: KeyVoteCardProps) {
   const href = `/parlement/votes/${slug || id}`;
@@ -54,7 +56,11 @@ export function KeyVoteCard({
           <p className="font-medium text-sm line-clamp-2 mb-2">{title}</p>
         </Link>
 
-        {summary && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{summary}</p>}
+        {(citizenImpact || summary) && (
+          <p className="text-xs text-muted-foreground line-clamp-3 mb-3">
+            {citizenImpact || summary}
+          </p>
+        )}
 
         <div className="flex items-center gap-3 mb-3 text-xs text-muted-foreground">
           <VotingResultBadge result={result} />

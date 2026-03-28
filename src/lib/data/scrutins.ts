@@ -23,6 +23,7 @@ export interface DailyScrutin {
   theme: ThemeCategory | null;
   type: ScrutinType | null;
   summary: string | null;
+  citizenImpact: string | null;
 }
 
 export interface DailyVotesData {
@@ -66,6 +67,7 @@ const DAILY_SELECT = {
   theme: true,
   type: true,
   summary: true,
+  citizenImpact: true,
 } as const;
 
 // ---------------------------------------------------------------------------

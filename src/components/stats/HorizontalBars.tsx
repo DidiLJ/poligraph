@@ -37,12 +37,12 @@ export function HorizontalBars({ bars, title, maxValue: globalMax }: HorizontalB
           );
 
           const barEl = (
-            <div className="h-4 bg-muted rounded-full overflow-hidden">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all"
+                className="h-full rounded-full transition-all bg-primary/70"
                 style={{
                   width: `${pct}%`,
-                  backgroundColor: bar.color || "hsl(var(--primary))",
+                  ...(bar.color ? { backgroundColor: bar.color } : {}),
                 }}
               />
             </div>

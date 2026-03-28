@@ -18,28 +18,11 @@ import { join } from "path";
 const OUTPUT_PATH = join(__dirname, "../../boussole-politique/data/synced-data.json");
 
 // Scrutin IDs from boussole-politique/data/scrutins.json
-const SCRUTIN_IDS = [
-  "cml2g74m4dv2eijv5yeaef1ml", // Nationalisation ArcelorMittal
-  "cml2g8dvyfklaijv5awba9t1e", // Sécurité sociale 2026
-  "cml2g8c2xfisfijv5cqcoyfbo", // Encadrement loyers
-  "cml2g0v6c67mqijv5qwwpbmsh", // Contraintes agriculteurs
-  "cml2g181g6jigijv55tbw369m", // Simplification urbanisme
-  "cmm2fg4fw02ju1o214v348cht", // Aide à mourir
-  "cml2g0vbq681tijv5fx2s0p9i", // Rétention condamnés
-  "cml2g8dczfjxsijv5bim0dnc1", // Titres de séjour
-  "cml2ga02uh0mmijv55qmm74po", // Mineurs réseaux sociaux
-  "cml2g88waffqmijv57h01qto4", // Mineurs isolés/sans-abrisme
-  "cml2g2j5v7vtjijv53jk3unha", // Origine denrées alimentaires
-  "cmldazds3hcxtri3z737rs0e1", // Hydroélectricité
-  "cml2g17wy6jdjijv5gw5pkgfe", // Accords emploi
-  "cml2g6ji8d6vtijv5vmksglla", // Service postal
-  "cml2ga7guh81kijv5ist7yyz2", // Parkings hôpitaux
-  "cml2g8olafu9xijv5he1w3x8m", // Réparation homosexualité
-  "cml2ga5udh70cijv5nnwofs2z", // Fin devoir conjugal
-  "cml2g18su6kgyijv54xpm5pmc", // Définition viol
-  "cml2g8oy3fuhnijv54sag7xra", // Réparation avortement
-  "cml2g8dhdfk1oijv5g1yco48y", // Vie chère outre-mer
-];
+// Auto-synced: read IDs from the scrutins.json file
+const SCRUTINS_JSON_PATH = join(__dirname, "../../boussole-politique/data/scrutins.json");
+const SCRUTIN_IDS: string[] = JSON.parse(
+  require("fs").readFileSync(SCRUTINS_JSON_PATH, "utf-8")
+).map((s: { scrutinId: string }) => s.scrutinId);
 
 async function main() {
   console.log(`Exporting vote data for ${SCRUTIN_IDS.length} scrutins...`);

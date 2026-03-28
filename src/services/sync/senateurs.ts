@@ -90,6 +90,7 @@ async function syncSenateParliamentaryGroups(senators: SenateurAPI[]): Promise<{
     const groupName = config?.name || groupe.libelle;
 
     // 1. Upsert parliamentary group
+    const slug = `${groupCode.toLowerCase()}-senat`;
     const groupData = {
       name: groupName,
       shortName: config?.shortName || null,
@@ -97,6 +98,7 @@ async function syncSenateParliamentaryGroups(senators: SenateurAPI[]): Promise<{
       chamber: Chamber.SENAT,
       politicalPosition: config?.politicalPosition || null,
       wikidataId: config?.wikidataId || null,
+      slug,
     };
 
     let group = await db.parliamentaryGroup.findUnique({

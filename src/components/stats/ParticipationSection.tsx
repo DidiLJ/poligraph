@@ -102,97 +102,110 @@ export function ParticipationSection({
         </Card>
       </div>
 
-      {/* Group participation — AN / Sénat side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Assemblée nationale</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sortedGroupsAN.length > 0 ? (
-              <HorizontalBars
-                title="Groupes parlementaires AN"
-                maxValue={100}
-                bars={sortedGroupsAN.map((g) => ({
-                  label: g.groupCode,
-                  value: g.avgParticipationRate,
-                  color: g.groupColor || undefined,
-                  suffix: "%",
-                }))}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">Aucune donnée</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Sénat</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sortedGroupsSENAT.length > 0 ? (
-              <HorizontalBars
-                title="Groupes parlementaires Sénat"
-                maxValue={100}
-                bars={sortedGroupsSENAT.map((g) => ({
-                  label: g.groupCode,
-                  value: g.avgParticipationRate,
-                  color: g.groupColor || undefined,
-                  suffix: "%",
-                }))}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">Aucune donnée</p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Group participation */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-1">Participation par groupe</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Taux de présence moyen aux scrutins par groupe parlementaire
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Assemblée nationale</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sortedGroupsAN.length > 0 ? (
+                <HorizontalBars
+                  title="Groupes parlementaires AN"
+                  maxValue={100}
+                  bars={sortedGroupsAN.map((g) => ({
+                    label: g.groupCode,
+                    value: g.avgParticipationRate,
+                    color: g.groupColor || undefined,
+                    suffix: "%",
+                  }))}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucune donnée</p>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Sénat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sortedGroupsSENAT.length > 0 ? (
+                <HorizontalBars
+                  title="Groupes parlementaires Sénat"
+                  maxValue={100}
+                  bars={sortedGroupsSENAT.map((g) => ({
+                    label: g.groupCode,
+                    value: g.avgParticipationRate,
+                    color: g.groupColor || undefined,
+                    suffix: "%",
+                  }))}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucune donnée</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Group dissidence — AN / Sénat side by side */}
+      {/* Group vote independence */}
       {(groupDissidenceAN.length > 0 || groupDissidenceSENAT.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Dissidence - Assemblée nationale</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {groupDissidenceAN.length > 0 ? (
-                <HorizontalBars
-                  title="Dissidence par groupe AN"
-                  maxValue={100}
-                  bars={groupDissidenceAN.map((g) => ({
-                    label: g.groupCode,
-                    value: g.avgDissidenceRate,
-                    color: g.groupColor || undefined,
-                    suffix: "%",
-                  }))}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">Aucune donnée</p>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Dissidence - Sénat</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {groupDissidenceSENAT.length > 0 ? (
-                <HorizontalBars
-                  title="Dissidence par groupe Sénat"
-                  maxValue={100}
-                  bars={groupDissidenceSENAT.map((g) => ({
-                    label: g.groupCode,
-                    value: g.avgDissidenceRate,
-                    color: g.groupColor || undefined,
-                    suffix: "%",
-                  }))}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">Aucune donnée</p>
-              )}
-            </CardContent>
-          </Card>
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-1">Indépendance de vote</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Fréquence à laquelle les membres d{"'"}un groupe votent différemment de la majorité de
+            leur groupe
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Assemblée nationale</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {groupDissidenceAN.length > 0 ? (
+                  <HorizontalBars
+                    title="Indépendance de vote par groupe AN"
+                    maxValue={100}
+                    bars={groupDissidenceAN.map((g) => ({
+                      label: g.groupCode,
+                      value: g.avgDissidenceRate,
+                      color: g.groupColor || undefined,
+                      suffix: "%",
+                    }))}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune donnée</p>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Sénat</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {groupDissidenceSENAT.length > 0 ? (
+                  <HorizontalBars
+                    title="Indépendance de vote par groupe Sénat"
+                    maxValue={100}
+                    bars={groupDissidenceSENAT.map((g) => ({
+                      label: g.groupCode,
+                      value: g.avgDissidenceRate,
+                      color: g.groupColor || undefined,
+                      suffix: "%",
+                    }))}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune donnée</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
@@ -219,7 +232,12 @@ export function ParticipationSection({
                   <th className="py-2 pr-2">Groupe</th>
                   <th className="py-2 pr-2 text-right">Présences</th>
                   <th className="py-2 text-right">Taux</th>
-                  <th className="py-2 text-right hidden sm:table-cell">Dissidence</th>
+                  <th
+                    className="py-2 text-right hidden sm:table-cell"
+                    title="Fréquence de vote différent de la majorité du groupe"
+                  >
+                    Indép.
+                  </th>
                 </tr>
               </thead>
               <tbody>

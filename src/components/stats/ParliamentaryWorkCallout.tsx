@@ -24,19 +24,19 @@ export function ParliamentaryWorkCallout() {
           </p>
           <ul className="mt-2 space-y-1 text-sm text-blue-800 dark:text-blue-300">
             <li>
-              <strong>Commissions</strong> — travail de fond sur les textes de loi
+              <strong>Commissions</strong> :travail de fond sur les textes de loi
             </li>
             <li>
-              <strong>Hémicycle</strong> — débats et votes en séance publique
+              <strong>Hémicycle</strong> :débats et votes en séance publique
             </li>
             <li>
-              <strong>Circonscription</strong> — permanences et travail de terrain
+              <strong>Circonscription</strong> :permanences et travail de terrain
             </li>
             <li>
-              <strong>Questions au gouvernement</strong> — contrôle de l&apos;exécutif
+              <strong>Questions au gouvernement</strong> :contrôle de l&apos;exécutif
             </li>
             <li>
-              <strong>Missions et rapports</strong> — commissions d&apos;enquête, rapports
+              <strong>Missions et rapports</strong> :commissions d&apos;enquête, rapports
               thématiques
             </li>
           </ul>

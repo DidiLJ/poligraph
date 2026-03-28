@@ -41,36 +41,36 @@ function KeyVotesList({ votes }: { votes: KeyVote[] }) {
     return <p className="text-sm text-muted-foreground">Aucun scrutin disponible</p>;
   }
   return (
-    <div className="space-y-3">
+    <div className="divide-y">
       {votes.map((v) => (
-        <div key={v.id} className="flex flex-col gap-1">
-          <Link
-            href={`/parlement/votes/${v.slug || v.id}`}
-            prefetch={false}
-            className="text-sm font-medium hover:underline leading-snug"
-          >
-            {v.title}
-          </Link>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+        <div key={v.id} className="py-3 first:pt-0 last:pb-0">
+          <div className="flex items-start gap-2 mb-1.5">
+            <Badge
+              variant={v.result === "ADOPTED" ? "default" : "destructive"}
+              className="text-[10px] py-0 px-1.5 shrink-0 mt-0.5"
+            >
+              {v.result === "ADOPTED" ? "Adopté" : "Rejeté"}
+            </Badge>
+            <Link
+              href={`/parlement/votes/${v.slug || v.id}`}
+              prefetch={false}
+              className="text-sm font-medium hover:underline leading-snug line-clamp-2"
+            >
+              {capitalizeFirst(v.title)}
+            </Link>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground pl-0">
             <span>{formatDate(v.votingDate)}</span>
             {v.themeLabel && (
               <Badge variant="outline" className="text-xs py-0">
                 {v.themeIcon} {v.themeLabel}
               </Badge>
             )}
-            <Badge
-              variant={v.result === "ADOPTED" ? "default" : "destructive"}
-              className="text-xs py-0"
-            >
-              {v.result === "ADOPTED" ? "Adopté" : "Rejeté"}
-            </Badge>
-          </div>
-          <div className="text-xs">
             <span className="text-green-700 dark:text-green-400">{v.votesFor} pour</span>
-            {" / "}
+            <span>/</span>
             <span className="text-red-700 dark:text-red-400">{v.votesAgainst} contre</span>
-            {" / "}
-            <span className="text-muted-foreground">{v.votesAbstain} abst.</span>
+            <span>/</span>
+            <span>{v.votesAbstain} abst.</span>
           </div>
         </div>
       ))}
@@ -125,52 +125,56 @@ export function LegislativeSection({ stats, dynamicsAN, dynamicsSENAT }: Legisla
         </div>
       )}
 
-      {/* Theme priorities — AN / Sénat side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Assemblée nationale</CardTitle>
-            <p className="text-sm text-muted-foreground">Thèmes les plus traités en scrutins</p>
-          </CardHeader>
-          <CardContent>
-            <ThemeBars themes={themesAN} title="Thèmes AN" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Sénat</CardTitle>
-            <p className="text-sm text-muted-foreground">Thèmes les plus traités en scrutins</p>
-          </CardHeader>
-          <CardContent>
-            <ThemeBars themes={themesSENAT} title="Thèmes Sénat" />
-          </CardContent>
-        </Card>
+      {/* Theme priorities */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-1">Thèmes prioritaires</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Répartition thématique des scrutins par chambre
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Assemblée nationale</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ThemeBars themes={themesAN} title="Thèmes AN" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Sénat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ThemeBars themes={themesSENAT} title="Thèmes Sénat" />
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Key votes — AN / Sénat side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Votes marquants — AN</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Scrutins récents les plus contestés (écart serré entre pour et contre)
-            </p>
-          </CardHeader>
-          <CardContent>
-            <KeyVotesList votes={keyVotesAN} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Votes marquants — Sénat</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Scrutins récents les plus contestés (écart serré entre pour et contre)
-            </p>
-          </CardHeader>
-          <CardContent>
-            <KeyVotesList votes={keyVotesSENAT} />
-          </CardContent>
-        </Card>
+      {/* Key votes */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-1">Votes marquants</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Scrutins récents les plus serrés entre pour et contre
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Assemblée nationale</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <KeyVotesList votes={keyVotesAN} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Sénat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <KeyVotesList votes={keyVotesSENAT} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Methodology */}
@@ -183,4 +187,8 @@ export function LegislativeSection({ stats, dynamicsAN, dynamicsSENAT }: Legisla
       </MethodologyDisclaimer>
     </section>
   );
+}
+
+function capitalizeFirst(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

@@ -1,28 +1,19 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { HeroSpotlight } from "@/components/votes/HeroSpotlight";
 import { KeyVoteCard } from "@/components/votes/KeyVoteCard";
 import { DossierCard } from "@/components/legislation";
+import { CompositionHemicycle } from "./CompositionHemicycle";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { FAQJsonLd } from "@/components/seo/JsonLd";
-import {
-  THEME_CATEGORY_LABELS,
-  THEME_CATEGORY_ICONS,
-  THEME_CATEGORY_COLORS,
-  CHAMBER_LABELS,
-} from "@/config/labels";
-import { themeToSlug } from "@/lib/theme-utils";
 import { getFeatureValue } from "@/lib/feature-flags";
 import {
   getHubStats,
   getLastScrutinDate,
   getTodayVotesByChamber,
-  getThemeCountsWithKeyVotes,
-  getChamberAdoptionRates,
   getKeyVotes,
 } from "@/lib/data/scrutins";
 import { getLatestDossiers } from "@/lib/data/legislation";
+import { getGroupesListing } from "@/lib/data/groupes";
 import { Info, ArrowRight, Building2, AlertTriangle, Calendar } from "lucide-react";
 import {
   resolveParliamentaryPeriod,
@@ -78,22 +69,20 @@ function getPeriodIcon(type: ParliamentaryPeriodType) {
 }
 
 export async function ParlementHub() {
-  const [hubStats, lastDate, today, themeCounts, chamberRates, keyVotes, latestDossiers] =
-    await Promise.all([
-      getHubStats(),
-      getLastScrutinDate(),
-      getTodayVotesByChamber(),
-      getThemeCountsWithKeyVotes(),
-      getChamberAdoptionRates(),
-      getKeyVotes(),
-      getLatestDossiers(6),
-    ]);
+  const [hubStats, lastDate, today, keyVotes, latestDossiers, allGroups] = await Promise.all([
+    getHubStats(),
+    getLastScrutinDate(),
+    getTodayVotesByChamber(),
+    getKeyVotes(),
+    getLatestDossiers(6),
+    getGroupesListing(),
+  ]);
 
   const periodOverride = await getFeatureValue<PeriodOverride>(PARLIAMENTARY_PERIOD_FLAG);
   const period = resolveParliamentaryPeriod(lastDate, periodOverride);
 
-  const anStats = chamberRates.find((c) => c.chamber === "AN");
-  const senatStats = chamberRates.find((c) => c.chamber === "SENAT");
+  const anGroups = allGroups.filter((g) => g.chamber === "AN" && g.seatCount > 0);
+  const senatGroups = allGroups.filter((g) => g.chamber === "SENAT" && g.seatCount > 0);
 
   return (
     <div className="container mx-auto px-4">
@@ -250,108 +239,8 @@ export async function ParlementHub() {
         )}
       </section>
 
-      {/* Explorer par thème */}
-      {themeCounts.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-1">Explorer par thème</h2>
-          <p className="text-xs text-muted-foreground mb-3">
-            Les scrutins sont classés par thème pour faciliter la recherche
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {themeCounts.map((t) => (
-              <Link
-                key={t.theme}
-                href={`/parlement/votes/themes/${themeToSlug(t.theme)}`}
-                prefetch={false}
-              >
-                <Badge
-                  variant="outline"
-                  className={`cursor-pointer hover:opacity-80 transition-opacity ${THEME_CATEGORY_COLORS[t.theme]}`}
-                >
-                  {THEME_CATEGORY_ICONS[t.theme]} {THEME_CATEGORY_LABELS[t.theme]}
-                  {t.keyVotes > 0 && <span className="ml-1 font-bold">{t.keyVotes} clés</span>} (
-                  {t.total})
-                </Badge>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* AN / Sénat cards */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-700">
-                <Building2 className="h-3.5 w-3.5" />
-                {CHAMBER_LABELS.AN}
-              </span>
-            </div>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-              577 députés élus au suffrage universel direct
-            </p>
-            {anStats && (
-              <div className="flex items-baseline gap-4 mb-4">
-                <div>
-                  <span className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                    {anStats.total.toLocaleString("fr-FR")}
-                  </span>
-                  <span className="text-xs text-primary ml-1">scrutins</span>
-                </div>
-                <div>
-                  <span className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                    {anStats.adoptionRate}%
-                  </span>
-                  <span className="text-xs text-primary ml-1">adoptés</span>
-                </div>
-              </div>
-            )}
-            <Link
-              href="/parlement?chamber=AN"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
-            >
-              Voir les scrutins <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-rose-100 text-rose-700">
-                <Building2 className="h-3.5 w-3.5" />
-                {CHAMBER_LABELS.SENAT}
-              </span>
-            </div>
-            <p className="text-sm text-rose-700 dark:text-rose-300 mb-4">
-              348 sénateurs élus au suffrage indirect
-            </p>
-            {senatStats && (
-              <div className="flex items-baseline gap-4 mb-4">
-                <div>
-                  <span className="text-2xl font-bold text-rose-900 dark:text-rose-100">
-                    {senatStats.total.toLocaleString("fr-FR")}
-                  </span>
-                  <span className="text-xs text-rose-600 dark:text-rose-400 ml-1">scrutins</span>
-                </div>
-                <div>
-                  <span className="text-lg font-semibold text-rose-900 dark:text-rose-100">
-                    {senatStats.adoptionRate}%
-                  </span>
-                  <span className="text-xs text-rose-600 dark:text-rose-400 ml-1">adoptés</span>
-                </div>
-              </div>
-            )}
-            <Link
-              href="/parlement?chamber=SENAT"
-              className="inline-flex items-center gap-1 text-sm font-medium text-rose-700 dark:text-rose-300 hover:underline"
-            >
-              Voir les scrutins <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardContent>
-        </Card>
-      </section>
+      {/* Parliamentary Groups Hemicycle */}
+      <CompositionHemicycle anGroups={anGroups} senatGroups={senatGroups} />
 
       {/* Dossiers législatifs */}
       {latestDossiers.length > 0 && (

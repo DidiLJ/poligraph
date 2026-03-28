@@ -223,3 +223,14 @@ textarea:focus-visible,
 .animate-progress-bar {
   animation: progress-bar 2s ease-out forwards;
 }
+
+@keyframes hemicycleSeatIn {
+  from {
+    opacity: 0;
+    r: 0;
+  }
+  to {
+    opacity: 1;
+    r: 4;
+  }
+}

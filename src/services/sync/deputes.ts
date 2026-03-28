@@ -427,8 +427,8 @@ async function deactivateStaleMandates(activeAnIds: Set<string>): Promise<number
 export async function syncDeputes(): Promise<SyncResult> {
   const result: SyncResult = {
     success: false,
-    partiesCreated: 0,
-    partiesUpdated: 0,
+    groupsCreated: 0,
+    groupsUpdated: 0,
     deputiesCreated: 0,
     deputiesUpdated: 0,
     deputiesDeactivated: 0,
@@ -444,8 +444,8 @@ export async function syncDeputes(): Promise<SyncResult> {
     // 2. Sync parliamentary groups and resolve real parties
     console.log("Syncing parliamentary groups...");
     const { groupsCreated, groupsUpdated, csvToGroupId, csvToPartyId } = await syncGroups(deputies);
-    result.partiesCreated = groupsCreated;
-    result.partiesUpdated = groupsUpdated;
+    result.groupsCreated = groupsCreated;
+    result.groupsUpdated = groupsUpdated;
 
     // 3. Sync deputies (with real party ID, not group ID)
     console.log("Syncing deputies...");

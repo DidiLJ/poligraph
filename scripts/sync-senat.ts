@@ -51,8 +51,8 @@ Data sources:
       success: result.success,
       duration: 0,
       stats: {
-        partiesCreated: result.partiesCreated,
-        partiesUpdated: result.partiesUpdated,
+        groupsCreated: result.groupsCreated,
+        groupsUpdated: result.groupsUpdated,
         senatorsCreated: result.senatorsCreated,
         senatorsUpdated: result.senatorsUpdated,
       },

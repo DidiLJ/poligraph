@@ -37,9 +37,9 @@ export interface PartyMapping {
   color: string;
 }
 
-// Known French political parties (17e legislature - 2024-2027)
+// Known French parliamentary groups (17th legislature)
 // Maps CSV groupeAbrev -> display shortName, fullName, color
-export const PARTY_MAPPINGS: Record<string, PartyMapping> = {
+export const GROUP_MAPPINGS: Record<string, PartyMapping> = {
   // Groupes parlementaires actuels (jan 2026)
   RN: { shortName: "RN", fullName: "Rassemblement National", color: "#0D378A" },
   "LFI-NFP": {
@@ -65,8 +65,8 @@ export const PARTY_MAPPINGS: Record<string, PartyMapping> = {
 
 export interface SyncResult {
   success: boolean;
-  partiesCreated: number;
-  partiesUpdated: number;
+  groupsCreated: number;
+  groupsUpdated: number;
   deputiesCreated: number;
   deputiesUpdated: number;
   deputiesDeactivated: number;
@@ -133,8 +133,8 @@ export interface NosSenateursAPI {
 
 export interface SenatSyncResult {
   success: boolean;
-  partiesCreated: number;
-  partiesUpdated: number;
+  groupsCreated: number;
+  groupsUpdated: number;
   senatorsCreated: number;
   senatorsUpdated: number;
   errors: string[];
@@ -220,7 +220,7 @@ export const GOUV_FUNCTION_MAPPING: Record<string, string> = {
   SE: "SECRETAIRE_ETAT",
 };
 
-// Senate group mappings (similar to PARTY_MAPPINGS for deputies)
+// Senate parliamentary group mappings (similar to GROUP_MAPPINGS for deputies)
 export const SENATE_GROUP_MAPPINGS: Record<string, PartyMapping> = {
   // Groupes sénatoriaux (jan 2026)
   RDPI: {

@@ -46,8 +46,8 @@ Data source: data.gouv.fr (Datan dataset, updated daily)
       success: result.success,
       duration: 0,
       stats: {
-        partiesCreated: result.partiesCreated,
-        partiesUpdated: result.partiesUpdated,
+        groupsCreated: result.groupsCreated,
+        groupsUpdated: result.groupsUpdated,
         deputiesCreated: result.deputiesCreated,
         deputiesUpdated: result.deputiesUpdated,
         deputiesDeactivated: result.deputiesDeactivated,

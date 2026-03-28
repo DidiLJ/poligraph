@@ -2,12 +2,20 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HorizontalBars } from "./HorizontalBars";
+import { GroupDynamics } from "./GroupDynamics";
 import { MethodologyDisclaimer } from "./MethodologyDisclaimer";
 import { formatDate } from "@/lib/utils";
-import type { LegislativeStatsResult, ThemeDistribution, KeyVote } from "@/services/voteStats";
+import type {
+  LegislativeStatsResult,
+  ThemeDistribution,
+  KeyVote,
+  GroupDynamicsStats,
+} from "@/services/voteStats";
 
 interface LegislativeSectionProps {
   stats: LegislativeStatsResult;
+  dynamicsAN: GroupDynamicsStats[];
+  dynamicsSENAT: GroupDynamicsStats[];
 }
 
 function ThemeBars({ themes, title }: { themes: ThemeDistribution[]; title: string }) {
@@ -70,7 +78,7 @@ function KeyVotesList({ votes }: { votes: KeyVote[] }) {
   );
 }
 
-export function LegislativeSection({ stats }: LegislativeSectionProps) {
+export function LegislativeSection({ stats, dynamicsAN, dynamicsSENAT }: LegislativeSectionProps) {
   const { kpi, themesAN, themesSENAT, keyVotesAN, keyVotesSENAT } = stats;
 
   return (
@@ -105,6 +113,17 @@ export function LegislativeSection({ stats }: LegislativeSectionProps) {
       <p className="text-xs text-muted-foreground mb-8 text-center">
         XVIIe législature · Données mises à jour quotidiennement
       </p>
+
+      {/* Group dynamics: government alignment */}
+      {(dynamicsAN.length > 0 || dynamicsSENAT.length > 0) && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-1">Rapport de forces</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Positionnement des groupes parlementaires par rapport au gouvernement
+          </p>
+          <GroupDynamics dynamicsAN={dynamicsAN} dynamicsSENAT={dynamicsSENAT} />
+        </div>
+      )}
 
       {/* Theme priorities — AN / Sénat side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -157,9 +176,10 @@ export function LegislativeSection({ stats }: LegislativeSectionProps) {
       {/* Methodology */}
       <MethodologyDisclaimer>
         Données issues de l&apos;open data de l&apos;Assemblée nationale et du Sénat (XVIIe
-        législature). La classification thématique est réalisée par IA (13 catégories). Les votes
-        marquants sont les scrutins récents avec le plus fort taux de contestation (écart le plus
-        faible entre pour et contre).
+        législature). L&apos;alignement gouvernemental mesure le pourcentage de scrutins où un
+        groupe vote dans le même sens que le groupe majoritaire (EPR à l&apos;AN, RDPI au Sénat). La
+        cohésion mesure l&apos;unité interne de chaque groupe. La classification thématique est
+        réalisée par IA (13 catégories).
       </MethodologyDisclaimer>
     </section>
   );

@@ -7,6 +7,7 @@ import {
   getJudicialData,
   getFactCheckData,
   getLegislativeData,
+  getGroupDynamicsData,
   getParticipationData,
 } from "@/lib/data/statistics";
 import { StatsTabs } from "@/components/stats/StatsTabs";
@@ -46,6 +47,7 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
     judicialData,
     factCheckData,
     participationData,
+    groupDynamicsData,
     hemicycleData,
     victimStats,
   ] = await Promise.all([
@@ -53,6 +55,7 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
     getJudicialData(),
     getFactCheckData(),
     getParticipationData(pChamber, pPage, pSort),
+    getGroupDynamicsData(),
     getHemicycleData(),
     getVictimStats(),
   ]);
@@ -90,7 +93,13 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
               leastReliableParties={factCheckData.leastReliableParties}
             />
           }
-          legislativeContent={<LegislativeSection stats={legislativeData} />}
+          legislativeContent={
+            <LegislativeSection
+              stats={legislativeData}
+              dynamicsAN={groupDynamicsData.dynamicsAN}
+              dynamicsSENAT={groupDynamicsData.dynamicsSENAT}
+            />
+          }
           participationContent={
             <ParticipationSection
               ranking={participationData.ranking}

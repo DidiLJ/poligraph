@@ -775,6 +775,48 @@ async function getGroupDissidenceStats(chamber: "AN" | "SENAT"): Promise<GroupDi
 }
 
 // ============================================
+// Group dynamics (alignment + cohesion from ParliamentaryGroupStats)
+// ============================================
+
+export interface GroupDynamicsStats {
+  groupId: string;
+  groupCode: string;
+  groupName: string;
+  groupColor: string | null;
+  groupSlug: string | null;
+  chamber: string;
+  cohesionPct: number;
+  governmentAlignmentPct: number;
+  averageParticipationPct: number;
+}
+
+async function getGroupDynamicsStats(chamber: "AN" | "SENAT"): Promise<GroupDynamicsStats[]> {
+  const legislature = chamber === "AN" ? 17 : 2023;
+
+  const stats = await db.parliamentaryGroupStats.findMany({
+    where: { legislature },
+    include: {
+      group: {
+        select: { code: true, name: true, color: true, slug: true, chamber: true },
+      },
+    },
+    orderBy: { governmentAlignmentPct: "desc" },
+  });
+
+  return stats.map((s) => ({
+    groupId: s.groupId,
+    groupCode: s.group.code,
+    groupName: s.group.name,
+    groupColor: s.group.color,
+    groupSlug: s.group.slug,
+    chamber: s.group.chamber,
+    cohesionPct: s.cohesionPct,
+    governmentAlignmentPct: s.governmentAlignmentPct,
+    averageParticipationPct: s.averageParticipationPct,
+  }));
+}
+
+// ============================================
 // Export
 // ============================================
 
@@ -788,4 +830,5 @@ export const voteStatsService = {
   getLegislativeStats,
   getPoliticianThemeDistribution,
   getGroupDissidenceStats,
+  getGroupDynamicsStats,
 };

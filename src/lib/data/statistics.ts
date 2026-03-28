@@ -173,6 +173,21 @@ export async function getLegislativeData() {
   return voteStatsService.getLegislativeStats();
 }
 
+// ── Group dynamics data (alignment + cohesion) ───────────────
+
+export async function getGroupDynamicsData() {
+  "use cache";
+  cacheTag("statistics", "votes", "groupes");
+  cacheLife("hours");
+
+  const [dynamicsAN, dynamicsSENAT] = await Promise.all([
+    voteStatsService.getGroupDynamicsStats("AN"),
+    voteStatsService.getGroupDynamicsStats("SENAT"),
+  ]);
+
+  return { dynamicsAN, dynamicsSENAT };
+}
+
 // ── Participation data ────────────────────────────────────────
 
 export async function getParticipationData(

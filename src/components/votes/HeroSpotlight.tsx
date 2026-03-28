@@ -17,6 +17,7 @@ interface HeroSpotlightProps {
   result: VotingResult;
   theme: ThemeCategory | null;
   summary: string | null;
+  citizenImpact: string | null;
 }
 
 export function HeroSpotlight({
@@ -30,6 +31,7 @@ export function HeroSpotlight({
   result,
   theme,
   summary,
+  citizenImpact,
 }: HeroSpotlightProps) {
   const href = `/parlement/votes/${slug || id}`;
   const total = votesFor + votesAgainst + votesAbstain;
@@ -51,9 +53,9 @@ export function HeroSpotlight({
         {title}
       </h2>
 
-      {summary && (
-        <div className="text-sm text-slate-300 line-clamp-4 mb-4 [&_ul]:list-disc [&_ul]:ml-4 [&_li]:mb-0.5">
-          <MarkdownText>{summary}</MarkdownText>
+      {(citizenImpact || summary) && (
+        <div className="text-sm text-slate-300 mb-4 [&_ul]:list-disc [&_ul]:ml-4 [&_li]:mb-0.5">
+          <MarkdownText>{citizenImpact || summary!}</MarkdownText>
         </div>
       )}
 

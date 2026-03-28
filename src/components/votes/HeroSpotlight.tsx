@@ -55,7 +55,7 @@ export function HeroSpotlight({
 
       {(citizenImpact || summary) && (
         <div className="text-sm text-slate-300 mb-4 [&_ul]:list-disc [&_ul]:ml-4 [&_li]:mb-0.5">
-          <MarkdownText>{citizenImpact || summary!}</MarkdownText>
+          <MarkdownText disableLinks>{citizenImpact || summary!}</MarkdownText>
         </div>
       )}
 

@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 interface MarkdownTextProps {
   children: string;
   className?: string;
+  /** When true, markdown links render as plain text (use inside <a>/<Link> to avoid nested <a> hydration errors) */
+  disableLinks?: boolean;
 }
 
 /**
@@ -10,9 +12,9 @@ interface MarkdownTextProps {
  * Supports: **bold**, *italic*, [links](url), bullet points (• or -),
  * nested lists, --- horizontal rules, **heading** lines
  */
-export function MarkdownText({ children, className }: MarkdownTextProps) {
+export function MarkdownText({ children, className, disableLinks }: MarkdownTextProps) {
   // Parse markdown to HTML
-  const html = parseMarkdown(children);
+  const html = parseMarkdown(children, disableLinks);
 
   return (
     <div
@@ -42,14 +44,14 @@ function indentLevel(line: string): number {
 /**
  * Convert an array of bullet lines into a nested <ul> HTML string.
  */
-function buildList(lines: string[]): string {
+function buildList(lines: string[], disableLinks?: boolean): string {
   let html = '<ul class="list-disc pl-4 space-y-1">';
   let i = 0;
 
   while (i < lines.length) {
     const line = lines[i]!;
     const level = indentLevel(line);
-    const content = applyInlineFormatting(stripBullet(line));
+    const content = applyInlineFormatting(stripBullet(line), disableLinks);
 
     if (level === 0) {
       // Collect sub-items (indented lines following this one)
@@ -63,7 +65,7 @@ function buildList(lines: string[]): string {
       if (subLines.length > 0) {
         // Dedent sub-lines by removing 2 leading spaces
         const dedented = subLines.map((l) => l.replace(/^ {1,2}/, ""));
-        html += `<li>${content}${buildList(dedented)}</li>`;
+        html += `<li>${content}${buildList(dedented, disableLinks)}</li>`;
       } else {
         html += `<li>${content}</li>`;
       }
@@ -83,7 +85,7 @@ function buildList(lines: string[]): string {
  * Apply inline formatting (bold, italic, links) to a text string.
  * Must be called AFTER HTML escaping.
  */
-function applyInlineFormatting(text: string): string {
+function applyInlineFormatting(text: string, disableLinks?: boolean): string {
   let html = text;
 
   // Bold: **text** or __text__
@@ -96,6 +98,7 @@ function applyInlineFormatting(text: string): string {
 
   // Links: [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, linkText, url: string) => {
+    if (disableLinks) return linkText as string;
     const isInternal = url.startsWith("/");
     if (!isInternal) {
       try {
@@ -117,7 +120,7 @@ function applyInlineFormatting(text: string): string {
 /**
  * Parse basic markdown to HTML
  */
-function parseMarkdown(text: string): string {
+function parseMarkdown(text: string, disableLinks?: boolean): string {
   // Escape HTML entities first (security)
   let escaped = text;
   escaped = escaped.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -142,16 +145,18 @@ function parseMarkdown(text: string): string {
       const isList = nonEmptyLines.length > 0 && nonEmptyLines.every((l) => isBulletLine(l));
 
       if (isList) {
-        return buildList(nonEmptyLines);
+        return buildList(nonEmptyLines, disableLinks);
       }
 
       // Check for standalone bold heading: a single line that is entirely bold
       if (lines.length === 1 && /^\*\*[^*]+\*\*\s*$/.test(trimmed)) {
-        return `<h4 class="font-semibold mt-4 mb-1">${applyInlineFormatting(trimmed)}</h4>`;
+        return `<h4 class="font-semibold mt-4 mb-1">${applyInlineFormatting(trimmed, disableLinks)}</h4>`;
       }
 
       // Regular paragraph - preserve single line breaks
-      const formatted = lines.map((l) => applyInlineFormatting(l.trim())).join("<br />");
+      const formatted = lines
+        .map((l) => applyInlineFormatting(l.trim(), disableLinks))
+        .join("<br />");
       return `<p>${formatted}</p>`;
     })
     .filter(Boolean)

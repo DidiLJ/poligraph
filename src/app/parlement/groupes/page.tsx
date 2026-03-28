@@ -15,7 +15,9 @@ export const metadata: Metadata = {
 export default async function GroupesPage() {
   const groups = await getGroupesListing();
 
-  const sorted = [...groups].sort((a, b) => b.seatCount - a.seatCount);
+  const sorted = [...groups]
+    .filter((g) => g.seatCount > 0)
+    .sort((a, b) => b.seatCount - a.seatCount);
   const anGroups = sorted.filter((g) => g.chamber === "AN");
   const senatGroups = sorted.filter((g) => g.chamber === "SENAT");
 

@@ -99,7 +99,8 @@ export async function getGroupesListing(
   const groups = await db.parliamentaryGroup.findMany({
     where: {
       ...(chamber && { chamber }),
-      legislature,
+      // AN groups have legislature set; Senate groups don't (staggered renewals)
+      OR: [{ legislature }, { legislature: null }],
     },
     include: {
       stats: {

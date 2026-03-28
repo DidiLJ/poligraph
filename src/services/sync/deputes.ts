@@ -96,6 +96,8 @@ async function syncGroups(deputies: DeputeCSV[]): Promise<{
     const groupName = config?.name || fullName;
 
     // 1. Upsert parliamentary group
+    const leg = csvLegislature ?? 17;
+    const slug = `${groupCode.toLowerCase()}-an-${leg}`;
     const groupData = {
       name: groupName,
       shortName: config?.shortName || null,
@@ -103,6 +105,7 @@ async function syncGroups(deputies: DeputeCSV[]): Promise<{
       chamber: Chamber.AN,
       politicalPosition: config?.politicalPosition || null,
       wikidataId: config?.wikidataId || null,
+      slug,
       ...(csvLegislature ? { legislature: csvLegislature } : {}),
     };
 

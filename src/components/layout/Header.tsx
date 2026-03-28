@@ -3,7 +3,7 @@ import Link from "next/link";
 import { MobileMenu } from "./MobileMenu";
 import { NavIconBar } from "./NavIconBar";
 import { NAV_PRIMARY, NAV_TOOLS } from "@/config/navigation";
-import { BarChart3, Users, Scale, Vote, Landmark } from "lucide-react";
+import { BarChart3, Users, Scale, Vote, Landmark, BookOpen } from "lucide-react";
 import { getEnabledFlags } from "@/lib/feature-flags";
 import type { LucideIcon } from "lucide-react";
 
@@ -13,6 +13,7 @@ const PRIMARY_ICONS: Record<string, LucideIcon> = {
   scale: Scale,
   vote: Vote,
   landmark: Landmark,
+  bookOpen: BookOpen,
 };
 
 export async function Header() {

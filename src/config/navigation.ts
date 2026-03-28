@@ -43,7 +43,7 @@ export const NAV_PRIMARY: NavItem[] = [
   {
     href: "/programmes",
     label: "Programmes",
-    icon: "fileText",
+    icon: "bookOpen",
     description: "Programmes des partis par axe thématique",
     featureFlag: "PROGRAMMES_ENABLED",
   },

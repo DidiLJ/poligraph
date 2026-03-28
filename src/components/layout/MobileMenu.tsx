@@ -21,6 +21,7 @@ import {
   X,
   ChevronRight,
   Heart,
+  BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
@@ -35,6 +36,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   mapPin: MapPin,
   building: Building,
   search: Search,
+  bookOpen: BookOpen,
 };
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {

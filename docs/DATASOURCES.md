@@ -71,7 +71,7 @@ Ce document décrit les sources de données utilisées par Poligraph, leur forma
 
 - Politiciens : nom, prénom, civilité, date/lieu de naissance
 - Mandats : type `DEPUTE`, circonscription, code département, date de début
-- Groupes parlementaires : mappés vers les partis réels via `src/config/parties.ts`
+- Groupes parlementaires : mappés vers les partis réels via `src/config/parliamentaryGroups.ts` (voir section "Groupes parlementaires vs Partis" ci-dessous)
 - IDs externes : `ASSEMBLEE_NATIONALE` (PA...) + `NOSDEPUTES` (slug)
 - Photos : depuis NosDéputés (`https://www.nosdeputes.fr/depute/photo/{slug}/120`)
 
@@ -85,7 +85,7 @@ npm run sync:assemblee --dry-run
 
 ### Fonctionnement
 
-Le script interroge l'API data.gouv.fr pour obtenir l'URL du dernier CSV, puis le télécharge et parse les députés actifs. Les groupes parlementaires sont mappés vers les partis politiques réels via la configuration `ASSEMBLY_GROUPS` dans `src/config/parties.ts`.
+Le script interroge l'API data.gouv.fr pour obtenir l'URL du dernier CSV, puis le télécharge et parse les députés actifs. Les groupes parlementaires sont créés/mis à jour dans la table `ParliamentaryGroup` et mappés vers les partis politiques réels via `src/config/parliamentaryGroups.ts` (ASSEMBLY_GROUPS) et `src/config/parties.ts` (ASSEMBLY_GROUP_PARTY_MAPPING).
 
 ---
 
@@ -102,10 +102,24 @@ Le script interroge l'API data.gouv.fr pour obtenir l'URL du dernier CSV, puis l
 
 - Politiciens : matricule, nom, prénom, civilité, date de naissance (via NosSénateurs)
 - Mandats : type `SENATEUR`, circonscription, code département
-- Groupes parlementaires : mappés vers les partis réels
+- Groupes parlementaires : mappés vers les partis réels via `src/config/parliamentaryGroups.ts` (SENATE_GROUPS)
 - IDs externes : `SENAT` (matricule) + `NOSDEPUTES` (slug NosSénateurs)
 - Photos : `https://www.senat.fr/senimg/{matricule}.jpg`
 - Fermeture automatique des mandats des sénateurs absents de l'API
+
+### Remappage des codes de groupes sénatoriaux
+
+L'API du Sénat utilise des codes historiques qui ne correspondent pas aux codes officiels actuels du site senat.fr. Le fichier `src/config/parliamentaryGroups.ts` contient un remappage automatique :
+
+| Code API | Code actuel | Groupe                                                      |
+| -------- | ----------- | ----------------------------------------------------------- |
+| UMP      | LR          | Les Républicains                                            |
+| SOC      | SER         | Socialiste, Écologiste et Républicain                       |
+| CRC      | CRCE-K      | Communiste, Républicain, Citoyen et Écologiste - Kanaky     |
+| LREM     | RDPI        | Rassemblement des démocrates, progressistes et indépendants |
+| RTLI     | LIRT        | Les Indépendants - République et Territoires                |
+
+Les codes UC, RDSE, GEST et NI sont identiques entre l'API et le site officiel.
 
 ### Script
 
@@ -114,6 +128,14 @@ npm run sync:senat          # Sync complète
 npm run sync:senat --stats  # Statistiques
 npm run sync:senat --dry-run
 ```
+
+### Sources de données complémentaires
+
+- **Open data** : `https://data.senat.fr/les-senateurs/` (CSV, JSON, XLS)
+- **Historique des groupes** : `https://data.senat.fr/data/senateurs/ODSEN_HISTOGROUPES.json`
+- **Export complet** : `https://data.senat.fr/data/senateurs/export_sens.zip` (PostgreSQL)
+
+Les codes de groupes dans ces fichiers sont les mêmes que ceux de l'API (codes historiques).
 
 ---
 
@@ -277,6 +299,34 @@ Wikidata est utilisé comme source d'enrichissement à travers plusieurs scripts
 - **Données** : Noms, abréviations, couleurs, logos, idéologies des partis
 - **Configuration** : Q-IDs des partis dans `src/config/wikidata.ts`
 - **Script** : `npm run sync:partis`
+
+### 8.5.1 Groupes parlementaires vs Partis
+
+**Ce sont deux entités distinctes**, stockées dans deux tables Prisma séparées :
+
+| Concept                  | Modèle Prisma        | Exemple                                        | Crée par                       |
+| ------------------------ | -------------------- | ---------------------------------------------- | ------------------------------ |
+| **Parti politique**      | `Party`              | PS, LFI, RN, EELV, LR                          | `sync:partis`                  |
+| **Groupe parlementaire** | `ParliamentaryGroup` | SOC (AN), SER (Sénat), ECOS (AN), GEST (Sénat) | `sync:assemblee`, `sync:senat` |
+
+- Un **parti** est une organisation politique nationale (ex: Parti Socialiste)
+- Un **groupe parlementaire** est une formation interne à une chambre (AN ou Sénat)
+- Un groupe peut contenir des membres de plusieurs partis (ex: LIOT, UC, RDSE)
+- Un parti peut avoir des membres dans différents groupes selon la chambre (PS -> SOC à l'AN, SER au Sénat)
+
+**Lien entre les deux** : `ParliamentaryGroup.defaultPartyId` pointe vers le parti dominant du groupe (null si transpartisan). Ce lien est défini dans les configs :
+
+- `src/config/parliamentaryGroups.ts` : `ASSEMBLY_GROUPS` et `SENATE_GROUPS` (code, couleur, position politique, `partyWikidataId`)
+- `src/config/parties.ts` : `ASSEMBLY_GROUP_PARTY_MAPPING` et `SENATE_GROUP_PARTY_MAPPING` (mapping groupe -> parti pour le sync)
+
+**Règle : ne jamais créer de `Party` pour un groupe parlementaire.** Les groupes vivent dans `ParliamentaryGroup` uniquement.
+
+**Pages** :
+
+- Partis : `/partis/[slug]`
+- Groupes : `/parlement/groupes` (listing AN + Sénat) et `/parlement/groupes/[slug]` (détail avec membres et votes)
+
+**Slugs des groupes** : `{code}-an-{legislature}` pour l'AN (ex: `rn-an-17`), `{code}-senat` pour le Sénat (ex: `ser-senat`). Générés automatiquement par les syncs.
 
 ### 8.6 Dates de naissance (`sync:birthdates`)
 

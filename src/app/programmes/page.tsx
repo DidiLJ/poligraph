@@ -4,10 +4,8 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { Info } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import { ComparisonChart } from "@/components/programmes/ComparisonChart";
 import { getLatestPlatformsPerParty } from "@/lib/data/platforms";
 import { isFeatureEnabled } from "@/lib/feature-flags";
-import type { ThematicAxis } from "@/generated/prisma";
 
 export const revalidate = 300;
 
@@ -22,19 +20,6 @@ export default async function ProgrammesPage() {
   if (!(await isFeatureEnabled("PROGRAMMES_ENABLED"))) notFound();
 
   const platforms = await getLatestPlatformsPerParty();
-
-  // Build comparison data
-  const comparisonParties = platforms
-    .filter((p) => p.party && p.proposals.length > 0)
-    .map((p) => ({
-      partySlug: p.party!.slug!,
-      partyName: p.party!.name,
-      partyShortName: p.party!.shortName,
-      partyColor: p.party!.color || "#6b7280",
-      positions: Object.fromEntries(p.proposals.map((pr) => [pr.axis, pr.position])) as Partial<
-        Record<ThematicAxis, number>
-      >,
-    }));
 
   return (
     <div className="container mx-auto px-4 pt-4 pb-8">
@@ -68,20 +53,10 @@ export default async function ProgrammesPage() {
           </div>
         ) : (
           <>
-            {/* Multi-party comparison chart */}
-            {comparisonParties.length >= 2 && (
-              <section aria-labelledby="comparison-heading">
-                <h2 id="comparison-heading" className="text-lg font-semibold mb-4">
-                  Comparaison par axe
-                </h2>
-                <ComparisonChart parties={comparisonParties} className="max-w-3xl" />
-              </section>
-            )}
-
             {/* Party cards grid */}
             <section aria-labelledby="parties-heading">
               <h2 id="parties-heading" className="text-lg font-semibold mb-4">
-                Tous les programmes
+                Programmes par parti
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {platforms.map((p) => (

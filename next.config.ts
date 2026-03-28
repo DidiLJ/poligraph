@@ -145,6 +145,11 @@ const nextConfig: NextConfig = {
         destination: "/parlement/dossiers",
         statusCode: 308,
       },
+      {
+        source: "/partis/ensemble-pour-la-republique",
+        destination: "/partis/renaissance",
+        permanent: true,
+      },
     ];
   },
 };

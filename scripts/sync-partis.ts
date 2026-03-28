@@ -15,16 +15,20 @@ import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
 import { db } from "../src/lib/db";
 import { DataSource, PoliticalPosition } from "../src/generated/prisma";
-import { FRENCH_ASSEMBLY_PARTIES, FRENCH_SENATE_PARTIES, PartyConfig } from "../src/config/parties";
+import {
+  ASSEMBLY_GROUP_PARTY_MAPPING,
+  SENATE_GROUP_PARTY_MAPPING,
+  GroupPartyMapping,
+} from "../src/config/parties";
 import { generateSlug } from "../src/lib/utils";
 import { HTTPClient } from "../src/lib/api/http-client";
 import { WIKIDATA_SPARQL_RATE_LIMIT_MS } from "../src/config/rate-limits";
 
 const sparqlClient = new HTTPClient({ rateLimitMs: WIKIDATA_SPARQL_RATE_LIMIT_MS });
 
-const ALL_PARTY_CONFIGS: Record<string, PartyConfig> = {
-  ...FRENCH_ASSEMBLY_PARTIES,
-  ...FRENCH_SENATE_PARTIES,
+const ALL_GROUP_PARTY_MAPPINGS: Record<string, GroupPartyMapping> = {
+  ...ASSEMBLY_GROUP_PARTY_MAPPING,
+  ...SENATE_GROUP_PARTY_MAPPING,
 };
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
@@ -60,7 +64,7 @@ async function applyLocalConfig(): Promise<{ updated: number; notFound: string[]
   let updated = 0;
   const notFound: string[] = [];
 
-  for (const [abbrev, config] of Object.entries(ALL_PARTY_CONFIGS)) {
+  for (const [abbrev, config] of Object.entries(ALL_GROUP_PARTY_MAPPINGS)) {
     const party = await db.party.findUnique({
       where: { shortName: config.shortName },
     });

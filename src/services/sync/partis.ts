@@ -5,7 +5,11 @@
 
 import { db } from "@/lib/db";
 import { DataSource, PoliticalPosition } from "@/generated/prisma";
-import { FRENCH_ASSEMBLY_PARTIES, FRENCH_SENATE_PARTIES, type PartyConfig } from "@/config/parties";
+import {
+  ASSEMBLY_GROUP_PARTY_MAPPING,
+  SENATE_GROUP_PARTY_MAPPING,
+  type GroupPartyMapping,
+} from "@/config/parties";
 import { generateSlug } from "@/lib/utils";
 import { HTTPClient } from "@/lib/api/http-client";
 import { WIKIDATA_SPARQL_RATE_LIMIT_MS } from "@/config/rate-limits";
@@ -19,9 +23,9 @@ export interface PartiesSyncResult {
   errors: string[];
 }
 
-const ALL_PARTY_CONFIGS: Record<string, PartyConfig> = {
-  ...FRENCH_ASSEMBLY_PARTIES,
-  ...FRENCH_SENATE_PARTIES,
+const ALL_GROUP_PARTY_MAPPINGS: Record<string, GroupPartyMapping> = {
+  ...ASSEMBLY_GROUP_PARTY_MAPPING,
+  ...SENATE_GROUP_PARTY_MAPPING,
 };
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
@@ -79,7 +83,7 @@ async function applyLocalConfig(): Promise<{
   let updated = 0;
   const notFound: string[] = [];
 
-  for (const [abbrev, config] of Object.entries(ALL_PARTY_CONFIGS)) {
+  for (const [abbrev, config] of Object.entries(ALL_GROUP_PARTY_MAPPINGS)) {
     const party = await db.party.findUnique({
       where: { shortName: config.shortName },
     });

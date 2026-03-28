@@ -36,6 +36,8 @@ export const AUTO_KEY_VOTE_PATTERNS = [
 ];
 
 export const GOVERNMENT_GROUP_CODE = "EPR";
+export const SENATE_GOVERNMENT_GROUP_CODE = "RDPI";
 export const CURRENT_LEGISLATURE = 17;
+export const CURRENT_SENATE_SESSION = 2023;
 export const KEY_VOTES_HUB_WINDOW_DAYS = 30;
 export const KEY_VOTES_GRID_COUNT = 5;

@@ -161,8 +161,23 @@ export function CompositionHemicycle({ anGroups, senatGroups }: Props) {
             strokeLinecap="round"
           />
 
-          {/* Seats */}
+          {/* Hit areas (invisible, larger circles for better click/hover targeting) */}
           <g>
+            {seats.map((seat, i) => (
+              <circle
+                key={`hit-${chamber}-${i}`}
+                cx={seat.x}
+                cy={seat.y}
+                r={9}
+                fill="transparent"
+                data-group={seat.groupCode}
+                className="cursor-pointer"
+              />
+            ))}
+          </g>
+
+          {/* Visible seats */}
+          <g className="pointer-events-none">
             {seats.map((seat, i) => {
               const isActive = !hoveredGroup || seat.groupCode === hoveredGroup;
               return (
@@ -172,9 +187,7 @@ export function CompositionHemicycle({ anGroups, senatGroups }: Props) {
                   cy={seat.y}
                   r={4}
                   fill={seat.groupColor}
-                  data-group={seat.groupCode}
                   opacity={isActive ? 1 : 0.12}
-                  className="cursor-pointer"
                   style={{
                     transition: "opacity 150ms ease",
                     animation: "hemicycleSeatIn 350ms ease-out backwards",
@@ -195,13 +208,13 @@ export function CompositionHemicycle({ anGroups, senatGroups }: Props) {
             fontWeight={hoveredData ? "600" : "400"}
           >
             {hoveredData
-              ? `${hoveredData.shortName ?? hoveredData.code} - ${hoveredData.seatCount} sièges`
+              ? `${hoveredData.name} - ${hoveredData.seatCount} sièges`
               : `${totalSeats} sièges`}
           </text>
         </svg>
       </div>
 
-      {/* Legend pills */}
+      {/* Legend */}
       <div className="flex flex-wrap gap-1.5 justify-center mt-3">
         {sortedGroups.map((g) => (
           <Link
@@ -209,7 +222,7 @@ export function CompositionHemicycle({ anGroups, senatGroups }: Props) {
             href={g.slug ? ROUTES.groupeDetail(g.slug) : "#"}
             onMouseEnter={() => setHoveredGroup(g.code)}
             onMouseLeave={() => setHoveredGroup(null)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all duration-150 ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all duration-150 ${
               hoveredGroup === g.code
                 ? "bg-muted border-border shadow-sm"
                 : hoveredGroup
@@ -222,7 +235,7 @@ export function CompositionHemicycle({ anGroups, senatGroups }: Props) {
               className="w-2.5 h-2.5 rounded-full shrink-0"
               style={{ backgroundColor: g.color ?? "#999" }}
             />
-            <span>{g.shortName ?? g.code}</span>
+            <span className="font-medium">{g.name}</span>
             <span className="text-muted-foreground tabular-nums">{g.seatCount}</span>
           </Link>
         ))}

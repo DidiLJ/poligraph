@@ -1,12 +1,12 @@
 /**
- * Party and European Group configuration
+ * Parliamentary group and European Group configuration
  *
- * This file contains local customizations for parties and European groups.
- * Wikidata provides factual data (dates, ideologies, etc.), while this file
- * handles display preferences (colors, short names, etc.)
+ * Maps parliamentary group codes (AN, Senate) to party display data used
+ * during sync. Wikidata provides factual data (dates, ideologies, etc.),
+ * while this file handles display preferences (colors, short names, etc.)
  */
 
-export interface PartyConfig {
+export interface GroupPartyMapping {
   shortName: string;
   fullName: string;
   color: string;
@@ -31,10 +31,10 @@ export interface EuropeanGroupConfig {
 }
 
 // ============================================
-// FRENCH PARTIES - Assembly Groups
+// ASSEMBLY PARLIAMENTARY GROUPS - Party Mapping
 // ============================================
 
-export const FRENCH_ASSEMBLY_PARTIES: Record<string, PartyConfig> = {
+export const ASSEMBLY_GROUP_PARTY_MAPPING: Record<string, GroupPartyMapping> = {
   // 17th legislature (2024-2027)
   RN: {
     shortName: "RN",
@@ -97,10 +97,10 @@ export const FRENCH_ASSEMBLY_PARTIES: Record<string, PartyConfig> = {
 };
 
 // ============================================
-// FRENCH PARTIES - Senate Groups
+// SENATE PARLIAMENTARY GROUPS - Party Mapping
 // ============================================
 
-export const FRENCH_SENATE_PARTIES: Record<string, PartyConfig> = {
+export const SENATE_GROUP_PARTY_MAPPING: Record<string, GroupPartyMapping> = {
   RDPI: {
     shortName: "RDPI",
     fullName: "Rassemblement des démocrates progressistes et indépendants",
@@ -235,7 +235,7 @@ export function getEuropeanGroupConfig(code: string): EuropeanGroupConfig | unde
   return EUROPEAN_GROUPS.find((g) => g.code === code);
 }
 
-// Helper to get party config by abbreviation
-export function getPartyConfig(abbrev: string): PartyConfig | undefined {
-  return FRENCH_ASSEMBLY_PARTIES[abbrev] || FRENCH_SENATE_PARTIES[abbrev];
+// Helper to get group-to-party mapping by parliamentary group abbreviation
+export function getGroupPartyMapping(abbrev: string): GroupPartyMapping | undefined {
+  return ASSEMBLY_GROUP_PARTY_MAPPING[abbrev] || SENATE_GROUP_PARTY_MAPPING[abbrev];
 }

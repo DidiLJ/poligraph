@@ -140,6 +140,7 @@ export const ASSEMBLY_GROUPS: Record<string, ParliamentaryGroupConfig> = {
 // ============================================
 
 export const SENATE_GROUPS: Record<string, ParliamentaryGroupConfig> = {
+  // Current groups (keyed by official code from senat.fr)
   LR: {
     code: "LR",
     name: "Les Républicains",
@@ -157,14 +158,7 @@ export const SENATE_GROUPS: Record<string, ParliamentaryGroupConfig> = {
   "CRCE-K": {
     code: "CRCE-K",
     name: "Communiste, Républicain, Citoyen et Écologiste - Kanaky",
-    shortName: "CRCE",
-    color: "#DD0000",
-    politicalPosition: "FAR_LEFT",
-    partyWikidataId: WD_PARTIES.PCF,
-  },
-  CRCE: {
-    code: "CRCE",
-    name: "Communiste, Républicain, Citoyen et Écologiste",
+    shortName: "CRCE-K",
     color: "#DD0000",
     politicalPosition: "FAR_LEFT",
     partyWikidataId: WD_PARTIES.PCF,
@@ -178,25 +172,10 @@ export const SENATE_GROUPS: Record<string, ParliamentaryGroupConfig> = {
   },
   RDPI: {
     code: "RDPI",
-    name: "Rassemblement des démocrates progressistes et indépendants",
+    name: "Rassemblement des démocrates, progressistes et indépendants",
     color: "#FFEB00",
     politicalPosition: "CENTER",
     partyWikidataId: WD_PARTIES.RE,
-  },
-  RASNAG: {
-    code: "RASNAG",
-    name: "Rassemblement National",
-    shortName: "RN",
-    color: "#0D378A",
-    politicalPosition: "FAR_RIGHT",
-    partyWikidataId: WD_PARTIES.RN,
-  },
-  RN: {
-    code: "RN",
-    name: "Rassemblement National",
-    color: "#0D378A",
-    politicalPosition: "FAR_RIGHT",
-    partyWikidataId: WD_PARTIES.RN,
   },
   UC: {
     code: "UC",
@@ -212,8 +191,8 @@ export const SENATE_GROUPS: Record<string, ParliamentaryGroupConfig> = {
     politicalPosition: "CENTER_LEFT",
     // Mixed group — no single party
   },
-  INDEP: {
-    code: "INDEP",
+  LIRT: {
+    code: "LIRT",
     name: "Les Indépendants - République et Territoires",
     color: "#00AAAA",
     politicalPosition: "CENTER_RIGHT",
@@ -230,13 +209,72 @@ export const SENATE_GROUPS: Record<string, ParliamentaryGroupConfig> = {
     shortName: "NI",
     color: "#AAAAAA",
   },
-  // Historical group (may appear in older data)
+  // API code remaps: the Senate API (senat.fr/api-senat/senateurs.json)
+  // returns old group codes. These entries remap to the current codes.
   UMP: {
-    code: "UMP",
-    name: "Union pour un Mouvement Populaire",
+    code: "LR",
+    name: "Les Républicains",
     color: "#0066CC",
     politicalPosition: "RIGHT",
-    partyWikidataId: WD_PARTIES.LR, // UMP dissolved 2015, successor = LR
+    partyWikidataId: WD_PARTIES.LR,
+  },
+  SOC: {
+    code: "SER",
+    name: "Socialiste, Écologiste et Républicain",
+    color: "#FF8080",
+    politicalPosition: "LEFT",
+    partyWikidataId: WD_PARTIES.PS,
+  },
+  CRC: {
+    code: "CRCE-K",
+    name: "Communiste, Républicain, Citoyen et Écologiste - Kanaky",
+    shortName: "CRCE-K",
+    color: "#DD0000",
+    politicalPosition: "FAR_LEFT",
+    partyWikidataId: WD_PARTIES.PCF,
+  },
+  CRCE: {
+    code: "CRCE-K",
+    name: "Communiste, Républicain, Citoyen et Écologiste - Kanaky",
+    shortName: "CRCE-K",
+    color: "#DD0000",
+    politicalPosition: "FAR_LEFT",
+    partyWikidataId: WD_PARTIES.PCF,
+  },
+  LREM: {
+    code: "RDPI",
+    name: "Rassemblement des démocrates, progressistes et indépendants",
+    color: "#FFEB00",
+    politicalPosition: "CENTER",
+    partyWikidataId: WD_PARTIES.RE,
+  },
+  RTLI: {
+    code: "LIRT",
+    name: "Les Indépendants - République et Territoires",
+    color: "#00AAAA",
+    politicalPosition: "CENTER_RIGHT",
+  },
+  INDEP: {
+    code: "LIRT",
+    name: "Les Indépendants - République et Territoires",
+    color: "#00AAAA",
+    politicalPosition: "CENTER_RIGHT",
+  },
+  // Historical aliases
+  RASNAG: {
+    code: "RN",
+    name: "Rassemblement National",
+    shortName: "RN",
+    color: "#0D378A",
+    politicalPosition: "FAR_RIGHT",
+    partyWikidataId: WD_PARTIES.RN,
+  },
+  RN: {
+    code: "RN",
+    name: "Rassemblement National",
+    color: "#0D378A",
+    politicalPosition: "FAR_RIGHT",
+    partyWikidataId: WD_PARTIES.RN,
   },
 };
 

@@ -104,8 +104,8 @@ export async function getGroupesListing(
     },
     include: {
       stats: {
-        where: { legislature },
         take: 1,
+        orderBy: { computedAt: "desc" },
       },
       _count: {
         select: {

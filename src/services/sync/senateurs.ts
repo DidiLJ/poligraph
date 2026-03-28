@@ -382,8 +382,8 @@ async function upsertExternalIds(
 export async function syncSenateurs(): Promise<SenatSyncResult> {
   const result: SenatSyncResult = {
     success: false,
-    partiesCreated: 0,
-    partiesUpdated: 0,
+    groupsCreated: 0,
+    groupsUpdated: 0,
     senatorsCreated: 0,
     senatorsUpdated: 0,
     errors: [],
@@ -402,8 +402,8 @@ export async function syncSenateurs(): Promise<SenatSyncResult> {
     console.log("Syncing senate parliamentary groups...");
     const { groupsCreated, groupsUpdated, codeToGroupId, codeToPartyId } =
       await syncSenateParliamentaryGroups(senators);
-    result.partiesCreated = groupsCreated;
-    result.partiesUpdated = groupsUpdated;
+    result.groupsCreated = groupsCreated;
+    result.groupsUpdated = groupsUpdated;
 
     // 3. Sync senators (with real party ID, not group ID)
     console.log("Syncing senators...");

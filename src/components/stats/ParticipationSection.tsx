@@ -157,7 +157,7 @@ export function ParticipationSection({
       {/* Group vote independence */}
       {(groupDissidenceAN.length > 0 || groupDissidenceSENAT.length > 0) && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-1">Indépendance de vote</h2>
+          <h2 className="text-lg font-semibold mb-1">Dissidence</h2>
           <p className="text-sm text-muted-foreground mb-4">
             Fréquence à laquelle les membres d{"'"}un groupe votent différemment de la majorité de
             leur groupe
@@ -170,7 +170,7 @@ export function ParticipationSection({
               <CardContent>
                 {groupDissidenceAN.length > 0 ? (
                   <HorizontalBars
-                    title="Indépendance de vote par groupe AN"
+                    title="Dissidence par groupe AN"
                     maxValue={100}
                     bars={groupDissidenceAN.map((g) => ({
                       label: g.groupCode,
@@ -191,7 +191,7 @@ export function ParticipationSection({
               <CardContent>
                 {groupDissidenceSENAT.length > 0 ? (
                   <HorizontalBars
-                    title="Indépendance de vote par groupe Sénat"
+                    title="Dissidence par groupe Sénat"
                     maxValue={100}
                     bars={groupDissidenceSENAT.map((g) => ({
                       label: g.groupCode,
@@ -236,7 +236,7 @@ export function ParticipationSection({
                     className="py-2 text-right hidden sm:table-cell"
                     title="Fréquence de vote différent de la majorité du groupe"
                   >
-                    Indép.
+                    Dissidence
                   </th>
                 </tr>
               </thead>

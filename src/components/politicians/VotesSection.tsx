@@ -132,7 +132,7 @@ export function VotesSection({
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span id="dissidence-label" className="text-muted-foreground">
-                    Indépendance de vote
+                    Taux de dissidence
                   </span>
                   <span className="font-medium">{parliamentaryCard.dissidenceRate}%</span>
                 </div>

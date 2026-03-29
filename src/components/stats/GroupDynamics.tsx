@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GOVERNMENT_GROUP_CODE, SENATE_GOVERNMENT_GROUP_CODE } from "@/config/scrutin-importance";
 import type { GroupDynamicsStats } from "@/services/voteStats";
 
 interface GroupDynamicsProps {
@@ -18,9 +19,7 @@ function AlignmentSpectrum({
     return <p className="text-sm text-muted-foreground">Aucune donnée disponible</p>;
   }
 
-  // Sort by alignment for the accessible table
   const sorted = [...groups].sort((a, b) => b.governmentAlignmentPct - a.governmentAlignmentPct);
-
   const descId = `alignment-desc-${chamberLabel.replace(/\s+/g, "-").toLowerCase()}`;
 
   return (
@@ -29,7 +28,7 @@ function AlignmentSpectrum({
       aria-label={`Alignement gouvernemental - ${chamberLabel}`}
       aria-describedby={descId}
     >
-      {/* Zone labels above the spectrum */}
+      {/* Zone labels */}
       <div className="flex justify-between text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1 px-1">
         <span>Opposition</span>
         <span>Coalition</span>
@@ -37,19 +36,18 @@ function AlignmentSpectrum({
 
       {/* Spectrum visualization */}
       <div className="relative h-28 mb-2">
-        {/* Background gradient */}
-        <div className="absolute inset-0 rounded-lg overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-muted/80 via-muted/40 to-muted/80" />
+        {/* Two-tone background: opposition (left) / coalition (right) */}
+        <div className="absolute inset-0 rounded-lg overflow-hidden flex">
+          <div className="w-1/2 bg-red-50 dark:bg-red-950/20" />
+          <div className="w-1/2 bg-green-50 dark:bg-green-950/20" />
         </div>
 
-        {/* 50% center line (inside padded area) */}
+        {/* 50% center line */}
         <div className="absolute top-0 h-full w-px bg-border" style={{ left: "calc(5% + 45%)" }} />
 
-        {/* Group badges staggered across 3 rows to prevent overlap */}
+        {/* Group badges staggered across 3 rows */}
         {assignRows(sorted).map(({ group: g, row }) => {
-          // Map 0-100% to 5-95% to prevent edge clipping
           const leftPct = 5 + (g.governmentAlignmentPct / 100) * 90;
-          // 3 rows distributed within the container height
           const topPx = 8 + row * 34;
           return (
             <Link
@@ -108,105 +106,99 @@ function AlignmentSpectrum({
   );
 }
 
-function MetricsTable({ groups }: { groups: GroupDynamicsStats[] }) {
+function MetricsList({
+  groups,
+  referenceCode,
+}: {
+  groups: GroupDynamicsStats[];
+  referenceCode: string;
+}) {
   const sorted = [...groups].sort((a, b) => b.governmentAlignmentPct - a.governmentAlignmentPct);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2 pr-3">Groupe</th>
-            <th className="py-2 pr-3 text-right">Alignement</th>
-            <th className="py-2 pr-3 text-right">Cohésion</th>
-            <th className="py-2 text-right">Participation</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((g) => (
-            <tr key={g.groupId} className="border-b last:border-0">
-              <td className="py-2 pr-3">
-                <Link
-                  href={g.groupSlug ? `/parlement/groupes/${g.groupSlug}` : "#"}
-                  prefetch={false}
-                  className="flex items-center gap-2 hover:underline"
-                >
-                  <span
-                    className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: g.groupColor || "#888" }}
-                    aria-hidden="true"
-                  />
-                  <span className="font-medium">{g.groupCode}</span>
-                  <span className="text-xs text-muted-foreground hidden sm:inline truncate max-w-48">
-                    {g.groupName}
-                  </span>
-                </Link>
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums">
-                <span className={alignmentColor(g.governmentAlignmentPct)}>
-                  {g.governmentAlignmentPct.toFixed(0)}%
-                </span>
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums">
-                <span className={cohesionColor(g.cohesionPct)}>{g.cohesionPct.toFixed(0)}%</span>
-              </td>
-              <td className="py-2 text-right tabular-nums">
-                {g.averageParticipationPct.toFixed(0)}%
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="mt-4 divide-y">
+      {sorted.map((g) => {
+        const isReference = g.groupCode === referenceCode;
+        return (
+          <div
+            key={g.groupId}
+            className={`flex items-center gap-2 py-1.5 text-sm ${isReference ? "bg-primary/5 -mx-2 px-2 rounded" : ""}`}
+          >
+            <Link
+              href={g.groupSlug ? `/parlement/groupes/${g.groupSlug}` : "#"}
+              prefetch={false}
+              className="flex items-center gap-2 min-w-0 flex-1 hover:underline"
+            >
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: g.groupColor || "#888" }}
+                aria-hidden="true"
+              />
+              <span className="font-medium shrink-0">{g.groupCode}</span>
+              <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                {g.groupName}
+              </span>
+            </Link>
+            <span
+              className={`tabular-nums shrink-0 ${alignmentColor(g.governmentAlignmentPct)}`}
+              title="Alignement gouvernemental"
+            >
+              {g.governmentAlignmentPct.toFixed(0)}%
+            </span>
+            <span
+              className="tabular-nums text-xs text-muted-foreground shrink-0 hidden sm:inline w-12 text-right"
+              title="Cohésion interne du groupe"
+            >
+              {g.cohesionPct.toFixed(0)}% coh.
+            </span>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+function ChamberCard({
+  groups,
+  chamberLabel,
+  referenceCode,
+}: {
+  groups: GroupDynamicsStats[];
+  chamberLabel: string;
+  referenceCode: string;
+}) {
+  const refGroup = groups.find((g) => g.groupCode === referenceCode);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{chamberLabel}</CardTitle>
+        {refGroup && (
+          <p className="text-xs text-muted-foreground">
+            Référence : {refGroup.groupCode} ({refGroup.groupName})
+          </p>
+        )}
+      </CardHeader>
+      <CardContent>
+        <AlignmentSpectrum groups={groups} chamberLabel={chamberLabel} />
+        <MetricsList groups={groups} referenceCode={referenceCode} />
+      </CardContent>
+    </Card>
   );
 }
 
 export function GroupDynamics({ dynamicsAN, dynamicsSENAT }: GroupDynamicsProps) {
   return (
-    <div className="space-y-6">
-      {/* Alignment spectrums */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Assemblée nationale</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AlignmentSpectrum groups={dynamicsAN} chamberLabel="Assemblée nationale" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Sénat</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AlignmentSpectrum groups={dynamicsSENAT} chamberLabel="Sénat" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Detailed metrics tables */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Métriques détaillées - AN
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MetricsTable groups={dynamicsAN} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Métriques détaillées - Sénat
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MetricsTable groups={dynamicsSENAT} />
-          </CardContent>
-        </Card>
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <ChamberCard
+        groups={dynamicsAN}
+        chamberLabel="Assemblée nationale"
+        referenceCode={GOVERNMENT_GROUP_CODE}
+      />
+      <ChamberCard
+        groups={dynamicsSENAT}
+        chamberLabel="Sénat"
+        referenceCode={SENATE_GOVERNMENT_GROUP_CODE}
+      />
     </div>
   );
 }
@@ -219,7 +211,6 @@ function isLightColor(hex: string | null): boolean {
   const r = parseInt(c.slice(0, 2), 16);
   const g = parseInt(c.slice(2, 4), 16);
   const b = parseInt(c.slice(4, 6), 16);
-  // Relative luminance approximation
   return r * 0.299 + g * 0.587 + b * 0.114 > 160;
 }
 
@@ -230,12 +221,11 @@ function isLightColor(hex: string | null): boolean {
  */
 function assignRows(groups: GroupDynamicsStats[]): { group: GroupDynamicsStats; row: number }[] {
   const sorted = [...groups].sort((a, b) => a.governmentAlignmentPct - b.governmentAlignmentPct);
-  const rows: number[][] = [[], [], []]; // Track used X positions per row
+  const rows: number[][] = [[], [], []];
   const result: { group: GroupDynamicsStats; row: number }[] = [];
 
   for (const g of sorted) {
     const x = g.governmentAlignmentPct;
-    // Pick the row where the nearest existing badge is farthest away
     let bestRow = 0;
     let bestDist = -1;
     for (let r = 0; r < 3; r++) {
@@ -257,10 +247,4 @@ function alignmentColor(pct: number): string {
   if (pct >= 80) return "text-green-600 dark:text-green-400 font-semibold";
   if (pct >= 50) return "text-yellow-600 dark:text-yellow-400";
   return "text-red-600 dark:text-red-400";
-}
-
-function cohesionColor(pct: number): string {
-  if (pct >= 95) return "text-green-600 dark:text-green-400";
-  if (pct >= 85) return "text-yellow-600 dark:text-yellow-400";
-  return "text-orange-600 dark:text-orange-400";
 }

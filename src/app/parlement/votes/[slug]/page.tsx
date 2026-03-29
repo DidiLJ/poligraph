@@ -251,6 +251,10 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
   const againstPercent = total > 0 ? (scrutin.votesAgainst / total) * 100 : 0;
   const abstainPercent = total > 0 ? (scrutin.votesAbstain / total) * 100 : 0;
 
+  // Motion de censure: special threshold-based display (289 = absolute majority of 577 deputies)
+  const isMotionDeCensure = /motion\s+de\s+censure/i.test(scrutin.title);
+  const CENSURE_THRESHOLD = 289;
+
   return (
     <>
       {scrutin.summary && (
@@ -461,51 +465,92 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
             <CardTitle>Résultat du vote</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {/* Vote bar */}
-              <div className="flex h-8 rounded-lg overflow-hidden">
-                <div
-                  className="bg-green-500 flex items-center justify-center text-white text-sm font-medium"
-                  style={{ width: `${forPercent}%` }}
-                >
-                  {scrutin.votesFor > 0 && scrutin.votesFor}
+            {isMotionDeCensure ? (
+              <div className="space-y-4">
+                {/* Threshold bar for motion de censure */}
+                <div className="relative">
+                  <div className="h-8 bg-muted rounded-lg overflow-hidden">
+                    <div
+                      className={`h-full flex items-center justify-center text-white text-sm font-medium ${
+                        scrutin.result === "ADOPTED" ? "bg-red-500" : "bg-red-400"
+                      }`}
+                      style={{
+                        width: `${Math.min((scrutin.votesFor / CENSURE_THRESHOLD) * 100, 100)}%`,
+                      }}
+                    >
+                      {scrutin.votesFor}
+                    </div>
+                  </div>
+                  {/* Threshold marker */}
+                  <div
+                    className="absolute top-0 h-8 border-r-2 border-dashed border-foreground/60"
+                    style={{ left: "100%" }}
+                  />
                 </div>
-                <div
-                  className="bg-red-500 flex items-center justify-center text-white text-sm font-medium"
-                  style={{ width: `${againstPercent}%` }}
-                >
-                  {scrutin.votesAgainst > 0 && scrutin.votesAgainst}
-                </div>
-                <div
-                  className="bg-yellow-500 flex items-center justify-center text-white text-sm font-medium"
-                  style={{ width: `${abstainPercent}%` }}
-                >
-                  {scrutin.votesAbstain > 0 && scrutin.votesAbstain}
-                </div>
-              </div>
 
-              {/* Legend */}
-              <div className="flex flex-wrap justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-green-500" />
-                  <span>
-                    Pour: {scrutin.votesFor} ({forPercent.toFixed(1)}%)
+                <div className="flex flex-wrap justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-red-400" />
+                    <span>{scrutin.votesFor} voix pour la censure</span>
+                  </div>
+                  <span className="text-muted-foreground tabular-nums">
+                    {CENSURE_THRESHOLD} nécessaires (majorité absolue)
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-red-500" />
-                  <span>
-                    Contre: {scrutin.votesAgainst} ({againstPercent.toFixed(1)}%)
-                  </span>
+
+                <p className="text-xs text-muted-foreground">
+                  Une motion de censure n{"'"}est adoptée que si elle recueille la majorité absolue
+                  des députés ({CENSURE_THRESHOLD}/577). Seuls les députés favorables à la censure
+                  votent.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Vote bar */}
+                <div className="flex h-8 rounded-lg overflow-hidden">
+                  <div
+                    className="bg-green-500 flex items-center justify-center text-white text-sm font-medium"
+                    style={{ width: `${forPercent}%` }}
+                  >
+                    {scrutin.votesFor > 0 && scrutin.votesFor}
+                  </div>
+                  <div
+                    className="bg-red-500 flex items-center justify-center text-white text-sm font-medium"
+                    style={{ width: `${againstPercent}%` }}
+                  >
+                    {scrutin.votesAgainst > 0 && scrutin.votesAgainst}
+                  </div>
+                  <div
+                    className="bg-yellow-500 flex items-center justify-center text-white text-sm font-medium"
+                    style={{ width: `${abstainPercent}%` }}
+                  >
+                    {scrutin.votesAbstain > 0 && scrutin.votesAbstain}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-yellow-500" />
-                  <span>
-                    Abstention: {scrutin.votesAbstain} ({abstainPercent.toFixed(1)}%)
-                  </span>
+
+                {/* Legend */}
+                <div className="flex flex-wrap justify-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-green-500" />
+                    <span>
+                      Pour: {scrutin.votesFor} ({forPercent.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-red-500" />
+                    <span>
+                      Contre: {scrutin.votesAgainst} ({againstPercent.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                    <span>
+                      Abstention: {scrutin.votesAbstain} ({abstainPercent.toFixed(1)}%)
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 

@@ -109,9 +109,9 @@ function applyInlineFormatting(text: string, disableLinks?: boolean): string {
       }
     }
     if (isInternal) {
-      return `<a href="${url}" class="text-primary hover:underline">${linkText}</a>`;
+      return `<a href="${url}" class="text-primary underline decoration-primary/40 hover:decoration-primary">${linkText}</a>`;
     }
-    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${linkText}</a>`;
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary underline decoration-primary/40 hover:decoration-primary">${linkText}</a>`;
   });
 
   return html;

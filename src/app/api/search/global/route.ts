@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma";
 import { withCache } from "@/lib/cache";
 import { FACTCHECK_ALLOWED_SOURCES } from "@/config/labels";
 import { withPublicRoute } from "@/lib/api/with-public-route";
+import { parsePagination } from "@/lib/api/pagination";
 
 const MAX_LIMIT = 8;
 
@@ -68,8 +69,10 @@ interface RawCommune {
 
 export const GET = withPublicRoute(async (request) => {
   const query = request.nextUrl.searchParams.get("q") || "";
-  const limitParam = request.nextUrl.searchParams.get("limit");
-  const limit = Math.min(Math.max(parseInt(limitParam || String(MAX_LIMIT), 10), 1), MAX_LIMIT);
+  const { limit } = parsePagination(request.nextUrl.searchParams, {
+    defaultLimit: MAX_LIMIT,
+    maxLimit: MAX_LIMIT,
+  });
 
   if (query.length < 2) {
     return NextResponse.json({

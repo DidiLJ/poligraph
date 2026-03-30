@@ -4,7 +4,7 @@
  * Orchestrates AI analysis of press articles for judicial affair detection:
  * 1. Fetch unanalyzed PressArticles
  * 2. Scrape full article content (not stored — copyright)
- * 3. Analyze with Claude Haiku (tool_use)
+ * 3. Analyze with Mistral (JSON mode)
  * 4. Match detected affairs with existing DB affairs
  * 5. Enrich existing affairs or create new ones (prefixed [À VÉRIFIER])
  *
@@ -344,14 +344,23 @@ export async function syncPressAnalysis(
       stats.analysisErrors++;
       const errorMsg = error instanceof Error ? error.message : String(error);
 
+      // Detect quota/rate limit errors to avoid marking articles and to stop early
+      const isQuotaError = /usage.limits|quota|rate.limit|429|402/i.test(errorMsg);
+
       if (!dryRun) {
         await db.pressArticle.update({
           where: { id: article.id },
           data: {
-            aiAnalyzedAt: new Date(),
+            // Don't mark as analyzed on quota errors so they can be retried
+            ...(isQuotaError ? {} : { aiAnalyzedAt: new Date() }),
             aiAnalysisError: errorMsg.slice(0, 500),
           },
         });
+      }
+
+      if (isQuotaError) {
+        console.error(`\n✗ API quota/rate limit error, stopping early: ${errorMsg}`);
+        break;
       }
 
       console.error(`  ✗ Analyse IA échouée: ${errorMsg}`);

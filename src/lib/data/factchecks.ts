@@ -200,6 +200,10 @@ export async function getFactcheckSources() {
  * Resolve politician full name from slug (for filter badge display).
  */
 export async function getPoliticianNameBySlug(slug: string): Promise<string | null> {
+  "use cache";
+  cacheTag(`politician:${slug}`, "politicians");
+  cacheLife("minutes");
+
   const p = await db.politician.findUnique({
     where: { slug },
     select: { fullName: true },

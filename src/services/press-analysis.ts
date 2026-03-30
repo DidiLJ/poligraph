@@ -1,8 +1,8 @@
 /**
  * Press Article AI Analysis Service
  *
- * Two-tier model: Sonnet 4.5 for judicial articles (TIER_1), Haiku 4.5 for others (TIER_2).
- * Uses Claude tool_use to extract structured data: affair detection, category, status, key excerpts.
+ * Two-tier model: Mistral Large for judicial articles (TIER_1), Mistral Small for others (TIER_2).
+ * Uses Mistral JSON mode to extract structured data: affair detection, category, status, key excerpts.
  *
  * IMPORTANT: Legal safety is critical.
  * - Presumption of innocence for all mise en examen
@@ -13,11 +13,11 @@
 
 import { AI_RATE_LIMIT_MS } from "@/config/rate-limits";
 import { clampConfidenceScore } from "@/services/affairs/confidence";
-import { callAnthropic, extractToolUse } from "@/lib/api/anthropic";
+import { callMistral, extractMistralText, parseMistralJSON } from "@/lib/api/mistral";
 
 const TIER_MODELS = {
-  TIER_1: "claude-sonnet-4-5-20250929",
-  TIER_2: "claude-haiku-4-5-20251001",
+  TIER_1: "mistral-large-latest",
+  TIER_2: "mistral-small-latest",
 } as const;
 
 type AnalysisTier = keyof typeof TIER_MODELS;
@@ -110,114 +110,6 @@ const AFFAIR_STATUSES = [
 const SENSITIVE_CATEGORIES = new Set(["AGRESSION_SEXUELLE", "HARCELEMENT_SEXUEL"]);
 
 // ============================================
-// TOOL DEFINITION (Anthropic tool_use)
-// ============================================
-
-const ANALYSIS_TOOL = {
-  name: "analyze_press_article",
-  description:
-    "Analyse un article de presse politique française pour détecter les affaires judiciaires mentionnées.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      is_affair_related: {
-        type: "boolean",
-        description:
-          "L'article mentionne-t-il une ou plusieurs affaires judiciaires impliquant des politiciens français ?",
-      },
-      summary: {
-        type: "string",
-        description: "Résumé factuel de l'article en 2-3 phrases.",
-      },
-      affairs: {
-        type: "array",
-        description:
-          "Liste des affaires judiciaires détectées dans l'article. Vide si is_affair_related est false.",
-        items: {
-          type: "object",
-          properties: {
-            politician_name: {
-              type: "string",
-              description: "Nom complet du politicien concerné (ex: 'Nicolas Sarkozy')",
-            },
-            involvement: {
-              type: "string",
-              enum: ["DIRECT", "INDIRECT", "MENTIONED_ONLY", "VICTIM", "PLAINTIFF"],
-              description:
-                "Niveau d'implication du politicien dans l'affaire. DIRECT = mis en cause, poursuivi, condamné ou directement visé. INDIRECT = témoin ou acteur secondaire. MENTIONED_ONLY = simplement cité dans l'article sans lien réel avec l'affaire judiciaire. VICTIM = le politicien est victime de l'infraction (menaces, agressions, cambriolage). PLAINTIFF = le politicien a déposé plainte.",
-            },
-            category: {
-              type: "string",
-              enum: [...AFFAIR_CATEGORIES],
-              description: "Catégorie juridique de l'affaire",
-            },
-            status: {
-              type: "string",
-              enum: [...AFFAIR_STATUSES],
-              description: "Statut judiciaire actuel mentionné dans l'article",
-            },
-            title: {
-              type: "string",
-              description: "Titre court de l'affaire (ex: 'Affaire des emplois fictifs du MoDem')",
-            },
-            description: {
-              type: "string",
-              description: "Description factuelle en 2-3 phrases",
-            },
-            facts_date: {
-              type: ["string", "null"],
-              description: "Date des faits si mentionnée (format YYYY-MM-DD), null sinon",
-            },
-            court: {
-              type: ["string", "null"],
-              description:
-                "Juridiction mentionnée (ex: 'Tribunal correctionnel de Paris'), null sinon",
-            },
-            charges: {
-              type: "array",
-              items: { type: "string" },
-              description: "Chefs d'accusation ou infractions mentionnés dans l'article",
-            },
-            excerpts: {
-              type: "array",
-              items: { type: "string" },
-              description: "2-3 citations clés de l'article relatives à cette affaire",
-            },
-            is_new_revelation: {
-              type: "boolean",
-              description:
-                "L'article révèle-t-il cette affaire pour la première fois (investigation journalistique) ?",
-            },
-            confidence_score: {
-              type: "integer",
-              minimum: 0,
-              maximum: 100,
-              description:
-                "Score de confiance (0-100) que cette affaire est correctement attribuée au politicien. 90+ = certain (nommément cité comme mis en cause). 70-89 = probable. 50-69 = incertain. <50 = peu fiable.",
-            },
-          },
-          required: [
-            "politician_name",
-            "involvement",
-            "category",
-            "status",
-            "title",
-            "description",
-            "facts_date",
-            "court",
-            "charges",
-            "excerpts",
-            "is_new_revelation",
-            "confidence_score",
-          ],
-        },
-      },
-    },
-    required: ["is_affair_related", "summary", "affairs"],
-  },
-};
-
-// ============================================
 // SYSTEM PROMPT
 // ============================================
 
@@ -247,14 +139,37 @@ SCORE DE CONFIANCE (confidence_score) :
 EXEMPLES DE FAUX POSITIFS À ÉVITER :
 - Un article sur "la mort de X" qui mentionne la réaction d'un politicien → le politicien n'est PAS impliqué dans la mort
 - Un article sur une affaire judiciaire qui cite un politicien comme source ou commentateur → MENTIONED_ONLY
-- Un article politique mentionnant en passant un procès en cours d'un autre politicien → seul le politicien poursuivi est DIRECT`;
+- Un article politique mentionnant en passant un procès en cours d'un autre politicien → seul le politicien poursuivi est DIRECT
+
+RÉPONSE : Tu DOIS répondre en JSON avec exactement ces champs :
+{
+  "is_affair_related": boolean,
+  "summary": "Résumé factuel en 2-3 phrases",
+  "affairs": [
+    {
+      "politician_name": "Nom complet (ex: Nicolas Sarkozy)",
+      "involvement": "DIRECT | INDIRECT | MENTIONED_ONLY | VICTIM | PLAINTIFF",
+      "category": "${AFFAIR_CATEGORIES.join(" | ")}",
+      "status": "${AFFAIR_STATUSES.join(" | ")}",
+      "title": "Titre court de l'affaire",
+      "description": "Description factuelle en 2-3 phrases",
+      "facts_date": "YYYY-MM-DD ou null",
+      "court": "Juridiction ou null",
+      "charges": ["chef d'accusation 1", "..."],
+      "excerpts": ["citation exacte 1", "citation exacte 2"],
+      "is_new_revelation": boolean,
+      "confidence_score": 0-100
+    }
+  ]
+}
+Si aucune affaire judiciaire n'est détectée, retourner : {"is_affair_related": false, "summary": "...", "affairs": []}`;
 
 // ============================================
 // MAIN ANALYSIS FUNCTION
 // ============================================
 
 /**
- * Analyze a press article for judicial affairs using Claude Haiku tool_use
+ * Analyze a press article for judicial affairs using Mistral JSON mode
  */
 export async function analyzeArticle(input: ArticleAnalysisInput): Promise<ArticleAnalysisResult> {
   const tier: AnalysisTier = input.tier || "TIER_2";
@@ -270,17 +185,18 @@ export async function analyzeArticle(input: ArticleAnalysisInput): Promise<Artic
     userContent += `\n\n--- CONTEXTE POLITICIENS CONNUS ---\n${input.politicianContext}\n\nSi un nom correspond à un politicien connu mais que l'article ne mentionne pas de fonction politique (député, sénateur, ministre, maire, etc.), retourner confidence_score < 30 et involvement: MENTIONED_ONLY.`;
   }
 
-  const data = await callAnthropic([{ role: "user", content: userContent }], {
+  const data = await callMistral([{ role: "user", content: userContent }], {
     model,
     maxTokens: MAX_TOKENS,
     system: SYSTEM_PROMPT,
-    tools: [ANALYSIS_TOOL],
-    toolChoice: { type: "tool", name: "analyze_press_article" },
+    temperature: 0.2,
+    responseFormat: { type: "json_object" },
   });
 
-  const result = extractToolUse(data) as Record<string, unknown> | null;
+  const text = extractMistralText(data);
+  const result = parseMistralJSON<Record<string, unknown>>(text);
   if (!result) {
-    throw new Error("No tool_use content in API response");
+    throw new Error("Empty JSON response from Mistral API");
   }
 
   // Validate and sanitize the result

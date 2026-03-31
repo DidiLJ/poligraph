@@ -108,10 +108,10 @@ const DATA_SOURCES = [
     name: "Datan",
     shortName: "Datan",
     description:
-      "Statistiques parlementaires et informations de contact des deputes, publiees en open data sur data.gouv.fr",
+      "Statistiques parlementaires et informations de contact des députés, publiées en open data sur data.gouv.fr",
     url: "https://www.data.gouv.fr/fr/datasets/deputes-actifs-de-lassemblee-nationale-informations-et-statistiques/",
     frequency: "Hebdomadaire",
-    fields: ["Contact", "Reseaux sociaux", "Statistiques"],
+    fields: ["Contact", "Réseaux sociaux", "Statistiques"],
     color: "#5770BE",
   },
 ];
@@ -355,39 +355,39 @@ export default function SourcesPage() {
         </div>
       </section>
 
-      {/* Violences et menaces contre les elus */}
+      {/* Violences et menaces contre les élus */}
       <section className="mb-12">
-        <h2 className="mb-4 text-2xl font-bold">Violences et menaces contre les elus</h2>
+        <h2 className="mb-4 text-2xl font-bold">Violences et menaces contre les élus</h2>
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <div className="space-y-4 text-sm text-muted-foreground">
             <p>
-              Poligraph documente egalement les affaires judiciaires dans lesquelles un elu est
-              victime ou plaignant (menaces, violences, harcelement). Ces affaires repondent aux
-              memes criteres d{"'"}inclusion que les affaires ou l{"'"}elu est mis en cause :
+              Poligraph documente également les affaires judiciaires dans lesquelles un élu est
+              victime ou plaignant (menaces, violences, harcèlement). Ces affaires répondent aux
+              mêmes critères d{"'"}inclusion que les affaires où l{"'"}élu est mis en cause :
             </p>
             <ul className="list-disc space-y-2 pl-6">
               <li>
-                <strong>Source verifiable</strong> : au moins une source journalistique de reference
-                ou une decision de justice publique. Le signalement par l{"'"}elu seul ne suffit
+                <strong>Source vérifiable</strong> : au moins une source journalistique de référence
+                ou une décision de justice publique. Le signalement par l{"'"}élu seul ne suffit
                 pas.
               </li>
               <li>
-                <strong>Statut judiciaire reel</strong> : une plainte deposee est affichee avec son
-                statut (enquete preliminaire, instruction, etc.), jamais comme un fait etabli.
+                <strong>Statut judiciaire réel</strong> : une plainte déposée est affichée avec son
+                statut (enquête préliminaire, instruction, etc.), jamais comme un fait établi.
               </li>
               <li>
-                <strong>Pas de comparaisons partisanes</strong> : les statistiques sont presentees
-                en chiffres agreges, sans ventilation par parti politique.
+                <strong>Pas de comparaisons partisanes</strong> : les statistiques sont présentées
+                en chiffres agrégés, sans ventilation par parti politique.
               </li>
               <li>
-                <strong>Distinction des roles</strong> : Victime (cible directe de l{"'"}infraction)
-                et Plaignant (personne ayant initie la procedure) sont distingues. Un elu portant
+                <strong>Distinction des rôles</strong> : Victime (cible directe de l{"'"}infraction)
+                et Plaignant (personne ayant initié la procédure) sont distingués. Un élu portant
                 plainte en diffamation est plaignant, pas victime.
               </li>
             </ul>
             <p>
-              Lorsque l{"'"}auteur presume des faits est egalement un elu suivi par Poligraph, les
-              deux fiches d{"'"}affaire sont liees pour permettre une lecture complete.
+              Lorsque l{"'"}auteur présumé des faits est également un élu suivi par Poligraph, les
+              deux fiches d{"'"}affaire sont liées pour permettre une lecture complète.
             </p>
           </div>
         </div>

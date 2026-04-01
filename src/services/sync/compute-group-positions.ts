@@ -51,6 +51,52 @@ export function aggregateGroupVotes(votes: VoteInput[]): GroupAggregation | null
   return { position, forCount, againstCount, abstainCount, cohesionPct };
 }
 
+/**
+ * Compute group positions for a single scrutin (call right after vote insertion).
+ */
+export async function computeGroupPositionsForScrutin(scrutinId: string): Promise<number> {
+  const rows = await db.$queryRaw<Array<{ groupId: string; position: string; voteCount: bigint }>>`
+    SELECT
+      mp."parliamentaryGroupId" AS "groupId",
+      v.position,
+      COUNT(*) AS "voteCount"
+    FROM "Vote" v
+    JOIN "Mandate" m ON m."politicianId" = v."politicianId"
+      AND m."isCurrent" = true
+    JOIN "MandateParliamentary" mp ON mp."mandateId" = m.id
+    WHERE v."scrutinId" = ${scrutinId}
+      AND v.position IN ('POUR', 'CONTRE', 'ABSTENTION')
+      AND mp."parliamentaryGroupId" IS NOT NULL
+    GROUP BY mp."parliamentaryGroupId", v.position
+  `;
+
+  const grouped = new Map<string, VoteInput[]>();
+  for (const row of rows) {
+    if (!grouped.has(row.groupId)) grouped.set(row.groupId, []);
+    const count = Number(row.voteCount);
+    for (let i = 0; i < count; i++) {
+      grouped.get(row.groupId)!.push({ position: row.position });
+    }
+  }
+
+  let created = 0;
+  const upserts: Array<Promise<unknown>> = [];
+  for (const [groupId, votes] of grouped) {
+    const agg = aggregateGroupVotes(votes);
+    if (!agg) continue;
+    upserts.push(
+      db.scrutinGroupPosition.upsert({
+        where: { scrutinId_groupId: { scrutinId, groupId } },
+        create: { scrutinId, groupId, ...agg },
+        update: agg,
+      })
+    );
+    created++;
+  }
+  if (upserts.length > 0) await Promise.all(upserts);
+  return created;
+}
+
 export async function computeGroupPositions(opts?: { since?: Date }): Promise<{
   scrutinsProcessed: number;
   positionsCreated: number;

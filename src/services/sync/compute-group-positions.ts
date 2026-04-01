@@ -51,10 +51,11 @@ export function aggregateGroupVotes(votes: VoteInput[]): GroupAggregation | null
   return { position, forCount, againstCount, abstainCount, cohesionPct };
 }
 
-export async function computeGroupPositions(): Promise<{
+export async function computeGroupPositions(opts?: { since?: Date }): Promise<{
   scrutinsProcessed: number;
   positionsCreated: number;
 }> {
+  const since = opts?.since;
   const rows = await db.$queryRaw<
     Array<{
       scrutinId: string;
@@ -69,11 +70,13 @@ export async function computeGroupPositions(): Promise<{
       v.position,
       COUNT(*) AS "voteCount"
     FROM "Vote" v
+    JOIN "Scrutin" s ON s.id = v."scrutinId"
     JOIN "Mandate" m ON m."politicianId" = v."politicianId"
       AND m."isCurrent" = true
     JOIN "MandateParliamentary" mp ON mp."mandateId" = m.id
     WHERE v.position IN ('POUR', 'CONTRE', 'ABSTENTION')
       AND mp."parliamentaryGroupId" IS NOT NULL
+      AND (${since}::timestamptz IS NULL OR s."votingDate" >= ${since})
     GROUP BY v."scrutinId", mp."parliamentaryGroupId", v.position
   `;
 

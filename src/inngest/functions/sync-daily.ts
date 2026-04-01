@@ -103,7 +103,9 @@ const DAILY_STEPS: DailyStep[] = [
     name: "compute-group-positions",
     run: async () => {
       const { computeGroupPositions } = await import("@/services/sync/compute-group-positions");
-      return computeGroupPositions();
+      const since = new Date();
+      since.setDate(since.getDate() - 7);
+      return computeGroupPositions({ since });
     },
   },
   {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation } from "@/lib/security/validate";
@@ -58,7 +58,7 @@ export const PUT = withAdminAuth(
     });
 
     invalidateEntity("party");
-    revalidateTag("platforms", "minutes");
+    updateTag("platforms");
 
     return NextResponse.json(platform);
   })
@@ -88,7 +88,7 @@ export const DELETE = withAdminAuth(async (request, context) => {
   });
 
   invalidateEntity("party");
-  revalidateTag("platforms", "minutes");
+  updateTag("platforms");
 
   return NextResponse.json({ success: true });
 });

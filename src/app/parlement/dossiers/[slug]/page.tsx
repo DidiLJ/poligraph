@@ -157,7 +157,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: dossier.shortTitle || dossier.title,
+    title: dossier.title,
     description: dossier.summary || `Dossier législatif ${dossier.number || dossier.externalId}`,
     alternates: { canonical: `/parlement/dossiers/${dossier.slug}` },
   };
@@ -207,12 +207,8 @@ export default async function DossierDetailPage({ params }: PageProps) {
           </div>
 
           <h1 className="text-2xl md:text-3xl font-display font-extrabold tracking-tight mb-4">
-            {dossier.shortTitle || dossier.title}
+            {dossier.title}
           </h1>
-
-          {dossier.shortTitle && dossier.shortTitle !== dossier.title && (
-            <p className="text-muted-foreground mb-4">{dossier.title}</p>
-          )}
 
           {/* Dates */}
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">

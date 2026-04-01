@@ -8,6 +8,7 @@
 
 import { db } from "@/lib/db";
 import { syncMetadata, hashFile, hashVotes, ProgressTracker } from "@/lib/sync";
+import { computeGroupPositionsForScrutin } from "@/services/sync/compute-group-positions";
 import { generateDateSlug, generateUniqueSlug } from "@/lib/utils";
 import { VotePosition, VotingResult, DataSource } from "@/generated/prisma";
 import { classifyScrutinTitle } from "@/lib/scrutin-type";
@@ -422,6 +423,7 @@ export async function syncScrutinsAN(
                 data: { votesHash: newHash },
               });
 
+              await computeGroupPositionsForScrutin(scrutin.id);
               stats.votesCreated += votesToCreate.length;
             }
           }

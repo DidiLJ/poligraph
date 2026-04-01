@@ -1,4 +1,4 @@
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 // ─── Cache tiers for API responses ────────────────────────────────
 
@@ -33,9 +33,6 @@ export type EntityType =
   | "stats"
   | "election";
 
-// Cache life profile used by "use cache" functions — must match cacheLife() calls
-const CACHE_PROFILE = "minutes";
-
 /**
  * Invalidate CDN cache and data cache for a given entity.
  * Call after admin mutations or sync operations.
@@ -50,18 +47,18 @@ export function invalidateEntity(type: EntityType, slug?: string): void {
         revalidatePath(`/api/politiques/${slug}/affaires`, "layout");
         revalidatePath(`/api/politiques/${slug}/relations`, "layout");
         revalidatePath(`/api/politiques/${slug}/factchecks`, "layout");
-        revalidateTag(`politician:${slug}`, CACHE_PROFILE);
+        updateTag(`politician:${slug}`);
       }
-      revalidateTag("politicians", CACHE_PROFILE);
+      updateTag("politicians");
       break;
 
     case "party":
       revalidatePath("/api/partis", "layout");
       if (slug) {
         revalidatePath(`/api/partis/${slug}`, "layout");
-        revalidateTag(`party:${slug}`, CACHE_PROFILE);
+        updateTag(`party:${slug}`);
       }
-      revalidateTag("parties", CACHE_PROFILE);
+      updateTag("parties");
       break;
 
     case "affair":
@@ -69,40 +66,40 @@ export function invalidateEntity(type: EntityType, slug?: string): void {
       if (slug) {
         revalidatePath(`/api/affaires/${slug}`, "layout");
       }
-      revalidateTag("affairs", CACHE_PROFILE);
+      updateTag("affairs");
       break;
 
     case "mandate":
       revalidatePath("/api/mandats", "layout");
       revalidatePath("/api/deputies/by-department", "layout");
       revalidatePath("/api/deputies/by-commune", "layout");
-      revalidateTag("politicians", CACHE_PROFILE);
+      updateTag("politicians");
       break;
 
     case "vote":
       revalidatePath("/api/votes", "layout");
-      revalidateTag("votes", CACHE_PROFILE);
+      updateTag("votes");
       break;
 
     case "factcheck":
       if (slug) {
-        revalidateTag(`factcheck:${slug}`, CACHE_PROFILE);
+        updateTag(`factcheck:${slug}`);
       }
-      revalidateTag("factchecks", CACHE_PROFILE);
+      updateTag("factchecks");
       break;
 
     case "dossier":
-      revalidateTag("dossiers", CACHE_PROFILE);
+      updateTag("dossiers");
       break;
 
     case "stats":
       revalidatePath("/api/votes/stats", "layout");
       revalidatePath("/api/stats/departments", "layout");
-      revalidateTag("stats", CACHE_PROFILE);
+      updateTag("stats");
       break;
 
     case "election":
-      revalidateTag("elections", CACHE_PROFILE);
+      updateTag("elections");
       break;
   }
 }
@@ -127,7 +124,7 @@ export type CacheTag = (typeof ALL_TAGS)[number];
  */
 export function revalidateAll(): void {
   for (const tag of ALL_TAGS) {
-    revalidateTag(tag, CACHE_PROFILE);
+    updateTag(tag);
   }
 }
 
@@ -136,6 +133,6 @@ export function revalidateAll(): void {
  */
 export function revalidateTags(tags: string[]): void {
   for (const tag of tags) {
-    revalidateTag(tag, CACHE_PROFILE);
+    updateTag(tag);
   }
 }

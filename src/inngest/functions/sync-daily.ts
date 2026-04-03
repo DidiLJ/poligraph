@@ -116,6 +116,24 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
+    name: "generate-scrutin-summaries",
+    run: async () => {
+      if (!process.env.MISTRAL_API_KEY) return { skipped: "no MISTRAL_API_KEY" };
+      const { generateScrutinSummaries } =
+        await import("@/services/sync/generate-scrutin-summaries");
+      return generateScrutinSummaries({ limit: 30 });
+    },
+  },
+  {
+    name: "generate-citizen-impacts",
+    run: async () => {
+      if (!process.env.MISTRAL_API_KEY) return { skipped: "no MISTRAL_API_KEY" };
+      const { generateScrutinCitizenImpacts } =
+        await import("@/services/sync/generate-scrutin-citizen-impacts");
+      return generateScrutinCitizenImpacts({ limit: 30 });
+    },
+  },
+  {
     name: "generate-scrutin-analysis",
     run: async () => {
       if (!process.env.MISTRAL_API_KEY) return { skipped: "no MISTRAL_API_KEY" };

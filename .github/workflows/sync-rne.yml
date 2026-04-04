@@ -1,9 +1,9 @@
 name: Sync RNE Maires
 
 on:
-  schedule:
-    # Run every Sunday at 4:00 AM UTC (after politicians sync)
-    - cron: "0 4 * * 0"
+  # No schedule: RNE processes ~35K mayors with identity resolution,
+  # too slow for GitHub Actions runners (~7 rec/s due to DB latency).
+  # Run locally: npm run sync:rne:maires
   workflow_dispatch:
 
 env:

@@ -165,15 +165,13 @@ export default async function PartiesPage({ searchParams }: PageProps) {
                               {party.affairCounts.enCours > 1 ? "s" : ""} en cours
                             </span>
                           )}
-                          {party.affairCounts.total > 0 &&
-                            party.affairCounts.total !==
-                              party.affairCounts.condamnations + party.affairCounts.enCours && (
-                              <span>
-                                {party.affairCounts.total} affaire
-                                {party.affairCounts.total > 1 ? "s" : ""} judiciaire
-                                {party.affairCounts.total > 1 ? "s" : ""}
-                              </span>
-                            )}
+                          {party.affairCounts.closesSansCondamnation > 0 && (
+                            <span>
+                              {party.affairCounts.closesSansCondamnation} classée
+                              {party.affairCounts.closesSansCondamnation > 1 ? "s" : ""} sans
+                              condamnation
+                            </span>
+                          )}
                         </div>
                         {party.predecessor ? (
                           <p className="text-xs text-muted-foreground mt-1">

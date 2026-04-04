@@ -1,11 +1,18 @@
 import { AFFAIR_STATUS_LABELS } from "@/config/labels";
-import { CERTAINTY_LABELS, CERTAINTY_COLORS, type CertaintyLevel } from "@/config/certainty";
+import { MATURITY_LABELS, type JudicialMaturity } from "@/config/judicial-maturity";
 import type { AffairStatus } from "@/types";
+
+const MATURITY_COLORS: Record<JudicialMaturity, string> = {
+  CONDAMNATION: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  PROCEDURE_VALIDEE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  ENQUETE: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  CLOSE_SANS_CONDAMNATION: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+};
 
 interface AffairsSideData {
   count: number;
   byStatus: Record<string, number>;
-  byCertainty: Record<string, number>;
+  byMaturity: Record<string, number>;
 }
 
 interface AffairsSectionProps {
@@ -40,7 +47,7 @@ function AffairsSide({ data, label }: { data: AffairsSideData; label: string }) 
   }
 
   const statusEntries = Object.entries(data.byStatus).filter(([, count]) => count > 0);
-  const certaintyEntries = Object.entries(data.byCertainty).filter(([, count]) => count > 0);
+  const maturityEntries = Object.entries(data.byMaturity).filter(([, count]) => count > 0);
 
   return (
     <div className="bg-muted rounded-lg p-4">
@@ -49,17 +56,19 @@ function AffairsSide({ data, label }: { data: AffairsSideData; label: string }) 
         {data.count} affaire{data.count > 1 ? "s" : ""}
       </p>
 
-      {/* Certainty breakdown */}
-      {certaintyEntries.length > 0 && (
+      {/* Maturity breakdown */}
+      {maturityEntries.length > 0 && (
         <div className="mb-3">
-          <p className="text-xs font-medium text-muted-foreground mb-1.5">Par certitude</p>
+          <p className="text-xs font-medium text-muted-foreground mb-1.5">
+            Par maturité judiciaire
+          </p>
           <div className="flex flex-wrap gap-1.5">
-            {certaintyEntries.map(([certainty, count]) => (
+            {maturityEntries.map(([maturity, count]) => (
               <span
-                key={certainty}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${CERTAINTY_COLORS[certainty as CertaintyLevel] || ""}`}
+                key={maturity}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${MATURITY_COLORS[maturity as JudicialMaturity] || ""}`}
               >
-                {CERTAINTY_LABELS[certainty as CertaintyLevel] || certainty}
+                {MATURITY_LABELS[maturity as JudicialMaturity] || maturity}
                 <span className="font-bold">{count}</span>
               </span>
             ))}

@@ -7,6 +7,7 @@ import {
   type CertaintyLevel,
 } from "@/config/certainty";
 import { AFFAIR_SUPER_CATEGORY_LABELS, type AffairSuperCategory } from "@/config/labels";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const metadata: Metadata = {
   title: "Méthodologie - Classification des affaires judiciaires",
@@ -59,7 +60,8 @@ const SUPER_CATEGORIES: { key: AffairSuperCategory; description: string }[] = [
 
 export default function MethodologiePage() {
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-12">
+    <main className="container mx-auto max-w-3xl px-4 pt-4 pb-12">
+      <Breadcrumb items={[{ label: "Sources", href: "/sources" }, { label: "Méthodologie" }]} />
       <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">Méthodologie</h1>
       <p className="text-muted-foreground mb-10">
         Comment Poligraph classe et présente les affaires judiciaires
@@ -118,25 +120,60 @@ export default function MethodologiePage() {
         </div>
       </section>
 
-      {/* Section 3: Counting rules */}
-      <section className="mb-12">
-        <h2 className="text-xl font-display font-semibold mb-4">Règles de comptage</h2>
+      {/* Section 3: Counting rules / Maturity model */}
+      <section id="comment-nous-comptons" className="mb-12">
+        <h2 className="text-xl font-display font-semibold mb-4">Comment nous comptons</h2>
+        <p className="text-muted-foreground mb-6">
+          Les compteurs agrégés (page d{"'"}accueil, pages de partis, badges sur les profils)
+          utilisent un seuil de maturité judiciaire pour ne mettre en avant que les affaires
+          validées par un juge.
+        </p>
         <div className="space-y-3 text-sm text-muted-foreground">
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium text-foreground mb-1">Affaires actives</h3>
+          <div className="rounded-lg border border-red-200 dark:border-red-800 p-4">
+            <h3 className="font-medium text-foreground mb-1">Condamnations (comptabilisées)</h3>
             <p>
-              Les compteurs affichés sur le site (profils, statistiques) ne prennent en compte que
-              les affaires <strong>actives</strong> : niveaux Etabli, Prononcé et En cours. Les
-              procédures closes favorablement (relaxe, acquittement, non-lieu, etc.) ne sont pas
-              comptabilisées dans ces totaux, mais restent visibles sur la fiche détaillée.
+              Condamnation définitive, condamnation en première instance ou appel en cours. Ce sont
+              les affaires où un tribunal a prononcé une peine. Elles forment le chiffre principal
+              affiché dans les compteurs.
+            </p>
+          </div>
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 p-4">
+            <h3 className="font-medium text-foreground mb-1">
+              Procédures validées par un juge (comptabilisées)
+            </h3>
+            <p>
+              Mise en examen, instruction, renvoi devant le tribunal, procès en cours. Un juge a
+              estimé qu{"'"}il existait des indices graves ou concordants justifiant des poursuites.
             </p>
           </div>
           <div className="rounded-lg border p-4">
-            <h3 className="font-medium text-foreground mb-1">Implication directe uniquement</h3>
+            <h3 className="font-medium text-foreground mb-1">
+              Enquêtes préliminaires (non comptabilisées)
+            </h3>
             <p>
-              Seules les affaires où le politicien est directement impliqué (mis en cause, poursuivi
-              ou condamné) sont comptabilisées. Les simples mentions dans une affaire tierce ou les
-              cas où le politicien est victime/plaignant ne sont pas inclus dans les compteurs.
+              Les enquêtes préliminaires ne sont <strong>pas</strong> comptabilisées dans les totaux
+              agrégés. N{"'"}importe qui peut porter plainte : une enquête préliminaire ne signifie
+              pas qu{"'"}un juge a validé les accusations. Ces affaires restent visibles sur la
+              fiche détaillée du politicien.
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium text-foreground mb-1">
+              Procédures closes sans condamnation
+            </h3>
+            <p>
+              Relaxe, acquittement, non-lieu, prescription, classement sans suite. Ces procédures
+              sont affichées séparément comme signal positif : elles montrent que la justice a
+              examiné et écarté les accusations.
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium text-foreground mb-1">Implication directe et indirecte</h3>
+            <p>
+              Seules les affaires où le politicien est directement ou indirectement impliqué (mis en
+              cause, poursuivi ou condamné) sont comptabilisées. Les simples mentions dans une
+              affaire tierce ou les cas où le politicien est victime/plaignant ne sont pas inclus
+              dans les compteurs.
             </p>
           </div>
           <div className="rounded-lg border p-4">
@@ -183,7 +220,7 @@ export default function MethodologiePage() {
           (Assemblée nationale, Sénat, gouvernement) prévalent sur les sources tierces. Pour plus de
           détails sur nos sources de données, consultez la page{" "}
           <Link href="/sources" className="text-primary hover:underline">
-            Sources et méthodologie
+            Sources et principes éditoriaux
           </Link>
           .
         </p>

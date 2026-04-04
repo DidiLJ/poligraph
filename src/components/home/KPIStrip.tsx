@@ -61,11 +61,13 @@ export function KPIStrip({ kpis }: { kpis: HomepageKPIs }) {
         color="#002654"
       />
       <KPICard
-        count={kpis.affairsCount}
-        label="Affaires judiciaires"
-        href="/affaires"
+        count={kpis.condamnationsCount}
+        label="Condamnations"
+        href="/affaires?certainty=ETABLI"
         color="#DC2626"
-        badge={`${kpis.activeAffairsCount} en cours`}
+        badge={
+          kpis.proceduresEnCoursCount > 0 ? `${kpis.proceduresEnCoursCount} en cours` : undefined
+        }
       />
       <KPICard
         count={kpis.votesCount}

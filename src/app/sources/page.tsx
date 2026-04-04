@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Sources et Méthodologie",
+  title: "Sources et Principes",
   description:
-    "Nos sources de données, notre méthodologie et notre engagement pour la transparence",
+    "Nos sources de données, nos principes éditoriaux et notre engagement pour la transparence",
   alternates: { canonical: "/sources" },
 };
 
@@ -178,11 +178,11 @@ export default function SourcesPage() {
       {/* Header */}
       <div className="mb-12">
         <h1 className="text-3xl font-display font-extrabold tracking-tight mb-4">
-          Sources et Méthodologie
+          Sources et Principes
         </h1>
         <p className="text-lg text-muted-foreground">
-          Notre engagement : des données vérifiables, une méthodologie transparente, et le respect
-          de la présomption d&apos;innocence.
+          Notre engagement : des données vérifiables, des principes transparents, et le respect de
+          la présomption d&apos;innocence.
         </p>
       </div>
 
@@ -280,79 +280,26 @@ export default function SourcesPage() {
         </div>
       </section>
 
-      {/* Classification des affaires */}
+      {/* Classification des affaires — renvoi vers /methodologie */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">Classification des Affaires Judiciaires</h2>
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Les affaires judiciaires sont classées selon une grille inspirée de la{" "}
-                <strong>loi Sapin II</strong> (loi n° 2016-1691 du 9 décembre 2016 relative à la
-                transparence, à la lutte contre la corruption et à la modernisation de la vie
-                économique) et du cadre légal des <strong>atteintes à la probité</strong> défini par
-                le Code pénal.
-              </p>
-
-              <div>
-                <h3 className="font-semibold mb-2">Niveaux de gravité</h3>
-                <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                  <li>
-                    <strong className="text-red-700 dark:text-red-400">
-                      Atteinte à la probité
-                    </strong>{" "}
-                    : infractions intrinsèquement liées à l&apos;exercice du mandat public
-                    (corruption, trafic d&apos;influence, prise illégale d&apos;intérêts,
-                    favoritisme, détournement de fonds publics, emploi fictif, financement illégal
-                    de campagne ou de parti)
-                  </li>
-                  <li>
-                    <strong className="text-orange-700 dark:text-orange-400">
-                      Infraction grave
-                    </strong>{" "}
-                    : fraude fiscale, blanchiment, abus de biens sociaux, harcèlement, agressions
-                  </li>
-                  <li>
-                    <strong className="text-gray-700 dark:text-gray-400">Autre infraction</strong> :
-                    infractions de droit commun sans lien direct avec le mandat (diffamation,
-                    injure, violence)
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Règles de classification</h3>
-                <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                  <li>
-                    La gravité est <strong>calculée automatiquement</strong> à partir de la
-                    catégorie d&apos;infraction et du lien avec le mandat
-                  </li>
-                  <li>
-                    Les catégories de probité (corruption, trafic d&apos;influence, etc.) sont{" "}
-                    <strong>par définition</strong> liées au mandat, sans intervention manuelle
-                  </li>
-                  <li>
-                    Une infraction de droit commun commise dans le cadre du mandat est{" "}
-                    <strong>promue d&apos;un niveau</strong> de gravité
-                  </li>
-                </ul>
-              </div>
-
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
-                <p className="text-sm text-muted-foreground">
-                  <strong>
-                    Cette classification ne reflète pas la gravité morale ou pénale des faits.
-                  </strong>{" "}
-                  Elle distingue les infractions spécifiques à l&apos;exercice d&apos;un mandat
-                  public (atteintes à la probité, au sens de la loi Sapin II) des autres infractions
-                  pénales. Une agression sexuelle ou un acte de violence est pénalement plus
-                  sévèrement puni qu&apos;un conflit d&apos;intérêts, mais n&apos;est pas spécifique
-                  à la fonction d&apos;élu.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Les affaires judiciaires sont classées selon une grille inspirée de la{" "}
+              <strong>loi Sapin II</strong>. Les compteurs agrégés (page d&apos;accueil, partis,
+              profils) ne prennent en compte que les affaires validées par un juge : les enquêtes
+              préliminaires ne sont pas comptabilisées dans les totaux, mais restent visibles sur
+              les fiches individuelles.
+            </p>
+            <Link
+              href="/methodologie"
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+            >
+              Voir notre méthodologie de classification et de comptage →
+            </Link>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Violences et menaces contre les élus */}

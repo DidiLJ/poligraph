@@ -22,7 +22,7 @@ import {
   INVOLVEMENT_LABELS,
   INVOLVEMENT_COLORS,
 } from "@/config/labels";
-import { getCertaintyLevel } from "@/config/certainty";
+import { getJudicialMaturity } from "@/config/judicial-maturity";
 import type { AffairCategory, AffairStatus, Involvement } from "@/types";
 
 export const revalidate = 300;
@@ -82,29 +82,36 @@ async function getPartyAffairsData(slug: string) {
   );
   const victimAffairs = affairs.filter((a) => VICTIMS.includes(a.involvement as Involvement));
 
-  // KPIs: certainty-based, unique by politician
-  const etabliPoliticians = new Set<string>();
-  const misEnCausePoliticians = new Set<string>();
-  let closFavorableCount = 0;
+  // KPIs: maturity-based, unique by politician per tier
+  const condamnesPol = new Set<string>();
+  const proceduresPol = new Set<string>();
+  const enquetesPol = new Set<string>();
+  let closCount = 0;
 
   for (const a of misEnCauseAffairs) {
-    const certainty = getCertaintyLevel(a.status as AffairStatus);
-    if (certainty === "ETABLI") {
-      etabliPoliticians.add(a.politician.id);
-    } else if (certainty === "EN_COURS" || certainty === "PRONONCE") {
-      misEnCausePoliticians.add(a.politician.id);
-    } else if (certainty === "CLOS_FAVORABLE") {
-      closFavorableCount++;
+    const maturity = getJudicialMaturity(a.status as AffairStatus);
+    if (maturity === "CONDAMNATION") {
+      condamnesPol.add(a.politician.id);
+    } else if (maturity === "PROCEDURE_VALIDEE") {
+      proceduresPol.add(a.politician.id);
+    } else if (maturity === "ENQUETE") {
+      enquetesPol.add(a.politician.id);
+    } else {
+      closCount++;
     }
   }
-  // Exclude politicians already counted in etabli from mis-en-cause
-  for (const id of etabliPoliticians) {
-    misEnCausePoliticians.delete(id);
+  // Deduplicate: a politician in a higher tier is not counted in lower tiers
+  for (const id of condamnesPol) {
+    proceduresPol.delete(id);
+    enquetesPol.delete(id);
+  }
+  for (const id of proceduresPol) {
+    enquetesPol.delete(id);
   }
 
-  const condamnesCount = etabliPoliticians.size;
-  const misEnCauseCount = misEnCausePoliticians.size;
-  const closFavorable = closFavorableCount;
+  const condamnesCount = condamnesPol.size;
+  const proceduresCount = proceduresPol.size;
+  const enquetesCount = enquetesPol.size;
 
   // Super-category breakdown (mis-en-cause only)
   const superCatCounts: Record<string, number> = {};
@@ -136,20 +143,43 @@ async function getPartyAffairsData(slug: string) {
     return [...map.values()].sort((a, b) => b.count - a.count);
   }
 
-  // Split mis-en-cause affairs into active vs closed
-  const activeAffairs = misEnCauseAffairs.filter(
-    (a) => getCertaintyLevel(a.status as AffairStatus) !== "CLOS_FAVORABLE"
+  // Split mis-en-cause affairs by maturity tier
+  const condamnationAffairs = misEnCauseAffairs.filter(
+    (a) => getJudicialMaturity(a.status as AffairStatus) === "CONDAMNATION"
+  );
+  const procedureAffairs = misEnCauseAffairs.filter(
+    (a) => getJudicialMaturity(a.status as AffairStatus) === "PROCEDURE_VALIDEE"
+  );
+  const enqueteAffairs = misEnCauseAffairs.filter(
+    (a) => getJudicialMaturity(a.status as AffairStatus) === "ENQUETE"
   );
   const closedAffairs = misEnCauseAffairs.filter(
-    (a) => getCertaintyLevel(a.status as AffairStatus) === "CLOS_FAVORABLE"
+    (a) => getJudicialMaturity(a.status as AffairStatus) === "CLOSE_SANS_CONDAMNATION"
   );
 
-  // Politicians with at least one active (non-closed) affair
-  const activePoliticians = deduplicatePoliticians(activeAffairs);
-  // Politicians whose ALL mis-en-cause affairs are closed
-  const activePoliticianIds = new Set(activePoliticians.map((p) => p.id));
+  // Deduplicated politician lists per tier
+  const condamnationPoliticians = deduplicatePoliticians(condamnationAffairs);
+  const condamnationIds = new Set(condamnationPoliticians.map((p) => p.id));
+
+  // Procedures: exclude politicians already in condamnation tier
+  const procedurePoliticians = deduplicatePoliticians(procedureAffairs).filter(
+    (p) => !condamnationIds.has(p.id)
+  );
+  const procedureIds = new Set(procedurePoliticians.map((p) => p.id));
+
+  // Enquetes: exclude politicians in higher tiers
+  const enquetePoliticians = deduplicatePoliticians(enqueteAffairs).filter(
+    (p) => !condamnationIds.has(p.id) && !procedureIds.has(p.id)
+  );
+  const activeIds = new Set([
+    ...condamnationIds,
+    ...procedureIds,
+    ...enquetePoliticians.map((p) => p.id),
+  ]);
+
+  // Closed-only: politicians whose ALL affairs are closed
   const closedOnlyPoliticians = deduplicatePoliticians(closedAffairs).filter(
-    (p) => !activePoliticianIds.has(p.id)
+    (p) => !activeIds.has(p.id)
   );
   const victimPoliticians = deduplicatePoliticians(victimAffairs);
 
@@ -166,10 +196,13 @@ async function getPartyAffairsData(slug: string) {
     misEnCauseAffairs,
     victimAffairs,
     condamnesCount,
-    misEnCauseCount,
-    closFavorable,
+    proceduresCount,
+    enquetesCount,
+    closCount,
     superCatCounts,
-    activePoliticians,
+    condamnationPoliticians,
+    procedurePoliticians,
+    enquetePoliticians,
     closedOnlyPoliticians,
     victimPoliticians,
   };
@@ -192,21 +225,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!data) return { title: "Parti non trouvé" };
 
-  const { party, condamnesCount, misEnCauseCount, victimPoliticians, activePoliticians } = data;
+  const { party, condamnesCount, proceduresCount, victimPoliticians, misEnCauseAffairs } = data;
+  const totalMisEnCause = new Set(misEnCauseAffairs.map((a) => a.politician.id)).size;
 
   const parts: string[] = [];
   if (condamnesCount > 0)
     parts.push(
       `${condamnesCount} élu${condamnesCount > 1 ? "s" : ""} condamné${condamnesCount > 1 ? "s" : ""}`
     );
-  if (misEnCauseCount > 0)
-    parts.push(`${misEnCauseCount} élu${misEnCauseCount > 1 ? "s" : ""} mis en cause`);
+  if (proceduresCount > 0) parts.push(`${proceduresCount} en procédure validée par un juge`);
   if (victimPoliticians.length > 0)
-    parts.push(
-      `${victimPoliticians.length} élu${victimPoliticians.length > 1 ? "s" : ""} victime${victimPoliticians.length > 1 ? "s" : ""}`
-    );
+    parts.push(`${victimPoliticians.length} victime${victimPoliticians.length > 1 ? "s" : ""}`);
 
-  const description = `${activePoliticians.length} élu${activePoliticians.length > 1 ? "s" : ""} ${party.name} concerné${activePoliticians.length > 1 ? "s" : ""} par des affaires judiciaires${parts.length > 0 ? `. ${parts.join(", ")}.` : "."} Sources vérifiées.`;
+  const description = `${totalMisEnCause} élu${totalMisEnCause > 1 ? "s" : ""} ${party.name} concerné${totalMisEnCause > 1 ? "s" : ""} par des affaires judiciaires${parts.length > 0 ? `. ${parts.join(", ")}.` : "."} Sources vérifiées.`;
 
   return {
     title: `Affaires judiciaires — ${party.name} (${party.shortName})`,
@@ -232,29 +263,34 @@ export default async function PartyAffairsPage({ params }: PageProps) {
     misEnCauseAffairs,
     victimAffairs,
     condamnesCount,
-    misEnCauseCount,
-    closFavorable,
+    proceduresCount,
+    enquetesCount,
+    closCount,
     superCatCounts,
-    activePoliticians,
+    condamnationPoliticians,
+    procedurePoliticians,
+    enquetePoliticians,
     closedOnlyPoliticians,
     victimPoliticians,
   } = data;
 
-  // Build factual summary (certainty-based)
+  // Build factual summary (maturity-based)
   const summaryParts: string[] = [];
-  if (activePoliticians.length > 0) {
+  const totalMisEnCause = new Set(misEnCauseAffairs.map((a) => a.politician.id)).size;
+  if (totalMisEnCause > 0) {
     summaryParts.push(
-      `${activePoliticians.length} élu${activePoliticians.length > 1 ? "s" : ""} ${party.name} concerné${activePoliticians.length > 1 ? "s" : ""} par des affaires judiciaires.`
+      `${totalMisEnCause} élu${totalMisEnCause > 1 ? "s" : ""} ${party.name} concerné${totalMisEnCause > 1 ? "s" : ""} par des affaires judiciaires.`
     );
     const statusParts: string[] = [];
     if (condamnesCount > 0)
-      statusParts.push(`${condamnesCount} condamné${condamnesCount > 1 ? "s" : ""} définitivement`);
-    if (misEnCauseCount > 0) statusParts.push(`${misEnCauseCount} mis en cause`);
+      statusParts.push(`${condamnesCount} condamné${condamnesCount > 1 ? "s" : ""}`);
+    if (proceduresCount > 0)
+      statusParts.push(`${proceduresCount} en procédure validée par un juge`);
     if (statusParts.length > 0) summaryParts.push(statusParts.join(", ") + ".");
   }
-  if (closFavorable > 0) {
+  if (closCount > 0) {
     summaryParts.push(
-      `${closFavorable} relaxe${closFavorable > 1 ? "s" : ""} ou acquittement${closFavorable > 1 ? "s" : ""}.`
+      `${closCount} procédure${closCount > 1 ? "s" : ""} close${closCount > 1 ? "s" : ""} sans condamnation.`
     );
   }
   if (victimAffairs.length > 0) {
@@ -329,40 +365,46 @@ export default async function PartyAffairsPage({ params }: PageProps) {
           <p className="text-muted-foreground">{summaryParts.join(" ")}</p>
         </div>
 
-        {/* KPI cards: certainty-based counters */}
+        {/* KPI cards: maturity-based counters */}
         {misEnCauseAffairs.length > 0 && (
           <>
-            <h2 className="text-xl font-semibold mb-4">Élus mis en cause</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <Card>
                 <CardContent className="pt-6 text-center">
                   <div className="text-3xl font-bold tabular-nums text-red-600">
                     {condamnesCount}
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Élu{condamnesCount > 1 ? "s" : ""} condamné
-                    {condamnesCount > 1 ? "s" : ""}
+                    Condamnation{condamnesCount > 1 ? "s" : ""}
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
                   <div className="text-3xl font-bold tabular-nums text-amber-600">
-                    {misEnCauseCount}
+                    {proceduresCount}
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Élu{misEnCauseCount > 1 ? "s" : ""} mis en cause
+                    Procédure{proceduresCount > 1 ? "s" : ""} validée
+                    {proceduresCount > 1 ? "s" : ""}
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <div className="text-3xl font-bold tabular-nums text-gray-500">
-                    {closFavorable}
+                  <div className="text-3xl font-bold tabular-nums text-gray-400">
+                    {enquetesCount}
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Relaxe{closFavorable > 1 ? "s" : ""} / acquittement
-                    {closFavorable > 1 ? "s" : ""}
+                    Enquête{enquetesCount > 1 ? "s" : ""}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <div className="text-3xl font-bold tabular-nums text-green-600">{closCount}</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Close{closCount > 1 ? "s" : ""} sans condamnation
                   </div>
                 </CardContent>
               </Card>
@@ -393,15 +435,96 @@ export default async function PartyAffairsPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Active mis-en-cause politicians */}
-            {activePoliticians.length > 0 && (
-              <Card className="mb-8">
+            {/* Tier 1: Condamnations */}
+            {condamnationPoliticians.length > 0 && (
+              <Card className="mb-6 border-l-4 border-l-red-500">
                 <CardHeader>
-                  <CardTitle>Élus mis en cause ({activePoliticians.length})</CardTitle>
+                  <CardTitle className="text-red-700 dark:text-red-400">
+                    Élus condamnés ({condamnationPoliticians.length})
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Condamnation définitive ou en première instance
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {activePoliticians.map((pol) => (
+                    {condamnationPoliticians.map((pol) => (
+                      <Link
+                        key={pol.id}
+                        href={`/politiques/${pol.slug}`}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50/50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <PoliticianAvatar
+                          photoUrl={pol.photoUrl}
+                          fullName={pol.fullName}
+                          size="sm"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium">{pol.fullName}</p>
+                          <p className="text-xs text-red-600 dark:text-red-400">
+                            {pol.count} condamnation{pol.count > 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Tier 2: Procedures validees */}
+            {procedurePoliticians.length > 0 && (
+              <Card className="mb-6 border-l-4 border-l-amber-500">
+                <CardHeader>
+                  <CardTitle className="text-amber-700 dark:text-amber-400">
+                    Procédures en cours ({procedurePoliticians.length})
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Mise en examen, instruction ou renvoi devant un tribunal. La présomption d{"'"}
+                    innocence s{"'"}applique.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {procedurePoliticians.map((pol) => (
+                      <Link
+                        key={pol.id}
+                        href={`/politiques/${pol.slug}`}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-amber-200 dark:border-amber-800 hover:bg-amber-50/50 dark:hover:bg-amber-900/20 transition-colors"
+                      >
+                        <PoliticianAvatar
+                          photoUrl={pol.photoUrl}
+                          fullName={pol.fullName}
+                          size="sm"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium">{pol.fullName}</p>
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            {pol.count} procédure{pol.count > 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Tier 3: Enquetes */}
+            {enquetePoliticians.length > 0 && (
+              <Card className="mb-6 border-l-4 border-l-gray-300 dark:border-l-gray-600">
+                <CardHeader>
+                  <CardTitle className="text-muted-foreground">
+                    Enquêtes préliminaires ({enquetePoliticians.length})
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Stade de l{"'"}enquête, aucun juge n{"'"}a validé la poursuite. La présomption d
+                    {"'"}innocence s{"'"}applique.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {enquetePoliticians.map((pol) => (
                       <Link
                         key={pol.id}
                         href={`/politiques/${pol.slug}`}
@@ -415,7 +538,7 @@ export default async function PartyAffairsPage({ params }: PageProps) {
                         <div className="min-w-0 flex-1">
                           <p className="font-medium">{pol.fullName}</p>
                           <p className="text-xs text-muted-foreground">
-                            {pol.count} affaire{pol.count > 1 ? "s" : ""}
+                            {pol.count} enquête{pol.count > 1 ? "s" : ""}
                           </p>
                         </div>
                       </Link>
@@ -425,13 +548,12 @@ export default async function PartyAffairsPage({ params }: PageProps) {
               </Card>
             )}
 
-            {/* Closed-only politicians */}
+            {/* Tier 4: Closed without condemnation */}
             {closedOnlyPoliticians.length > 0 && (
-              <Card className="mb-8">
+              <Card className="mb-6 border-l-4 border-l-green-500">
                 <CardHeader>
-                  <CardTitle>
-                    Affaires closes ({closedOnlyPoliticians.length} élu
-                    {closedOnlyPoliticians.length > 1 ? "s" : ""})
+                  <CardTitle className="text-green-700 dark:text-green-400">
+                    Procédures closes sans condamnation ({closedOnlyPoliticians.length})
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
                     Élus dont toutes les affaires ont été classées, acquittées ou prescrites
@@ -558,13 +680,19 @@ export default async function PartyAffairsPage({ params }: PageProps) {
         <div className="mt-6 p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground">
           <p className="font-medium mb-1">Méthodologie</p>
           <p>
-            Les compteurs distinguent trois niveaux de certitude judiciaire : les{" "}
-            <strong>condamnations définitives</strong> (voies de recours épuisées), les{" "}
-            <strong>élus mis en cause</strong> (procédure en cours ou condamnation non définitive,
-            la présomption d{"'"}innocence s{"'"}applique), et les{" "}
-            <strong>relaxes ou acquittements</strong> (procédure close sans condamnation). Les
-            compteurs « condamnés » et « mis en cause » sont dédupliqués par élu. Les affaires où
-            des élus sont victimes ou plaignants sont présentées à part.
+            Les compteurs distinguent quatre niveaux de maturité judiciaire : les{" "}
+            <strong>condamnations</strong> (définitives ou en première instance), les{" "}
+            <strong>procédures validées</strong> par un juge (mise en examen, instruction, renvoi),
+            les <strong>enquêtes préliminaires</strong> (aucun juge n{"'"}a encore validé la
+            poursuite), et les <strong>procédures closes sans condamnation</strong> (relaxe,
+            acquittement, non-lieu, prescription, classement). Les compteurs par élu sont
+            dédupliqués : un élu condamné n{"'"}est pas recompté dans les procédures en cours.{" "}
+            <Link
+              href="/methodologie#comment-nous-comptons"
+              className="text-primary hover:underline"
+            >
+              En savoir plus
+            </Link>
           </p>
         </div>
 

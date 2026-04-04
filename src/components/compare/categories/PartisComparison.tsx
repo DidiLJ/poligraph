@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { formatDate } from "@/lib/utils";
 import { MANDATE_TYPE_LABELS, POLITICAL_POSITION_LABELS } from "@/config/labels";
-import { getCertaintyLevel } from "@/config/certainty";
+import { getJudicialMaturity } from "@/config/judicial-maturity";
 import type { AffairStatus } from "@/types";
 import { AffairsSection } from "../sections/AffairsSection";
 import { FactchecksSection } from "../sections/FactchecksSection";
@@ -24,10 +24,10 @@ function countBy<T>(items: T[], key: keyof T): Record<string, number> {
   return counts;
 }
 
-function countByCertainty(affairs: { status: string }[]): Record<string, number> {
+function countByMaturity(affairs: { status: string }[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const a of affairs) {
-    const level = getCertaintyLevel(a.status as AffairStatus);
+    const level = getJudicialMaturity(a.status as AffairStatus);
     counts[level] = (counts[level] || 0) + 1;
   }
   return counts;
@@ -112,12 +112,12 @@ export function PartisComparison({ left, right, voteComparison }: Props) {
         left={{
           count: left.affairs.length,
           byStatus: countBy(left.affairs, "status"),
-          byCertainty: countByCertainty(left.affairs),
+          byMaturity: countByMaturity(left.affairs),
         }}
         right={{
           count: right.affairs.length,
           byStatus: countBy(right.affairs, "status"),
-          byCertainty: countByCertainty(right.affairs),
+          byMaturity: countByMaturity(right.affairs),
         }}
         leftLabel={left.party.shortName}
         rightLabel={right.party.shortName}

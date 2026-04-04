@@ -7,7 +7,12 @@ import {
   AFFAIR_CATEGORY_LABELS,
   type AffairSuperCategory,
 } from "@/config/labels";
-import { getCertaintyLevel, ACTIVE_AFFAIR_STATUSES, type CertaintyLevel } from "@/config/certainty";
+import {
+  getJudicialMaturity,
+  CONDAMNATION_STATUSES,
+  EN_COURS_STATUSES,
+  type JudicialMaturity,
+} from "@/config/judicial-maturity";
 import type { AffairStatus, AffairCategory } from "@/types";
 import type { Chamber } from "@/generated/prisma";
 
@@ -20,10 +25,10 @@ export async function getJudicialData() {
 
   const directFilter = {
     publicationStatus: "PUBLISHED" as const,
-    involvement: "DIRECT" as const,
+    involvement: { in: ["DIRECT" as const, "INDIRECT" as const] },
   };
 
-  // Single batch: certainty counts + status breakdown + category + critique by party
+  // Single batch: maturity counts + status breakdown + category + critique by party
   const [byStatusRaw, byCategoryRaw, critiqueAffairs, condamnesPoliticians, misEnCausePoliticians] =
     await Promise.all([
       db.affair.groupBy({
@@ -51,35 +56,30 @@ export async function getJudicialData() {
           },
         },
       }),
-      // Unique politicians with Etabli
+      // Unique politicians with condamnation (Tier 1)
       db.affair.findMany({
-        where: { ...directFilter, status: "CONDAMNATION_DEFINITIVE" },
+        where: { ...directFilter, status: { in: CONDAMNATION_STATUSES } },
         select: { politicianId: true },
         distinct: ["politicianId"],
       }),
-      // Unique politicians with En cours or Prononce (active non-definitive)
+      // Unique politicians with procedures en cours (Tier 2 + 3)
       db.affair.findMany({
-        where: {
-          ...directFilter,
-          status: {
-            in: ACTIVE_AFFAIR_STATUSES.filter((s) => s !== "CONDAMNATION_DEFINITIVE"),
-          },
-        },
+        where: { ...directFilter, status: { in: EN_COURS_STATUSES } },
         select: { politicianId: true },
         distinct: ["politicianId"],
       }),
     ]);
 
-  // Compute certainty counts from status breakdown
-  const certaintyCounts: Record<CertaintyLevel, number> = {
-    ETABLI: 0,
-    PRONONCE: 0,
-    EN_COURS: 0,
-    CLOS_FAVORABLE: 0,
+  // Compute maturity counts from status breakdown
+  const maturityCounts: Record<JudicialMaturity, number> = {
+    CONDAMNATION: 0,
+    PROCEDURE_VALIDEE: 0,
+    ENQUETE: 0,
+    CLOSE_SANS_CONDAMNATION: 0,
   };
   const byStatus = byStatusRaw.map((a) => {
-    const level = getCertaintyLevel(a.status);
-    certaintyCounts[level] += a._count.status;
+    const tier = getJudicialMaturity(a.status);
+    maturityCounts[tier] += a._count.status;
     return { status: a.status as AffairStatus, count: a._count.status };
   });
 
@@ -144,7 +144,7 @@ export async function getJudicialData() {
     .sort((a, b) => b.total - a.total);
 
   return {
-    certaintyCounts,
+    maturityCounts,
     uniqueCondamnes: condamnesPoliticians.length,
     uniqueMisEnCause: misEnCausePoliticians.length,
     byStatus,

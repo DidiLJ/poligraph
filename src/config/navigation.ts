@@ -195,7 +195,8 @@ export const FOOTER_SECTIONS: FooterSection[] = [
     title: "Le projet",
     links: [
       { href: "/chat", label: "Assistant IA" },
-      { href: "/sources", label: "Sources et méthodologie" },
+      { href: "/sources", label: "Sources et principes" },
+      { href: "/methodologie", label: "Méthodologie" },
       { href: "/docs/api", label: "API" },
       { href: "/soutenir", label: "Nous soutenir" },
       { href: "/mentions-legales", label: "Mentions légales" },
@@ -262,6 +263,7 @@ export const FOOTER_LINKS = [
   { href: "/departements", label: "Départements" },
   { href: "/institutions", label: "Institutions" },
   { href: "/sources", label: "Sources" },
+  { href: "/methodologie", label: "Méthodologie" },
   { href: "/docs/api", label: "API" },
   { href: "/mentions-legales", label: "Mentions légales" },
 ] as const;

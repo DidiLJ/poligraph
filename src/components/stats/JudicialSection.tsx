@@ -4,7 +4,7 @@ import {
   AFFAIR_STATUS_LABELS,
   type AffairSuperCategory,
 } from "@/config/labels";
-import type { CertaintyLevel } from "@/config/certainty";
+import type { JudicialMaturity } from "@/config/judicial-maturity";
 import type { AffairCategory, AffairStatus } from "@/types";
 import { DonutChart } from "./DonutChart";
 import { HorizontalBars } from "./HorizontalBars";
@@ -45,7 +45,7 @@ interface ViolenceStats {
 }
 
 interface JudicialSectionProps {
-  certaintyCounts: Record<CertaintyLevel, number>;
+  maturityCounts: Record<JudicialMaturity, number>;
   uniqueCondamnes: number;
   uniqueMisEnCause: number;
   byStatus: StatusCount[];
@@ -65,7 +65,7 @@ const ONGOING_STATUSES = new Set<AffairStatus>([
 ]);
 
 export function JudicialSection({
-  certaintyCounts,
+  maturityCounts,
   uniqueCondamnes,
   uniqueMisEnCause,
   byStatus,
@@ -99,7 +99,7 @@ export function JudicialSection({
         </Card>
       )}
 
-      {/* 3 certainty-based KPIs */}
+      {/* 3 maturity-based KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardContent className="pt-6 text-center">
@@ -108,8 +108,8 @@ export function JudicialSection({
             </div>
             <div className="text-sm text-muted-foreground mt-1">Élus condamnés</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              {certaintyCounts.ETABLI} condamnation{certaintyCounts.ETABLI !== 1 ? "s" : ""}{" "}
-              définitive{certaintyCounts.ETABLI !== 1 ? "s" : ""}
+              {maturityCounts.CONDAMNATION} condamnation
+              {maturityCounts.CONDAMNATION !== 1 ? "s" : ""}
             </div>
           </CardContent>
         </Card>
@@ -120,14 +120,15 @@ export function JudicialSection({
             </div>
             <div className="text-sm text-muted-foreground mt-1">Élus mis en cause</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Procédures en cours et condamnations non définitives
+              {maturityCounts.PROCEDURE_VALIDEE + maturityCounts.ENQUETE} procédure
+              {maturityCounts.PROCEDURE_VALIDEE + maturityCounts.ENQUETE !== 1 ? "s" : ""} en cours
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-3xl font-bold tabular-nums text-gray-500">
-              {certaintyCounts.CLOS_FAVORABLE.toLocaleString("fr-FR")}
+              {maturityCounts.CLOSE_SANS_CONDAMNATION.toLocaleString("fr-FR")}
             </div>
             <div className="text-sm text-muted-foreground mt-1">Relaxes / acquittements</div>
             <div className="text-xs text-muted-foreground mt-0.5">
@@ -225,11 +226,11 @@ export function JudicialSection({
         Les &laquo;&nbsp;atteintes à la probité&nbsp;&raquo; regroupent les infractions liées à
         l&apos;exercice du mandat public : corruption, trafic d&apos;influence, détournement de
         fonds publics, prise illégale d&apos;intérêts, emplois fictifs, financement illégal de
-        campagne ou de parti, et incitation à la haine. Les compteurs distinguent les niveaux de
-        certitude judiciaire : condamnations définitives, procédures en cours, et relaxes /
-        acquittements.{" "}
-        <a href="/methodologie" className="text-primary hover:underline">
-          En savoir plus
+        campagne ou de parti, et incitation à la haine. Les compteurs ne prennent en compte que les
+        affaires validées par un juge (condamnations et procédures en cours). Les enquêtes
+        préliminaires ne sont pas comptabilisées.{" "}
+        <a href="/methodologie#comment-nous-comptons" className="text-primary hover:underline">
+          Comment nous comptons
         </a>
       </MethodologyDisclaimer>
     </section>

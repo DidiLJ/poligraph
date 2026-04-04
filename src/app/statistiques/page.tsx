@@ -72,7 +72,7 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
         <StatsTabs
           judicialContent={
             <JudicialSection
-              certaintyCounts={judicialData.certaintyCounts}
+              maturityCounts={judicialData.maturityCounts}
               uniqueCondamnes={judicialData.uniqueCondamnes}
               uniqueMisEnCause={judicialData.uniqueMisEnCause}
               byStatus={judicialData.byStatus}

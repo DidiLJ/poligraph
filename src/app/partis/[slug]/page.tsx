@@ -18,12 +18,12 @@ import {
 } from "@/config/labels";
 import {
   getCertaintyLevel,
-  isActiveCertainty,
   CERTAINTY_LABELS,
   CERTAINTY_COLORS,
   CERTAINTY_SORT_ORDER,
   type CertaintyLevel,
 } from "@/config/certainty";
+import { getJudicialMaturity } from "@/config/judicial-maturity";
 import type { AffairStatus } from "@/types";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { PoliticalPositionBadge } from "@/components/partis/PoliticalPositionBadge";
@@ -440,24 +440,69 @@ export default async function PartyPage({ params }: PageProps) {
             {/* Affairs */}
             {party.affairsAtTime.length > 0 &&
               (() => {
+                const directAffairs = party.affairsAtTime.filter(
+                  (a) => a.involvement === "DIRECT" || a.involvement === "INDIRECT"
+                );
                 const affairsWithCertainty = party.affairsAtTime.map((a) => ({
                   ...a,
                   certainty: getCertaintyLevel(a.status as AffairStatus),
                 }));
-                const activeCount = affairsWithCertainty.filter((a) =>
-                  isActiveCertainty(a.certainty)
+                const condamnations = directAffairs.filter(
+                  (a) => getJudicialMaturity(a.status as AffairStatus) === "CONDAMNATION"
+                ).length;
+                const enCours = directAffairs.filter((a) => {
+                  const m = getJudicialMaturity(a.status as AffairStatus);
+                  return m === "PROCEDURE_VALIDEE" || m === "ENQUETE";
+                }).length;
+                const closesSansCondamnation = directAffairs.filter(
+                  (a) => getJudicialMaturity(a.status as AffairStatus) === "CLOSE_SANS_CONDAMNATION"
                 ).length;
                 return (
                   <Card>
                     <CardHeader>
-                      <CardTitle>
-                        Affaires judiciaires ({activeCount} active{activeCount > 1 ? "s" : ""})
-                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle>
+                          {condamnations > 0
+                            ? `${condamnations} condamnation${condamnations > 1 ? "s" : ""}`
+                            : "Aucune condamnation"}
+                        </CardTitle>
+                        <Link
+                          href="/methodologie#comment-nous-comptons"
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Comment nous comptons"
+                          aria-label="Comment nous comptons les affaires judiciaires"
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        </Link>
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Affaires impliquant des membres du parti au moment des faits
-                      </p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-4">
+                        {enCours > 0 && (
+                          <span>
+                            {enCours} procédure{enCours > 1 ? "s" : ""} en cours (présomption d{"'"}
+                            innocence)
+                          </span>
+                        )}
+                        {closesSansCondamnation > 0 && (
+                          <span>
+                            {closesSansCondamnation} close{closesSansCondamnation > 1 ? "s" : ""}{" "}
+                            sans condamnation
+                          </span>
+                        )}
+                      </div>
 
                       {/* Certainty level breakdown badges */}
                       <div className="flex flex-wrap gap-2 mb-4">

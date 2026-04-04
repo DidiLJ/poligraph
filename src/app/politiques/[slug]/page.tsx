@@ -39,7 +39,7 @@ import { FollowButton } from "@/components/politicians/FollowButton";
 import { CopyableId } from "@/components/politicians/CopyableId";
 import { SITE_URL } from "@/config/site";
 import { ShareBar } from "@/components/ui/ShareBar";
-import { getCertaintyLevel, isActiveCertainty } from "@/config/certainty";
+import { isJudiciallyValidated, getJudicialMaturity } from "@/config/judicial-maturity";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -185,22 +185,33 @@ export default async function PoliticianPage({ params }: PageProps) {
   // Split affairs by involvement for sidebar stats and timeline
   const directAffairs = politician.affairs.filter((a) => a.involvement === "DIRECT");
 
-  // Active affairs count: DIRECT + INDIRECT, excluding clos favorable and MENTIONED_ONLY
-  const activeAffairsCount = politician.affairs.filter((a) => {
+  // Tab badge: only judicially-validated affairs (Tier 1 + 2, DIRECT/INDIRECT)
+  const validatedAffairsCount = politician.affairs.filter((a) => {
     if (
       a.involvement === "VICTIM" ||
       a.involvement === "PLAINTIFF" ||
       a.involvement === "MENTIONED_ONLY"
     )
       return false;
-    return isActiveCertainty(getCertaintyLevel(a.status));
+    return isJudiciallyValidated(a.status);
   }).length;
 
-  // Encart: only Etabli + Prononce (condemnations)
-  const encartAffairs = directAffairs.filter((a) => {
-    const level = getCertaintyLevel(a.status);
-    return level === "ETABLI" || level === "PRONONCE";
-  });
+  // Sidebar: condamnation and en cours counts for DIRECT + INDIRECT
+  const directAndIndirect = politician.affairs.filter(
+    (a) => a.involvement === "DIRECT" || a.involvement === "INDIRECT"
+  );
+  const condamnationsCount = directAndIndirect.filter(
+    (a) => getJudicialMaturity(a.status) === "CONDAMNATION"
+  ).length;
+  const proceduresEnCoursCount = directAndIndirect.filter((a) => {
+    const m = getJudicialMaturity(a.status);
+    return m === "PROCEDURE_VALIDEE" || m === "ENQUETE";
+  }).length;
+
+  // Encart: only condamnations (Tier 1)
+  const encartAffairs = directAffairs.filter(
+    (a) => getJudicialMaturity(a.status) === "CONDAMNATION"
+  );
   const mentionAffairs = politician.affairs.filter(
     (a) => a.involvement === "INDIRECT" || a.involvement === "MENTIONED_ONLY"
   );
@@ -408,7 +419,7 @@ export default async function PoliticianPage({ params }: PageProps) {
           {/* Main content */}
           <div className="lg:col-span-2">
             <ProfileTabs
-              affairsCount={activeAffairsCount}
+              affairsCount={validatedAffairsCount}
               profileContent={
                 <div className="space-y-8">
                   {/* Interactive Timeline - Desktop only */}
@@ -667,10 +678,20 @@ export default async function PoliticianPage({ params }: PageProps) {
                     <span className="font-semibold">{voteData.stats.total}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Affaires (mis en cause)</span>
-                  <span className="font-semibold">{directAffairs.length}</span>
-                </div>
+                {condamnationsCount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Condamnations</span>
+                    <span className="font-semibold text-red-600 dark:text-red-400">
+                      {condamnationsCount}
+                    </span>
+                  </div>
+                )}
+                {proceduresEnCoursCount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Procédures en cours</span>
+                    <span className="font-semibold">{proceduresEnCoursCount}</span>
+                  </div>
+                )}
                 {mentionAffairs.length > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Mentions</span>
@@ -748,7 +769,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                   Dernière mise à jour : {formatDate(politician.updatedAt)}
                 </p>
                 <Link
-                  href="/sources"
+                  href="/methodologie"
                   className="text-xs text-primary hover:underline mt-2 inline-block"
                 >
                   Voir notre méthodologie

@@ -2,7 +2,7 @@ import { cache } from "react";
 import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import { CONVICTION_BADGE_WHERE } from "@/config/labels";
-import { getCertaintyLevel } from "@/config/certainty";
+import { getJudicialMaturity } from "@/config/judicial-maturity";
 import type { PoliticalPosition } from "@/types";
 
 export const getParty = cache(async function getParty(slug: string) {
@@ -173,7 +173,7 @@ async function queryParties(
           publicationStatus: "PUBLISHED",
           involvement: { notIn: ["VICTIM", "PLAINTIFF"] },
         },
-        select: { id: true, status: true },
+        select: { id: true, status: true, involvement: true },
       },
       predecessor: {
         select: { shortName: true, slug: true },
@@ -186,16 +186,24 @@ async function queryParties(
     .filter((p) => p.slug)
     .map((party) => {
       const affairs = party.affairsAtTime;
-      const condamnations = affairs.filter((a) => getCertaintyLevel(a.status) === "ETABLI").length;
-      const enCours = affairs.filter((a) => {
-        const level = getCertaintyLevel(a.status);
-        return level === "EN_COURS" || level === "PRONONCE";
+      const directAffairs = affairs.filter(
+        (a) => a.involvement === "DIRECT" || a.involvement === "INDIRECT"
+      );
+      const condamnations = directAffairs.filter(
+        (a) => getJudicialMaturity(a.status) === "CONDAMNATION"
+      ).length;
+      const enCours = directAffairs.filter((a) => {
+        const m = getJudicialMaturity(a.status);
+        return m === "PROCEDURE_VALIDEE" || m === "ENQUETE";
       }).length;
-      const total = affairs.length;
+      const closesSansCondamnation = directAffairs.filter(
+        (a) => getJudicialMaturity(a.status) === "CLOSE_SANS_CONDAMNATION"
+      ).length;
+      const total = directAffairs.length;
 
       return {
         ...party,
-        affairCounts: { condamnations, enCours, total },
+        affairCounts: { condamnations, enCours, closesSansCondamnation, total },
         affairsAtTime: undefined,
       };
     });

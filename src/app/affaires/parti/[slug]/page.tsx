@@ -10,20 +10,10 @@ import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ensureContrast } from "@/lib/contrast";
-import { stripMarkdown } from "@/lib/utils";
 import { SITE_URL } from "@/config/site";
-import {
-  AFFAIR_STATUS_LABELS,
-  AFFAIR_STATUS_COLORS,
-  AFFAIR_STATUS_NEEDS_PRESUMPTION,
-  AFFAIR_SUPER_CATEGORY_LABELS,
-  AFFAIR_SUPER_CATEGORY_COLORS,
-  CATEGORY_TO_SUPER,
-  INVOLVEMENT_LABELS,
-  INVOLVEMENT_COLORS,
-} from "@/config/labels";
 import { getJudicialMaturity } from "@/config/judicial-maturity";
-import type { AffairCategory, AffairStatus, Involvement } from "@/types";
+import { PartyAffairsList } from "@/components/affairs/PartyAffairsList";
+import type { AffairStatus, Involvement } from "@/types";
 
 export const revalidate = 300;
 
@@ -113,13 +103,6 @@ async function getPartyAffairsData(slug: string) {
   const proceduresCount = proceduresPol.size;
   const enquetesCount = enquetesPol.size;
 
-  // Super-category breakdown (mis-en-cause only)
-  const superCatCounts: Record<string, number> = {};
-  for (const a of misEnCauseAffairs) {
-    const sc = CATEGORY_TO_SUPER[a.category as AffairCategory];
-    superCatCounts[sc] = (superCatCounts[sc] || 0) + 1;
-  }
-
   // Deduplicated politician lists
   type PolEntry = {
     id: string;
@@ -199,7 +182,6 @@ async function getPartyAffairsData(slug: string) {
     proceduresCount,
     enquetesCount,
     closCount,
-    superCatCounts,
     condamnationPoliticians,
     procedurePoliticians,
     enquetePoliticians,
@@ -266,7 +248,6 @@ export default async function PartyAffairsPage({ params }: PageProps) {
     proceduresCount,
     enquetesCount,
     closCount,
-    superCatCounts,
     condamnationPoliticians,
     procedurePoliticians,
     enquetePoliticians,
@@ -409,31 +390,6 @@ export default async function PartyAffairsPage({ params }: PageProps) {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Super-category breakdown */}
-            {Object.keys(superCatCounts).length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-8">
-                {Object.entries(superCatCounts)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([key, count]) => (
-                    <Badge
-                      key={key}
-                      className={
-                        AFFAIR_SUPER_CATEGORY_COLORS[
-                          key as keyof typeof AFFAIR_SUPER_CATEGORY_COLORS
-                        ]
-                      }
-                    >
-                      {
-                        AFFAIR_SUPER_CATEGORY_LABELS[
-                          key as keyof typeof AFFAIR_SUPER_CATEGORY_LABELS
-                        ]
-                      }{" "}
-                      ({count})
-                    </Badge>
-                  ))}
-              </div>
-            )}
 
             {/* Tier 1: Condamnations */}
             {condamnationPoliticians.length > 0 && (
@@ -618,63 +574,8 @@ export default async function PartyAffairsPage({ params }: PageProps) {
           </>
         )}
 
-        {/* Affairs list */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Toutes les affaires ({affairs.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {affairs.map((affair) => {
-                const superCat = CATEGORY_TO_SUPER[affair.category as AffairCategory];
-                const relevantDate = affair.verdictDate || affair.startDate || affair.factsDate;
-                return (
-                  <div key={affair.id} className="border-b last:border-b-0 pb-4 last:pb-0">
-                    <div className="flex items-start gap-2 mb-2 flex-wrap">
-                      {relevantDate && (
-                        <Badge variant="secondary" className="font-mono">
-                          {new Date(relevantDate).getFullYear()}
-                        </Badge>
-                      )}
-                      <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCat]}>
-                        {AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
-                      </Badge>
-                      <Badge className={AFFAIR_STATUS_COLORS[affair.status as AffairStatus]}>
-                        {AFFAIR_STATUS_LABELS[affair.status as AffairStatus]}
-                      </Badge>
-                      <Badge className={INVOLVEMENT_COLORS[affair.involvement as Involvement]}>
-                        {INVOLVEMENT_LABELS[affair.involvement as Involvement]}
-                      </Badge>
-                    </div>
-                    <Link
-                      href={`/affaires/${affair.slug}`}
-                      className="text-lg font-semibold hover:underline"
-                    >
-                      {affair.title}
-                    </Link>
-                    <div className="mt-1">
-                      <Link
-                        href={`/politiques/${affair.politician.slug}`}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        {affair.politician.fullName}
-                      </Link>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {stripMarkdown(affair.description)}
-                    </p>
-                    {AFFAIR_STATUS_NEEDS_PRESUMPTION[affair.status as AffairStatus] &&
-                      MIS_EN_CAUSE.includes(affair.involvement as Involvement) && (
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mt-2 inline-block">
-                          Présomption d&apos;innocence : affaire en cours
-                        </p>
-                      )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Affairs list with client-side filters */}
+        <PartyAffairsList affairs={affairs} />
 
         {/* Methodology note */}
         <div className="mt-6 p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground">

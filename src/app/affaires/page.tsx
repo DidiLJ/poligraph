@@ -213,6 +213,50 @@ export default async function AffairesPage({ searchParams }: PageProps) {
           </div>
         )}
 
+        {/* Party quick-links */}
+        {partiesWithAffairs.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Par parti</p>
+            <div className="flex flex-wrap gap-2">
+              {partiesWithAffairs
+                .sort((a, b) => b._count.affairsAtTime - a._count.affairsAtTime)
+                .slice(0, 12)
+                .map((p) => (
+                  <Link
+                    key={p.slug}
+                    href={`/affaires/parti/${p.slug}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border hover:bg-muted transition-colors"
+                    prefetch={false}
+                  >
+                    <span className="font-medium">{p.shortName}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {p._count.affairsAtTime}
+                    </span>
+                  </Link>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Banner when filtered by party */}
+        {partiFilter &&
+          (() => {
+            const matchedParty = partiesWithAffairs.find((p) => p.slug === partiFilter);
+            return matchedParty ? (
+              <div className="mb-4 p-3 rounded-lg border border-border bg-muted/30 flex items-center justify-between flex-wrap gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Affaires filtrées par {matchedParty.name}
+                </p>
+                <Link
+                  href={`/affaires/parti/${partiFilter}`}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Voir la page complète {matchedParty.shortName} →
+                </Link>
+              </div>
+            ) : null;
+          })()}
+
         {/* Compact filter bar */}
         <AffairesFilterBar
           currentFilters={{

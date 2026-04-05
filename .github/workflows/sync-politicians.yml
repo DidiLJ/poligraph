@@ -12,7 +12,7 @@ env:
 jobs:
   sync-politicians:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment: production
 
     steps:
@@ -33,26 +33,32 @@ jobs:
 
       - name: Sync Assemblée Nationale (Deputies)
         run: npm run sync:assemblee
+        timeout-minutes: 10
         continue-on-error: true
 
       - name: Sync Sénat (Senators)
         run: npm run sync:senat
+        timeout-minutes: 10
         continue-on-error: true
 
       - name: Sync Gouvernement (Ministers)
         run: npm run sync:gouvernement
+        timeout-minutes: 5
         continue-on-error: true
 
       - name: Sync Careers (Wikidata P39/P488/P112)
         run: npm run sync:careers
+        timeout-minutes: 10
         continue-on-error: true
 
       - name: Sync Photos
         run: npm run sync:photos
+        timeout-minutes: 5
         continue-on-error: true
 
       - name: Sync Deceased (from Wikidata)
         run: npm run sync:deceased
+        timeout-minutes: 5
         continue-on-error: true
 
       - name: Show sync stats

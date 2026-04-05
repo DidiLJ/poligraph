@@ -12,6 +12,7 @@ import { sendNewsletter } from "./functions/send-newsletter";
 import { syncPress } from "./functions/sync-press";
 import { syncScrutins } from "./functions/sync-scrutins";
 import { syncPlatformUpdates } from "./functions/sync-platform-updates";
+import { pipelineDigest } from "./functions/pipeline-digest";
 
 // --- Grouped multi-step functions ---
 const groupedFunctions = [
@@ -28,6 +29,7 @@ const groupedFunctions = [
   generateSocialDrafts,
   publishApprovedPost,
   sendNewsletter,
+  pipelineDigest,
   syncPlatformUpdates,
 ];
 

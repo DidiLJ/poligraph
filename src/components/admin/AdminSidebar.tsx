@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ToggleLeft,
   History,
+  HeartPulse,
   Settings,
   ChevronsLeft,
   ChevronsRight,
@@ -51,6 +52,7 @@ const mediaItems: NavItem[] = [
 ];
 
 const systemItems: NavItem[] = [
+  { href: "/admin/pipelines", label: "Pipelines", icon: HeartPulse },
   { href: "/admin/syncs", label: "Syncs", icon: RefreshCw },
   { href: "/admin/feature-toggles", label: "Feature Toggles", icon: ToggleLeft },
   { href: "/admin/audit", label: "Audit Log", icon: History },

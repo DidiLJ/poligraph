@@ -419,7 +419,7 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
 
 export async function getDepartmentPartyData() {
   "use cache";
-  cacheTag("elections");
+  cacheTag("elections-municipales-2026");
   cacheLife("hours");
 
   const election = await db.election.findUnique({
@@ -474,6 +474,10 @@ export async function getDepartmentPartyData() {
 }
 
 export const getParityBySize = cache(async function getParityBySize() {
+  "use cache";
+  cacheTag("elections-municipales-2026");
+  cacheLife("hours");
+
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
     select: { id: true },
@@ -514,6 +518,10 @@ export const getParityBySize = cache(async function getParityBySize() {
 });
 
 export const getCumulCandidates = cache(async function getCumulCandidates() {
+  "use cache";
+  cacheTag("elections-municipales-2026");
+  cacheLife("hours");
+
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
     select: { id: true },
@@ -613,6 +621,10 @@ export const getMissingMaires = cache(async function getMissingMaires() {
 });
 
 export const getParityOutliers = cache(async function getParityOutliers() {
+  "use cache";
+  cacheTag("elections-municipales-2026");
+  cacheLife("hours");
+
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
     select: { id: true },

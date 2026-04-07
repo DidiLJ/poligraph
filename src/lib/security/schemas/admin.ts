@@ -8,6 +8,7 @@ const VALID_CACHE_TAGS = [
   "dossiers",
   "factchecks",
   "elections",
+  "elections-municipales-2026",
 ] as const;
 
 export const revalidateCacheSchema = z.union([

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateAll, revalidateTags } from "@/lib/cache";
+import { ALL_TAGS, revalidateAll, revalidateTags } from "@/lib/cache";
+
+const CRON_ALLOWED_TAGS = [...ALL_TAGS, "elections-municipales-2026"] as const;
+type CronAllowedTag = (typeof CRON_ALLOWED_TAGS)[number];
 
 /**
  * POST /api/cron/revalidate
@@ -27,7 +30,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (Array.isArray(body.tags) && body.tags.length > 0) {
-      const tags = body.tags.filter((t: unknown) => typeof t === "string");
+      const tags = body.tags.filter(
+        (t: unknown): t is CronAllowedTag =>
+          typeof t === "string" && (CRON_ALLOWED_TAGS as readonly string[]).includes(t)
+      );
+
+      if (tags.length === 0) {
+        return NextResponse.json(
+          { error: "No valid tags provided", allowed: CRON_ALLOWED_TAGS },
+          { status: 400 }
+        );
+      }
+
       revalidateTags(tags);
       return NextResponse.json({ revalidated: tags });
     }

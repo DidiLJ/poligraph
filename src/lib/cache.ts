@@ -31,7 +31,8 @@ export type EntityType =
   | "dossier"
   | "factcheck"
   | "stats"
-  | "election";
+  | "election"
+  | "election-2026";
 
 /**
  * Invalidate CDN cache and data cache for a given entity.
@@ -100,6 +101,10 @@ export function invalidateEntity(type: EntityType, slug?: string): void {
 
     case "election":
       updateTag("elections");
+      break;
+
+    case "election-2026":
+      updateTag("elections-municipales-2026");
       break;
   }
 }

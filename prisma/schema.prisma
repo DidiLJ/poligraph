@@ -1517,6 +1517,9 @@ model Candidacy {
 
   @@index([electionId])
   @@index([electionId, communeId])
+  @@index([electionId, listName])
+  @@index([electionId, partyLabel])
+  @@index([electionId, candidateId])
   @@index([politicianId])
   @@index([constituencyCode])
   @@index([candidateId])

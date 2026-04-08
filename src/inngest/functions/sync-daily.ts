@@ -192,6 +192,14 @@ const DAILY_STEPS: DailyStep[] = [
     },
   },
   {
+    name: "compute-municipales-snapshots",
+    run: async () => {
+      const { computeMunicipalesSnapshots } =
+        await import("@/services/sync/compute-municipales-snapshots");
+      return computeMunicipalesSnapshots();
+    },
+  },
+  {
     name: "indexnow",
     run: async () => {
       const { submitRecentToIndexNow } = await import("@/lib/indexnow");

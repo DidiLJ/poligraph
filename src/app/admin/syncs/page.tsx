@@ -128,6 +128,11 @@ const SCRIPT_CATALOG: ScriptCategory[] = [
       { id: "recalculate-prominence", label: "Prominence", description: "Recalcul scores" },
       { id: "assign-publication-status", label: "Publication status", description: "Statuts auto" },
       { id: "reconcile-affairs", label: "Réconciliation", description: "Doublons d'affaires" },
+      {
+        id: "compute-municipales-snapshots",
+        label: "Snapshots municipales 2026",
+        description: "Pré-calcul parité et dept × parti",
+      },
     ],
   },
 ];

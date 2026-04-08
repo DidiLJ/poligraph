@@ -70,6 +70,11 @@ const migratedFunctions = [
     const { recalculateProminence } = await import("@/services/sync/prominence");
     return recalculateProminence();
   }),
+  createSyncFunction("compute-municipales-snapshots", async () => {
+    const { computeMunicipalesSnapshots } =
+      await import("@/services/sync/compute-municipales-snapshots");
+    return computeMunicipalesSnapshots();
+  }),
   createSyncFunction("assign-publication-status", async () => {
     const { assignPublicationStatus } = await import("@/services/sync/publication-status");
     return assignPublicationStatus();

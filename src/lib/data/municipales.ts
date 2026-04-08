@@ -4,6 +4,18 @@ import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { primarySurname } from "@/lib/name-matching";
 import { NATIONAL_MANDATE_TYPES } from "@/config/labels";
+import {
+  MUNICIPALES_SNAPSHOT_KEYS,
+  ParityOutliersSchema,
+  ParityBySizeSchema,
+  DeptPartyDataSchema,
+  parseSnapshot,
+} from "@/types/stats-snapshots";
+import {
+  computeParityOutliersLive,
+  computeParityBySizeLive,
+  computeDepartmentPartyDataLive,
+} from "@/services/sync/compute-municipales-snapshots";
 
 // ============================================
 // Incumbent maire helper
@@ -422,55 +434,20 @@ export async function getDepartmentPartyData() {
   cacheTag("elections-municipales-2026");
   cacheLife("hours");
 
+  const snapshot = await db.statsSnapshot.findUnique({
+    where: { key: MUNICIPALES_SNAPSHOT_KEYS.deptParty },
+  });
+  if (snapshot) {
+    return parseSnapshot(DeptPartyDataSchema, snapshot.data);
+  }
+
+  // Fallback: snapshot missing (cron hasn't run yet, or one-off inspection)
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
     select: { id: true },
   });
   if (!election) return [];
-
-  // Raw SQL: for each department, count distinct lists per partyLabel
-  const rows = await db.$queryRaw<
-    Array<{
-      departmentCode: string;
-      departmentName: string;
-      partyLabel: string;
-      listCount: number;
-    }>
-  >(Prisma.sql`
-    SELECT co."departmentCode", co."departmentName", c."partyLabel", COUNT(DISTINCT c."listName")::int as "listCount"
-    FROM "Candidacy" c
-    JOIN "Commune" co ON c."communeId" = co.id
-    WHERE c."electionId" = ${election.id} AND c."partyLabel" IS NOT NULL
-    GROUP BY co."departmentCode", co."departmentName", c."partyLabel"
-    ORDER BY co."departmentCode", "listCount" DESC
-  `);
-
-  // Aggregate: for each department, find the dominant party and build parties list
-  const deptMap = new Map<
-    string,
-    {
-      code: string;
-      name: string;
-      parties: Array<{ label: string; listCount: number }>;
-      totalLists: number;
-    }
-  >();
-  for (const row of rows) {
-    const existing = deptMap.get(row.departmentCode) || {
-      code: row.departmentCode,
-      name: row.departmentName,
-      parties: [],
-      totalLists: 0,
-    };
-    existing.parties.push({ label: row.partyLabel, listCount: row.listCount });
-    existing.totalLists += row.listCount;
-    deptMap.set(row.departmentCode, existing);
-  }
-
-  return Array.from(deptMap.values()).map((dept) => ({
-    ...dept,
-    dominantParty: dept.parties[0]?.label ?? null, // Already sorted by listCount DESC
-  }));
+  return computeDepartmentPartyDataLive(election.id);
 }
 
 export const getParityBySize = cache(async function getParityBySize() {
@@ -478,43 +455,19 @@ export const getParityBySize = cache(async function getParityBySize() {
   cacheTag("elections-municipales-2026");
   cacheLife("hours");
 
+  const snapshot = await db.statsSnapshot.findUnique({
+    where: { key: MUNICIPALES_SNAPSHOT_KEYS.parityBySize },
+  });
+  if (snapshot) {
+    return parseSnapshot(ParityBySizeSchema, snapshot.data);
+  }
+
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
     select: { id: true },
   });
   if (!election) return [];
-
-  const rows = await db.$queryRaw<
-    Array<{
-      bracket: string;
-      femaleCount: number;
-      totalCount: number;
-    }>
-  >(Prisma.sql`
-    SELECT
-      CASE
-        WHEN co.population < 1000 THEN '< 1 000 hab.'
-        WHEN co.population < 10000 THEN '1 000 - 10 000 hab.'
-        WHEN co.population < 50000 THEN '10 000 - 50 000 hab.'
-        ELSE '50 000+ hab.'
-      END as bracket,
-      COUNT(*) FILTER (WHERE ca."gender" = 'F')::int as "femaleCount",
-      COUNT(*)::int as "totalCount"
-    FROM "Candidacy" c
-    JOIN "Commune" co ON c."communeId" = co.id
-    JOIN "Candidate" ca ON c."candidateId" = ca.id
-    WHERE c."electionId" = ${election.id} AND ca."gender" IS NOT NULL AND co.population IS NOT NULL
-    GROUP BY bracket
-    ORDER BY MIN(co.population)
-  `);
-
-  return rows.map((r) => ({
-    bracket: r.bracket,
-    femaleRate: r.totalCount > 0 ? r.femaleCount / r.totalCount : 0,
-    femaleCount: r.femaleCount,
-    maleCount: r.totalCount - r.femaleCount,
-    totalCount: r.totalCount,
-  }));
+  return computeParityBySizeLive(election.id);
 });
 
 export const getCumulCandidates = cache(async function getCumulCandidates() {
@@ -625,69 +578,19 @@ export const getParityOutliers = cache(async function getParityOutliers() {
   cacheTag("elections-municipales-2026");
   cacheLife("hours");
 
+  const snapshot = await db.statsSnapshot.findUnique({
+    where: { key: MUNICIPALES_SNAPSHOT_KEYS.parityOutliers },
+  });
+  if (snapshot) {
+    return parseSnapshot(ParityOutliersSchema, snapshot.data);
+  }
+
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
     select: { id: true },
   });
   if (!election) return { best: [], worst: [] };
-
-  // Best parity lists (closest to 50%)
-  const best = await db.$queryRaw<
-    Array<{
-      listName: string;
-      communeId: string;
-      communeName: string;
-      departmentCode: string;
-      femaleRate: number;
-      candidateCount: number;
-    }>
-  >(Prisma.sql`
-    SELECT
-      c."listName",
-      co.id as "communeId",
-      co.name as "communeName",
-      co."departmentCode",
-      COUNT(*) FILTER (WHERE ca."gender" = 'F')::float / NULLIF(COUNT(*)::float, 0) as "femaleRate",
-      COUNT(*)::int as "candidateCount"
-    FROM "Candidacy" c
-    JOIN "Commune" co ON c."communeId" = co.id
-    JOIN "Candidate" ca ON c."candidateId" = ca.id
-    WHERE c."electionId" = ${election.id} AND ca."gender" IS NOT NULL AND c."listName" IS NOT NULL
-    GROUP BY c."listName", co.id, co.name, co."departmentCode"
-    HAVING COUNT(*) >= 10
-    ORDER BY ABS(0.5 - COUNT(*) FILTER (WHERE ca."gender" = 'F')::float / NULLIF(COUNT(*)::float, 0)) ASC
-    LIMIT 10
-  `);
-
-  // Worst parity lists (furthest from 50%)
-  const worst = await db.$queryRaw<
-    Array<{
-      listName: string;
-      communeId: string;
-      communeName: string;
-      departmentCode: string;
-      femaleRate: number;
-      candidateCount: number;
-    }>
-  >(Prisma.sql`
-    SELECT
-      c."listName",
-      co.id as "communeId",
-      co.name as "communeName",
-      co."departmentCode",
-      COUNT(*) FILTER (WHERE ca."gender" = 'F')::float / NULLIF(COUNT(*)::float, 0) as "femaleRate",
-      COUNT(*)::int as "candidateCount"
-    FROM "Candidacy" c
-    JOIN "Commune" co ON c."communeId" = co.id
-    JOIN "Candidate" ca ON c."candidateId" = ca.id
-    WHERE c."electionId" = ${election.id} AND ca."gender" IS NOT NULL AND c."listName" IS NOT NULL
-    GROUP BY c."listName", co.id, co.name, co."departmentCode"
-    HAVING COUNT(*) >= 10
-    ORDER BY ABS(0.5 - COUNT(*) FILTER (WHERE ca."gender" = 'F')::float / NULLIF(COUNT(*)::float, 0)) DESC
-    LIMIT 10
-  `);
-
-  return { best, worst };
+  return computeParityOutliersLive(election.id);
 });
 
 // ============================================

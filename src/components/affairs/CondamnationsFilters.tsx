@@ -14,7 +14,7 @@ const MANDAT_OPTIONS = [
   { key: "", label: "Tous mandats" },
   { key: "depute", label: "Députés" },
   { key: "senateur", label: "Sénateurs" },
-  { key: "gouvernement", label: "Ministres" },
+  { key: "gouvernement", label: "Gouvernement" },
   { key: "locaux", label: "Élus locaux" },
 ];
 

@@ -3,7 +3,7 @@ import type { MandatBucket, CertaintyKey } from "@/lib/data/condamnations";
 const MANDAT_LABEL: Record<MandatBucket | "default", string> = {
   depute: "Députés français",
   senateur: "Sénateurs français",
-  gouvernement: "Ministres",
+  gouvernement: "Membres du gouvernement français",
   locaux: "Élus locaux",
   default: "Responsables politiques français",
 };

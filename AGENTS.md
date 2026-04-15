@@ -74,8 +74,6 @@ scripts/            Ops scripts (sync, backfill, fix, audit)
 
 ## 4. Commands
 
-
-
 ### Quick start
 
 ```bash

@@ -195,13 +195,9 @@ async function computePoliticianParticipation(verbose = false): Promise<Politici
       SELECT COUNT(*)::int as cnt
       FROM "Vote" v
       WHERE v."politicianId" = pol.id
-        AND EXISTS (
-          SELECT 1 FROM "Scrutin" s
-          WHERE s.id = v."scrutinId"
-            AND s.chamber = me.chamber
-            AND s."votingDate" >= m."startDate"
-            AND (m."endDate" IS NULL OR s."votingDate" <= m."endDate")
-        )
+        AND v.chamber = me.chamber
+        AND v."votingDate" >= m."startDate"
+        AND (m."endDate" IS NULL OR v."votingDate" <= m."endDate")
     ) vote_sub
     LEFT JOIN "Party" p ON p.id = pol."currentPartyId"
     LEFT JOIN "MandateParliamentary" mp ON mp."mandateId" = m.id
@@ -246,10 +242,9 @@ async function computeDissidenceData(verbose = false): Promise<Map<string, Dissi
       AND m."isCurrent" = true
       AND m.type IN ('DEPUTE'::"MandateType", 'SENATEUR'::"MandateType")
     JOIN "MandateParliamentary" mp ON mp."mandateId" = m.id
-    JOIN "Scrutin" s ON s.id = v."scrutinId"
     WHERE v.position IN ('POUR', 'CONTRE', 'ABSTENTION')
-      AND s."votingDate" >= m."startDate"
-      AND (m."endDate" IS NULL OR s."votingDate" <= m."endDate")
+      AND v."votingDate" >= m."startDate"
+      AND (m."endDate" IS NULL OR v."votingDate" <= m."endDate")
   `;
 
   const dissidenceMap = computePoliticianDissidence(politicianVotes, groupMajority);
@@ -284,8 +279,8 @@ async function computeThemeDistributionPerPolitician(
       AND m.type IN ('DEPUTE'::"MandateType", 'SENATEUR'::"MandateType")
     WHERE s.theme IS NOT NULL
       AND v.position IN ('POUR', 'CONTRE', 'ABSTENTION')
-      AND s."votingDate" >= m."startDate"
-      AND (m."endDate" IS NULL OR s."votingDate" <= m."endDate")
+      AND v."votingDate" >= m."startDate"
+      AND (m."endDate" IS NULL OR v."votingDate" <= m."endDate")
     GROUP BY v."politicianId", s.theme
   `;
 

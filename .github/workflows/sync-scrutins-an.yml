@@ -11,6 +11,10 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+  issues: write
+
 env:
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
@@ -43,10 +47,11 @@ jobs:
           else
             npm run sync:scrutins-an
           fi
-        continue-on-error: true
 
       - name: Show sync stats
+        if: always()
         run: npm run sync:stats
+        continue-on-error: true
 
       - name: Summary
         if: always()
@@ -55,3 +60,48 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [sync-scrutins-an]
+    if: failure() && !cancelled()
+
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const label = "sync-scrutins-an-failure";
+            const title = `Sync Scrutins AN failed - ${new Date().toISOString().split("T")[0]}`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              "## Sync Scrutins (AN) failed",
+              "",
+              `**Workflow run**: ${runUrl}`,
+              `**Triggered by**: ${context.actor}`,
+              `**Commit**: \`${context.sha.slice(0, 7)}\``,
+              "",
+              "### Checklist",
+              "- [ ] Open the workflow run and identify the failing step",
+              "- [ ] Check `docs/RUNBOOK.md` for triage steps",
+              "- [ ] Re-run the workflow once the underlying cause is fixed",
+              "- [ ] Close this issue when resolved",
+            ].join("\n");
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: label,
+            });
+
+            if (existing.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: [label, "automated"],
+              });
+            }

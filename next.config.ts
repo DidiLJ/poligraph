@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 import { SITE_URL, SITE_HOSTNAME } from "./src/config/site";
 
 const nextConfig: NextConfig = {
@@ -154,4 +155,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const sentryEnabled = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN);
+
+export default sentryEnabled
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      silent: !process.env.CI,
+      // Upload source maps only when an auth token is provided (build-time secret)
+      sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+      widenClientFileUpload: true,
+      // Route Sentry events through our domain to bypass ad blockers
+      tunnelRoute: "/monitoring",
+      disableLogger: true,
+      // Instruments Vercel Cron jobs defined in vercel.json automatically
+      automaticVercelMonitors: true,
+    })
+  : nextConfig;

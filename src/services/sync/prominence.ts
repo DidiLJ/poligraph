@@ -222,7 +222,9 @@ export async function recalculateProminence(
     const CHUNK_SIZE = 500;
     for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
       const chunk = updates.slice(i, i + CHUNK_SIZE);
-      const values = Prisma.join(chunk.map((u) => Prisma.sql`(${u.id}::uuid, ${u.score}::int)`));
+      // Politician.id is cuid (TEXT), not UUID. Casting to ::uuid breaks the
+      // join in adapter-pg (error 42883: operator does not exist: text = uuid).
+      const values = Prisma.join(chunk.map((u) => Prisma.sql`(${u.id}, ${u.score}::int)`));
       await db.$executeRaw`UPDATE "Politician" p SET "prominenceScore" = c.score::int FROM (VALUES ${values}) AS c(id, score) WHERE p.id = c.id`;
     }
   }

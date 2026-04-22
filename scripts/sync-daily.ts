@@ -79,11 +79,11 @@ const steps: SyncStep[] = [
   },
   {
     name: "Embeddings fact-checks (delta)",
-    command: `npx tsx scripts/index-embeddings.ts --type=FACTCHECK`,
+    command: `npx tsx scripts/index-embeddings.ts --type=FACTCHECK --limit=200`,
   },
   {
     name: "Embeddings presse (delta)",
-    command: `npx tsx scripts/index-embeddings.ts --type=PRESS_ARTICLE`,
+    command: `npx tsx scripts/index-embeddings.ts --type=PRESS_ARTICLE --limit=200`,
   },
   {
     name: "Prominence scores",

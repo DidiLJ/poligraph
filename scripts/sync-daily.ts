@@ -26,6 +26,13 @@ const CRON_SECRET = process.env.CRON_SECRET;
 interface SyncStep {
   name: string;
   command: string;
+  /**
+   * When true, a failure on this step is recorded but does not mark the whole
+   * run as failed. Use sparingly — reserved for steps that depend on unreliable
+   * third-party APIs (AN legislation endpoints) where transient outages would
+   * otherwise page every cron.
+   */
+  allowFailure?: boolean;
 }
 
 const steps: SyncStep[] = [
@@ -40,10 +47,12 @@ const steps: SyncStep[] = [
   {
     name: "Législation (active)",
     command: `npx tsx scripts/sync-legislation.ts --active${dryRunFlag}`,
+    allowFailure: true,
   },
   {
     name: "Exposés des motifs (limit 20)",
     command: `npx tsx scripts/sync-legislation-content.ts --limit=20${dryRunFlag}`,
+    allowFailure: true,
   },
   {
     name: "Résumés IA dossiers (limit 10)",
@@ -126,12 +135,18 @@ async function main() {
   console.log("=".repeat(60));
   console.log("");
 
-  const results: { name: string; success: boolean; duration: number; error?: string }[] = [];
+  const results: {
+    name: string;
+    success: boolean;
+    duration: number;
+    error?: string;
+    allowFailure: boolean;
+  }[] = [];
 
   for (const step of steps) {
     const stepStart = Date.now();
     console.log(`\n${"─".repeat(50)}`);
-    console.log(`▶ ${step.name}`);
+    console.log(`▶ ${step.name}${step.allowFailure ? " (non-blocking)" : ""}`);
     console.log(`  ${step.command}`);
     console.log("─".repeat(50));
 
@@ -143,13 +158,28 @@ async function main() {
       });
 
       const duration = (Date.now() - stepStart) / 1000;
-      results.push({ name: step.name, success: true, duration });
+      results.push({
+        name: step.name,
+        success: true,
+        duration,
+        allowFailure: step.allowFailure === true,
+      });
       console.log(`\n✓ ${step.name} completed in ${duration.toFixed(1)}s`);
     } catch (err) {
       const duration = (Date.now() - stepStart) / 1000;
       const errorMsg = err instanceof Error ? err.message : String(err);
-      results.push({ name: step.name, success: false, duration, error: errorMsg });
-      console.error(`\n✗ ${step.name} failed after ${duration.toFixed(1)}s: ${errorMsg}`);
+      results.push({
+        name: step.name,
+        success: false,
+        duration,
+        error: errorMsg,
+        allowFailure: step.allowFailure === true,
+      });
+      const icon = step.allowFailure ? "⚠" : "✗";
+      const suffix = step.allowFailure ? " (non-blocking)" : "";
+      console.error(
+        `\n${icon} ${step.name} failed after ${duration.toFixed(1)}s${suffix}: ${errorMsg}`
+      );
       // Continue to next step even on failure
     }
   }
@@ -157,23 +187,27 @@ async function main() {
   // Summary
   const totalDuration = (Date.now() - startTime) / 1000;
   const succeeded = results.filter((r) => r.success).length;
-  const failed = results.filter((r) => !r.success).length;
+  const hardFailed = results.filter((r) => !r.success && !r.allowFailure).length;
+  const softFailed = results.filter((r) => !r.success && r.allowFailure).length;
 
   console.log("\n" + "=".repeat(60));
   console.log("Daily Sync Summary");
   console.log("=".repeat(60));
   console.log(`Total duration: ${totalDuration.toFixed(1)}s`);
-  console.log(`Steps: ${succeeded} succeeded, ${failed} failed\n`);
+  console.log(
+    `Steps: ${succeeded} succeeded, ${hardFailed} failed, ${softFailed} non-blocking failures\n`
+  );
 
   for (const r of results) {
-    const icon = r.success ? "✓" : "✗";
+    const icon = r.success ? "✓" : r.allowFailure ? "⚠" : "✗";
     const time = `${r.duration.toFixed(1)}s`;
-    console.log(`  ${icon} ${r.name} (${time})${r.error ? ` — ${r.error}` : ""}`);
+    const suffix = r.error ? ` — ${r.error}` : "";
+    console.log(`  ${icon} ${r.name} (${time})${suffix}`);
   }
 
   console.log("");
 
-  if (failed > 0) {
+  if (hardFailed > 0) {
     process.exit(1);
   }
 }

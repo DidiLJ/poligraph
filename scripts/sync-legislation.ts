@@ -67,36 +67,86 @@ function renderProgressBar(current: number, total: number, width: number = 30): 
 }
 
 /**
- * Download a file from URL
+ * Download a file from URL with a per-request timeout.
+ *
+ * AN Open Data is regularly slow or unresponsive on dossier endpoints. Without
+ * an explicit timeout, https.get() hangs indefinitely and only the orchestrator
+ * timeout (10 min) kills it, leaving ETIMEDOUT at a very coarse granularity.
  */
-async function downloadFile(url: string, dest: string): Promise<void> {
+const DOWNLOAD_TIMEOUT_MS = 120_000; // 120s per attempt
+const DOWNLOAD_MAX_ATTEMPTS = 3;
+
+async function downloadFileOnce(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = createWriteStream(dest);
-    https
-      .get(url, (response) => {
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          // Follow redirect
-          const redirectUrl = response.headers.location;
-          if (redirectUrl) {
-            downloadFile(redirectUrl, dest).then(resolve).catch(reject);
-            return;
+    let settled = false;
+
+    const cleanup = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      file.close();
+      try {
+        fs.unlinkSync(dest);
+      } catch {
+        // file may not exist yet
+      }
+      reject(err);
+    };
+
+    const req = https.get(url, (response) => {
+      if (response.statusCode === 302 || response.statusCode === 301) {
+        const redirectUrl = response.headers.location;
+        if (redirectUrl) {
+          file.close();
+          try {
+            fs.unlinkSync(dest);
+          } catch {
+            // ignore
           }
-        }
-        if (response.statusCode !== 200) {
-          reject(new Error(`HTTP ${response.statusCode} for ${url}`));
+          downloadFileOnce(redirectUrl, dest).then(resolve).catch(reject);
           return;
         }
-        response.pipe(file);
-        file.on("finish", () => {
-          file.close();
-          resolve();
-        });
-      })
-      .on("error", (err) => {
-        fs.unlinkSync(dest);
-        reject(err);
+      }
+      if (response.statusCode !== 200) {
+        cleanup(new Error(`HTTP ${response.statusCode} for ${url}`));
+        return;
+      }
+      response.pipe(file);
+      file.on("finish", () => {
+        if (settled) return;
+        settled = true;
+        file.close();
+        resolve();
       });
+    });
+
+    req.setTimeout(DOWNLOAD_TIMEOUT_MS, () => {
+      req.destroy(new Error(`Request timeout after ${DOWNLOAD_TIMEOUT_MS}ms for ${url}`));
+    });
+    req.on("error", cleanup);
   });
+}
+
+async function downloadFile(url: string, dest: string): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= DOWNLOAD_MAX_ATTEMPTS; attempt++) {
+    try {
+      await downloadFileOnce(url, dest);
+      return;
+    } catch (err) {
+      lastError = err;
+      if (attempt < DOWNLOAD_MAX_ATTEMPTS) {
+        const backoffMs = 2_000 * attempt;
+        console.warn(
+          `Download attempt ${attempt}/${DOWNLOAD_MAX_ATTEMPTS} failed (${err instanceof Error ? err.message : String(err)}), retrying in ${backoffMs}ms...`
+        );
+        await new Promise((r) => setTimeout(r, backoffMs));
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Download failed after ${DOWNLOAD_MAX_ATTEMPTS} attempts`);
 }
 
 /**

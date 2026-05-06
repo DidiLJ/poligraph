@@ -94,6 +94,20 @@ function isV1Route(pathname: string): boolean {
   return pathname.startsWith("/api/v1/");
 }
 
+// ─── CORS for newsletter subscribe (boussole) ────────────────────
+
+const SUBSCRIBE_CORS_ORIGINS = ["https://boussole.poligraph.fr", "http://localhost:8081"];
+
+function applySubscribeCors(request: NextRequest, response: NextResponse): void {
+  if (request.nextUrl.pathname !== "/api/newsletter/subscribe") return;
+  const origin = request.headers.get("origin");
+  if (!origin || !SUBSCRIBE_CORS_ORIGINS.includes(origin)) return;
+  response.headers.set("Access-Control-Allow-Origin", origin);
+  response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  response.headers.set("Vary", "Origin");
+}
+
 // ─── Middleware ───────────────────────────────────────────────────
 
 export async function middleware(request: NextRequest) {
@@ -105,7 +119,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const tier = getTier(pathname);
-  if (!tier) return NextResponse.next();
+  if (!tier) {
+    const passthrough = NextResponse.next();
+    applySubscribeCors(request, passthrough);
+    return passthrough;
+  }
 
   const limiter = getLimiter(tier);
   if (!limiter) {
@@ -114,6 +132,7 @@ export async function middleware(request: NextRequest) {
     if (isV1Route(pathname)) {
       Object.entries(CORS_HEADERS).forEach(([k, v]) => response.headers.set(k, v));
     }
+    applySubscribeCors(request, response);
     return response;
   }
 
@@ -129,10 +148,12 @@ export async function middleware(request: NextRequest) {
       "X-RateLimit-Reset": String(reset),
       ...(isV1Route(pathname) ? CORS_HEADERS : {}),
     };
-    return NextResponse.json(
+    const limited = NextResponse.json(
       { error: "Trop de requêtes. Réessayez plus tard." },
       { status: 429, headers }
     );
+    applySubscribeCors(request, limited);
+    return limited;
   }
 
   const response = NextResponse.next();
@@ -142,6 +163,7 @@ export async function middleware(request: NextRequest) {
   if (isV1Route(pathname)) {
     Object.entries(CORS_HEADERS).forEach(([k, v]) => response.headers.set(k, v));
   }
+  applySubscribeCors(request, response);
   return response;
 }
 

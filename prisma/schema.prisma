@@ -1916,7 +1916,70 @@ model NewsletterEdition {
   recipientCount Int        @default(0)
   createdAt      DateTime   @default(now())
 
+  stats NewsletterEditionStats?
+
   @@index([politicianId])
+}
+
+enum SubscriberStatus {
+  PENDING_CONFIRMATION
+  CONFIRMED
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+enum SubscriberSource {
+  BOUSSOLE
+  FOOTER
+  RECAP_PAGE
+  ARTICLE_CTA
+  IMPORT
+}
+
+model Subscriber {
+  id     String           @id @default(cuid())
+  email  String           @unique
+  status SubscriberStatus @default(PENDING_CONFIRMATION)
+  source SubscriberSource
+
+  confirmationToken String? @unique
+  unsubscribeToken  String  @unique
+
+  deputySlug      String?
+  boussoleProfile Json?
+  postalCode      String?
+
+  lastOpenedAt      DateTime?
+  consecutiveMisses Int       @default(0)
+
+  consentedAt        DateTime
+  confirmedAt        DateTime?
+  unsubscribedAt     DateTime?
+  ipAtConsent        String?
+  userAgentAtConsent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([deputySlug])
+  @@index([source])
+}
+
+model NewsletterEditionStats {
+  id        String            @id @default(cuid())
+  editionId String            @unique
+  edition   NewsletterEdition @relation(fields: [editionId], references: [id])
+
+  sent         Int @default(0)
+  delivered    Int @default(0)
+  opened       Int @default(0)
+  clicked      Int @default(0)
+  unsubscribed Int @default(0)
+  bounced      Int @default(0)
+
+  topClicks Json?
+  syncedAt  DateTime
 }
 
 // ---------------------------------------------------------------------------

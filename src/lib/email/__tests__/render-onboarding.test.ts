@@ -14,7 +14,7 @@ describe("renderOnboardingHtml", () => {
     expect(html).toContain("https://poligraph.fr/politiques/marine-le-pen");
   });
 
-  it("substitutes empty string for null deputy", () => {
+  it("substitutes empty string for null deputy and strips the deputy block", () => {
     const html = renderOnboardingHtml({
       deputyName: null,
       deputyParty: null,
@@ -23,6 +23,9 @@ describe("renderOnboardingHtml", () => {
     });
     expect(html).not.toContain("{{deputyName}}");
     expect(html).not.toContain("{{deputyParty}}");
+    expect(html).not.toContain("Ton député");
+    expect(html).not.toContain("()");
+    expect(html).not.toContain('href=""');
     expect(html).toContain("https://poligraph.fr/api/newsletter/unsubscribe?token=abc");
   });
 });

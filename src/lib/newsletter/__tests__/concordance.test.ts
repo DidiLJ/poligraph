@@ -52,6 +52,20 @@ describe("computeWeeklyConcordance", () => {
     expect(result).toBe(75);
   });
 
+  it("treats both ABSTENTION as full agreement (mutual abstention)", () => {
+    const result = computeWeeklyConcordance(
+      [
+        { scrutinId: "s1", position: "ABSTENTION" },
+        { scrutinId: "s2", position: "POUR" },
+      ],
+      [
+        { scrutinId: "s1", position: "ABSTENTION" },
+        { scrutinId: "s2", position: "POUR" },
+      ]
+    );
+    expect(result).toBe(100);
+  });
+
   it("ignores votes not present in user profile", () => {
     const result = computeWeeklyConcordance(
       [

@@ -1,5 +1,5 @@
 // Auto-generated from welcome.mjml — do not edit manually
-// Regenerate by recompiling welcome.mjml via mjml CLI or scripts/compile-email-template.ts pattern
+// Regenerate with: npx tsx scripts/compile-email-template.ts
 
 export const WELCOME_HTML = `<!doctype html>
 <html lang="und" dir="auto" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -161,7 +161,11 @@ a { color: #1e3a5f; }
       </div>
     
       
-      <!--[if mso | IE]></td></tr></table><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" bgcolor="#ffffff" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
+      <!--[if mso | IE]></td></tr></table><![endif]-->
+    
+    <!-- deputy-block-start -->
+      
+      <!--[if mso | IE]><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" bgcolor="#ffffff" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
     
       
       <div  style="background:#ffffff;background-color:#ffffff;margin:0px auto;max-width:600px;">
@@ -235,7 +239,11 @@ a { color: #1e3a5f; }
       </div>
     
       
-      <!--[if mso | IE]></td></tr></table><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
+      <!--[if mso | IE]></td></tr></table><![endif]-->
+    
+    <!-- deputy-block-end -->
+      
+      <!--[if mso | IE]><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
     
       
       <div  style="margin:0px auto;max-width:600px;">

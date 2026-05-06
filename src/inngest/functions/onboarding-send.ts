@@ -1,7 +1,7 @@
 import { inngest } from "../client";
 
 export const onboardingSend = inngest.createFunction(
-  { id: "subscriber/onboarding-send", retries: 3 },
+  { id: "subscriber/onboarding-send", retries: 2 },
   { event: "subscriber/confirmed" },
   async ({ event, step }) => {
     const subscriberId = event.data.subscriberId as string;
@@ -18,9 +18,7 @@ export const onboardingSend = inngest.createFunction(
           select: {
             slug: true,
             fullName: true,
-            blobPhotoUrl: true,
-            photoUrl: true,
-            currentParty: { select: { shortName: true, name: true } },
+            currentParty: { select: { shortName: true } },
           },
         });
       }
@@ -47,6 +45,11 @@ export const onboardingSend = inngest.createFunction(
       });
     });
 
+    // Note: this step has no idempotency key. If Inngest replays the function after
+    // Mailjet succeeded but before we returned, the user could receive duplicate
+    // onboarding emails. The PENDING_CONFIRMATION guard in /api/newsletter/confirm
+    // prevents the event from being re-emitted on browser refresh, but does not
+    // protect against Inngest internal retries. Acceptable risk for now.
     await step.run("send-via-mailjet", async () => {
       const { sendTransactional } = await import("@/lib/email/mailjet");
       await sendTransactional({

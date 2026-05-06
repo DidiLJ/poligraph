@@ -26,6 +26,7 @@
       </mj-column>
     </mj-section>
 
+    <mj-raw><!-- deputy-block-start --></mj-raw>
     <mj-section background-color="#ffffff" padding="0 24px 20px">
       <mj-column>
         <mj-text><span class="h2">Ton député</span></mj-text>
@@ -35,6 +36,7 @@
         </mj-text>
       </mj-column>
     </mj-section>
+    <mj-raw><!-- deputy-block-end --></mj-raw>
 
     <mj-section padding="16px 24px">
       <mj-column>

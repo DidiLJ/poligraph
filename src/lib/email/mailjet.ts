@@ -92,3 +92,20 @@ export async function sendNewsletter({
 
   return { recipientCount: subscriberCount };
 }
+
+/**
+ * Set or update a custom contact data field on a Mailjet contact.
+ * Preserves existing fields and overwrites only the named one.
+ */
+export async function setMailjetCustomField(
+  email: string,
+  fieldName: string,
+  value: string
+): Promise<void> {
+  const contactRes = await mailjet.get(`contactdata/${encodeURIComponent(email)}`).request();
+  const data = (contactRes.body as { Data: { Data: Array<{ Name: string; Value: string }> }[] })
+    .Data[0];
+  const updatedData = (data?.Data ?? []).filter((d) => d.Name !== fieldName);
+  updatedData.push({ Name: fieldName, Value: value });
+  await mailjet.put(`contactdata/${encodeURIComponent(email)}`).request({ Data: updatedData });
+}

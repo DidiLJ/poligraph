@@ -1,4 +1,4 @@
-import type { WeeklyRecapData } from "@/lib/data/recap";
+import type { PressStory, WeeklyRecapData } from "@/lib/data/recap";
 import { getISOWeekNumber } from "@/lib/data/recap";
 import { WEEKLY_RECAP_HTML } from "./templates/weekly-recap-compiled";
 
@@ -181,6 +181,30 @@ function buildFactChecksHtml(recap: WeeklyRecapData): string {
   return countsHtml + claimantHtml;
 }
 
+export function buildPressStoriesHtml(stories: PressStory[]): string {
+  if (stories.length === 0) return "";
+  const items = stories
+    .slice(0, 3)
+    .map((s) => {
+      const title = escapeHtml(s.title);
+      const feedSource = escapeHtml(s.feedSource);
+      const dateLabel = formatDateShort(s.publishedAt);
+      const summary = s.aiSummary
+        ? `<p style="margin: 4px 0 0; font-style: italic; font-size: 13px; color: #374151;">${escapeHtml(s.aiSummary)}</p>`
+        : "";
+      return `<div style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;">
+        <p style="margin: 0; font-weight: 600;"><a href="${s.url}" style="color: #1e3a5f; text-decoration: none;">${title}</a></p>
+        <p style="margin: 2px 0 0; font-size: 12px; color: #6b7280;">${feedSource} · ${dateLabel}</p>
+        ${summary}
+      </div>`;
+    })
+    .join("");
+  return `<div style="padding: 4px 0 8px;">
+    <p style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #1e3a5f;">À la une cette semaine</p>
+    ${items}
+  </div>`;
+}
+
 function buildPressHtml(recap: WeeklyRecapData): string {
   const press = recap.press;
   if (press.articleCount === 0) return "";
@@ -189,6 +213,8 @@ function buildPressHtml(recap: WeeklyRecapData): string {
     <span style="font-weight: 600; color: #1e3a5f;">${press.articleCount} article${press.articleCount > 1 ? "s" : ""}</span>
     <span style="font-size: 13px; color: #6b7280;"> couverts cette semaine</span>
   </div>`;
+
+  const storiesHtml = buildPressStoriesHtml(press.storiesOfTheWeek ?? []);
 
   const top3 = press.topPoliticians.slice(0, 3);
   const mentionsHtml =
@@ -204,7 +230,7 @@ function buildPressHtml(recap: WeeklyRecapData): string {
         </div>`
       : "";
 
-  return countHtml + mentionsHtml;
+  return countHtml + storiesHtml + mentionsHtml;
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +320,16 @@ function buildPlainText(input: RenderInput): string {
   if (recap.press.articleCount > 0) {
     lines.push("--- REVUE DE PRESSE ---");
     lines.push(`${recap.press.articleCount} articles couverts`);
+    const stories = (recap.press.storiesOfTheWeek ?? []).slice(0, 3);
+    if (stories.length > 0) {
+      lines.push("");
+      lines.push("À la une cette semaine :");
+      for (const s of stories) {
+        lines.push(`- ${s.title}`);
+        lines.push(`  ${s.feedSource} · ${formatDateShort(s.publishedAt)}`);
+        lines.push(`  ${s.url}`);
+      }
+    }
     const top3 = recap.press.topPoliticians.slice(0, 3);
     if (top3.length > 0) {
       lines.push(`Les plus cités : ${top3.map((p) => `${p.fullName} (${p.count})`).join(", ")}`);

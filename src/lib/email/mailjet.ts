@@ -94,6 +94,24 @@ export async function sendNewsletter({
 }
 
 /**
+ * Remove a contact from the newsletter list (does NOT delete the contact).
+ * Idempotent: silently no-ops if the contact does not exist on Mailjet's side.
+ */
+export async function removeFromList(email: string): Promise<void> {
+  const listId = Number(process.env.MAILJET_LIST_ID);
+  const contactRes = await mailjet.post("contact").request({ Email: email });
+  const contactId = (contactRes.body as { Data: { ID: number }[] }).Data[0]?.ID;
+  if (!contactId) return;
+  await mailjet
+    .post("contact")
+    .id(contactId)
+    .action("managecontactslists")
+    .request({
+      ContactsLists: [{ ListID: listId, Action: "remove" }],
+    });
+}
+
+/**
  * Set or update a custom contact data field on a Mailjet contact.
  * Preserves existing fields and overwrites only the named one.
  */

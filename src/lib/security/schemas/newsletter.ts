@@ -45,3 +45,5 @@ export const forgetSchema = z.object({
   email: z.email(),
   unsubscribeToken: z.string().min(20).max(128),
 });
+
+export type BoussoleProfilePayload = z.infer<typeof boussoleProfileSchema>;

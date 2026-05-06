@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { subscribeSchema } from "../newsletter";
+import { subscribeSchema, tokenQuerySchema, forgetSchema } from "../newsletter";
 
 describe("subscribeSchema", () => {
   it("accepts a minimal payload (email + source)", () => {
@@ -32,5 +32,30 @@ describe("subscribeSchema", () => {
       },
     });
     expect(r.success).toBe(true);
+  });
+});
+
+describe("tokenQuerySchema", () => {
+  it("accepts a valid token", () => {
+    const r = tokenQuerySchema.safeParse({ token: "x".repeat(32) });
+    expect(r.success).toBe(true);
+  });
+  it("rejects too-short tokens", () => {
+    const r = tokenQuerySchema.safeParse({ token: "short" });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("forgetSchema", () => {
+  it("accepts email + valid unsubscribeToken", () => {
+    const r = forgetSchema.safeParse({
+      email: "a@b.fr",
+      unsubscribeToken: "y".repeat(32),
+    });
+    expect(r.success).toBe(true);
+  });
+  it("rejects missing token", () => {
+    const r = forgetSchema.safeParse({ email: "a@b.fr" });
+    expect(r.success).toBe(false);
   });
 });

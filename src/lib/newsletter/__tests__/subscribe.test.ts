@@ -90,4 +90,51 @@ describe("upsertSubscriber", () => {
     expect(result.created).toBe(false);
     expect(result.alreadyPending).toBe(true);
   });
+
+  it("reactivates BOUNCED subscriber and resets consecutiveMisses", async () => {
+    findUniqueMock.mockResolvedValue({
+      id: "id-1",
+      email: baseInput.email,
+      status: "BOUNCED",
+      consecutiveMisses: 12,
+    });
+    updateMock.mockResolvedValue({
+      id: "id-1",
+      status: "PENDING_CONFIRMATION",
+      confirmationToken: "new-token",
+    });
+
+    const result = await upsertSubscriber(baseInput);
+    expect(result.reactivated).toBe(true);
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "PENDING_CONFIRMATION",
+          consecutiveMisses: 0,
+        }),
+      })
+    );
+  });
+
+  it("handles P2002 race on create by re-fetching and treating as alreadyPending", async () => {
+    const { Prisma } = await import("@/generated/prisma");
+    findUniqueMock.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: "id-1",
+      email: baseInput.email,
+      status: "PENDING_CONFIRMATION",
+      confirmationToken: "existing",
+    });
+    createMock.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "test",
+        meta: { target: ["email"] },
+      })
+    );
+
+    const result = await upsertSubscriber(baseInput);
+    expect(result.alreadyPending).toBe(true);
+    expect(result.created).toBe(false);
+    expect(findUniqueMock).toHaveBeenCalledTimes(2);
+  });
 });

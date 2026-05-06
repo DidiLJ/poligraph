@@ -132,6 +132,34 @@ export async function removeFromList(email: string): Promise<void> {
 }
 
 /**
+ * Send a one-off transactional email via Mailjet Send API v3.1.
+ * Use this for onboarding/confirmation/notification emails (NOT for list campaigns).
+ */
+export async function sendTransactional({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<void> {
+  await mailjet.post("send", { version: "v3.1" }).request({
+    Messages: [
+      {
+        From: {
+          Email: process.env.MAILJET_SENDER_EMAIL || "newsletter@poligraph.fr",
+          Name: process.env.MAILJET_SENDER_NAME || "Poligraph",
+        },
+        To: [{ Email: to }],
+        Subject: subject,
+        HTMLPart: html,
+      },
+    ],
+  });
+}
+
+/**
  * Set or update a custom contact data field on a Mailjet contact.
  * Preserves existing fields and overwrites only the named one.
  */

@@ -1969,7 +1969,7 @@ model Subscriber {
 model NewsletterEditionStats {
   id        String            @id @default(cuid())
   editionId String            @unique
-  edition   NewsletterEdition @relation(fields: [editionId], references: [id])
+  edition   NewsletterEdition @relation(fields: [editionId], references: [id], onDelete: Cascade)
 
   sent         Int @default(0)
   delivered    Int @default(0)
@@ -1979,7 +1979,10 @@ model NewsletterEditionStats {
   bounced      Int @default(0)
 
   topClicks Json?
-  syncedAt  DateTime
+  syncedAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------

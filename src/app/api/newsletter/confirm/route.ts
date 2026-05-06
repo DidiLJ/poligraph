@@ -6,7 +6,7 @@ import { inngest } from "@/inngest/client";
 export const GET = withPublicRoute(async (request: NextRequest) => {
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
-  if (!token) {
+  if (!token || token.length < 20 || token.length > 128) {
     return NextResponse.redirect(new URL("/recap?error=invalid-confirmation", url));
   }
 

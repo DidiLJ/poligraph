@@ -50,7 +50,8 @@ async function handleExisting(
         deputySlug: input.deputySlug ?? existing.deputySlug,
         postalCode: input.postalCode ?? existing.postalCode,
         // Reuse the previously stored profile if the caller didn't provide a fresh one (re-subscribe via footer with no quiz).
-        boussoleProfile: (input.boussoleProfile ?? existing.boussoleProfile) as never,
+        boussoleProfile: (input.boussoleProfile ??
+          existing.boussoleProfile) as Prisma.InputJsonValue,
         consentedAt: input.consentedAt,
         unsubscribedAt: null,
         consecutiveMisses: 0,
@@ -96,7 +97,7 @@ export async function upsertSubscriber(input: UpsertInput): Promise<UpsertResult
         unsubscribeToken: generateToken(),
         deputySlug: input.deputySlug,
         postalCode: input.postalCode,
-        boussoleProfile: input.boussoleProfile as never,
+        boussoleProfile: input.boussoleProfile as Prisma.InputJsonValue,
         consentedAt: input.consentedAt,
         ipAtConsent: input.ip,
         userAgentAtConsent: input.userAgent,

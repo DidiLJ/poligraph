@@ -5,11 +5,20 @@ const mailjet = new Mailjet({
   apiSecret: process.env.MAILJET_SECRET_KEY!,
 });
 
+function getListId(): number {
+  const raw = process.env.MAILJET_LIST_ID;
+  const n = Number(raw);
+  if (!raw || !Number.isFinite(n) || n <= 0) {
+    throw new Error("MAILJET_LIST_ID is not configured");
+  }
+  return n;
+}
+
 /**
  * Add a contact to the newsletter list with double opt-in.
  */
 export async function subscribeToNewsletter(email: string): Promise<{ success: boolean }> {
-  const listId = Number(process.env.MAILJET_LIST_ID);
+  const listId = getListId();
 
   // Create or retrieve contact
   const contactRes = await mailjet.post("contact").request({ Email: email });
@@ -52,7 +61,7 @@ export async function sendNewsletter({
   htmlContent: string;
   textContent: string;
 }): Promise<{ recipientCount: number }> {
-  const listId = Number(process.env.MAILJET_LIST_ID);
+  const listId = getListId();
 
   // Check subscriber count first
   const listRes = await mailjet.get("contactslist").id(listId).request();
@@ -98,10 +107,21 @@ export async function sendNewsletter({
  * Idempotent: silently no-ops if the contact does not exist on Mailjet's side.
  */
 export async function removeFromList(email: string): Promise<void> {
-  const listId = Number(process.env.MAILJET_LIST_ID);
-  const contactRes = await mailjet.post("contact").request({ Email: email });
-  const contactId = (contactRes.body as { Data: { ID: number }[] }).Data[0]?.ID;
+  const listId = getListId();
+
+  // Look up an existing contact without creating one (GDPR forget must
+  // not provision a ghost contact for users who never subscribed).
+  let contactId: number | null = null;
+  try {
+    const contactRes = await mailjet.get(`contact/${encodeURIComponent(email)}`).request();
+    contactId = (contactRes.body as { Data: { ID: number }[] }).Data[0]?.ID ?? null;
+  } catch (e) {
+    const status = (e as { ErrorMessage?: string; statusCode?: number }).statusCode;
+    if (status === 404) return;
+    throw e;
+  }
   if (!contactId) return;
+
   await mailjet
     .post("contact")
     .id(contactId)

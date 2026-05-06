@@ -32,14 +32,10 @@ export const POST = withPublicRoute(
       });
     }
 
-    if (result.alreadyPending) {
-      return NextResponse.json({
-        success: true,
-        alreadyPending: true,
-        message: "Vérifie ta boîte mail pour confirmer ton inscription.",
-      });
-    }
-
+    // Sync Mailjet for created, reactivated, or alreadyPending. The latter
+    // can happen if a previous attempt failed at the Mailjet step, so we
+    // always retry the sync to make the operation eventually consistent.
+    // Mailjet's addnoforce action is idempotent on the list side.
     try {
       const { subscribeToNewsletter, setMailjetCustomField } = await import("@/lib/email/mailjet");
       await subscribeToNewsletter(email);
@@ -52,6 +48,14 @@ export const POST = withPublicRoute(
         { error: "Impossible de traiter votre inscription. Réessayez plus tard." },
         { status: 500 }
       );
+    }
+
+    if (result.alreadyPending) {
+      return NextResponse.json({
+        success: true,
+        alreadyPending: true,
+        message: "Vérifie ta boîte mail pour confirmer ton inscription.",
+      });
     }
 
     return NextResponse.json({

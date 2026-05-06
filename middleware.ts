@@ -58,7 +58,12 @@ function getTier(pathname: string): RateLimitTier | null {
   // Admin routes — separate tier (auth endpoint has its own stricter limiter too)
   if (pathname.startsWith("/api/admin")) return "admin";
 
-  if (pathname.startsWith("/api/newsletter/subscribe")) return "subscribe";
+  if (
+    pathname.startsWith("/api/newsletter/subscribe") ||
+    pathname.startsWith("/api/newsletter/forget")
+  ) {
+    return "subscribe";
+  }
   if (pathname.startsWith("/api/export")) return "export";
   if (pathname.startsWith("/api/search")) return "search";
   if (pathname.startsWith("/api/")) return "general";

@@ -39,10 +39,14 @@ export const POST = withPublicRoute(async (request: NextRequest) => {
     if (!subscriber) continue;
 
     if (event.event === "open") {
+      const openedAt =
+        typeof event.time === "number" && Number.isFinite(event.time)
+          ? new Date(event.time * 1000)
+          : new Date();
       await db.subscriber.update({
         where: { id: subscriber.id },
         data: {
-          lastOpenedAt: new Date(event.time * 1000),
+          lastOpenedAt: openedAt,
           consecutiveMisses: 0,
         },
       });

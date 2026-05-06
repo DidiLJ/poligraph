@@ -15,7 +15,12 @@ describe("verifyMailjetSignature", () => {
     expect(verifyMailjetSignature(body + "x", validSig, secret)).toBe(false);
   });
 
-  it("rejects a wrong signature", () => {
+  it("rejects a wrong signature of correct length (constant-time path)", () => {
+    const flipped = validSig.slice(0, -1) + (validSig.slice(-1) === "0" ? "1" : "0");
+    expect(verifyMailjetSignature(body, flipped, secret)).toBe(false);
+  });
+
+  it("rejects a too-short signature (length pre-check)", () => {
     expect(verifyMailjetSignature(body, "deadbeef", secret)).toBe(false);
   });
 

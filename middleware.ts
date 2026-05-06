@@ -54,6 +54,9 @@ function getTier(pathname: string): RateLimitTier | null {
   // Excluded routes — handled by their own rate limiting or internal
   if (pathname.startsWith("/api/chat")) return null;
   if (pathname.startsWith("/api/cron")) return null;
+  // Mailjet webhook is signed with HMAC; rate limit per-IP would punish bursty
+  // legitimate batches from a small set of Mailjet IPs.
+  if (pathname.startsWith("/api/newsletter/webhook")) return null;
 
   // Admin routes — separate tier (auth endpoint has its own stricter limiter too)
   if (pathname.startsWith("/api/admin")) return "admin";

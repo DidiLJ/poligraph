@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { withPublicRoute } from "@/lib/api/with-public-route";
 import { withValidation } from "@/lib/security/validate";
@@ -67,11 +67,20 @@ export const POST = withPublicRoute(
   })
 );
 
-export async function OPTIONS() {
+const SUBSCRIBE_CORS_ORIGINS = ["https://boussole.poligraph.fr", "http://localhost:8081"];
+
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const allowedOrigin = origin && SUBSCRIBE_CORS_ORIGINS.includes(origin) ? origin : "";
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "https://boussole.poligraph.fr",
+      ...(allowedOrigin
+        ? {
+            "Access-Control-Allow-Origin": allowedOrigin,
+            Vary: "Origin",
+          }
+        : {}),
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Max-Age": "86400",

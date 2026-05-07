@@ -15,10 +15,22 @@ export interface PoliticianOfWeek {
   bio: string;
 }
 
+export interface PersonalDeputyContext {
+  fullName: string;
+  partyShortName: string | null;
+  photoUrl: string | null;
+  constituency: string | null;
+  weeklyVotes: Array<{ scrutinSlug: string | null; title: string; positionLabel: string }>;
+  weeklyConcordance: number | null;
+  profileUrl: string;
+}
+
 export interface RenderInput {
   recap: WeeklyRecapData;
   editorialIntro: string;
   politician: PoliticianOfWeek | null;
+  personalDeputy?: PersonalDeputyContext | null;
+  unsubscribeUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -233,6 +245,54 @@ function buildPressHtml(recap: WeeklyRecapData): string {
   return countHtml + storiesHtml + mentionsHtml;
 }
 
+export function buildPersonalDeputyHtml(deputy: PersonalDeputyContext | null): string {
+  if (!deputy) return "";
+
+  const photoBlock = deputy.photoUrl
+    ? `<img src="${escapeHtml(deputy.photoUrl)}" alt="" width="64" height="64" style="border-radius:50%;display:block" />`
+    : "";
+
+  const constituencyLine = deputy.constituency
+    ? `<p style="font-size:13px;color:#374151;margin:0 0 8px">${escapeHtml(deputy.constituency)}</p>`
+    : "";
+
+  const votesBlock =
+    deputy.weeklyVotes.length === 0
+      ? `<p style="font-size:13px;color:#6b7280;margin:0 0 8px">Pas de vote cette semaine.</p>`
+      : `<ul style="margin:0 0 8px;padding-left:18px;font-size:13px">${deputy.weeklyVotes
+          .slice(0, 3)
+          .map(
+            (v) =>
+              `<li style="margin-bottom:4px"><strong>${escapeHtml(v.positionLabel)}</strong> &mdash; ${escapeHtml(v.title)}</li>`
+          )
+          .join("")}</ul>`;
+
+  const concordanceLine =
+    deputy.weeklyConcordance !== null
+      ? `<p style="font-size:13px;margin:0 0 8px">Concordance avec ton profil cette semaine : <strong>${deputy.weeklyConcordance}%</strong></p>`
+      : "";
+
+  const partySpan = deputy.partyShortName
+    ? ` <span style="color:#6b7280;font-weight:400">(${escapeHtml(deputy.partyShortName)})</span>`
+    : "";
+
+  return `
+    <table role="presentation" width="100%" style="background-color:#fef3c7;padding:20px 24px;border-radius:8px">
+      <tr>
+        <td style="vertical-align:top;width:80px">${photoBlock}</td>
+        <td style="vertical-align:top;padding-left:12px">
+          <h2 style="font-size:16px;font-weight:700;color:#1e3a5f;margin:0 0 4px">Cette semaine, ton député</h2>
+          <p style="font-size:14px;font-weight:600;margin:0 0 4px">${escapeHtml(deputy.fullName)}${partySpan}</p>
+          ${constituencyLine}
+          ${votesBlock}
+          ${concordanceLine}
+          <p style="font-size:13px;margin:0"><a href="${escapeHtml(deputy.profileUrl)}" style="color:#1e3a5f">Voir son profil complet</a></p>
+        </td>
+      </tr>
+    </table>
+  `.trim();
+}
+
 // ---------------------------------------------------------------------------
 // Template processing
 // ---------------------------------------------------------------------------
@@ -361,7 +421,7 @@ function buildPlainText(input: RenderInput): string {
 // ---------------------------------------------------------------------------
 
 export function renderNewsletterHtml(input: RenderInput): { html: string; text: string } {
-  const { recap, editorialIntro, politician } = input;
+  const { recap, editorialIntro, politician, personalDeputy = null, unsubscribeUrl } = input;
   const weekNum = getISOWeekNumber(recap.weekStart);
   const year = recap.weekStart.getUTCFullYear();
 
@@ -373,6 +433,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
   const affairsHtml = buildAffairsHtml(recap);
   const factChecksHtml = buildFactChecksHtml(recap);
   const pressHtml = buildPressHtml(recap);
+  const personalDeputyHtml = buildPersonalDeputyHtml(personalDeputy);
 
   // Build politician section data
   const politicianPhoto = politician?.photoUrl ?? DEFAULT_PHOTO;
@@ -389,6 +450,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
     hasFactChecks: recap.factChecks.total > 0,
     hasPress: recap.press.articleCount > 0,
     hasPolitician: politician !== null,
+    hasPersonalDeputy: personalDeputy !== null,
   };
 
   // All replacements
@@ -403,6 +465,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
     affairsHtml,
     factChecksHtml,
     pressHtml,
+    personalDeputyHtml,
     politicianPhoto,
     politicianName,
     politicianMandate,
@@ -410,7 +473,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
     politicianBio,
     politicianUrl,
     recapUrl: `${SITE_URL}/recap`,
-    unsubscribeUrl: "[[UNSUB_LINK_EN]]",
+    unsubscribeUrl: unsubscribeUrl ?? "[[UNSUB_LINK_EN]]",
   };
 
   // Process conditionals then placeholders on pre-compiled HTML

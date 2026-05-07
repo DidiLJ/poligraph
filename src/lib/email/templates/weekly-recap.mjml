@@ -100,6 +100,17 @@
 
     <mj-section padding="4px 0"></mj-section>
 
+    <!-- personal-deputy-block-start -->
+    {{#if hasPersonalDeputy}}
+    <mj-section background-color="#ffffff" padding="0 24px 8px">
+      <mj-column>
+        {{personalDeputyHtml}}
+      </mj-column>
+    </mj-section>
+    <mj-section padding="4px 0"></mj-section>
+    {{/if}}
+    <!-- personal-deputy-block-end -->
+
     <!-- Votes section -->
     {{#if hasVotes}}
     <mj-section background-color="#ffffff" padding="20px 24px 12px">

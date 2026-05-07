@@ -208,6 +208,59 @@ export default function MentionsLegalesPage() {
           </p>
         </section>
 
+        <section id="newsletter">
+          <h2 className="text-xl font-semibold mb-4">Newsletter et données personnelles</h2>
+          <div className="text-muted-foreground space-y-3">
+            <p>
+              <strong>Base légale :</strong> consentement explicite (article 6.1.a du RGPD),
+              recueilli au moment de l&apos;inscription au formulaire de la newsletter.
+            </p>
+            <p>
+              <strong>Données collectées :</strong> adresse email obligatoire ; et de façon
+              optionnelle : code postal, identifiant du député de votre circonscription, profil de
+              concordance issu de la boussole parlementaire (réponses anonymisées aux questions du
+              quiz). Aucune donnée nominative autre que votre email n&apos;est conservée.
+            </p>
+            <p>
+              <strong>Finalité :</strong> envoi de la newsletter hebdomadaire et personnalisation de
+              son contenu (récap des votes de votre député, concordance avec votre profil). Aucun
+              usage commercial, aucune revente, aucun partage avec des tiers commerciaux.
+            </p>
+            <p>
+              <strong>Sous-traitants :</strong> Mailjet (Mailgun Sàrl, Paris, France) pour
+              l&apos;envoi des emails ; Vercel (États-Unis) pour l&apos;hébergement ; Supabase
+              (Singapour) pour la base de données. Une copie de votre email est stockée chez chacun
+              de ces prestataires.
+            </p>
+            <p>
+              <strong>Durée de conservation :</strong> jusqu&apos;à votre désabonnement. Suppression
+              automatique après 12 newsletters consécutives sans ouverture.
+            </p>
+            <p>
+              <strong>Vos droits :</strong> accès, rectification, effacement, portabilité,
+              opposition, retrait du consentement à tout moment. Le lien de désabonnement est
+              présent en bas de chaque email envoyé. Vous pouvez aussi nous écrire à{" "}
+              <a href="mailto:contact@poligraph.fr" className="underline font-semibold">
+                contact@poligraph.fr
+              </a>
+              .
+            </p>
+            <p>
+              <strong>Réclamation :</strong> si vous estimez que vos droits ne sont pas respectés,
+              vous pouvez saisir la{" "}
+              <a
+                href="https://www.cnil.fr"
+                className="underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                CNIL
+              </a>
+              .
+            </p>
+          </div>
+        </section>
+
         <section>
           <h2 className="text-xl font-semibold mb-4">Politique de confidentialité</h2>
           <p className="text-muted-foreground">
@@ -286,7 +339,7 @@ export default function MentionsLegalesPage() {
         </section>
       </div>
 
-      <p className="text-sm text-muted-foreground mt-12">Dernière mise à jour : Mars 2026</p>
+      <p className="text-sm text-muted-foreground mt-12">Dernière mise à jour : Mai 2026</p>
     </main>
   );
 }

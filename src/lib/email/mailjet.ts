@@ -188,6 +188,38 @@ export async function sendBatch(messages: BatchMessage[]): Promise<{ sent: numbe
   return { sent: messages.length };
 }
 
+export interface MailjetCampaignStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  unsubscribed: number;
+  bounced: number;
+  topClicks: Array<{ url: string; count: number }> | null;
+}
+
+/**
+ * Fetch aggregated engagement stats for a campaign sent during the week of `weekStart`.
+ *
+ * Stub for the MVP: returns zeroed counters so the sync-engagement job can be wired up
+ * and run weekly. The real implementation will query `/REST/messagesentstatistics`
+ * filtered by FromEmail + FromTS/ToTS once a sent campaign is available to test against.
+ */
+export async function fetchMailjetStatsForCampaign(weekStart: Date): Promise<MailjetCampaignStats> {
+  console.warn(
+    `[Mailjet stats stub] Would fetch stats for week ${weekStart.toISOString().slice(0, 10)}`
+  );
+  return {
+    sent: 0,
+    delivered: 0,
+    opened: 0,
+    clicked: 0,
+    unsubscribed: 0,
+    bounced: 0,
+    topClicks: null,
+  };
+}
+
 /**
  * Set or update a custom contact data field on a Mailjet contact.
  * Preserves existing fields and overwrites only the named one.

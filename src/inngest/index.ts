@@ -10,6 +10,7 @@ import { syncDaily } from "./functions/sync-daily";
 import { generateSocialDrafts, publishApprovedPost } from "./functions/post-social";
 import { sendNewsletter } from "./functions/send-newsletter";
 import { onboardingSend } from "./functions/onboarding-send";
+import { syncEngagement } from "./functions/sync-engagement";
 import { syncPress } from "./functions/sync-press";
 import { syncScrutins } from "./functions/sync-scrutins";
 import { syncPlatformUpdates } from "./functions/sync-platform-updates";
@@ -31,6 +32,7 @@ const groupedFunctions = [
   publishApprovedPost,
   sendNewsletter,
   onboardingSend,
+  syncEngagement,
   pipelineDigest,
   syncPlatformUpdates,
 ];

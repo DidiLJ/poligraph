@@ -160,6 +160,35 @@ export async function sendTransactional({
 }
 
 /**
+ * Send a batch of personalized emails via Mailjet Send API v3.1.
+ * Used for the per-subscriber weekly newsletter where each recipient gets
+ * a custom HTML body. Mailjet accepts up to ~50 messages per batch call.
+ */
+export interface BatchMessage {
+  to: string;
+  subject: string;
+  html: string;
+  textPart?: string;
+}
+
+export async function sendBatch(messages: BatchMessage[]): Promise<{ sent: number }> {
+  if (messages.length === 0) return { sent: 0 };
+  await mailjet.post("send", { version: "v3.1" }).request({
+    Messages: messages.map((m) => ({
+      From: {
+        Email: process.env.MAILJET_SENDER_EMAIL || "newsletter@poligraph.fr",
+        Name: process.env.MAILJET_SENDER_NAME || "Poligraph",
+      },
+      To: [{ Email: m.to }],
+      Subject: m.subject,
+      HTMLPart: m.html,
+      ...(m.textPart ? { TextPart: m.textPart } : {}),
+    })),
+  });
+  return { sent: messages.length };
+}
+
+/**
  * Set or update a custom contact data field on a Mailjet contact.
  * Preserves existing fields and overwrites only the named one.
  */

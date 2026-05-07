@@ -161,6 +161,31 @@ export function getISOWeekNumber(date: Date): number {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
+/** Format a date as the ISO week string of its containing week (e.g. "2026-W18"). */
+export function getISOWeekString(date: Date): string {
+  // ISO week year: the Thursday of the same week determines the year.
+  const thursday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  thursday.setUTCDate(thursday.getUTCDate() + 4 - (thursday.getUTCDay() || 7));
+  const year = thursday.getUTCFullYear();
+  const weekNum = getISOWeekNumber(date);
+  return `${year}-W${String(weekNum).padStart(2, "0")}`;
+}
+
+/** Parse an ISO week string ("YYYY-Www") to its Monday at 00:00 UTC, or null if invalid. */
+export function parseISOWeekString(s: string): Date | null {
+  const m = s.match(/^(\d{4})-W(\d{2})$/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const week = Number(m[2]);
+  if (week < 1 || week > 53) return null;
+  // ISO week 1 contains the Thursday of week 1; jan 4 always falls in week 1.
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7; // Sunday=0 → 7
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - (jan4Day - 1) + (week - 1) * 7);
+  return monday;
+}
+
 // ---------------------------------------------------------------------------
 // Press story selection
 // ---------------------------------------------------------------------------

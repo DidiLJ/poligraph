@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { DEPARTMENTS, getDepartmentSlug } from "@/config/departments";
 import { getAllThemeSlugs } from "@/lib/theme-utils";
 import { SITE_URL } from "@/config/site";
+import { getWeekStart, getISOWeekString } from "@/lib/data/recap";
 
 export async function generateSitemaps() {
   return [{ id: 0 }, { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
@@ -202,7 +203,21 @@ async function buildStaticAndPoliticiansSitemap(): Promise<MetadataRoute.Sitemap
     priority: 0.8,
   }));
 
-  return [...staticPages, ...politicianPages];
+  // Last 52 completed ISO weeks of /recap/[week] archives
+  const recapPages: MetadataRoute.Sitemap = [];
+  const now = new Date();
+  for (let i = 1; i <= 52; i++) {
+    const monday = getWeekStart(new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000));
+    const iso = getISOWeekString(monday);
+    recapPages.push({
+      url: `${SITE_URL}/recap/${iso}`,
+      lastModified: monday,
+      changeFrequency: "never" as const,
+      priority: i <= 4 ? 0.7 : 0.5,
+    });
+  }
+
+  return [...staticPages, ...recapPages, ...politicianPages];
 }
 
 // Sitemap 1: Affairs + parties + elections + departments (priority 0.6-0.7)

@@ -263,7 +263,7 @@ export function buildPersonalDeputyHtml(deputy: PersonalDeputyContext | null): s
           .slice(0, 3)
           .map(
             (v) =>
-              `<li style="margin-bottom:4px"><strong>${escapeHtml(v.positionLabel)}</strong> &mdash; ${escapeHtml(v.title)}</li>`
+              `<li style="margin-bottom:4px"><strong>${escapeHtml(v.positionLabel)}</strong> : ${escapeHtml(v.title)}</li>`
           )
           .join("")}</ul>`;
 

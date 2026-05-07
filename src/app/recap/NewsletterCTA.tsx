@@ -7,6 +7,7 @@ import { trackUmami } from "@/lib/umami";
 
 export function NewsletterCTA() {
   const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -16,14 +17,17 @@ export function NewsletterCTA() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || status === "loading") return;
+    if (!email.trim() || !consent || status === "loading") return;
 
     setStatus("loading");
     try {
       const res = await fetch("/api/newsletter/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({
+          email: email.trim(),
+          source: "RECAP_PAGE",
+        }),
       });
       const data = await res.json();
 
@@ -63,7 +67,7 @@ export function NewsletterCTA() {
       <p className="text-sm text-muted-foreground mb-4">
         Gratuit, sans spam. Désinscription en un clic.
       </p>
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <input
           type="email"
           value={email}
@@ -74,9 +78,34 @@ export function NewsletterCTA() {
           placeholder="votre@email.com"
           required
           aria-label="Adresse email pour la newsletter"
-          className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
-        <Button type="submit" disabled={status === "loading"} size="sm">
+
+        <label className="flex items-start gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            required
+            aria-label="J'accepte de recevoir la newsletter Poligraph par email"
+            className="mt-0.5 h-4 w-4 rounded border-input"
+          />
+          <span>
+            J&apos;accepte de recevoir la newsletter Poligraph par email. Je peux me désinscrire à
+            tout moment.{" "}
+            <a href="/mentions-legales#newsletter" className="underline">
+              Comment mes données sont traitées
+            </a>
+            .
+          </span>
+        </label>
+
+        <Button
+          type="submit"
+          disabled={status === "loading" || !consent || !email.trim()}
+          size="sm"
+          className="w-full"
+        >
           {status === "loading" ? <Loader2 className="size-4 animate-spin" /> : "S'inscrire"}
         </Button>
       </form>

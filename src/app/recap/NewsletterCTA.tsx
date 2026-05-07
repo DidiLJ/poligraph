@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackUmami } from "@/lib/umami";
 
 export function NewsletterCTA() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    trackUmami("newsletter_cta_shown", { source: "RECAP_PAGE" });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +33,7 @@ export function NewsletterCTA() {
         return;
       }
 
+      trackUmami("newsletter_email_submitted", { source: "RECAP_PAGE" });
       setStatus("success");
       setMessage(data.message);
     } catch {

@@ -1,4 +1,4 @@
-import type { WeeklyRecapData } from "@/lib/data/recap";
+import type { PressStory, WeeklyRecapData } from "@/lib/data/recap";
 import { getISOWeekNumber } from "@/lib/data/recap";
 import { WEEKLY_RECAP_HTML } from "./templates/weekly-recap-compiled";
 
@@ -15,10 +15,22 @@ export interface PoliticianOfWeek {
   bio: string;
 }
 
+export interface PersonalDeputyContext {
+  fullName: string;
+  partyShortName: string | null;
+  photoUrl: string | null;
+  constituency: string | null;
+  weeklyVotes: Array<{ scrutinSlug: string | null; title: string; positionLabel: string }>;
+  weeklyConcordance: number | null;
+  profileUrl: string;
+}
+
 export interface RenderInput {
   recap: WeeklyRecapData;
   editorialIntro: string;
   politician: PoliticianOfWeek | null;
+  personalDeputy?: PersonalDeputyContext | null;
+  unsubscribeUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +193,30 @@ function buildFactChecksHtml(recap: WeeklyRecapData): string {
   return countsHtml + claimantHtml;
 }
 
+export function buildPressStoriesHtml(stories: PressStory[]): string {
+  if (stories.length === 0) return "";
+  const items = stories
+    .slice(0, 3)
+    .map((s) => {
+      const title = escapeHtml(s.title);
+      const feedSource = escapeHtml(s.feedSource);
+      const dateLabel = formatDateShort(s.publishedAt);
+      const summary = s.aiSummary
+        ? `<p style="margin: 4px 0 0; font-style: italic; font-size: 13px; color: #374151;">${escapeHtml(s.aiSummary)}</p>`
+        : "";
+      return `<div style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;">
+        <p style="margin: 0; font-weight: 600;"><a href="${s.url}" style="color: #1e3a5f; text-decoration: none;">${title}</a></p>
+        <p style="margin: 2px 0 0; font-size: 12px; color: #6b7280;">${feedSource} · ${dateLabel}</p>
+        ${summary}
+      </div>`;
+    })
+    .join("");
+  return `<div style="padding: 4px 0 8px;">
+    <p style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #1e3a5f;">À la une cette semaine</p>
+    ${items}
+  </div>`;
+}
+
 function buildPressHtml(recap: WeeklyRecapData): string {
   const press = recap.press;
   if (press.articleCount === 0) return "";
@@ -189,6 +225,8 @@ function buildPressHtml(recap: WeeklyRecapData): string {
     <span style="font-weight: 600; color: #1e3a5f;">${press.articleCount} article${press.articleCount > 1 ? "s" : ""}</span>
     <span style="font-size: 13px; color: #6b7280;"> couverts cette semaine</span>
   </div>`;
+
+  const storiesHtml = buildPressStoriesHtml(press.storiesOfTheWeek ?? []);
 
   const top3 = press.topPoliticians.slice(0, 3);
   const mentionsHtml =
@@ -204,7 +242,55 @@ function buildPressHtml(recap: WeeklyRecapData): string {
         </div>`
       : "";
 
-  return countHtml + mentionsHtml;
+  return countHtml + storiesHtml + mentionsHtml;
+}
+
+export function buildPersonalDeputyHtml(deputy: PersonalDeputyContext | null): string {
+  if (!deputy) return "";
+
+  const photoBlock = deputy.photoUrl
+    ? `<img src="${escapeHtml(deputy.photoUrl)}" alt="" width="64" height="64" style="border-radius:50%;display:block" />`
+    : "";
+
+  const constituencyLine = deputy.constituency
+    ? `<p style="font-size:13px;color:#374151;margin:0 0 8px">${escapeHtml(deputy.constituency)}</p>`
+    : "";
+
+  const votesBlock =
+    deputy.weeklyVotes.length === 0
+      ? `<p style="font-size:13px;color:#6b7280;margin:0 0 8px">Pas de vote cette semaine.</p>`
+      : `<ul style="margin:0 0 8px;padding-left:18px;font-size:13px">${deputy.weeklyVotes
+          .slice(0, 3)
+          .map(
+            (v) =>
+              `<li style="margin-bottom:4px"><strong>${escapeHtml(v.positionLabel)}</strong> : ${escapeHtml(v.title)}</li>`
+          )
+          .join("")}</ul>`;
+
+  const concordanceLine =
+    deputy.weeklyConcordance !== null
+      ? `<p style="font-size:13px;margin:0 0 8px">Concordance avec ton profil cette semaine : <strong>${deputy.weeklyConcordance}%</strong></p>`
+      : "";
+
+  const partySpan = deputy.partyShortName
+    ? ` <span style="color:#6b7280;font-weight:400">(${escapeHtml(deputy.partyShortName)})</span>`
+    : "";
+
+  return `
+    <table role="presentation" width="100%" style="background-color:#fef3c7;padding:20px 24px;border-radius:8px">
+      <tr>
+        <td style="vertical-align:top;width:80px">${photoBlock}</td>
+        <td style="vertical-align:top;padding-left:12px">
+          <h2 style="font-size:16px;font-weight:700;color:#1e3a5f;margin:0 0 4px">Cette semaine, ton député</h2>
+          <p style="font-size:14px;font-weight:600;margin:0 0 4px">${escapeHtml(deputy.fullName)}${partySpan}</p>
+          ${constituencyLine}
+          ${votesBlock}
+          ${concordanceLine}
+          <p style="font-size:13px;margin:0"><a href="${escapeHtml(deputy.profileUrl)}" style="color:#1e3a5f">Voir son profil complet</a></p>
+        </td>
+      </tr>
+    </table>
+  `.trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +380,16 @@ function buildPlainText(input: RenderInput): string {
   if (recap.press.articleCount > 0) {
     lines.push("--- REVUE DE PRESSE ---");
     lines.push(`${recap.press.articleCount} articles couverts`);
+    const stories = (recap.press.storiesOfTheWeek ?? []).slice(0, 3);
+    if (stories.length > 0) {
+      lines.push("");
+      lines.push("À la une cette semaine :");
+      for (const s of stories) {
+        lines.push(`- ${s.title}`);
+        lines.push(`  ${s.feedSource} · ${formatDateShort(s.publishedAt)}`);
+        lines.push(`  ${s.url}`);
+      }
+    }
     const top3 = recap.press.topPoliticians.slice(0, 3);
     if (top3.length > 0) {
       lines.push(`Les plus cités : ${top3.map((p) => `${p.fullName} (${p.count})`).join(", ")}`);
@@ -325,7 +421,7 @@ function buildPlainText(input: RenderInput): string {
 // ---------------------------------------------------------------------------
 
 export function renderNewsletterHtml(input: RenderInput): { html: string; text: string } {
-  const { recap, editorialIntro, politician } = input;
+  const { recap, editorialIntro, politician, personalDeputy = null, unsubscribeUrl } = input;
   const weekNum = getISOWeekNumber(recap.weekStart);
   const year = recap.weekStart.getUTCFullYear();
 
@@ -337,6 +433,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
   const affairsHtml = buildAffairsHtml(recap);
   const factChecksHtml = buildFactChecksHtml(recap);
   const pressHtml = buildPressHtml(recap);
+  const personalDeputyHtml = buildPersonalDeputyHtml(personalDeputy);
 
   // Build politician section data
   const politicianPhoto = politician?.photoUrl ?? DEFAULT_PHOTO;
@@ -353,6 +450,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
     hasFactChecks: recap.factChecks.total > 0,
     hasPress: recap.press.articleCount > 0,
     hasPolitician: politician !== null,
+    hasPersonalDeputy: personalDeputy !== null,
   };
 
   // All replacements
@@ -367,6 +465,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
     affairsHtml,
     factChecksHtml,
     pressHtml,
+    personalDeputyHtml,
     politicianPhoto,
     politicianName,
     politicianMandate,
@@ -374,7 +473,7 @@ export function renderNewsletterHtml(input: RenderInput): { html: string; text: 
     politicianBio,
     politicianUrl,
     recapUrl: `${SITE_URL}/recap`,
-    unsubscribeUrl: "[[UNSUB_LINK_EN]]",
+    unsubscribeUrl: unsubscribeUrl ?? "[[UNSUB_LINK_EN]]",
   };
 
   // Process conditionals then placeholders on pre-compiled HTML

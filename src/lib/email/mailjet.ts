@@ -139,10 +139,12 @@ export async function sendTransactional({
   to,
   subject,
   html,
+  text,
 }: {
   to: string;
   subject: string;
   html: string;
+  text?: string;
 }): Promise<void> {
   await mailjet.post("send", { version: "v3.1" }).request({
     Messages: [
@@ -154,6 +156,7 @@ export async function sendTransactional({
         To: [{ Email: to }],
         Subject: subject,
         HTMLPart: html,
+        ...(text ? { TextPart: text } : {}),
       },
     ],
   });

@@ -33,6 +33,11 @@ const TEMPLATES: TemplateConfig[] = [
     output: "welcome-compiled.ts",
     exportName: "WELCOME_HTML",
   },
+  {
+    input: "confirm-doi.mjml",
+    output: "confirm-doi-compiled.ts",
+    exportName: "CONFIRM_DOI_HTML",
+  },
 ];
 
 for (const tpl of TEMPLATES) {

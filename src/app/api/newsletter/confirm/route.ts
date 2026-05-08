@@ -22,6 +22,18 @@ export const GET = withPublicRoute(async (request: NextRequest) => {
       where: { id: subscriber.id },
       data: { status: "CONFIRMED", confirmedAt: new Date() },
     });
+
+    // Now that the subscriber confirmed, add them to the Mailjet list so
+    // future weekly campaigns can reach them. Failures here don't block the
+    // user-facing redirect; the next subscribe attempt or a manual sync will
+    // recover. We swallow the error and log to Sentry.
+    try {
+      const { subscribeToNewsletter } = await import("@/lib/email/mailjet");
+      await subscribeToNewsletter(subscriber.email);
+    } catch (e) {
+      console.error("[Newsletter] Mailjet list-add after confirm error:", e);
+    }
+
     await inngest.send({
       name: "subscriber/confirmed",
       data: { subscriberId: subscriber.id },

@@ -32,22 +32,35 @@ export const POST = withPublicRoute(
       });
     }
 
-    // Sync Mailjet for created, reactivated, or alreadyPending. The latter
-    // can happen if a previous attempt failed at the Mailjet step, so we
-    // always retry the sync to make the operation eventually consistent.
-    // Mailjet's addnoforce action is idempotent on the list side.
-    try {
-      const { subscribeToNewsletter, setMailjetCustomField } = await import("@/lib/email/mailjet");
-      await subscribeToNewsletter(email);
-      if (result.confirmationToken) {
-        await setMailjetCustomField(email, "poligraph_token", result.confirmationToken);
+    // House-managed double opt-in: send our own confirmation email.
+    // Mailjet's native DOI is not used (the new Sinch UI made it cumbersome
+    // to wire a custom redirect URL with our token). The user is added to
+    // the Mailjet list ONLY after they click the confirmation link in the
+    // /api/newsletter/confirm route. We always re-send the confirmation if
+    // a previous attempt left the subscriber in PENDING_CONFIRMATION (the
+    // first email may have been lost in spam).
+    if (result.confirmationToken) {
+      try {
+        const { sendTransactional } = await import("@/lib/email/mailjet");
+        const { renderConfirmDoiHtml, renderConfirmDoiText } =
+          await import("@/lib/email/render-confirm-doi");
+        const confirmUrl = `https://poligraph.fr/api/newsletter/confirm?token=${result.confirmationToken}`;
+        await sendTransactional({
+          to: email,
+          subject: "Confirme ton inscription à Poligraph",
+          html: renderConfirmDoiHtml({ confirmUrl }),
+          text: renderConfirmDoiText({ confirmUrl }),
+        });
+      } catch (error) {
+        console.error("[Newsletter] Confirmation email error:", error);
+        return NextResponse.json(
+          {
+            error:
+              "Impossible de t'envoyer l'email de confirmation. Réessaye dans quelques minutes.",
+          },
+          { status: 500 }
+        );
       }
-    } catch (error) {
-      console.error("[Newsletter] Mailjet sync error:", error);
-      return NextResponse.json(
-        { error: "Impossible de traiter votre inscription. Réessayez plus tard." },
-        { status: 500 }
-      );
     }
 
     if (result.alreadyPending) {

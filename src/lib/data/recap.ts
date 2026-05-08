@@ -221,6 +221,9 @@ export async function selectPressStories(
     where: { publishedAt: { gte: weekStart, lt: weekEnd } },
     include: {
       mentions: {
+        // Only surface mentions of PUBLISHED politicians. DRAFT, ARCHIVED,
+        // EXCLUDED or REJECTED profiles must never leak via press grids.
+        where: { politician: { publicationStatus: "PUBLISHED" } },
         include: {
           politician: {
             select: {
@@ -236,6 +239,10 @@ export async function selectPressStories(
         include: { party: { select: { slug: true, shortName: true } } },
       },
       affairLinks: {
+        // Only surface PUBLISHED affairs to the public Recap grid. Drafts ("À
+        // vérifier") and rejected affairs must never leak via press story
+        // mentions, even when an article correctly references them.
+        where: { affair: { publicationStatus: "PUBLISHED" } },
         include: { affair: { select: { slug: true, title: true, status: true } } },
       },
     },

@@ -10,7 +10,7 @@ export default function BienvenuePage() {
   }, []);
 
   return (
-    <main className="container max-w-2xl py-16 text-center">
+    <main className="container mx-auto max-w-2xl px-4 py-16 text-center">
       <h1 className="text-3xl font-display font-extrabold tracking-tight mb-4">
         Inscription confirmée !
       </h1>

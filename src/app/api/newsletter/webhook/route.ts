@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withPublicRoute } from "@/lib/api/with-public-route";
 import { db } from "@/lib/db";
-import { verifyMailjetSignature } from "@/lib/newsletter/webhook-signature";
+import { verifyMailjetBasicAuth } from "@/lib/newsletter/webhook-auth";
 
 interface MailjetEvent {
   event: string;
@@ -10,18 +10,20 @@ interface MailjetEvent {
 }
 
 export const POST = withPublicRoute(async (request: NextRequest) => {
-  const rawBody = await request.text();
-
   const secret = process.env.MAILJET_WEBHOOK_SECRET;
   if (!secret) {
     console.error("[Newsletter] MAILJET_WEBHOOK_SECRET is not configured");
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
   }
 
-  const signature = request.headers.get("x-mailjet-signature");
-  if (!verifyMailjetSignature(rawBody, signature, secret)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  // Mailjet does not sign webhook payloads (no HMAC in Sinch UI).
+  // We authenticate via HTTP Basic Auth in the URL stored in Mailjet:
+  //   https://mailjet:<secret>@poligraph.fr/api/newsletter/webhook
+  if (!verifyMailjetBasicAuth(request.headers.get("authorization"), secret)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rawBody = await request.text();
 
   let events: MailjetEvent[];
   try {

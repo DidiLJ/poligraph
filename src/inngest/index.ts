@@ -3,6 +3,7 @@ import { discoverAffairs } from "./functions/discover-affairs";
 import { generateAi } from "./functions/generate-ai";
 import { indexEmbeddings } from "./functions/index-embeddings";
 import { maintenance } from "./functions/maintenance";
+import { moderationPreflight } from "./functions/moderation-preflight";
 import { syncFactchecksGrouped } from "./functions/sync-factchecks";
 import { syncLegislation } from "./functions/sync-legislation";
 import { syncPoliticians } from "./functions/sync-politicians";
@@ -27,6 +28,7 @@ const groupedFunctions = [
   indexEmbeddings,
   syncPoliticians,
   maintenance,
+  moderationPreflight,
   syncDaily,
   generateSocialDrafts,
   publishApprovedPost,

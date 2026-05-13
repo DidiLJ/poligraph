@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { db } from "@/lib/db";
 import { runPreflight } from "@/lib/moderation/preflight";
 import { writeFile, mkdir } from "fs/promises";

@@ -1,9 +1,14 @@
 import { db } from "@/lib/db";
-import { moderateAffair, type ModerationResult } from "@/services/affair-moderation";
+import {
+  moderateAffair,
+  getAIRateLimitMs,
+  type ModerationResult,
+} from "@/services/affair-moderation";
 import {
   findPotentialDuplicates,
   type PotentialDuplicate,
 } from "@/services/affairs/reconciliation";
+import { sleep } from "@/lib/utils";
 import { auditAttribution } from "./attribution";
 import type {
   ModerationPreflightReport,
@@ -48,30 +53,47 @@ export async function runPreflight(
   const duplicatesByAffair = buildDuplicateIndex(duplicates);
 
   const draftCandidates: DraftCandidate[] = [];
-  for (const draft of drafts) {
+  for (let i = 0; i < drafts.length; i++) {
+    const draft = drafts[i]!;
     if (!draft.politician) continue;
 
-    const moderation = await moderateAffair({
-      affairId: draft.id,
-      title: draft.title,
-      description: draft.description ?? "",
-      status: draft.status,
-      category: draft.category ?? "AUTRE",
-      involvement: draft.involvement ?? "MENTIONED_ONLY",
-      politicianName: draft.politician.fullName,
-      politicianSlug: draft.politician.slug,
-      sources: draft.sources.map((s) => ({
-        url: s.url,
-        title: s.title ?? "",
-        publisher: s.publisher ?? "",
-        publishedAt: s.publishedAt?.toISOString() ?? "",
-      })),
-      factsDate: draft.factsDate?.toISOString() ?? null,
-      startDate: draft.startDate?.toISOString() ?? null,
-      verdictDate: draft.verdictDate?.toISOString() ?? null,
-      court: draft.court ?? null,
-      sentence: draft.sentence ?? null,
-    });
+    let moderation: ModerationResult;
+    try {
+      moderation = await moderateAffair({
+        affairId: draft.id,
+        title: draft.title,
+        description: draft.description ?? "",
+        status: draft.status,
+        category: draft.category ?? "AUTRE",
+        involvement: draft.involvement ?? "MENTIONED_ONLY",
+        politicianName: draft.politician.fullName,
+        politicianSlug: draft.politician.slug,
+        sources: draft.sources.map((s) => ({
+          url: s.url,
+          title: s.title ?? "",
+          publisher: s.publisher ?? "",
+          publishedAt: s.publishedAt?.toISOString() ?? "",
+        })),
+        factsDate: draft.factsDate?.toISOString() ?? null,
+        startDate: draft.startDate?.toISOString() ?? null,
+        verdictDate: draft.verdictDate?.toISOString() ?? null,
+        court: draft.court ?? null,
+        sentence: draft.sentence ?? null,
+      });
+    } catch (err) {
+      console.error(`[preflight] moderateAffair failed for draft ${draft.id}:`, err);
+      moderation = {
+        recommendation: "NEEDS_REVIEW",
+        issues: [],
+        confidence: 0,
+        reasoning: "Moderation failed; manual review required.",
+        correctedTitle: null,
+        correctedDescription: null,
+        correctedStatus: null,
+        correctedCategory: null,
+        model: "fallback",
+      };
+    }
 
     const attribution = auditAttribution({
       affairTitle: draft.title,
@@ -103,6 +125,10 @@ export async function runPreflight(
         duplicateOf: duplicatesByAffair.get(draft.id) ?? [],
       },
     });
+
+    if (i < drafts.length - 1) {
+      await sleep(getAIRateLimitMs());
+    }
   }
 
   const stats = {
@@ -115,7 +141,8 @@ export async function runPreflight(
       (d) =>
         d.preflight.moderationRecommendation === "PUBLISH" &&
         d.preflight.attribution.confidence === "STRONG" &&
-        d.preflight.duplicateOf.length === 0
+        d.preflight.duplicateOf.length === 0 &&
+        d.preflight.moderationIssues.length === 0
     ).length,
     needsReview: draftCandidates.filter(
       (d) => d.preflight.moderationRecommendation === "NEEDS_REVIEW"
@@ -182,10 +209,11 @@ function buildDuplicateGroups(pairs: PotentialDuplicate[]): DuplicateGroup[] {
 
   const result: DuplicateGroup[] = [];
   for (const entry of groups.values()) {
-    const recommendedKeep = entry.ids[0];
+    const sortedIds = [...entry.ids].sort();
+    const recommendedKeep = sortedIds[0];
     if (!recommendedKeep) continue;
     result.push({
-      affairIds: entry.ids,
+      affairIds: sortedIds,
       score: entry.score,
       matchedBy: entry.matchedBy,
       recommendedKeep,

@@ -9,6 +9,7 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/services/affair-moderation", () => ({
   moderateAffair: vi.fn(),
+  getAIRateLimitMs: vi.fn(() => 0),
 }));
 
 vi.mock("@/services/affairs/reconciliation", () => ({
@@ -149,5 +150,43 @@ describe("runPreflight", () => {
     expect(report.duplicateGroups).toHaveLength(1);
     expect(report.duplicateGroups[0]!.affairIds.sort()).toEqual(["a1", "a2"]);
     expect(report.duplicateGroups[0]!.autoMergeEligible).toBe(true);
+  });
+
+  it("isolates moderateAffair failures and continues the batch", async () => {
+    (db.affair.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "a1",
+        title: "X",
+        description: "",
+        publicationStatus: "DRAFT",
+        createdAt: new Date(),
+        category: "AUTRE",
+        status: "INSTRUCTION",
+        involvement: "DIRECT",
+        factsDate: null,
+        startDate: null,
+        verdictDate: null,
+        court: null,
+        sentence: null,
+        politician: { id: "p1", slug: "x", fullName: "X Y", normalizedLastName: "y" },
+        sources: [],
+        events: [],
+      },
+    ]);
+    (db.politician.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "p1", fullName: "X Y", normalizedLastName: "y" },
+    ]);
+    (moderateAffair as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Rate limit"));
+    (findPotentialDuplicates as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const report = await runPreflight({ source: "manual" });
+
+    expect(report.drafts).toHaveLength(1);
+    expect(report.drafts[0]!.preflight.moderationRecommendation).toBe("NEEDS_REVIEW");
+    expect(report.drafts[0]!.preflight.moderationIssues).toEqual([]);
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 });

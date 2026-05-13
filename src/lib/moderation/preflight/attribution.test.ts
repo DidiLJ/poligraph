@@ -42,4 +42,44 @@ describe("auditAttribution", () => {
     });
     expect(result.confidence).toBe("STRONG");
   });
+
+  it("does NOT return MISMATCH when normalizedLastName is empty", () => {
+    const result = auditAttribution({
+      affairTitle: "Procès de Christine Boutin",
+      affairDescription: "...",
+      politician: { id: "p1", fullName: "Christine Boutin", normalizedLastName: "" },
+      otherPoliticians: [],
+    });
+    expect(result.confidence).not.toBe("MISMATCH");
+  });
+
+  it("does NOT return MISMATCH when surname is shorter than 4 chars", () => {
+    const result = auditAttribution({
+      affairTitle: "Sébastien Lecornu mis en cause",
+      affairDescription: "...",
+      politician: { id: "p1", fullName: "Tâo Sé", normalizedLastName: "se" },
+      otherPoliticians: [],
+    });
+    expect(result.confidence).not.toBe("MISMATCH");
+  });
+
+  it("does NOT return MISMATCH on compound surnames when text contains a similar word", () => {
+    const result = auditAttribution({
+      affairTitle: "Audition de Marine Le Pen",
+      affairDescription: "Marine devra le penser à deux fois avant de répondre.",
+      politician: { id: "p1", fullName: "Marine Le Pen", normalizedLastName: "le pen" },
+      otherPoliticians: [],
+    });
+    expect(result.confidence).not.toBe("MISMATCH");
+  });
+
+  it("returns STRONG via last-name-only fallback when only surname appears", () => {
+    const result = auditAttribution({
+      affairTitle: "Affaire X",
+      affairDescription: "Fillon a été mis en examen hier matin.",
+      politician: { id: "p1", fullName: "François Fillon", normalizedLastName: "fillon" },
+      otherPoliticians: [],
+    });
+    expect(result.confidence).toBe("STRONG");
+  });
 });

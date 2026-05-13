@@ -4,7 +4,7 @@ const normalize = (s: string): string =>
   s
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -48,13 +48,23 @@ export function auditAttribution(input: AuditAttributionInput): AttributionAudit
     }
   }
 
-  const lastNameWithExtraChars = new RegExp(`\\b${lastNameNormalized}[a-z]{2,}\\b`);
-  if (lastNameWithExtraChars.test(haystack) && !haystack.includes(lastNameNormalized + " ")) {
+  if (!lastNameNormalized) {
     return {
-      confidence: "MISMATCH",
-      reasoning: `Surname-like word in text but does not match "${input.politician.normalizedLastName}"`,
+      confidence: "WEAK",
+      reasoning: `Politician has no usable last name to audit`,
       suggestedAlternativePoliticianId: null,
     };
+  }
+
+  if (lastNameNormalized.length >= 4 && !lastNameNormalized.includes(" ")) {
+    const lastNameWithExtraChars = new RegExp(`\\b${lastNameNormalized}[a-z]{2,}\\b`);
+    if (lastNameWithExtraChars.test(haystack) && !haystack.includes(lastNameNormalized + " ")) {
+      return {
+        confidence: "MISMATCH",
+        reasoning: `Surname-like word in text but does not match "${input.politician.normalizedLastName}"`,
+        suggestedAlternativePoliticianId: null,
+      };
+    }
   }
 
   if (new RegExp(`\\b${lastNameNormalized}\\b`).test(haystack)) {

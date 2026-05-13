@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ISSUE_TYPES } from "@/services/affair-moderation";
+
 export const AttributionConfidenceSchema = z.enum(["STRONG", "WEAK", "MISMATCH"]);
 export type AttributionConfidence = z.infer<typeof AttributionConfidenceSchema>;
 
@@ -12,6 +14,12 @@ export type AttributionAudit = z.infer<typeof AttributionAuditSchema>;
 
 export const ModerationRecommendationSchema = z.enum(["PUBLISH", "REJECT", "NEEDS_REVIEW"]);
 export type ModerationRecommendation = z.infer<typeof ModerationRecommendationSchema>;
+
+export const ModerationIssueSchema = z.object({
+  type: z.enum(ISSUE_TYPES),
+  detail: z.string(),
+});
+export type ModerationIssue = z.infer<typeof ModerationIssueSchema>;
 
 export const DraftCandidateSchema = z.object({
   id: z.string(),
@@ -27,7 +35,7 @@ export const DraftCandidateSchema = z.object({
   status: z.string(),
   preflight: z.object({
     moderationRecommendation: ModerationRecommendationSchema,
-    moderationIssues: z.array(z.object({ type: z.string(), detail: z.string() })),
+    moderationIssues: z.array(ModerationIssueSchema),
     attribution: AttributionAuditSchema,
     duplicateOf: z.array(z.string()),
   }),

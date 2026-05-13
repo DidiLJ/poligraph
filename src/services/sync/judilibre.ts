@@ -196,7 +196,10 @@ async function enrichAffairFromJudilibre(
 
 /**
  * Create a new affair from a Judilibre decision.
- * Prefixed [À VÉRIFIER] since it hasn't been manually validated.
+ *
+ * publicationStatus is DRAFT until editorial validation. The title is built
+ * directly from the decision metadata (no marker prefix) — the DRAFT status
+ * is the single source of truth for unvalidated content.
  */
 async function createAffairFromJudilibre(
   politicianId: string,

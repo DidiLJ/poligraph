@@ -6,7 +6,7 @@
  * 2. Scrape full article content (not stored — copyright)
  * 3. Analyze with Mistral (JSON mode)
  * 4. Match detected affairs with existing DB affairs
- * 5. Enrich existing affairs or create new ones (prefixed [À VÉRIFIER])
+ * 5. Enrich existing affairs or create new ones (publicationStatus: DRAFT)
  *
  * Key difference from Judilibre: press NEVER modifies affair status
  * (press has no legal authority, only Judilibre upgrades status).
@@ -285,7 +285,7 @@ export async function syncPressAnalysis(
             stats.affairsRejected++;
             continue;
           }
-          // New revelation — create affair with [À VÉRIFIER]
+          // New revelation — create affair as DRAFT (no title prefix)
           const created = await createAffairFromPress(
             politicianId,
             article.id,
@@ -468,8 +468,13 @@ async function enrichAffairFromPress(
 }
 
 /**
- * Create a new affair from a press revelation
- * Prefixed [À VÉRIFIER], verifiedAt: null
+ * Create a new affair from a press revelation.
+ *
+ * publicationStatus is set to DRAFT and verifiedAt left null, which is the
+ * sole authoritative signal that the affair has not been editorially
+ * validated. The legacy "[À VÉRIFIER]" title prefix is no longer added —
+ * relying on publicationStatus avoids the risk of leaking the marker into
+ * the public UI when filtering is forgotten somewhere in the data layer.
  */
 async function createAffairFromPress(
   politicianId: string,
@@ -482,7 +487,7 @@ async function createAffairFromPress(
   dryRun: boolean,
   verbose?: boolean
 ): Promise<boolean> {
-  const title = `[À VÉRIFIER] ${detected.title}`;
+  const title = detected.title;
 
   if (dryRun) {
     console.log(`  [DRY-RUN] Créerait affaire: ${title}`);

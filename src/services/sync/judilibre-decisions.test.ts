@@ -1,3 +1,7 @@
+// Tests skipped 2026-05-15: pipeline disabled per Option C.
+// See docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md.
+// Tests preserved as documentation of the resolver's previous behavior;
+// they may be reactivated if Option D is implemented.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DataSource, Judgement, MatchMethod } from "@/generated/prisma";
 
@@ -55,7 +59,7 @@ const baseEvidence: JudilibreMatchEvidence = {
 // loadJudilibreDecisionCache
 // ---------------------------------------------------------------------------
 
-describe("loadJudilibreDecisionCache", () => {
+describe.skip("[disabled 2026-05-15] loadJudilibreDecisionCache", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -180,7 +184,7 @@ describe("loadJudilibreDecisionCache", () => {
 // persistJudilibreDecision
 // ---------------------------------------------------------------------------
 
-describe("persistJudilibreDecision", () => {
+describe.skip("[disabled 2026-05-15] persistJudilibreDecision", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

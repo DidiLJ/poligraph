@@ -70,10 +70,15 @@ const steps: SyncStep[] = [
     name: "Analyse presse IA (limit 100)",
     command: `npx tsx scripts/sync-press-analysis.ts --limit=100${dryRunFlag}`,
   },
-  {
-    name: "Judilibre (limit 20)",
-    command: `npx tsx scripts/sync-judilibre.ts --limit=20${dryRunFlag}`,
-  },
+  // Judilibre step disabled 2026-05-15 (Option C, audit:
+  // docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md).
+  // The Cassation chambre criminelle corpus is structurally anonymized;
+  // pipeline produced 0 affairs over 156 decisions. Re-enabling tracked
+  // as Option D (enrichment for existing affairs) in follow-up issue.
+  // {
+  //   name: "Judilibre (limit 20)",
+  //   command: `npx tsx scripts/sync-judilibre.ts --limit=20${dryRunFlag}`,
+  // },
   {
     name: "Réconciliation affaires",
     command: `npx tsx scripts/reconcile-affairs.ts --auto-merge${dryRunFlag}`,

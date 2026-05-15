@@ -17,6 +17,13 @@ import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
 import { syncJudilibre, getJudilibreStats } from "../src/services/sync/judilibre";
 
+console.warn(
+  "[deprecated] Judilibre pipeline disabled 2026-05-15 (Option C). " +
+    "Running this script will execute the pipeline manually but will not " +
+    "produce affairs against the current Cassation chambre criminelle corpus. " +
+    "See docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md."
+);
+
 const handler: SyncHandler = {
   name: "Poligraph - Judilibre Sync (Cour de cassation)",
   description: "Syncs criminal decisions from Judilibre API via PISTE OAuth 2.0",

@@ -1,4 +1,24 @@
 /**
+ * [DISABLED 2026-05-15, Option C]
+ *
+ * This pipeline is deprecated. Audit:
+ *   docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md
+ *
+ * The Cassation chambre criminelle corpus we currently fetch is
+ * structurally anonymized doctrine; the resolver correctly produces
+ * 0 SAME matches because the text contains no named individuals.
+ *
+ * The Inngest cron registration was removed from `src/inngest/index.ts`.
+ * The CLI `scripts/sync-judilibre.ts` is kept for manual debugging but
+ * prints a deprecation warning at start.
+ *
+ * Reorientation (Option D, enrichment of existing affairs with
+ * procedural details from Cassation references) is tracked in a
+ * follow-up GitHub issue. Do not re-enable this pipeline without
+ * implementing that reorientation.
+ */
+
+/**
  * Judilibre Sync Service
  *
  * Searches Cour de cassation criminal decisions for politicians:

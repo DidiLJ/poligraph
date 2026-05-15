@@ -1,3 +1,7 @@
+// Tests skipped 2026-05-15: pipeline disabled per Option C.
+// See docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md.
+// Tests preserved as documentation of the resolver's previous behavior;
+// they may be reactivated if Option D is implemented.
 import { describe, it, expect, vi } from "vitest";
 
 // Mock database to avoid DATABASE_URL requirement
@@ -5,7 +9,7 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 
 import { shouldUpdateStatus, checkJurisdictionMatch } from "./judilibre";
 
-describe("shouldUpdateStatus", () => {
+describe.skip("[disabled 2026-05-15] shouldUpdateStatus", () => {
   // Normal upgrades (existing behavior)
   it("allows upgrade from lower to higher severity", () => {
     expect(shouldUpdateStatus("ENQUETE_PRELIMINAIRE", "MISE_EN_EXAMEN")).toBe(true);
@@ -48,7 +52,7 @@ describe("shouldUpdateStatus", () => {
   });
 });
 
-describe("checkJurisdictionMatch", () => {
+describe.skip("[disabled 2026-05-15] checkJurisdictionMatch", () => {
   it("returns match when politician department matches court jurisdiction", () => {
     const result = checkJurisdictionMatch("arrêt de la cour d'appel de Lyon", ["Rhône", "Paris"]);
     expect(result).toEqual({ match: true, jurisdiction: "Lyon" });

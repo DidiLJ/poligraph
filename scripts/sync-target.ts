@@ -19,7 +19,9 @@ import { db } from "../src/lib/db";
 import { enrichAffair } from "../src/services/affair-enrichment";
 import { syncFactchecks } from "../src/services/sync/factchecks";
 import { syncPressAnalysis } from "../src/services/sync/press-analysis";
-import { syncJudilibre } from "../src/services/sync/judilibre";
+// syncJudilibre import removed 2026-05-15 (Option C, audit:
+// docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md).
+// runJudilibre below is now a no-op stub.
 import { BRAVE_SEARCH_RATE_LIMIT_MS } from "../src/config/rate-limits";
 
 // ============================================
@@ -333,36 +335,20 @@ async function runPress(politician: PoliticianTarget): Promise<SyncTypeResult> {
   }
 }
 
-async function runJudilibre(politician: PoliticianTarget): Promise<SyncTypeResult> {
-  try {
-    const stats = await syncJudilibre({
-      politicianSlug: politician.slug,
-      force: isForce,
-      dryRun: isDryRun,
-      limit,
-      verbose: isVerbose,
-    });
-
-    return {
-      type: "judilibre",
-      success: stats.errors === 0,
-      stats: {
-        decisionsFound: stats.decisionsFound,
-        decisionsRelevant: stats.decisionsRelevant,
-        affairsEnriched: stats.affairsEnriched,
-        affairsCreated: stats.affairsCreated,
-      },
-      errors: [],
-    };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return {
-      type: "judilibre",
-      success: false,
-      stats: {},
-      errors: [msg],
-    };
-  }
+async function runJudilibre(_politician: PoliticianTarget): Promise<SyncTypeResult> {
+  // Judilibre pipeline disabled 2026-05-15 (Option C, audit:
+  // docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md).
+  // The Cassation chambre criminelle corpus is structurally anonymized;
+  // pipeline produced 0 affairs over 156 decisions. Re-enabling tracked
+  // as Option D (enrichment for existing affairs) in follow-up issue.
+  return {
+    type: "judilibre",
+    success: true,
+    stats: {},
+    errors: [
+      "Pipeline désactivé 2026-05-15 (Option C). Voir docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md",
+    ],
+  };
 }
 
 const SYNC_RUNNERS: Record<SyncType, (p: PoliticianTarget) => Promise<SyncTypeResult>> = {

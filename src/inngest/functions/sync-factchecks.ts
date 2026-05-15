@@ -16,20 +16,24 @@ export const syncFactchecksGrouped = inngest.createFunction(
       const fcStats = await step.run("factchecks", async () => {
         const { syncFactchecks } = await import("@/services/sync/factchecks");
         const stats = await syncFactchecks({ limit: 50 });
-        if (jobId) await updateJobProgress(jobId, 50);
+        if (jobId) await updateJobProgress(jobId, 100);
         return stats;
       });
 
-      const jStats = await step.run("judilibre", async () => {
-        const { syncJudilibre } = await import("@/services/sync/judilibre");
-        return syncJudilibre({ limit: 20 });
-      });
+      // Judilibre step disabled 2026-05-15 (Option C, audit:
+      // docs/superpowers/audits/2026-05-15-judilibre-no-match-audit.md).
+      // The Cassation chambre criminelle corpus is structurally anonymized;
+      // pipeline produced 0 affairs over 156 decisions. Re-enabling tracked
+      // as Option D (enrichment for existing affairs) in follow-up issue.
+      // const jStats = await step.run("judilibre", async () => {
+      //   const { syncJudilibre } = await import("@/services/sync/judilibre");
+      //   return syncJudilibre({ limit: 20 });
+      // });
 
       if (jobId)
         await markJobCompleted(jobId, {
-          steps: ["factchecks", "judilibre"],
+          steps: ["factchecks"],
           factchecksStats: fcStats,
-          judilibreStats: jStats,
         });
     } catch (err) {
       if (jobId) {

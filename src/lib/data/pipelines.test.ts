@@ -18,6 +18,9 @@ describe("getPipelineConversionMetrics", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-15T12:00:00Z"));
+    vi.spyOn(db.syncMetadata, "aggregate").mockResolvedValue({
+      _sum: { itemCount: null },
+    } as never);
   });
 
   afterEach(() => {
@@ -70,5 +73,45 @@ describe("getPipelineConversionMetrics", () => {
     const result = await getPipelineConversionMetrics("rne-maires");
     expect(result?.entitiesCreated7d).toBe(150);
     expect(spy).toHaveBeenCalled();
+  });
+});
+
+describe("getPipelineConversionMetrics — conversionRate", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-15T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("computes conversionRate = entitiesCreated / itemsProcessedLast7d", async () => {
+    vi.spyOn(db.affair, "count").mockResolvedValueOnce(26 as never);
+    vi.spyOn(db.syncMetadata, "aggregate").mockResolvedValueOnce({
+      _sum: { itemCount: 200 },
+    } as never);
+
+    const result = await getPipelineConversionMetrics("press");
+    expect(result?.conversionRate).toBeCloseTo(0.13, 2); // 26 / 200 = 0.13
+  });
+
+  it("returns conversionRate 0 when itemCount sum is 0", async () => {
+    vi.spyOn(db.affair, "count").mockResolvedValueOnce(5 as never);
+    vi.spyOn(db.syncMetadata, "aggregate").mockResolvedValueOnce({
+      _sum: { itemCount: 0 },
+    } as never);
+    const result = await getPipelineConversionMetrics("press");
+    expect(result?.conversionRate).toBe(0);
+  });
+
+  it("returns conversionRate 0 when itemCount sum is null (no syncMetadata rows)", async () => {
+    vi.spyOn(db.affair, "count").mockResolvedValueOnce(5 as never);
+    vi.spyOn(db.syncMetadata, "aggregate").mockResolvedValueOnce({
+      _sum: { itemCount: null },
+    } as never);
+    const result = await getPipelineConversionMetrics("press");
+    expect(result?.conversionRate).toBe(0);
   });
 });

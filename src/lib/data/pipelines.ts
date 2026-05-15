@@ -49,8 +49,21 @@ export async function getPipelineConversionMetrics(
     });
   }
 
-  // Conversion rate hardcoded to 0 in T16; computed from syncMetadata in T17.
-  return { entitiesCreated7d, conversionRate: 0 };
+  // NOTE: we look up syncMetadata by pipeline.id, but some pipelines write to
+  // a different sourceKey (e.g. registry id "press" vs sourceKey "press-rss" /
+  // "press-analysis"). When the keys don't match the sum is 0 and conversionRate
+  // falls back to 0. A registry-level sourceKey mapping is a follow-up task.
+  const itemsAgg = await db.syncMetadata.aggregate({
+    where: {
+      sourceKey: pipeline.id,
+      lastSyncAt: { gte: since },
+    },
+    _sum: { itemCount: true },
+  });
+  const itemsProcessed = itemsAgg._sum.itemCount ?? 0;
+  const conversionRate = itemsProcessed > 0 ? entitiesCreated7d / itemsProcessed : 0;
+
+  return { entitiesCreated7d, conversionRate };
 }
 
 // ─── DB queries (private) ───────────────────────────────────────

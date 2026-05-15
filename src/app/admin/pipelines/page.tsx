@@ -1,4 +1,8 @@
-import { getPipelineHealthAll, getPipelinesSummary } from "@/lib/data/pipelines";
+import {
+  getPipelineConversionMetrics,
+  getPipelineHealthAll,
+  getPipelinesSummary,
+} from "@/lib/data/pipelines";
 import type { PipelineCategory, PipelineHealthStatus } from "@/config/pipeline-registry";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -64,6 +68,12 @@ const CATEGORY_ORDER: PipelineCategory[] = [
   "elections",
 ];
 
+const ENTITY_LABEL: Record<"affair" | "factCheck" | "politician", string> = {
+  affair: "affaires",
+  factCheck: "factchecks",
+  politician: "politiques",
+};
+
 // ─── Helpers ────────────────────────────────────────────────────
 
 function formatHours(hours: number | null): string {
@@ -98,6 +108,13 @@ function formatDate(date: Date | null): string {
 
 export default async function PipelinesPage() {
   const [healthAll, summary] = await Promise.all([getPipelineHealthAll(), getPipelinesSummary()]);
+
+  const conversions = await Promise.all(
+    healthAll.map((h) =>
+      getPipelineConversionMetrics(h.pipeline.id).then((m) => [h.pipeline.id, m] as const)
+    )
+  );
+  const conversionMap = new Map(conversions);
 
   // Group by category
   const byCategory = new Map<PipelineCategory, typeof healthAll>();
@@ -211,6 +228,33 @@ export default async function PipelinesPage() {
                               {h.lastItemCount.toLocaleString("fr-FR")} items
                             </span>
                           )}
+                          {(() => {
+                            const conv = conversionMap.get(h.pipeline.id);
+                            if (!conv) return null;
+
+                            const target = h.pipeline.conversionTarget;
+                            const noun = target ? ENTITY_LABEL[target.model] : "entités";
+
+                            const isStalled = conv.entitiesCreated7d === 0;
+                            const isWarn = conv.entitiesCreated7d > 0 && conv.entitiesCreated7d < 5;
+
+                            const cls = isStalled
+                              ? "bg-red-50 text-red-700"
+                              : isWarn
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-emerald-50 text-emerald-700";
+
+                            const ratePct = (conv.conversionRate * 100).toFixed(1);
+
+                            return (
+                              <span
+                                className={`tabular-nums px-1.5 py-0.5 rounded text-[11px] font-medium ${cls}`}
+                                title={`Taux conversion: ${ratePct}% (${conv.entitiesCreated7d} ${noun} sur 7j)`}
+                              >
+                                {conv.entitiesCreated7d} {noun}/7j
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                       {h.lastError && (

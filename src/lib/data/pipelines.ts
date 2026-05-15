@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { db } from "@/lib/db";
 import { cacheLife, cacheTag } from "next/cache";
 import {
   PIPELINE_REGISTRY,
@@ -7,6 +7,51 @@ import {
   type PipelineHealth,
   type PipelineLastRun,
 } from "@/config/pipeline-registry";
+
+export interface PipelineConversionMetrics {
+  entitiesCreated7d: number;
+  /** Conversion rate (entities created / items processed). 0 if no items processed in window. */
+  conversionRate: number;
+}
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Count entities produced by a pipeline over the last 7 days and compute the
+ * conversion rate vs. items processed (when itemCount is available).
+ *
+ * Returns null when the pipeline has no `conversionTarget` or doesn't exist.
+ */
+export async function getPipelineConversionMetrics(
+  pipelineId: string
+): Promise<PipelineConversionMetrics | null> {
+  const pipeline = PIPELINE_REGISTRY.find((p) => p.id === pipelineId);
+  if (!pipeline?.conversionTarget) return null;
+
+  const since = new Date(Date.now() - SEVEN_DAYS_MS);
+  const { model, sourceFilter } = pipeline.conversionTarget;
+
+  let entitiesCreated7d = 0;
+  if (model === "affair") {
+    entitiesCreated7d = await db.affair.count({
+      where: {
+        createdAt: { gte: since },
+        ...(sourceFilter ? { sources: { some: { sourceType: sourceFilter } } } : {}),
+      },
+    });
+  } else if (model === "factCheck") {
+    entitiesCreated7d = await db.factCheck.count({
+      where: { createdAt: { gte: since } },
+    });
+  } else if (model === "politician") {
+    entitiesCreated7d = await db.politician.count({
+      where: { createdAt: { gte: since } },
+    });
+  }
+
+  // Conversion rate hardcoded to 0 in T16; computed from syncMetadata in T17.
+  return { entitiesCreated7d, conversionRate: 0 };
+}
 
 // ─── DB queries (private) ───────────────────────────────────────
 

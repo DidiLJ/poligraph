@@ -70,6 +70,8 @@ describe.skipIf(skipNetwork)("RSS feed parse contract - Q3 2026 candidates", () 
         expect(result.items.length).toBeGreaterThan(0);
 
         const first = result.items[0];
+        expect(first).toBeDefined();
+        if (!first) return;
         expect(typeof first.title).toBe("string");
         expect(first.title.length).toBeGreaterThan(0);
         expect(first.link).toMatch(/^https?:\/\//);

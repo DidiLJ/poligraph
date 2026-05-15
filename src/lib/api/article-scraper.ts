@@ -41,7 +41,11 @@ const SCRAPABLE_SOURCES = new Set([
   "ladepeche",
   "ledauphine",
   "dna",
-  // googlenews links to external articles — don't scrape
+  // Specialized / investigative + national TV (free access)
+  "reporterre",
+  "bfmtv-politique",
+  // mediacites: paywalled, RSS-only intentional (press-analysis falls back to RSS title+description)
+  // googlenews links to external articles, don't scrape
 ]);
 
 interface AuthSession {

@@ -65,6 +65,12 @@ export const RSS_FEEDS: RSSFeedConfig[] = [
     url: "https://www.liberation.fr/arc/outboundfeeds/rss-all/category/politique/?outputType=xml",
     priority: 1,
   },
+  {
+    id: "bfmtv-politique",
+    name: "BFM TV Politique",
+    url: "https://www.bfmtv.com/rss/politique/",
+    priority: 1,
+  },
 
   // ── Priority 2: Specialized / EU ──
   {
@@ -89,6 +95,18 @@ export const RSS_FEEDS: RSSFeedConfig[] = [
     id: "lcp",
     name: "LCP Assemblée nationale",
     url: "https://lcp.fr/rss.xml",
+    priority: 2,
+  },
+  {
+    id: "reporterre",
+    name: "Reporterre (écologie, justice)",
+    url: "https://reporterre.net/spip.php?page=backend",
+    priority: 2,
+  },
+  {
+    id: "mediacites",
+    name: "Mediacités (investigations locales)",
+    url: "https://www.mediacites.fr/feed/",
     priority: 2,
   },
 

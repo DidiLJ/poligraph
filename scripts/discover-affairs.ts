@@ -27,6 +27,10 @@ import { extractAffairsFromWikipedia } from "../src/services/wikipedia-affair-ex
 import { findMatchingAffairs } from "../src/services/affairs/matching";
 import { clampConfidenceScore } from "../src/services/affairs/confidence";
 import { extractDateFromUrl } from "../src/lib/extract-date-from-url";
+import {
+  getDiscoverAffairsCursor,
+  saveDiscoverAffairsCursor,
+} from "../src/services/sync/discover-affairs";
 import type { AffairCategory, AffairStatus, Involvement } from "../src/generated/prisma";
 
 // ============================================
@@ -599,10 +603,19 @@ Environnement :
       errors: 0,
     };
 
-    // Fetch politicians
+    // Apply the persisted lastName cursor only on bounded runs without a name filter.
+    // Full backfills (no --limit) and targeted runs (--politician) bypass the cursor.
+    const limit = options.limit as number | undefined;
+    const cursorActive = !politicianFilter && typeof limit === "number" && limit > 0;
+    const cursorState = cursorActive ? await getDiscoverAffairsCursor() : { lastName: null };
+    const cursor = cursorState.lastName;
+
+    // Fetch politicians. Empty-string lastNames are filtered out via gt: "" when no
+    // cursor is set so we always have a meaningful sort key.
     const politicians = await db.politician.findMany({
       where: {
         publicationStatus: "PUBLISHED",
+        lastName: { gt: cursor ?? "" },
         ...(politicianFilter
           ? { fullName: { contains: politicianFilter, mode: "insensitive" as const } }
           : {}),
@@ -610,17 +623,33 @@ Environnement :
       select: {
         id: true,
         fullName: true,
+        lastName: true,
         externalIds: {
           where: { source: "WIKIDATA" },
           select: { externalId: true },
         },
       },
       orderBy: { lastName: "asc" },
-      ...(options.limit ? { take: options.limit as number } : {}),
+      ...(limit ? { take: limit } : {}),
     });
 
     stats.politiciansProcessed = politicians.length;
     console.log(`\n  ${politicians.length} politicien(s) trouvé(s)`);
+
+    if (cursorActive) {
+      if (politicians.length === 0 || (typeof limit === "number" && politicians.length < limit)) {
+        console.log(
+          `[discover-affairs] cursor: ${cursor ?? "(start)"} -> (end), processed ${politicians.length}; alphabet exhausted, cursor reset`
+        );
+        await saveDiscoverAffairsCursor(null);
+      } else {
+        const lastSeen = politicians[politicians.length - 1]!.lastName ?? null;
+        console.log(
+          `[discover-affairs] cursor: ${cursor ?? "(start)"} -> ${lastSeen ?? "(end)"}, processed ${politicians.length}`
+        );
+        await saveDiscoverAffairsCursor(lastSeen);
+      }
+    }
 
     if (politicians.length === 0) {
       return {

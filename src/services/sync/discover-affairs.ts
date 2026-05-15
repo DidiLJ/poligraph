@@ -24,6 +24,44 @@ import { scoreAffairAgainstCandidates, resolveAffairPolitician } from "@/lib/aff
 import { loadCandidatePool } from "@/lib/affair-matching/persistence";
 import type { AffairCandidateRecord } from "@/lib/affair-matching";
 
+export const DISCOVER_AFFAIRS_CURSOR_KEY = "discover-affairs:cursor:lastName";
+
+/**
+ * Read the persisted lastName cursor for the discover-affairs sync.
+ *
+ * Returns `{ lastName: null }` on first run (no row in DB) or when the previous
+ * run exhausted the alphabet and reset the cursor.
+ */
+export async function getDiscoverAffairsCursor(): Promise<{ lastName: string | null }> {
+  const row = await db.syncMetadata.findUnique({
+    where: { sourceKey: DISCOVER_AFFAIRS_CURSOR_KEY },
+    select: { cursor: true },
+  });
+  const value = row?.cursor ?? null;
+  return { lastName: value && value.length > 0 ? value : null };
+}
+
+/**
+ * Upsert the lastName cursor for the discover-affairs sync.
+ *
+ * Pass `null` to reset the cursor (e.g. when the alphabet is exhausted) so the
+ * next run starts from the beginning.
+ */
+export async function saveDiscoverAffairsCursor(lastName: string | null): Promise<void> {
+  await db.syncMetadata.upsert({
+    where: { sourceKey: DISCOVER_AFFAIRS_CURSOR_KEY },
+    create: {
+      sourceKey: DISCOVER_AFFAIRS_CURSOR_KEY,
+      cursor: lastName,
+      lastSyncAt: new Date(),
+    },
+    update: {
+      cursor: lastName,
+      lastSyncAt: new Date(),
+    },
+  });
+}
+
 interface DiscoveredAffair {
   politicianId: string;
   politicianName: string;
@@ -190,8 +228,15 @@ export async function discoverAffairs(options?: {
   politicianFilter?: string;
   wikidataOnly?: boolean;
   wikipediaOnly?: boolean;
+  useCursor?: boolean;
 }): Promise<DiscoverAffairsResult> {
-  const { limit, politicianFilter, wikidataOnly = false, wikipediaOnly = false } = options ?? {};
+  const {
+    limit,
+    politicianFilter,
+    wikidataOnly = false,
+    wikipediaOnly = false,
+    useCursor = true,
+  } = options ?? {};
 
   const stats: DiscoverAffairsResult = {
     politiciansProcessed: 0,
@@ -202,10 +247,20 @@ export async function discoverAffairs(options?: {
     errors: [],
   };
 
-  // Fetch politicians
+  // Determine whether to apply the persisted cursor:
+  // - off when a specific politicianFilter is set (the operator is targeting one)
+  // - off when no limit is provided (full backfill scans everyone anyway)
+  // - off when explicitly disabled via useCursor=false
+  const cursorActive = useCursor && !politicianFilter && typeof limit === "number" && limit > 0;
+  const cursorState = cursorActive ? await getDiscoverAffairsCursor() : { lastName: null };
+  const cursor = cursorState.lastName;
+
+  // Fetch politicians. Empty-string lastNames are filtered out via gt: "" when no
+  // cursor is set so we always have a meaningful sort key.
   const politicians = await db.politician.findMany({
     where: {
       publicationStatus: "PUBLISHED",
+      lastName: { gt: cursor ?? "" },
       ...(politicianFilter
         ? {
             fullName: {
@@ -218,6 +273,7 @@ export async function discoverAffairs(options?: {
     select: {
       id: true,
       fullName: true,
+      lastName: true,
       externalIds: {
         where: { source: "WIKIDATA" },
         select: { externalId: true },
@@ -229,6 +285,21 @@ export async function discoverAffairs(options?: {
 
   stats.politiciansProcessed = politicians.length;
   console.log(`${politicians.length} politician(s) found`);
+
+  if (cursorActive) {
+    if (politicians.length === 0 || (typeof limit === "number" && politicians.length < limit)) {
+      console.log(
+        `[discover-affairs] cursor: ${cursor ?? "(start)"} -> (end), processed ${politicians.length}; alphabet exhausted, cursor reset`
+      );
+      await saveDiscoverAffairsCursor(null);
+    } else {
+      const lastSeen = politicians[politicians.length - 1]!.lastName ?? null;
+      console.log(
+        `[discover-affairs] cursor: ${cursor ?? "(start)"} -> ${lastSeen ?? "(end)"}, processed ${politicians.length}`
+      );
+      await saveDiscoverAffairsCursor(lastSeen);
+    }
+  }
 
   if (politicians.length === 0) {
     return stats;

@@ -19,6 +19,17 @@ export interface PipelineConfig {
   name: string;
   /** Category for grouping in dashboard */
   category: PipelineCategory;
+  /**
+   * When set, the admin dashboard counts entities of this type created
+   * in the last 7 days, and shows a conversion rate vs. items processed.
+   * Use null/omit when the pipeline doesn't produce countable entities
+   * (maintenance jobs, stats computation, photo sync, etc.).
+   */
+  conversionTarget?: {
+    model: "affair" | "factCheck" | "politician";
+    /** Optional filter on entity rows by source type. */
+    sourceFilter?: "PRESSE" | "JUDILIBRE" | "WIKIDATA" | "WIKIPEDIA";
+  };
   /** How often it should run */
   frequency: PipelineFrequency;
   /** What triggers it */
@@ -126,6 +137,7 @@ export const PIPELINE_REGISTRY: PipelineConfig[] = [
     id: "press",
     name: "Revue de presse",
     category: "content",
+    conversionTarget: { model: "affair", sourceFilter: "PRESSE" },
     frequency: "daily",
     source: "inngest",
     warnAfterHours: 30,
@@ -176,6 +188,7 @@ export const PIPELINE_REGISTRY: PipelineConfig[] = [
     id: "deputes",
     name: "Députés (AN)",
     category: "politicians",
+    conversionTarget: { model: "politician" },
     frequency: "weekly",
     source: "github-actions",
     warnAfterHours: 192, // 8 days
@@ -188,6 +201,7 @@ export const PIPELINE_REGISTRY: PipelineConfig[] = [
     id: "senateurs",
     name: "Sénateurs",
     category: "politicians",
+    conversionTarget: { model: "politician" },
     frequency: "weekly",
     source: "github-actions",
     warnAfterHours: 192,
@@ -200,6 +214,7 @@ export const PIPELINE_REGISTRY: PipelineConfig[] = [
     id: "gouvernement",
     name: "Gouvernement",
     category: "politicians",
+    conversionTarget: { model: "politician" },
     frequency: "weekly",
     source: "github-actions",
     warnAfterHours: 192,
@@ -250,6 +265,7 @@ export const PIPELINE_REGISTRY: PipelineConfig[] = [
     id: "factchecks",
     name: "Fact-checks",
     category: "enrichment",
+    conversionTarget: { model: "factCheck" },
     frequency: "daily",
     source: "inngest",
     warnAfterHours: 48,
@@ -288,6 +304,7 @@ export const PIPELINE_REGISTRY: PipelineConfig[] = [
     id: "rne-maires",
     name: "Maires (RNE)",
     category: "elections",
+    conversionTarget: { model: "politician" },
     frequency: "manual",
     source: "manual",
     warnAfterHours: 720, // 30 days

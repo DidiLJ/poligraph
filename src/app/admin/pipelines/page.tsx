@@ -124,6 +124,17 @@ export default async function PipelinesPage() {
     byCategory.get(cat)!.push(h);
   }
 
+  const stalledCritical = healthAll
+    .map((h) => {
+      const conv = conversionMap.get(h.pipeline.id);
+      if (!conv) return null;
+      if (conv.entitiesCreated7d > 0) return null;
+      if (h.hoursSinceLastRun === null) return null;
+      if (h.hoursSinceLastRun > 168) return null;
+      return h;
+    })
+    .filter((h): h is NonNullable<typeof h> => h !== null);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -142,6 +153,28 @@ export default async function PipelinesPage() {
           Lancer un sync
         </Link>
       </div>
+
+      {stalledCritical.length > 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4" role="alert">
+          <h3 className="text-sm font-semibold text-red-900">
+            {stalledCritical.length} pipeline(s) actif(s) sans production sur 7 jours
+          </h3>
+          <p className="mt-1 text-xs text-red-700">
+            Ces pipelines ont tourné récemment mais n{"'"}ont créé aucune entité sur les 7 derniers
+            jours. Ils peuvent être bloqués techniquement, scanner un corpus inadapté, ou avoir
+            atteint la saturation de leur source. Vérifier les logs Inngest et les jobs récents.
+          </p>
+          <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-0.5">
+            {stalledCritical.map((h) => (
+              <li key={h.pipeline.id}>
+                <span className="font-medium">{h.pipeline.name}</span>
+                {", dernier run "}
+                {h.hoursSinceLastRun !== null ? `il y a ${Math.round(h.hoursSinceLastRun)}h` : "?"}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

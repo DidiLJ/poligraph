@@ -15,10 +15,15 @@ describe("getBioQualityBreakdown", () => {
   it("returns one row per bucket and joins with raw query results", async () => {
     (db.$queryRaw as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce([
-        { bucket: "Vide", published: 10n, draft: 5n, withCurrent: 3n },
-        { bucket: "Rédigée (≥800 car.)", published: 200n, draft: 1n, withCurrent: 150n },
+        { bucket: "Vide", published: BigInt(10), draft: BigInt(5), withCurrent: BigInt(3) },
+        {
+          bucket: "Rédigée (≥800 car.)",
+          published: BigInt(200),
+          draft: BigInt(1),
+          withCurrent: BigInt(150),
+        },
       ])
-      .mockResolvedValueOnce([{ total: 36000n, withCurrent: 35000n }]);
+      .mockResolvedValueOnce([{ total: BigInt(36000), withCurrent: BigInt(35000) }]);
 
     const result = await getBioQualityBreakdown();
     expect(result.buckets).toHaveLength(BIO_BUCKETS.length);

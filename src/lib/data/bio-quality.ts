@@ -75,15 +75,15 @@ export async function getBioQualityBreakdown(): Promise<BioQualityBreakdown> {
       label: b.label,
       min: b.min,
       max: b.max,
-      publishedCount: Number(row?.published ?? 0n),
-      draftCount: Number(row?.draft ?? 0n),
-      currentMandateCount: Number(row?.withCurrent ?? 0n),
+      publishedCount: Number(row?.published ?? BigInt(0)),
+      draftCount: Number(row?.draft ?? BigInt(0)),
+      currentMandateCount: Number(row?.withCurrent ?? BigInt(0)),
     };
   });
 
   return {
     buckets,
-    totalPoliticians: Number(totalRow[0]?.total ?? 0n),
-    totalWithCurrentMandate: Number(totalRow[0]?.withCurrent ?? 0n),
+    totalPoliticians: Number(totalRow[0]?.total ?? BigInt(0)),
+    totalWithCurrentMandate: Number(totalRow[0]?.withCurrent ?? BigInt(0)),
   };
 }

@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Heart,
   BookOpen,
+  Compass,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
@@ -37,6 +38,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   building: Building,
   search: Search,
   bookOpen: BookOpen,
+  compass: Compass,
 };
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
@@ -187,31 +189,50 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
                 {filteredPrimary.map((item) => {
                   const Icon = item.icon ? ICON_MAP[item.icon] : null;
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  const className = `flex items-center justify-between px-4 py-4 rounded-xl text-xl font-display font-semibold transition-colors ${
+                    item.highlight
+                      ? "border border-primary/40 text-primary"
+                      : isActive
+                        ? "bg-muted text-foreground"
+                        : "text-foreground/80 hover:bg-muted hover:text-foreground"
+                  }`;
+                  const children = (
+                    <>
+                      <span className="flex items-center gap-3">
+                        {Icon && <Icon className="h-6 w-6" />}
+                        {item.label}
+                        {item.highlight && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                            En cours
+                          </span>
+                        )}
+                      </span>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </>
+                  );
                   return (
                     <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={close}
-                        aria-current={isActive ? "page" : undefined}
-                        className={`flex items-center justify-between px-4 py-4 rounded-xl text-xl font-display font-semibold transition-colors ${
-                          item.highlight
-                            ? "border border-primary/40 text-primary"
-                            : isActive
-                              ? "bg-muted text-foreground"
-                              : "text-foreground/80 hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        <span className="flex items-center gap-3">
-                          {Icon && <Icon className="h-6 w-6" />}
-                          {item.label}
-                          {item.highlight && (
-                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary">
-                              En cours
-                            </span>
-                          )}
-                        </span>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                      </Link>
+                      {item.external ? (
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`${item.label} (s'ouvre dans un nouvel onglet)`}
+                          onClick={close}
+                          className={className}
+                        >
+                          {children}
+                        </a>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          onClick={close}
+                          aria-current={isActive ? "page" : undefined}
+                          className={className}
+                        >
+                          {children}
+                        </Link>
+                      )}
                     </li>
                   );
                 })}
@@ -223,12 +244,27 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
                   <div className="flex flex-wrap gap-3">
                     {filteredSecondary.map((item) => {
                       const Icon = item.icon ? ICON_MAP[item.icon] : null;
-                      return (
+                      const className =
+                        "inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-border text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors";
+                      return item.external ? (
+                        <a
+                          key={item.href}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`${item.label} (s'ouvre dans un nouvel onglet)`}
+                          onClick={close}
+                          className={className}
+                        >
+                          {Icon && <Icon className="h-4 w-4" />}
+                          {item.label}
+                        </a>
+                      ) : (
                         <Link
                           key={item.href}
                           href={item.href}
                           onClick={close}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-border text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                          className={className}
                         >
                           {Icon && <Icon className="h-4 w-4" />}
                           {item.label}

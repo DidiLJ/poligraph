@@ -13,7 +13,7 @@ export const HELLOASSO_URL = "https://www.helloasso.com/associations/association
 
 export const TIPEEE_URL = "https://fr.tipeee.com/poligraph";
 
-export const DONATION_PLATFORMS: readonly DonationPlatform[] = [
+export const DONATION_PLATFORMS = [
   {
     name: "HelloAsso",
     url: HELLOASSO_URL,
@@ -29,7 +29,7 @@ export const DONATION_PLATFORMS: readonly DonationPlatform[] = [
     primary: false,
     legalEntity: "Poligraph",
   },
-] as const;
+] as const satisfies readonly DonationPlatform[];
 
 export type RescritStatus = "pending" | "in_review" | "validated";
 
@@ -42,7 +42,7 @@ export type Expense = {
   description: string;
 };
 
-export const EXPENSES: readonly Expense[] = [
+export const EXPENSES = [
   {
     label: "Hébergement (Vercel Pro)",
     monthlyEuros: 20,
@@ -63,17 +63,17 @@ export const EXPENSES: readonly Expense[] = [
     monthlyEuros: 10,
     description: "Nom de domaine, emails, monitoring",
   },
-] as const;
+] as const satisfies readonly Expense[];
 
 export function totalMonthlyEuros(): number {
   return EXPENSES.reduce((sum, e) => sum + e.monthlyEuros, 0);
 }
 
-export const FEATURES_FUNDED: readonly string[] = [
+export const FEATURES_FUNDED = [
   "Mise à jour quotidienne des données parlementaires",
   "Résumés IA des dossiers législatifs",
   "Chatbot citoyen pour poser des questions",
   "Alertes sur les nouvelles affaires judiciaires",
   "API ouverte pour les journalistes et chercheurs",
   "Zéro publicité, zéro tracking",
-] as const;
+] as const satisfies readonly string[];

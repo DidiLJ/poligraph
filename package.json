@@ -155,6 +155,7 @@
     "seed:communes": "npx dotenv -e .env -- npx tsx scripts/seed-communes.ts",
     "compute:municipales-stats": "npx dotenv -e .env -- npx tsx scripts/compute-election-stats.ts",
     "seed:elections": "tsx scripts/seed-elections.ts",
+    "seed:presidentielle-2027": "npx dotenv -e .env -- npx tsx scripts/seed-presidentielle-2027.ts",
     "seed:parliamentary-groups": "tsx scripts/seed-parliamentary-groups.ts",
     "trigger": "tsx scripts/trigger.ts",
     "prepare": "husky"

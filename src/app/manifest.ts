@@ -15,6 +15,10 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#ffffff",
     theme_color: "#002654",
     categories: ["news", "politics", "government"],
+    // Next.js's MetadataRoute.Manifest types `purpose` as a single union value
+    // ('any' | 'maskable' | 'monochrome'), so the W3C-allowed combined form
+    // (`purpose: "any maskable"`) does not typecheck. We duplicate each size
+    // with separate entries instead. Keep it this way.
     icons: [
       {
         src: "/icon-192.png",

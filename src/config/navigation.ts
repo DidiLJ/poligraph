@@ -10,6 +10,8 @@ export interface NavItem {
   featureFlag?: string;
   /** If true, render with a highlighted/accent style */
   highlight?: boolean;
+  /** If true, link opens in a new tab with rel="noopener noreferrer" */
+  external?: boolean;
 }
 
 export interface NavGroup {

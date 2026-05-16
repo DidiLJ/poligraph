@@ -98,6 +98,14 @@ export const NAV_SECONDARY: NavItem[] = [
     description: "Candidats, listes et résultats dans votre commune",
     featureFlag: "MUNICIPALES_2026",
   },
+  {
+    href: "https://boussole.poligraph.fr",
+    label: "Boussole",
+    icon: "compass",
+    description: "Quiz politique pour situer vos positions",
+    external: true,
+    featureFlag: "BOUSSOLE_ENABLED",
+  },
 ];
 
 /** @deprecated Use NAV_PRIMARY instead */
@@ -148,7 +156,12 @@ export const CTA_LINK = CTA_MON_DEPUTE;
 // Footer navigation (4 columns)
 export interface FooterSection {
   title: string;
-  links: Array<{ href: string; label: string; featureFlag?: string }>;
+  links: Array<{
+    href: string;
+    label: string;
+    featureFlag?: string;
+    external?: boolean;
+  }>;
 }
 
 export const FOOTER_SECTIONS: FooterSection[] = [
@@ -200,6 +213,12 @@ export const FOOTER_SECTIONS: FooterSection[] = [
       { href: "/sources", label: "Sources et principes" },
       { href: "/methodologie", label: "Méthodologie" },
       { href: "/docs/api", label: "API" },
+      {
+        href: "https://boussole.poligraph.fr",
+        label: "Boussole",
+        external: true,
+        featureFlag: "BOUSSOLE_ENABLED",
+      },
       { href: "/soutenir", label: "Nous soutenir" },
       { href: "/mentions-legales", label: "Mentions légales" },
     ],

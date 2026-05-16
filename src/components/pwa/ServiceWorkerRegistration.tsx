@@ -9,6 +9,7 @@ export function ServiceWorkerRegistration() {
     if (process.env.NODE_ENV !== "production") return;
 
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((err) => {
+      // eslint-disable-next-line no-console
       console.warn("[pwa] sw register failed", err);
     });
   }, []);

@@ -112,6 +112,7 @@
     "audit:careers": "tsx scripts/audit-careers.ts",
     "audit:careers:export": "tsx scripts/audit-careers.ts --export",
     "audit:bio-quality": "tsx scripts/audit-bio-quality.ts",
+    "audit:sync-health": "tsx scripts/audit-sync-health.ts",
     "perf:check": "dotenv -e .env -- tsx scripts/perf-check-vote-denorm.ts",
     "sync:press": "tsx scripts/sync-press.ts",
     "sync:press:stats": "tsx scripts/sync-press.ts --stats",

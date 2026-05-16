@@ -22,6 +22,20 @@ describe("sw-config", () => {
     it("ne matche pas une fiche admin affaire", () => {
       expect(isCacheableDocument("/admin/affaires/456")).toBe(false);
     });
+
+    it("ne matche pas une URL avec slash final (URLs canoniques sans slash)", () => {
+      expect(isCacheableDocument("/politiques/jean-luc-melenchon/")).toBe(false);
+      expect(isCacheableDocument("/affaires/affaire-PG000123/")).toBe(false);
+    });
+
+    it("verrouille le contrat d'entrée: le SW passe url.pathname (sans query string)", () => {
+      // Le service worker appelle isCacheableDocument(url.pathname), qui exclut
+      // déjà les query strings. Si on lui passait une chaîne brute avec `?`, le
+      // pattern actuel `[^/]+` matcherait par coïncidence parce que `?` n'est
+      // pas un `/`. Ce test verrouille cette réalité et documente que c'est au
+      // caller (sw.js) de fournir un pathname propre, pas à la regex de filtrer.
+      expect(isCacheableDocument("/politiques/x?tab=affaires")).toBe(true);
+    });
   });
 
   describe("isApiRoute", () => {

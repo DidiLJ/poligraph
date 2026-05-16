@@ -1,3 +1,8 @@
+// Helpers et constantes consommés à la fois par le service worker `public/sw.js`
+// et par les tests Vitest. Le SW duplique ces valeurs en JS brut (worker scope
+// classique = pas d'import depuis /src). Le test `sw-drift.test.ts` garde les
+// deux fichiers en sync. Toute modification ici doit être mirrorée dans `sw.js`.
+
 export const SW_CACHE_VERSION = "v1";
 
 export const DOCUMENT_CACHE = `poligraph-docs-${SW_CACHE_VERSION}`;

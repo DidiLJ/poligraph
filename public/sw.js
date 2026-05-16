@@ -1,9 +1,23 @@
 // Service worker Poligraph - offline-first sur fiches politicien et affaire.
-// Garder en sync avec src/lib/pwa/sw-config.ts pour la version et les patterns.
+//
+// IMPORTANT: ce fichier duplique intentionnellement les constantes et helpers
+// de `src/lib/pwa/sw-config.ts`. Un service worker tourne dans un scope worker
+// classique (pas d'import depuis /src), donc on ne peut pas partager le code.
+//
+// Symboles à garder en sync entre ce fichier et `src/lib/pwa/sw-config.ts`:
+//   - SW_CACHE_VERSION (la constante de version du cache)
+//   - DOCUMENT_CACHE / STATIC_CACHE / MAX_DOCUMENTS
+//   - CACHEABLE_DOCUMENT_PATTERNS (array de RegExp)
+//   - STATIC_ASSET_PATTERNS (array de RegExp)
+//   - isCacheableDocument / isApiRoute / isStaticAsset (les 3 prédicats)
+//
+// Le test `src/lib/pwa/sw-drift.test.ts` lit ce fichier et vérifie que les
+// regex et constantes sont byte-identiques. Si tu modifies un pattern ici,
+// mirror dans `sw-config.ts` puis relance `npm run test:run -- src/lib/pwa/`.
 
-const SW_VERSION = "v1";
-const DOCUMENT_CACHE = `poligraph-docs-${SW_VERSION}`;
-const STATIC_CACHE = `poligraph-static-${SW_VERSION}`;
+const SW_CACHE_VERSION = "v1";
+const DOCUMENT_CACHE = `poligraph-docs-${SW_CACHE_VERSION}`;
+const STATIC_CACHE = `poligraph-static-${SW_CACHE_VERSION}`;
 const MAX_DOCUMENTS = 50;
 
 const CACHEABLE_DOCUMENT_PATTERNS = [/^\/politiques\/[^/]+$/, /^\/affaires\/[^/]+$/];

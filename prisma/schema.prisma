@@ -616,7 +616,7 @@ model Affair {
   @@index([publicationStatus, involvement, status])
   @@index([publicationStatus, involvement, category])
   @@index([publicationStatus, involvement, severity])
-  @@index([isSlapp])
+  @@index([publicationStatus, isSlapp])
 }
 
 // Timeline events for an affair

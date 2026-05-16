@@ -40,12 +40,25 @@ export async function Footer() {
               <ul className="space-y-2 text-sm">
                 {section.links.map((link) => (
                   <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-muted-foreground hover:text-foreground transition-colors nav-link-underline"
-                    >
-                      {link.label}
-                    </Link>
+                    {link.external ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${link.label} (s'ouvre dans un nouvel onglet)`}
+                        className="text-muted-foreground hover:text-foreground transition-colors nav-link-underline inline-flex items-center gap-1"
+                      >
+                        {link.label}
+                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className="text-muted-foreground hover:text-foreground transition-colors nav-link-underline"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

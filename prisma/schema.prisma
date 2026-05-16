@@ -578,6 +578,11 @@ model Affair {
   // AI confidence score (0-100) — affects auto-publication
   confidenceScore Int?
 
+  // SLAPP (procédure-bâillon) tagging (orthogonal to AffairCategory)
+  isSlapp           Boolean   @default(false)
+  slappCriteria     Json?     // SlappCriteriaPayload — see src/config/slapp.ts
+  slappQualifiedAt  DateTime? // When qualified as SLAPP (audit trail)
+
   // Publication control (moderation)
   publicationStatus PublicationStatus @default(DRAFT)
   rejectionReason   String?
@@ -611,6 +616,7 @@ model Affair {
   @@index([publicationStatus, involvement, status])
   @@index([publicationStatus, involvement, category])
   @@index([publicationStatus, involvement, severity])
+  @@index([isSlapp])
 }
 
 // Timeline events for an affair

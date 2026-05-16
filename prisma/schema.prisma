@@ -1481,6 +1481,13 @@ enum ElectionStatus {
   COMPLETED
 }
 
+enum CandidacyStatus {
+  DECLARE      // Candidature officiellement annoncée par l'intéressé
+  PRESSENTI    // Sources crédibles annoncent l'intention, pas d'annonce officielle
+  ENVISAGE     // Hypothèse de presse, pas de signal direct de l'intéressé
+  RETIRE       // Annoncé puis retiré ou écarté
+}
+
 model Election {
   id          String       @id @default(cuid())
   slug        String       @unique
@@ -1541,6 +1548,11 @@ model Candidacy {
   // Denormalized candidate info (always filled, even if linked)
   candidateName String
   partyLabel    String?
+
+  // Pre-campaign editorial status (used for présidentielle 2027 and future open elections)
+  status      CandidacyStatus?
+  sourceUrl   String?
+  sourceLabel String?
 
   // Candidate entity (lightweight, for local elections)
   candidate   Candidate? @relation(fields: [candidateId], references: [id])

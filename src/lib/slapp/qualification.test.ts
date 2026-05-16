@@ -99,6 +99,32 @@ describe("evaluateQualification", () => {
     expect(result.rule).toBe("3of5");
     expect(result.metCount).toBe(5);
   });
+
+  it("rejette une source whitespace-only même si met=true et qualifierName présent", () => {
+    const criteria = baseCriteria();
+    criteria.externalQualification = {
+      met: true,
+      source: "   ",
+      qualifierName: "RSF",
+    };
+    const result = evaluateQualification(criteria);
+    expect(result.qualified).toBe(false);
+    expect(result.rule).toBeNull();
+  });
+
+  it("rejette quand metCount=2 même avec externalQualification documentée", () => {
+    const criteria = baseCriteria();
+    criteria.asymmetry.met = true;
+    criteria.externalQualification = {
+      met: true,
+      source: "https://rsf.org/x",
+      qualifierName: "RSF",
+    };
+    const result = evaluateQualification(criteria);
+    expect(result.qualified).toBe(false);
+    expect(result.rule).toBeNull();
+    expect(result.metCount).toBe(2);
+  });
 });
 
 describe("isQualified", () => {

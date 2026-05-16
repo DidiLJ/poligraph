@@ -2,60 +2,36 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DONATION_PLATFORMS,
+  EXPENSES,
+  FEATURES_FUNDED,
+  RESCRIT_STATUS,
+  totalMonthlyEuros,
+} from "@/config/donation";
 
 export const metadata: Metadata = {
   title: "Soutenez Poligraph",
   description:
-    "Aidez-nous à maintenir et développer cette plateforme citoyenne d'information politique",
+    "Aidez l'association Sankofa à maintenir et développer cette plateforme citoyenne d'information politique.",
   alternates: { canonical: "/soutenir" },
 };
 
-const EXPENSES = [
-  {
-    label: "Hébergement (Vercel Pro)",
-    amount: "20€/mois",
-    description: "Serveurs, CDN, certificats SSL",
-  },
-  {
-    label: "APIs IA (Anthropic, OpenAI)",
-    amount: "50€/mois",
-    description: "Résumés automatiques, chatbot, embeddings",
-  },
-  {
-    label: "Base de données (Supabase)",
-    amount: "25€/mois",
-    description: "PostgreSQL, stockage, backups",
-  },
-  {
-    label: "Domaine et services",
-    amount: "10€/mois",
-    description: "Nom de domaine, emails, monitoring",
-  },
-];
-
-const FEATURES_FUNDED = [
-  "Mise à jour quotidienne des données parlementaires",
-  "Résumés IA des dossiers législatifs",
-  "Chatbot citoyen pour poser des questions",
-  "Alertes sur les nouvelles affaires judiciaires",
-  "API ouverte pour les journalistes et chercheurs",
-  "Zéro publicité, zéro tracking",
-];
-
-const DONATION_PLATFORMS = [
-  {
-    name: "Tipeee",
-    url: "https://fr.tipeee.com/poligraph",
-    description: "Soutien récurrent ou ponctuel",
-    primary: true,
-  },
-];
+function rescritMessage(): string {
+  switch (RESCRIT_STATUS) {
+    case "validated":
+      return "Reçu fiscal automatique : votre don est déductible à 66% de votre impôt sur le revenu (60% pour les entreprises).";
+    case "in_review":
+      return "Reçu fiscal à venir une fois le rescrit fiscal de l'association validé. Le rescrit est en cours d'instruction.";
+    case "pending":
+      return "L'association n'est pas encore éligible au reçu fiscal. La démarche est en préparation.";
+  }
+}
 
 export default function SoutenirPage() {
-  const totalMonthly = EXPENSES.reduce((sum, exp) => {
-    const amount = parseInt(exp.amount.replace(/[^0-9]/g, ""));
-    return sum + amount;
-  }, 0);
+  const primary = DONATION_PLATFORMS.find((p) => p.primary)!;
+  const secondary = DONATION_PLATFORMS.filter((p) => !p.primary);
+  const totalMonthly = totalMonthlyEuros();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -65,36 +41,28 @@ export default function SoutenirPage() {
           Soutenez Poligraph
         </h1>
         <p className="text-lg text-muted-foreground">
-          Un projet citoyen indépendant qui a besoin de votre soutien pour continuer à informer sur
-          la vie politique française.
+          Un projet citoyen indépendant porté par l&apos;association Sankofa, qui a besoin de votre
+          soutien pour continuer à informer sur la vie politique française.
         </p>
       </div>
 
-      {/* CTA Principal */}
+      {/* CTA Principal HelloAsso */}
       <Card className="mb-12 border-primary/30 bg-primary/5">
         <CardContent className="pt-6 text-center">
-          <h2 className="text-2xl font-bold mb-4">Faites un don</h2>
+          <h2 className="text-2xl font-bold mb-4">Faites un don à Sankofa</h2>
           <p className="text-muted-foreground mb-6">
             Chaque contribution, même modeste, nous aide à maintenir ce service gratuit et sans
-            publicité.
+            publicité. 0% de commission, vos dons vont directement à l&apos;association.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {DONATION_PLATFORMS.map((platform) => (
-              <Button
-                key={platform.name}
-                asChild
-                size="lg"
-                variant={platform.primary ? "default" : "outline"}
-                className="text-base"
-              >
-                <a href={platform.url} target="_blank" rel="noopener noreferrer">
-                  Soutenir sur {platform.name}
-                  <span className="sr-only"> (ouvre un nouvel onglet)</span>
-                </a>
-              </Button>
-            ))}
+          <div className="flex justify-center">
+            <Button asChild size="lg" className="text-base">
+              <a href={primary.url} target="_blank" rel="noopener noreferrer">
+                Faire un don sur {primary.name}
+                <span className="sr-only"> (ouvre un nouvel onglet)</span>
+              </a>
+            </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">{DONATION_PLATFORMS[0]!.description}</p>
+          <p className="text-sm text-muted-foreground mt-4 max-w-md mx-auto">{rescritMessage()}</p>
         </CardContent>
       </Card>
 
@@ -111,7 +79,7 @@ export default function SoutenirPage() {
             <p className="text-base leading-relaxed mt-4">
               Notre mission : rendre accessible à tous les citoyens l&apos;information sur leurs
               représentants politiques. Votes, mandats, déclarations de patrimoine, affaires
-              judiciaires... Tout est sourcé et vérifiable.
+              judiciaires : tout est sourcé et vérifiable.
             </p>
             <p className="text-base leading-relaxed mt-4">
               Vos dons nous permettent de couvrir les frais techniques et de développer de nouvelles
@@ -125,9 +93,11 @@ export default function SoutenirPage() {
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">Ce que vous financez</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          {FEATURES_FUNDED.map((feature, index) => (
-            <div key={index} className="flex items-start gap-3 p-4 rounded-lg border bg-card">
-              <span className="text-green-600 mt-0.5">&#10003;</span>
+          {FEATURES_FUNDED.map((feature) => (
+            <div key={feature} className="flex items-start gap-3 p-4 rounded-lg border bg-card">
+              <span className="text-green-600 mt-0.5" aria-hidden="true">
+                &#10003;
+              </span>
               <span className="text-sm">{feature}</span>
             </div>
           ))}
@@ -138,32 +108,64 @@ export default function SoutenirPage() {
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">Transparence des coûts</h2>
         <p className="text-muted-foreground mb-6">
-          Voici le détail de nos dépenses mensuelles. Nous nous engageons à une gestion transparente
-          de vos contributions.
+          Voici le détail de nos dépenses mensuelles. L&apos;association Sankofa s&apos;engage à une
+          gestion transparente de vos contributions.
         </p>
         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-4">
+            <ul className="space-y-4">
               {EXPENSES.map((expense) => (
-                <div
+                <li
                   key={expense.label}
-                  className="flex items-center justify-between py-2 border-b last:border-0"
+                  className="flex items-center justify-between py-2 border-b last:border-0 gap-4"
                 >
                   <div>
                     <p className="font-medium">{expense.label}</p>
                     <p className="text-sm text-muted-foreground">{expense.description}</p>
                   </div>
-                  <span className="font-mono text-sm shrink-0 ml-4">{expense.amount}</span>
-                </div>
+                  <span className="font-mono text-sm shrink-0 whitespace-nowrap">
+                    {expense.monthlyEuros}€/mois
+                  </span>
+                </li>
               ))}
-            </div>
+            </ul>
             <div className="mt-6 pt-4 border-t flex items-center justify-between">
               <span className="font-bold">Total mensuel estimé</span>
-              <span className="font-mono font-bold">{totalMonthly}€/mois</span>
+              <span className="font-mono font-bold whitespace-nowrap">{totalMonthly}€/mois</span>
             </div>
           </CardContent>
         </Card>
       </section>
+
+      {/* Plateforme secondaire (Tipeee) */}
+      {secondary.length > 0 && (
+        <section className="mb-12">
+          <Card className="bg-muted/30">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">
+                Vous préférez un soutien récurrent type tip jar, lié directement au projet Poligraph
+                ?{" "}
+                {secondary.map((platform, index) => (
+                  <span key={platform.name}>
+                    Vous pouvez aussi nous soutenir sur{" "}
+                    <a
+                      href={platform.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {platform.name}
+                      <span className="sr-only"> (ouvre un nouvel onglet)</span>
+                    </a>
+                    {index < secondary.length - 1 ? " ou " : "."}
+                  </span>
+                ))}{" "}
+                Cette plateforme n&apos;ouvre pas droit au reçu fiscal de l&apos;association.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* Autres moyens d'aider */}
       <section className="mb-12">
@@ -225,7 +227,7 @@ export default function SoutenirPage() {
                 <Link href="/docs/api" className="text-primary hover:underline">
                   API ouverte
                 </Link>{" "}
-                vous donne accès à toutes nos données. Créez vos propres analyses !
+                vous donne accès à toutes nos données. Créez vos propres analyses.
               </p>
             </CardContent>
           </Card>

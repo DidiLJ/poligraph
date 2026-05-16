@@ -76,8 +76,11 @@ export async function Header() {
             {/* Separator between nav and tools */}
             <div className="h-6 w-px bg-border mx-1.5" aria-hidden="true" />
 
-            {/* Icon tool rail (search + theme toggle) */}
-            <NavIconBar tools={filteredTools} />
+            {/* Icon tool rail (search + theme toggle + boussole) */}
+            <NavIconBar
+              tools={filteredTools}
+              boussoleEnabled={enabledFlags.has("BOUSSOLE_ENABLED")}
+            />
           </nav>
 
           {/* Mobile navigation */}

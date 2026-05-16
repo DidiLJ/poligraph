@@ -276,10 +276,25 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
               )}
             </nav>
 
-            {/* Bottom section: theme toggle + CTA */}
+            {/* Bottom section: theme toggle + boussole + CTA */}
             <div className="px-4 py-6 border-t border-border">
-              <div className="flex items-center justify-between">
-                <MobileThemeToggle />
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <MobileThemeToggle />
+                  {enabledFlags.includes("BOUSSOLE_ENABLED") && (
+                    <a
+                      href="https://boussole.poligraph.fr"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={close}
+                      aria-label="Boussole politique (s'ouvre dans un nouvel onglet)"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-border text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <Compass className="h-5 w-5" aria-hidden="true" />
+                      <span>Boussole</span>
+                    </a>
+                  )}
+                </div>
                 <Link
                   href="/soutenir"
                   onClick={close}

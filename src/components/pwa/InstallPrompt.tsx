@@ -56,6 +56,15 @@ export function InstallPrompt() {
     setVisible(false);
   }, []);
 
+  useEffect(() => {
+    if (!visible) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onDismiss();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible, onDismiss]);
+
   const onInstall = useCallback(async () => {
     if (!promptEvent) return;
     await promptEvent.prompt();
@@ -68,6 +77,7 @@ export function InstallPrompt() {
     <div
       role="dialog"
       aria-labelledby="pwa-install-title"
+      aria-describedby="pwa-install-description"
       className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-border bg-background p-4 shadow-lg md:hidden"
     >
       <div className="flex items-start gap-3">
@@ -76,7 +86,7 @@ export function InstallPrompt() {
           <p id="pwa-install-title" className="text-sm font-semibold text-foreground">
             Installer Poligraph
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p id="pwa-install-description" className="mt-1 text-xs text-muted-foreground">
             Ajoutez Poligraph à votre écran d&apos;accueil pour un accès rapide aux fiches
             consultées récemment, même hors connexion.
           </p>
@@ -106,9 +116,7 @@ export function InstallPrompt() {
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
-      <p className="mt-2 text-[10px] text-muted-foreground">
-        Suggestion après {MIN_VISITS} visites.
-      </p>
+      <p className="mt-2 text-xs text-muted-foreground">Suggestion après {MIN_VISITS} visites.</p>
     </div>
   );
 }

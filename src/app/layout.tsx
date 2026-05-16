@@ -12,6 +12,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { UmamiAnalytics } from "@/components/analytics/UmamiAnalytics";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { SITE_URL } from "@/config/site";
 import "./globals.css";
@@ -152,6 +153,7 @@ export default async function RootLayout({
               <CommandPalette />
               {chatEnabled && <ChatWidget />}
               <Toaster />
+              <InstallPrompt />
             </CommandPaletteProvider>
           </TooltipProvider>
         </ThemeProvider>

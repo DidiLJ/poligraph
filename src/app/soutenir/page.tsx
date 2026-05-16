@@ -29,7 +29,10 @@ function rescritMessage(): string {
 }
 
 export default function SoutenirPage() {
-  const primary = DONATION_PLATFORMS.find((p) => p.primary)!;
+  const primary = DONATION_PLATFORMS.find((p) => p.primary);
+  if (!primary) {
+    throw new Error("DONATION_PLATFORMS must include exactly one primary platform");
+  }
   const secondary = DONATION_PLATFORMS.filter((p) => !p.primary);
   const totalMonthly = totalMonthlyEuros();
 
@@ -140,14 +143,14 @@ export default function SoutenirPage() {
       {/* Plateforme secondaire (Tipeee) */}
       {secondary.length > 0 && (
         <section className="mb-12">
+          <h2 className="text-xl font-bold mb-4">Autre plateforme de soutien</h2>
           <Card className="bg-muted/30">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">
                 Vous préférez un soutien récurrent type tip jar, lié directement au projet Poligraph
-                ?{" "}
+                ? Vous pouvez aussi nous soutenir sur{" "}
                 {secondary.map((platform, index) => (
                   <span key={platform.name}>
-                    Vous pouvez aussi nous soutenir sur{" "}
                     <a
                       href={platform.url}
                       target="_blank"
@@ -160,7 +163,9 @@ export default function SoutenirPage() {
                     {index < secondary.length - 1 ? " ou " : "."}
                   </span>
                 ))}{" "}
-                Cette plateforme n&apos;ouvre pas droit au reçu fiscal de l&apos;association.
+                {secondary.length > 1
+                  ? "Ces plateformes n'ouvrent pas droit au reçu fiscal de l'association."
+                  : "Cette plateforme n'ouvre pas droit au reçu fiscal de l'association."}
               </p>
             </CardContent>
           </Card>

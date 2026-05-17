@@ -792,12 +792,18 @@ export default async function PoliticianPage({ params }: PageProps) {
             : isSenateur
               ? "les statistiques du Sénat"
               : "les statistiques générales";
+          const statsAria = `Voir ${statsLabel} pour comparer ${politician.firstName} ${politician.lastName}`;
           return (
             <aside className="mt-12 p-4 rounded-lg border bg-muted/30">
               <p className="text-sm text-muted-foreground">
                 Comparez {politician.firstName} {politician.lastName} avec les autres représentants
                 dans{" "}
-                <Link href={statsHref} className="text-primary hover:underline" prefetch={false}>
+                <Link
+                  href={statsHref}
+                  aria-label={statsAria}
+                  className="text-primary hover:underline"
+                  prefetch={false}
+                >
                   {statsLabel}
                 </Link>
                 .

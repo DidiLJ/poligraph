@@ -352,6 +352,10 @@ interface ArticleJsonLdProps {
   dateModified?: string;
   url: string;
   image?: string;
+  author?: {
+    name: string;
+    url?: string;
+  };
   about?: {
     name: string;
     url: string;
@@ -365,8 +369,10 @@ export function ArticleJsonLd({
   dateModified,
   url,
   image,
+  author,
   about,
 }: ArticleJsonLdProps) {
+  const resolvedAuthor = author ?? { name: "Poligraph", url: "https://poligraph.fr" };
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -376,6 +382,11 @@ export function ArticleJsonLd({
     ...(dateModified && { dateModified }),
     url,
     ...(image && { image }),
+    author: {
+      "@type": "Organization",
+      name: resolvedAuthor.name,
+      ...(resolvedAuthor.url && { url: resolvedAuthor.url }),
+    },
     ...(about && {
       about: {
         "@type": "Person",

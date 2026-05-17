@@ -184,8 +184,8 @@ export default async function AffairDetailPage({ params }: PageProps) {
       <ArticleJsonLd
         headline={`${affair.title} - ${affair.politician.fullName}`}
         description={stripMarkdown(affair.description).slice(0, 300)}
-        datePublished={affair.factsDate?.toISOString().split("T")[0]}
-        dateModified={affair.updatedAt?.toISOString().split("T")[0]}
+        datePublished={affair.factsDate?.toISOString()}
+        dateModified={affair.updatedAt?.toISOString()}
         url={`${SITE_URL}/affaires/${affair.slug}`}
         image={`${SITE_URL}/affaires/${affair.slug}/opengraph-image`}
         about={{

@@ -2042,7 +2042,7 @@ model PlatformUpdate {
 }
 
 // ---------------------------------------------------------------------------
-// Promises (Tracker promesses 2027 — Q4 prototype)
+// Promises (Tracker promesses 2027, Q4 prototype)
 // ---------------------------------------------------------------------------
 
 model Promise {

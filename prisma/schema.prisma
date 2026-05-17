@@ -76,6 +76,7 @@ model Politician {
   pressMentions     PressArticleMention[] // Mentions in press articles
   pressRejections   PressAnalysisRejection[] // Low-confidence press analysis rejections
   factCheckMentions FactCheckMention[] // Mentions in fact-checks
+  promises          Promise[] // Tracker promesses 2027 (Q4 prototype)
   candidacies       Candidacy[] // Election candidacies
   candidates        Candidate[] // Local election candidates linked to this politician
   participation       PoliticianParticipation? // Pre-computed participation stats
@@ -1075,6 +1076,24 @@ enum ThemeCategory {
   TRANSPORTS
 }
 
+enum PromiseSourceKind {
+  DISCOURS_AN
+  DISCOURS_SENAT
+  INTERVIEW_PRESSE
+  ARTICLE_PRESSE
+  PROPOSITION_LOI
+  PROGRAMME_PARTI
+  DECLARATION_PUBLIQUE
+  AUTRE
+}
+
+enum PromiseExtractionStatus {
+  EXTRACTED // sortie brute du pipeline IA, en attente de revue
+  PUBLISHED // validé éditorialement, prêt pour Q1 public
+  REJECTED // rejeté par modération
+  NEEDS_REVIEW // doute manuel, à re-traiter
+}
+
 // ============================================
 // LEGISLATIVE DOSSIERS (Assemblée Nationale)
 // ============================================
@@ -2020,6 +2039,45 @@ model PlatformUpdate {
 
   @@index([date])
   @@index([sourceUrl])
+}
+
+// ---------------------------------------------------------------------------
+// Promises (Tracker promesses 2027 — Q4 prototype)
+// ---------------------------------------------------------------------------
+
+model Promise {
+  id           String     @id @default(cuid())
+  politician   Politician @relation(fields: [politicianId], references: [id], onDelete: Cascade)
+  politicianId String
+
+  text            String        @db.Text
+  context         String?       @db.Text
+  theme           ThemeCategory
+  themeConfidence Float?
+
+  sourceKind  PromiseSourceKind
+  sourceUrl   String?
+  sourceLabel String?
+  publishedAt DateTime
+
+  extractionStatus     PromiseExtractionStatus @default(EXTRACTED)
+  extractionMethod     String?
+  extractionConfidence Float?
+
+  linkedVoteId String?
+
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([politicianId])
+  @@index([theme])
+  @@index([extractionStatus])
+  @@index([publishedAt])
+  @@index([extractionStatus, publishedAt])
 }
 
 // ============================================

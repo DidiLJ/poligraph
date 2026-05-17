@@ -41,6 +41,8 @@ import type {
   ThematicAxis,
   QuizElectionScope,
   ProfessionDeFoiSource,
+  PromiseSourceKind,
+  PromiseExtractionStatus,
 } from "@/generated/prisma";
 
 // Compare types
@@ -96,6 +98,8 @@ export type {
   ThematicAxis,
   QuizElectionScope,
   ProfessionDeFoiSource,
+  PromiseSourceKind,
+  PromiseExtractionStatus,
 };
 
 // Serialized types (for client components)

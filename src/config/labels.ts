@@ -25,6 +25,8 @@ import type {
   ScrutinType,
   ThematicAxis,
   QuizElectionScope,
+  PromiseSourceKind,
+  PromiseExtractionStatus,
 } from "@/types";
 
 // Nombre de sièges à l'Assemblée nationale (XVIIe législature)
@@ -1296,4 +1298,26 @@ export const QUIZ_ELECTION_SCOPE_LABELS: Record<QuizElectionScope, string> = {
   COMMON: "Tronc commun",
   NATIONAL: "National",
   MUNICIPAL: "Municipal",
+};
+
+// ============================================
+// PROMISES (Tracker promesses 2027)
+// ============================================
+
+export const PROMISE_SOURCE_KIND_LABELS: Record<PromiseSourceKind, string> = {
+  DISCOURS_AN: "Discours Assemblée nationale",
+  DISCOURS_SENAT: "Discours Sénat",
+  INTERVIEW_PRESSE: "Interview presse",
+  ARTICLE_PRESSE: "Article presse",
+  PROPOSITION_LOI: "Proposition de loi",
+  PROGRAMME_PARTI: "Programme de parti",
+  DECLARATION_PUBLIQUE: "Déclaration publique",
+  AUTRE: "Autre",
+};
+
+export const PROMISE_EXTRACTION_STATUS_LABELS: Record<PromiseExtractionStatus, string> = {
+  EXTRACTED: "Extraite (à revoir)",
+  PUBLISHED: "Publiée",
+  REJECTED: "Rejetée",
+  NEEDS_REVIEW: "À revoir",
 };

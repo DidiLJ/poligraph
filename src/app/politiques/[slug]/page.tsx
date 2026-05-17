@@ -778,6 +778,33 @@ export default async function PoliticianPage({ params }: PageProps) {
             </Card>
           </div>
         </div>
+
+        {(() => {
+          const isDepute = currentMandate?.type === "DEPUTE";
+          const isSenateur = currentMandate?.type === "SENATEUR";
+          const statsHref = isDepute
+            ? "/statistiques?chamber=AN"
+            : isSenateur
+              ? "/statistiques?chamber=SENAT"
+              : "/statistiques";
+          const statsLabel = isDepute
+            ? "les statistiques de l'Assemblée nationale"
+            : isSenateur
+              ? "les statistiques du Sénat"
+              : "les statistiques générales";
+          return (
+            <aside className="mt-12 p-4 rounded-lg border bg-muted/30">
+              <p className="text-sm text-muted-foreground">
+                Comparez {politician.firstName} {politician.lastName} avec les autres représentants
+                dans{" "}
+                <Link href={statsHref} className="text-primary hover:underline" prefetch={false}>
+                  {statsLabel}
+                </Link>
+                .
+              </p>
+            </aside>
+          );
+        })()}
       </div>
     </>
   );

@@ -262,6 +262,7 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
           description={scrutin.citizenImpact?.replace(/\*\*/g, "").split(/[.!?]\s/)[0] || undefined}
           datePublished={scrutin.votingDate.toISOString()}
           url={`${SITE_URL}/parlement/votes/${scrutin.slug}`}
+          image={`${SITE_URL}/parlement/votes/${scrutin.slug}/opengraph-image`}
         />
       )}
       <ShareBar

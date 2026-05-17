@@ -68,6 +68,7 @@ export default async function RecapWeekPage({ params }: PageProps) {
         datePublished={weekStart.toISOString()}
         dateModified={weekEnd.toISOString()}
         url={`https://poligraph.fr/recap/${week}`}
+        image={`https://poligraph.fr/recap/${week}/opengraph-image`}
       />
       <RecapView weekStart={weekStart} data={data} />
     </>

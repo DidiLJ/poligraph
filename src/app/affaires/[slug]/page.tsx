@@ -187,6 +187,7 @@ export default async function AffairDetailPage({ params }: PageProps) {
         datePublished={affair.factsDate?.toISOString().split("T")[0]}
         dateModified={affair.updatedAt?.toISOString().split("T")[0]}
         url={`${SITE_URL}/affaires/${affair.slug}`}
+        image={`${SITE_URL}/affaires/${affair.slug}/opengraph-image`}
         about={{
           name: affair.politician.fullName,
           url: `${SITE_URL}/politiques/${affair.politician.slug}`,

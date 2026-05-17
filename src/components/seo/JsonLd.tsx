@@ -351,6 +351,7 @@ interface ArticleJsonLdProps {
   datePublished?: string;
   dateModified?: string;
   url: string;
+  image?: string;
   about?: {
     name: string;
     url: string;
@@ -363,6 +364,7 @@ export function ArticleJsonLd({
   datePublished,
   dateModified,
   url,
+  image,
   about,
 }: ArticleJsonLdProps) {
   const jsonLd = {
@@ -373,6 +375,7 @@ export function ArticleJsonLd({
     ...(datePublished && { datePublished }),
     ...(dateModified && { dateModified }),
     url,
+    ...(image && { image }),
     ...(about && {
       about: {
         "@type": "Person",

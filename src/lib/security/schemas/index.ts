@@ -24,3 +24,4 @@ export {
   syncPoliticianSchema,
 } from "./admin";
 export { updateFactcheckSchema, addFactcheckMentionSchema, updateMentionSchema } from "./factcheck";
+export { createPromiseSchema, updatePromiseSchema } from "./promise";

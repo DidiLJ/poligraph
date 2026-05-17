@@ -14,7 +14,7 @@ import { Prisma } from "@/generated/prisma";
 import * as fs from "fs";
 import * as https from "https";
 import { createWriteStream, mkdirSync, rmSync, readdirSync, readFileSync } from "fs";
-import { execSync } from "child_process";
+import { extractZip } from "@/lib/parsing/unzip";
 
 const LEGISLATURE = 17;
 const TEMP_DIR = "/tmp/reconcile-scrutin-dossier";
@@ -135,7 +135,7 @@ export async function reconcileScrutinDossier(): Promise<ReconciliationResult> {
     console.log("[reconcile] Downloading dossier ZIP...");
     const dossierZip = `${TEMP_DIR}/dossiers.zip`;
     await downloadFile(DOSSIER_ZIP_URL, dossierZip);
-    execSync(`unzip -o -q "${dossierZip}" -d "${TEMP_DIR}/dossiers/"`, { stdio: "pipe" });
+    extractZip(dossierZip, `${TEMP_DIR}/dossiers/`);
 
     // 3. Build reunionRef → dossierExternalId map
     console.log("[reconcile] Building reunionRef → dossier map...");
@@ -176,7 +176,7 @@ export async function reconcileScrutinDossier(): Promise<ReconciliationResult> {
     console.log("[reconcile] Downloading scrutin ZIP...");
     const scrutinZip = `${TEMP_DIR}/scrutins.zip`;
     await downloadFile(SCRUTIN_ZIP_URL, scrutinZip);
-    execSync(`unzip -o -q "${scrutinZip}" -d "${TEMP_DIR}/scrutins/"`, { stdio: "pipe" });
+    extractZip(scrutinZip, `${TEMP_DIR}/scrutins/`);
 
     // 5. Build scrutinExternalId → dossierExternalId map via seanceRef
     console.log("[reconcile] Matching scrutins to dossiers via seanceRef...");

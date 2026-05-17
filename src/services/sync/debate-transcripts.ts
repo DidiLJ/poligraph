@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import * as https from "https";
 import { mkdirSync, rmSync, readdirSync, readFileSync, createWriteStream } from "fs";
-import { execSync } from "child_process";
+import { extractZip } from "@/lib/parsing/unzip";
 
 const LEGISLATURE = 17;
 const TEMP_DIR = "/tmp/debate-transcripts";
@@ -161,9 +161,7 @@ export async function syncDebateTranscripts(): Promise<SyncResult> {
   }
 
   try {
-    execSync(`unzip -o -q "${zipPath}" -d "${TEMP_DIR}/extracted"`, {
-      timeout: 120000,
-    });
+    extractZip(zipPath, `${TEMP_DIR}/extracted`);
   } catch (e) {
     return { downloaded: 0, linked: 0, errors: [`Unzip failed: ${e}`] };
   }

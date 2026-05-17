@@ -17,7 +17,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as https from "https";
 import { createWriteStream, mkdirSync, rmSync, readdirSync, readFileSync } from "fs";
-import { execSync } from "child_process";
+import { extractZip } from "@/lib/parsing/unzip";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -292,7 +292,7 @@ export async function syncScrutinsAN(
     console.log("Extracting ZIP...");
     const jsonDir = path.join(TEMP_DIR, "json");
     mkdirSync(jsonDir, { recursive: true });
-    execSync(`unzip -o "${zipPath}" -d "${TEMP_DIR}"`, { stdio: "pipe" });
+    extractZip(zipPath, TEMP_DIR);
     console.log("✓ Extracted ZIP file");
 
     // Step 3: List JSON files

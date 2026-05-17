@@ -68,7 +68,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     <OgLayout>
       <OgCategoryLabel emoji="🔍" label="Fact-check" />
 
-      {/* Claim */}
+      {/* Claim — single text node (Satori rejects multi-child divs without display:flex) */}
       {factCheck.claimText && (
         <div
           style={{
@@ -78,7 +78,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             fontStyle: "italic",
           }}
         >
-          « {truncateOg(factCheck.claimText, 150)} »
+          {`« ${truncateOg(factCheck.claimText, 150)} »`}
         </div>
       )}
 

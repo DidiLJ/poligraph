@@ -1,10 +1,6 @@
 /**
  * Service to sync legislative dossiers from data.assemblee-nationale.fr.
  * Extracted from scripts/sync-legislation.ts for Inngest compatibility.
- *
- * NOTE: This service uses execSync("unzip ...") for ZIP extraction.
- * This is a system tool invocation (not a Node.js script spawn) and is
- * acceptable on Vercel serverless.
  */
 
 import { db } from "@/lib/db";
@@ -15,7 +11,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as https from "https";
 import { createWriteStream, mkdirSync, rmSync, readdirSync, readFileSync } from "fs";
-import { execSync } from "child_process";
+import { extractZip } from "@/lib/parsing/unzip";
 
 const DEFAULT_LEGISLATURE = 17;
 const TEMP_DIR = "/tmp/dossiers-legislatifs-an";
@@ -341,7 +337,7 @@ export async function syncLegislation(options?: {
     console.log("Downloaded ZIP file");
 
     // Extract ZIP (system tool, not Node.js script spawn)
-    execSync(`unzip -o "${zipPath}" -d "${TEMP_DIR}"`, { stdio: "pipe" });
+    extractZip(zipPath, TEMP_DIR);
     console.log("Extracted ZIP file");
 
     // List JSON files

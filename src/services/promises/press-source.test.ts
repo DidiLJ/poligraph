@@ -77,6 +77,32 @@ describe("ingestPromisesFromPress", () => {
     );
   });
 
+  it("marque l'article 'error' si l'extracteur jette", async () => {
+    vi.mocked(db.pressArticle.findMany).mockResolvedValueOnce([
+      {
+        id: "a4",
+        title: "Titre",
+        description: "x",
+        url: "https://example.fr/article4",
+        feedSource: "lemonde",
+        publishedAt: new Date(),
+        mentions: [{ politicianId: "p4", politician: { id: "p4", fullName: "Marc Roux" } }],
+      },
+    ] as never);
+    vi.mocked(extractPromisesFromText).mockRejectedValueOnce(new Error("Haiku 529"));
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await ingestPromisesFromPress({ limit: 1 });
+
+    expect(result).toEqual({ scanned: 1, extracted: 0, inserted: 0 });
+    expect(db.promise.create).not.toHaveBeenCalled();
+    expect(db.pressArticle.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ promiseScanStatus: "error" }) })
+    );
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
   it("dryRun n'écrit rien en DB", async () => {
     vi.mocked(db.pressArticle.findMany).mockResolvedValueOnce([
       {

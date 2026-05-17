@@ -1,9 +1,9 @@
 "use client";
 
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { User, Briefcase, Vote, FileCheck, Scale } from "lucide-react";
 
 const VALID_TABS = ["profil", "carriere", "votes", "factchecks", "affaires"] as const;
@@ -28,28 +28,41 @@ function ProfileTabsInner({
   affairsCount,
 }: ProfileTabsProps) {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
 
-  const rawTab = searchParams.get("tab");
-  const availableTabs: readonly TabValue[] = VALID_TABS.filter((t) => {
-    if (t === "votes" && !votesContent) return false;
-    if (t === "factchecks" && !factchecksContent) return false;
-    return true;
-  });
-  const tab: TabValue = availableTabs.includes(rawTab as TabValue)
-    ? (rawTab as TabValue)
-    : DEFAULT_TAB;
+  const availableTabs = useMemo<readonly TabValue[]>(
+    () =>
+      VALID_TABS.filter((t) => {
+        if (t === "votes" && !votesContent) return false;
+        if (t === "factchecks" && !factchecksContent) return false;
+        return true;
+      }),
+    [votesContent, factchecksContent]
+  );
+
+  const tabFromUrl = useMemo<TabValue>(() => {
+    const raw = searchParams.get("tab");
+    return availableTabs.includes(raw as TabValue) ? (raw as TabValue) : DEFAULT_TAB;
+  }, [searchParams, availableTabs]);
+
+  const [tab, setTab] = useState<TabValue>(tabFromUrl);
+
+  // Keep local state in sync when the URL changes externally
+  // (browser back/forward, in-page <Link href="?tab=...">).
+  useEffect(() => {
+    setTab(tabFromUrl);
+  }, [tabFromUrl]);
 
   function onTabChange(value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === DEFAULT_TAB) {
+    const next = value as TabValue;
+    setTab(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === DEFAULT_TAB) {
       params.delete("tab");
     } else {
-      params.set("tab", value);
+      params.set("tab", next);
     }
     const qs = params.toString();
-    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
   }
 
   return (

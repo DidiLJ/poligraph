@@ -1,9 +1,9 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Scale, ShieldCheck, FileText, BarChart3 } from "lucide-react";
 
 const VALID_TABS = ["judiciaire", "factchecks", "legislatif", "participation"] as const;
@@ -24,22 +24,31 @@ function StatsTabsInner({
   participationContent,
 }: StatsTabsProps) {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
-  const rawTab = searchParams.get("tab");
-  const tab: TabValue = VALID_TABS.includes(rawTab as TabValue)
-    ? (rawTab as TabValue)
-    : DEFAULT_TAB;
+  const tabFromUrl = useMemo<TabValue>(() => {
+    const raw = searchParams.get("tab");
+    return VALID_TABS.includes(raw as TabValue) ? (raw as TabValue) : DEFAULT_TAB;
+  }, [searchParams]);
+
+  const [tab, setTab] = useState<TabValue>(tabFromUrl);
+
+  // Keep local state in sync when the URL changes externally
+  // (browser back/forward, in-page <Link href="?tab=...">).
+  useEffect(() => {
+    setTab(tabFromUrl);
+  }, [tabFromUrl]);
 
   function onTabChange(value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === DEFAULT_TAB) {
+    const next = value as TabValue;
+    setTab(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === DEFAULT_TAB) {
       params.delete("tab");
     } else {
-      params.set("tab", value);
+      params.set("tab", next);
     }
     const qs = params.toString();
-    router.replace(`/statistiques${qs ? `?${qs}` : ""}`, { scroll: false });
+    window.history.replaceState(null, "", `/statistiques${qs ? `?${qs}` : ""}`);
   }
 
   return (

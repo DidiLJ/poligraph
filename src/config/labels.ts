@@ -1316,8 +1316,8 @@ export const PROMISE_SOURCE_KIND_LABELS: Record<PromiseSourceKind, string> = {
 };
 
 export const PROMISE_EXTRACTION_STATUS_LABELS: Record<PromiseExtractionStatus, string> = {
-  EXTRACTED: "Extraite (à revoir)",
+  EXTRACTED: "Extraite (non revue)",
   PUBLISHED: "Publiée",
   REJECTED: "Rejetée",
-  NEEDS_REVIEW: "À revoir",
+  NEEDS_REVIEW: "À retraiter",
 };

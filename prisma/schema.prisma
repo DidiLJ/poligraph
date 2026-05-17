@@ -2061,10 +2061,10 @@ model Promise {
   publishedAt DateTime
 
   extractionStatus     PromiseExtractionStatus @default(EXTRACTED)
-  extractionMethod     String?
+  extractionMethod     String? // "rules" | "haiku" (theme-classifier source)
   extractionConfidence Float?
 
-  linkedVoteId String?
+  linkedVoteId String? // reserved for Q1 2027, FK to Scrutin not yet wired
 
   verifiedAt      DateTime?
   verifiedBy      String?
@@ -2075,7 +2075,6 @@ model Promise {
 
   @@index([politicianId])
   @@index([theme])
-  @@index([extractionStatus])
   @@index([publishedAt])
   @@index([extractionStatus, publishedAt])
 }

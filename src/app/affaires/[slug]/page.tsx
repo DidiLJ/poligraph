@@ -313,13 +313,13 @@ export default async function AffairDetailPage({ params }: PageProps) {
 
         {affair.isSlapp && affair.slappCriteria ? (
           <section className="my-8">
-            <h2 className="text-xl font-bold mb-4">Critères de qualification SLAPP</h2>
+            <h2 className="text-lg font-semibold mb-4">Critères de qualification SLAPP</h2>
             <CriteriaList criteria={affair.slappCriteria as unknown as SlappCriteriaPayload} />
             <p className="mt-4 text-xs text-muted-foreground">
               Critères évalués selon la méthodologie publiée sur la page{" "}
-              <a href="/procedures-baillons" className="text-primary hover:underline">
+              <Link href="/procedures-baillons" className="text-primary hover:underline">
                 procédures-bâillons
-              </a>
+              </Link>
               .
             </p>
           </section>

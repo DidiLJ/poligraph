@@ -514,7 +514,7 @@ interface CollectionPageJsonLdProps {
   name: string;
   description: string;
   url: string;
-  numberOfItems: number;
+  numberOfItems?: number;
   about?: {
     name: string;
     url: string;
@@ -581,10 +581,12 @@ export function CollectionPageJsonLd({
     name,
     description,
     url,
-    mainEntity: {
-      "@type": "ItemList",
-      numberOfItems,
-    },
+    ...(numberOfItems !== undefined && {
+      mainEntity: {
+        "@type": "ItemList",
+        numberOfItems,
+      },
+    }),
     ...(about && {
       about: {
         "@type": "Organization",

@@ -27,6 +27,9 @@ import type {
   QuizElectionScope,
 } from "@/types";
 
+// Nombre de sièges à l'Assemblée nationale (XVIIe législature)
+export const AN_SEAT_COUNT = 577;
+
 export const AFFAIR_STATUS_LABELS: Record<AffairStatus, string> = {
   ENQUETE_PRELIMINAIRE: "Enquête préliminaire",
   INSTRUCTION: "Instruction en cours",

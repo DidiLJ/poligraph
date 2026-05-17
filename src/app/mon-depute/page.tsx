@@ -4,6 +4,7 @@ import { PostalCodeSearch } from "@/components/politicians/PostalCodeSearch";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { AN_SEAT_COUNT } from "@/config/labels";
 
 export const revalidate = 300; // ISR: re-check feature flag every 5 minutes
 
@@ -22,7 +23,7 @@ export default async function MonDeputePage() {
         name="Trouvez votre député"
         description="Trouvez votre député et vos sénateurs par code postal ou géolocalisation. Accédez à leurs fiches, mandats et votes."
         url="https://poligraph.fr/mon-depute"
-        numberOfItems={577}
+        numberOfItems={AN_SEAT_COUNT}
       />
       <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb items={[{ label: "Mon député" }]} />

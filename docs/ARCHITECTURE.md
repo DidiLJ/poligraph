@@ -284,6 +284,7 @@ erDiagram
     Politician ||--o{ PartyMembership : "historique partis"
     Politician ||--o{ ExternalId : "IDs externes"
     Politician ||--o{ DossierAuthor : "auteur de dossiers"
+    Politician ||--o{ Promise : "a promis"
     Affair ||--o{ Source : "sourcé par"
     Affair ||--o{ AffairEvent : "chronologie"
     Scrutin ||--o{ Vote : "contient"
@@ -329,9 +330,17 @@ erDiagram
         enum theme "SECURITE_JUSTICE, SANTE..."
         string summary
     }
+
+    Promise {
+        string text
+        enum theme "ECONOMIE_BUDGET, IMMIGRATION..."
+        enum sourceKind "ARTICLE_PRESSE, DISCOURS_AN..."
+        enum extractionStatus "EXTRACTED, PUBLISHED..."
+        date publishedAt
+    }
 ```
 
-Le schéma complet comprend 44 modèles Prisma.
+Le schéma complet comprend 45 modèles Prisma (ajout de `Promise` en Q4 2026 pour le Tracker promesses 2027).
 
 ---
 
@@ -435,6 +444,17 @@ Publication automatique sur Twitter et Bluesky, 3 fois par jour (08:00, 12:30, 1
 - Génération de texte automatisée
 - Publication via les APIs Twitter et Bluesky
 - Orchestré par `src/inngest/functions/post-social.ts`
+
+### 6.10 Tracker promesses 2027
+
+Pilier prototype Q4 2026, backend uniquement (pas de page publique avant Q1 2027).
+
+- **Modèle dédié** : `Promise` table autonome rattachée à `Politician`. Distinct sémantiquement de `Proposal` (synthèse structurée d'un programme parti pour la Boussole) : une promesse est un événement déclaratif daté, attribué à un politicien individuel. Aucun couplage entre les deux modules.
+- **Sources d'ingestion** : (a) `PressArticle` existant via extraction Haiku (`src/services/promises/press-source.ts`) ; (b) CRI AN via parser XML (`src/services/promises/cri-source.ts`), industrialisation Q1.
+- **Tagging hybride** : règles déterministes mots-clés d'abord (`src/services/promises/rules.ts`), fallback Claude Haiku si confiance insuffisante (`theme-classifier.ts`). Méthode et confiance stockées en DB pour audit.
+- **Modération** : tableau de bord admin à `/admin/promises` avec filtres status/thème, actions Publier / Rejeter / À retraiter / Supprimer. Toutes les mutations passent par `withAdminAuth` + `withValidation` Zod + `auditLog`.
+- **Préparation Q1** : champ `linkedVoteId?` réservé sur `Promise` pour la future jointure « promesse vs réalité » (issue #202).
+- **Pas de feature flag** : aucune surface publique en Q4, donc rien à gater.
 
 ---
 

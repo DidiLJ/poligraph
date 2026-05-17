@@ -37,25 +37,27 @@ Ce document décrit les sources de données utilisées par Poligraph, leur forma
 
 ## 1. Vue d'ensemble
 
-| #   | Source               | Type d'accès     | Auth      | Données principales         | Script                                             | Fréquence    |
-| --- | -------------------- | ---------------- | --------- | --------------------------- | -------------------------------------------------- | ------------ |
-| 2   | Assemblée nationale  | CSV (data.gouv)  | Aucune    | Députés, groupes            | `sync:assemblee`                                   | Hebdomadaire |
-| 3   | Sénat                | API JSON         | Aucune    | Sénateurs, groupes          | `sync:senat`                                       | Hebdomadaire |
-| 4   | Gouvernement         | CSV (data.gouv)  | Aucune    | Ministres, fonctions        | `sync:gouvernement`                                | Remaniement  |
-| 5   | Président            | Statique         | Aucune    | Président en exercice       | `sync:president`                                   | Manuelle     |
-| 6   | Parlement européen   | API JSON-LD      | Aucune    | Eurodéputés français        | `sync:europarl`                                    | Hebdomadaire |
-| 7   | HATVP                | CSV opendata     | Aucune    | Déclarations patrimoine     | `sync:hatvp`                                       | Mensuelle    |
-| 8   | Wikidata             | REST + SPARQL    | Aucune    | IDs, condamnations, décès   | `sync:wikidata-ids`                                | Hebdomadaire |
-| 9   | Votes AN             | ZIP JSON         | Aucune    | Scrutins, votes individuels | `sync:scrutins-an`                                 | Quotidienne  |
-| 10  | Votes Sénat          | HTML + JSON      | Aucune    | Scrutins, votes individuels | `sync:scrutins-senat`                              | Quotidienne  |
-| 11  | Dossiers législatifs | ZIP JSON         | Aucune    | Projets/propositions de loi | `sync:legislation`                                 | Quotidienne  |
-| 12  | Presse (RSS)         | RSS/XML          | Aucune    | Articles, mentions          | `sync:press`                                       | Quotidienne  |
-| 13  | Google Fact Check    | API REST         | API key   | Fact-checks, verdicts       | `sync:factchecks`                                  | Quotidienne  |
-| 14  | RNE                  | CSV (data.gouv)  | Aucune    | Maires                      | `sync:rne:maires`                                  | Ponctuelle   |
-| 15  | Judilibre            | API REST (PISTE) | OAuth 2.0 | Décisions justice           | `sync:judilibre:deprecated` (désactivé 2026-05-15) | Désactivé    |
-| 16  | Candidatures         | CSV (data.gouv)  | Aucune    | Candidats municipales       | `sync:elections:municipales`                       | Ponctuelle   |
-| 17  | Photos               | HTTP HEAD        | Aucune    | Photos politiciens          | `sync:photos`                                      | Hebdomadaire |
-| 18  | Analyse presse       | Analyse auto.    | API key   | Détection affaires          | `sync:press-analysis`                              | Quotidienne  |
+| #   | Source                   | Type d'accès     | Auth      | Données principales          | Script                                             | Fréquence    |
+| --- | ------------------------ | ---------------- | --------- | ---------------------------- | -------------------------------------------------- | ------------ |
+| 2   | Assemblée nationale      | CSV (data.gouv)  | Aucune    | Députés, groupes             | `sync:assemblee`                                   | Hebdomadaire |
+| 3   | Sénat                    | API JSON         | Aucune    | Sénateurs, groupes           | `sync:senat`                                       | Hebdomadaire |
+| 4   | Gouvernement             | CSV (data.gouv)  | Aucune    | Ministres, fonctions         | `sync:gouvernement`                                | Remaniement  |
+| 5   | Président                | Statique         | Aucune    | Président en exercice        | `sync:president`                                   | Manuelle     |
+| 6   | Parlement européen       | API JSON-LD      | Aucune    | Eurodéputés français         | `sync:europarl`                                    | Hebdomadaire |
+| 7   | HATVP                    | CSV opendata     | Aucune    | Déclarations patrimoine      | `sync:hatvp`                                       | Mensuelle    |
+| 8   | Wikidata                 | REST + SPARQL    | Aucune    | IDs, condamnations, décès    | `sync:wikidata-ids`                                | Hebdomadaire |
+| 9   | Votes AN                 | ZIP JSON         | Aucune    | Scrutins, votes individuels  | `sync:scrutins-an`                                 | Quotidienne  |
+| 10  | Votes Sénat              | HTML + JSON      | Aucune    | Scrutins, votes individuels  | `sync:scrutins-senat`                              | Quotidienne  |
+| 11  | Dossiers législatifs     | ZIP JSON         | Aucune    | Projets/propositions de loi  | `sync:legislation`                                 | Quotidienne  |
+| 12  | Presse (RSS)             | RSS/XML          | Aucune    | Articles, mentions           | `sync:press`                                       | Quotidienne  |
+| 13  | Google Fact Check        | API REST         | API key   | Fact-checks, verdicts        | `sync:factchecks`                                  | Quotidienne  |
+| 14  | RNE                      | CSV (data.gouv)  | Aucune    | Maires                       | `sync:rne:maires`                                  | Ponctuelle   |
+| 15  | Judilibre                | API REST (PISTE) | OAuth 2.0 | Décisions justice            | `sync:judilibre:deprecated` (désactivé 2026-05-15) | Désactivé    |
+| 16  | Candidatures             | CSV (data.gouv)  | Aucune    | Candidats municipales        | `sync:elections:municipales`                       | Ponctuelle   |
+| 17  | Photos                   | HTTP HEAD        | Aucune    | Photos politiciens           | `sync:photos`                                      | Hebdomadaire |
+| 18  | Analyse presse           | Analyse auto.    | API key   | Détection affaires           | `sync:press-analysis`                              | Quotidienne  |
+| 19  | Tracker promesses        | Réutilisation DB | API key   | Promesses politiques         | `promises-extract-sample`                          | À la demande |
+| 20  | Compte Rendu Intégral AN | XML public       | Aucune    | Interventions parlementaires | `promises-cri-demo`                                | Q1 2027      |
 
 ---
 
@@ -668,6 +670,42 @@ Les contenus suivants sont saisis ou mis à jour via le dashboard admin :
 - **Cron** : Inngest, 3 fois par jour (08:00, 12:30, 18:00 Paris)
 - **Plateformes** : Twitter (API v2) + Bluesky (AT Protocol)
 - **Contenu** : votes marquants, nouvelles affaires, faits saillants
+
+### Tracker promesses 2027 (extraction depuis PressArticle + CRI AN)
+
+Pipeline backend Q4 2026, exposition publique différée à Q1 2027. Extraction de promesses politiques depuis deux sources :
+
+**Source A, PressArticle déjà ingéré (production Q4) :**
+
+- Aucun nouveau fetch externe : on lit les `PressArticle` déjà en base via `sync:press` (section 12).
+- Extraction via Claude Haiku (`src/services/promises/extractor.ts`) avec prompt strict (caractère prospectif, sujet politique précis, attribution claire).
+- Tagging thématique hybride : règles mots-clés d'abord, Haiku en fallback (`src/services/promises/theme-classifier.ts`).
+- Idempotence : chaque `PressArticle` porte un champ `promiseScanStatus` qui passe à `"scanned"`, `"skipped"` ou `"error"` après traitement.
+- Volume estimé : 1 à 2 promesses par article qualifié, sur la moitié des articles politiques.
+
+**Source B, Compte Rendu Intégral AN (proof-of-concept Q4, production Q1) :**
+
+- **URL XML par séance** : `https://www.assemblee-nationale.fr/dyn/opendata/CRSANR5L{leg}S{year}O{session}N{numSeance}.xml`
+- **Archive bulk** : `https://data.assemblee-nationale.fr/static/openData/repository/{leg}/vp/syceronbrut/syseron.xml.zip` (pour industrialisation Q1)
+- **Authentification** : Aucune
+- **Rate limit** : 200 ms (réutilise `ASSEMBLEE_DOCPARL_RATE_LIMIT_MS`)
+- **Licence** : Licence Ouverte (Etalab)
+- **Statut Q4** : parser XML opérationnel (`src/services/promises/cri-source.ts`) validé sur une séance réelle (668 interventions parsées). Pas encore d'industrialisation cron, pas de wiring vers `extractPromisesFromText`. Production Q1 2027.
+
+### Scripts
+
+```bash
+# Échantillonnage et ingestion presse (Q4 production)
+npx dotenv -e .env -- npx tsx scripts/promises-extract-sample.ts --limit=10 --dry-run
+npx dotenv -e .env -- npx tsx scripts/promises-extract-sample.ts --limit=10
+
+# Démonstration CRI AN (Q4 proof-of-concept)
+npx dotenv -e .env -- npx tsx scripts/promises-cri-demo.ts
+```
+
+### Modération
+
+Toutes les promesses extraites arrivent en statut `EXTRACTED` (libellé : « Extraite (non revue) ») et doivent être revues manuellement à `/admin/promises` avant publication. Une promesse passée en `PUBLISHED` est prête pour exposition publique (page comparative présidentielle 2027, Q1).
 
 ---
 

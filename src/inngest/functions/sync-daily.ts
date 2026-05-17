@@ -5,6 +5,21 @@ interface DailyStep {
   run: () => Promise<unknown>;
 }
 
+// Vercel kills the function at 300s without context. Race each step against a
+// shorter internal timeout so we record WHICH step hung instead of an opaque
+// "Vercel Runtime Timeout".
+const STEP_TIMEOUT_MS = 270_000;
+
+function runWithTimeout<T>(name: string, fn: () => Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`step "${name}" timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([fn(), timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
 const DAILY_STEPS: DailyStep[] = [
   {
     name: "scrutins-an",
@@ -230,7 +245,7 @@ export const syncDaily = inngest.createFunction(
     for (const s of DAILY_STEPS) {
       const result = await step.run(s.name, async () => {
         try {
-          await s.run();
+          await runWithTimeout(s.name, s.run, STEP_TIMEOUT_MS);
           return { success: true as const };
         } catch (err) {
           // Don't throw — continue to next step

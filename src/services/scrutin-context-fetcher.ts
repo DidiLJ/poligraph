@@ -6,7 +6,7 @@
  * 2. SourceUrl scraping (slow, optional) - fetches HTML from AN/Senat pages via Readability
  */
 
-import { JSDOM } from "jsdom";
+import { createSilentJSDOM } from "@/lib/parsing/jsdom-silent";
 import { Readability } from "@mozilla/readability";
 import { HTTPClient } from "@/lib/api/http-client";
 
@@ -180,7 +180,7 @@ async function scrapeSourceUrl(url: string): Promise<string | null> {
     const response = await scrapeClient.getText(url);
     if (!response.ok || !response.data) return null;
 
-    const dom = new JSDOM(response.data, { url });
+    const dom = createSilentJSDOM(response.data, { url });
     const reader = new Readability(dom.window.document);
     const article = reader.parse();
 

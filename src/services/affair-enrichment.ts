@@ -16,7 +16,7 @@ import {
   type BraveSearchResult,
 } from "@/lib/api/brave-search";
 import { AFFAIR_STATUSES, AFFAIR_CATEGORIES } from "./affair-moderation";
-import { JSDOM } from "jsdom";
+import { createSilentJSDOM } from "@/lib/parsing/jsdom-silent";
 import { Readability } from "@mozilla/readability";
 import { invalidateEntity } from "@/lib/cache";
 import { extractDateFromUrl } from "@/lib/extract-date-from-url";
@@ -579,7 +579,7 @@ async function scrapeTopArticles(results: BraveSearchResult[]): Promise<ScrapedA
       if (!response.ok) continue;
 
       const html = await response.text();
-      const dom = new JSDOM(html, { url: result.url });
+      const dom = createSilentJSDOM(html, { url: result.url });
       removeSidebarElements(dom.window.document);
       const reader = new Readability(dom.window.document);
       const article = reader.parse();

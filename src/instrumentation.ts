@@ -18,6 +18,9 @@ export async function register() {
         "NEXT_REDIRECT",
         "NEXT_NOT_FOUND",
         "DYNAMIC_SERVER_USAGE",
+        // Client (often a social/search-engine crawler) disconnected before the
+        // streamed response finished. Spammy and not actionable.
+        "failed to pipe response",
       ],
     });
   }
@@ -29,7 +32,7 @@ export async function register() {
       release: process.env.VERCEL_GIT_COMMIT_SHA,
       tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 0,
       sendDefaultPii: false,
-      ignoreErrors: ["NEXT_REDIRECT", "NEXT_NOT_FOUND"],
+      ignoreErrors: ["NEXT_REDIRECT", "NEXT_NOT_FOUND", "failed to pipe response"],
     });
   }
 }

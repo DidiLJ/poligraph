@@ -11,7 +11,7 @@
  * Content is fetched → extracted → returned for AI analysis → NOT stored (copyright).
  */
 
-import { JSDOM } from "jsdom";
+import { createSilentJSDOM } from "@/lib/parsing/jsdom-silent";
 import { Readability } from "@mozilla/readability";
 import { HTTPClient } from "./http-client";
 import { decodeHtmlEntities, removeSidebarElements } from "@/lib/parsing/html-utils";
@@ -195,7 +195,7 @@ export class ArticleScraper {
    */
   private parseWithReadability(html: string, url: string): ArticleContent | null {
     try {
-      const dom = new JSDOM(decodeHtmlEntities(html), { url });
+      const dom = createSilentJSDOM(decodeHtmlEntities(html), { url });
       removeSidebarElements(dom.window.document);
       const reader = new Readability(dom.window.document);
       const article = reader.parse();

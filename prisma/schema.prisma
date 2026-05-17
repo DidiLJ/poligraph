@@ -1303,6 +1303,10 @@ model PressArticle {
   isAffairRelated Boolean?
   aiAnalysisError String?
 
+  // Promise extraction (Q4 2026)
+  promiseScanStatus String? // null = not scanned, "scanned" = done, "skipped" = no mentions, "error" = failed
+  promiseScanAt     DateTime?
+
   // Relations
   mentions      PressArticleMention[]
   partyMentions PressArticlePartyMention[]
@@ -1316,6 +1320,7 @@ model PressArticle {
   @@index([publishedAt])
   @@index([isAffairRelated])
   @@index([aiAnalyzedAt])
+  @@index([promiseScanStatus])
 }
 
 model PressArticleMention {

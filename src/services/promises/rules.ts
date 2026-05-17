@@ -28,8 +28,11 @@ export const THEME_RULES: ThemeRule[] = [
     keywords: [
       "immigration",
       "migrant",
+      "migrants",
       "réfugié",
+      "réfugiés",
       "frontière",
+      "frontières",
       "ofpra",
       "asile",
       "naturalisation",
@@ -106,7 +109,6 @@ export const THEME_RULES: ThemeRule[] = [
     keywords: [
       "numérique",
       "intelligence artificielle",
-      "ia",
       "cybersécurité",
       "souveraineté numérique",
       "data",

@@ -1,5 +1,16 @@
-import { describe, it, expect } from "vitest";
-import { classifyByRules } from "@/services/promises/theme-classifier";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/api/anthropic", () => ({
+  callAnthropic: vi.fn(),
+  parseAnthropicJSON: vi.fn(),
+}));
+
+import { callAnthropic, parseAnthropicJSON } from "@/lib/api/anthropic";
+import {
+  classifyByRules,
+  classifyByHaiku,
+  classifyTheme,
+} from "@/services/promises/theme-classifier";
 
 describe("classifyByRules", () => {
   it("détecte le thème ECONOMIE_BUDGET sur un texte fiscal", () => {
@@ -20,5 +31,60 @@ describe("classifyByRules", () => {
     const text = "Nous devons reprendre le contrôle de nos frontières et réformer l'asile.";
     const result = classifyByRules(text);
     expect(result?.theme).toBe("IMMIGRATION");
+  });
+
+  it("returns confidence 0.7 when topScore=2 and secondScore=0", () => {
+    const result = classifyByRules("la TVA et l'impôt sur le revenu");
+    expect(result?.theme).toBe("ECONOMIE_BUDGET");
+    expect(result?.confidence).toBeCloseTo(0.7, 2);
+  });
+
+  it("does not match 'ia' as a substring of 'diplomatie' or 'agriculture'", () => {
+    const result = classifyByRules("Les agriculteurs et la diplomatie française.");
+    expect(result?.theme).not.toBe("NUMERIQUE_TECH");
+  });
+});
+
+describe("classifyByHaiku", () => {
+  beforeEach(() => {
+    vi.mocked(callAnthropic).mockReset();
+    vi.mocked(parseAnthropicJSON).mockReset();
+  });
+
+  it("returns parsed result on valid Haiku response", async () => {
+    vi.mocked(callAnthropic).mockResolvedValueOnce({
+      content: [{ type: "text", text: '{"theme":"SANTE","confidence":0.85}' }],
+    } as never);
+    vi.mocked(parseAnthropicJSON).mockReturnValueOnce({ theme: "SANTE", confidence: 0.85 });
+    const result = await classifyByHaiku("Réformer le remboursement des soins.");
+    expect(result?.theme).toBe("SANTE");
+    expect(result?.method).toBe("haiku");
+  });
+
+  it("returns null when Haiku response has an unknown theme", async () => {
+    vi.mocked(callAnthropic).mockResolvedValueOnce({
+      content: [{ type: "text", text: '{"theme":"INVENTED","confidence":1}' }],
+    } as never);
+    vi.mocked(parseAnthropicJSON).mockReturnValueOnce({ theme: "INVENTED", confidence: 1 });
+    expect(await classifyByHaiku("test")).toBeNull();
+  });
+});
+
+describe("classifyTheme", () => {
+  beforeEach(() => {
+    vi.mocked(callAnthropic).mockReset();
+    vi.mocked(parseAnthropicJSON).mockReset();
+  });
+
+  it("falls back to INSTITUTIONS@0.1 when both rules and haiku fail", async () => {
+    vi.mocked(callAnthropic).mockResolvedValueOnce({
+      content: [{ type: "text", text: "garbage" }],
+    } as never);
+    vi.mocked(parseAnthropicJSON).mockImplementationOnce(() => {
+      throw new Error("invalid JSON");
+    });
+    const result = await classifyTheme("Bonjour, c'est une belle journée.");
+    expect(result.theme).toBe("INSTITUTIONS");
+    expect(result.confidence).toBeCloseTo(0.1);
   });
 });

@@ -34,15 +34,34 @@ export function SlappStatsChart({ byStatus }: SlappStatsChartProps) {
     );
   }
 
+  const ariaSummary = data.map((d) => `${d.status} : ${d.count} cas`).join(", ");
+
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="status" />
-        <YAxis allowDecimals={false} />
-        <Tooltip />
-        <Bar dataKey="count" fill="#b45309" name="Cas" />
-      </BarChart>
-    </ResponsiveContainer>
+    <div role="img" aria-label={`Répartition des cas SLAPP par statut judiciaire. ${ariaSummary}.`}>
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 30 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            dataKey="status"
+            label={{
+              value: "Statut judiciaire",
+              position: "insideBottom",
+              offset: -20,
+            }}
+          />
+          <YAxis
+            allowDecimals={false}
+            label={{
+              value: "Nombre de cas",
+              angle: -90,
+              position: "insideLeft",
+              style: { textAnchor: "middle" },
+            }}
+          />
+          <Tooltip />
+          <Bar dataKey="count" fill="#b45309" name="Cas" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

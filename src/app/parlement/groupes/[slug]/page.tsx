@@ -9,6 +9,7 @@ import { getGroupeDetail, getGroupKeyVotes } from "@/lib/data/groupes";
 import { VoteCard } from "@/components/votes";
 import { CHAMBER_SHORT_LABELS } from "@/config/labels";
 import { Users, TrendingUp, Target, Activity } from "lucide-react";
+import { ParliamentaryGroupJsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 3600;
 
@@ -37,8 +38,17 @@ export default async function GroupeDetailPage({ params }: PageProps) {
   const groupKeyVotes = await getGroupKeyVotes(group.id);
   const stats = group.stats[0];
 
+  const chamberLabel = group.chamber === "AN" ? "Assemblée nationale" : "Sénat";
+
   return (
     <div className="container mx-auto px-4 py-8">
+      <ParliamentaryGroupJsonLd
+        name={group.name}
+        alternateName={group.shortName ?? undefined}
+        description={`${group.name} (${group.code}) : ${group.seatCount} membres, cohésion et statistiques de vote.`}
+        url={`https://poligraph.fr/parlement/groupes/${slug}`}
+        memberOf={{ name: chamberLabel, url: "https://poligraph.fr/parlement" }}
+      />
       <Breadcrumb
         items={[
           { label: "Parlement", href: "/parlement" },

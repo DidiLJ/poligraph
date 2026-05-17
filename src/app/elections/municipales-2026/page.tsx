@@ -17,6 +17,7 @@ import {
   getResultatsStats,
 } from "@/lib/data/municipales";
 import { PartyMap } from "@/components/elections/municipales/PartyMap";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 300; // ISR: 5 minutes
 
@@ -97,6 +98,12 @@ export default async function MunicipalesLandingPage() {
 
   return (
     <div className="container mx-auto px-4 max-w-6xl">
+      <CollectionPageJsonLd
+        name="Municipales 2026"
+        description="Découvrez les candidats et listes aux élections municipales 2026 dans votre commune. Recherche par ville, carte des forces politiques, parité et cumul des mandats."
+        url="https://poligraph.fr/elections/municipales-2026"
+        numberOfItems={stats?.totalCandidacies ?? 0}
+      />
       <Breadcrumb
         items={[{ label: "Élections", href: "/elections" }, { label: "Municipales 2026" }]}
       />

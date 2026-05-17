@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getSlappAffairs, getSlappStats } from "@/lib/data/slapp";
 import { SLAPP_DIRECTIVE_EU } from "@/config/slapp";
 import { SlappStatsChart } from "@/components/slapp/SlappStatsChart";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 
 export const metadata: Metadata = {
   title: "Procédures-bâillons en France",
@@ -20,6 +21,12 @@ export default async function ProceduresBaillonsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <CollectionPageJsonLd
+        name="Procédures-bâillons en France"
+        description="Catalogue documenté des procédures-bâillons (SLAPP) visant les voix critiques en France."
+        url="https://poligraph.fr/procedures-baillons"
+        numberOfItems={stats.total}
+      />
       <header className="mb-12">
         <div className="flex items-center gap-3 mb-4">
           <ShieldAlert className="h-7 w-7 text-amber-700" aria-hidden="true" />

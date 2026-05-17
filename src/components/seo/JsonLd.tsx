@@ -114,6 +114,48 @@ export function OrganizationJsonLd({
   );
 }
 
+interface ParliamentaryGroupJsonLdProps {
+  name: string;
+  alternateName?: string;
+  description?: string;
+  url: string;
+  foundingDate?: string;
+  dissolutionDate?: string;
+  memberOf?: { name: string; url: string };
+}
+
+export function ParliamentaryGroupJsonLd({
+  name,
+  alternateName,
+  description,
+  url,
+  foundingDate,
+  dissolutionDate,
+  memberOf,
+}: ParliamentaryGroupJsonLdProps) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name,
+    ...(alternateName && { alternateName }),
+    ...(description && { description }),
+    url,
+    ...(foundingDate && { foundingDate }),
+    ...(dissolutionDate && { dissolutionDate }),
+    ...(memberOf && {
+      memberOf: {
+        "@type": "GovernmentOrganization",
+        name: memberOf.name,
+        url: memberOf.url,
+      },
+    }),
+  };
+
+  return (
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
+  );
+}
+
 interface WebSiteJsonLdProps {
   name: string;
   description: string;

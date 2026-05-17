@@ -8,6 +8,7 @@ import {
   parseISOWeekString,
 } from "@/lib/data/recap";
 import { RecapView } from "@/components/recap/RecapView";
+import { ArticleJsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 600;
 
@@ -55,5 +56,20 @@ export default async function RecapWeekPage({ params }: PageProps) {
   if (weekStart > currentWeekStart) notFound();
 
   const data = await getWeeklyRecap(weekStart);
-  return <RecapView weekStart={weekStart} data={data} />;
+  const weekEnd = getWeekEnd(weekStart);
+  const weekNum = getISOWeekNumber(weekStart);
+  const range = formatRange(weekStart, weekEnd);
+
+  return (
+    <>
+      <ArticleJsonLd
+        headline={`Le Recap parlementaire, semaine ${weekNum}`}
+        description={`Récapitulatif politique de la semaine du ${range}. Votes, activité parlementaire, affaires judiciaires, fact-checks et presse.`}
+        datePublished={weekStart.toISOString()}
+        dateModified={weekEnd.toISOString()}
+        url={`https://poligraph.fr/recap/${week}`}
+      />
+      <RecapView weekStart={weekStart} data={data} />
+    </>
+  );
 }

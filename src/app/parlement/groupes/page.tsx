@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { GroupCard } from "@/components/groupes/GroupCard";
 import { getGroupesListing } from "@/lib/data/groupes";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 3600;
 
@@ -23,6 +24,12 @@ export default async function GroupesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <CollectionPageJsonLd
+        name="Groupes parlementaires"
+        description="Groupes parlementaires de l'Assemblée nationale et du Sénat : composition, cohésion, alignement gouvernemental."
+        url="https://poligraph.fr/parlement/groupes"
+        numberOfItems={sorted.length}
+      />
       <Breadcrumb
         items={[{ label: "Parlement", href: "/parlement" }, { label: "Groupes parlementaires" }]}
       />

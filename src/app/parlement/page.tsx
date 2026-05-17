@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { ParlementHub, ScrutinsListing } from "@/components/parlement";
 import { getHubStats } from "@/lib/data/scrutins";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 300;
 
@@ -69,9 +70,17 @@ export default async function ParlementPage({ searchParams }: PageProps) {
     params.type ||
     params.page;
 
+  const stats = await getHubStats();
+
   if (hasFilters) {
     return (
       <>
+        <CollectionPageJsonLd
+          name="Travail parlementaire"
+          description="Suivez les scrutins et l'activité de l'Assemblée nationale et du Sénat."
+          url="https://poligraph.fr/parlement"
+          numberOfItems={stats.totalScrutins}
+        />
         <Breadcrumb items={[{ label: "Parlement" }]} />
         <ScrutinsListing searchParams={params} />
       </>
@@ -80,6 +89,12 @@ export default async function ParlementPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <CollectionPageJsonLd
+        name="Travail parlementaire"
+        description="Suivez les scrutins et l'activité de l'Assemblée nationale et du Sénat."
+        url="https://poligraph.fr/parlement"
+        numberOfItems={stats.totalScrutins}
+      />
       <Breadcrumb items={[{ label: "Parlement" }]} />
       <ParlementHub />
     </>

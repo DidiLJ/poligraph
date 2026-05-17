@@ -17,6 +17,7 @@ import { FactCheckSection } from "@/components/stats/FactCheckSection";
 import { ParticipationSection } from "@/components/stats/ParticipationSection";
 import { getHemicycleData } from "@/lib/data/hemicycle";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 300;
 
@@ -60,8 +61,16 @@ export default async function StatistiquesPage({ searchParams }: PageProps) {
     getVictimStats(),
   ]);
 
+  const totalAggregated = factCheckData.total + judicialData.uniqueMisEnCause;
+
   return (
     <>
+      <CollectionPageJsonLd
+        name="Statistiques politiques de la France"
+        description="Statistiques sur la vie politique française : travail législatif, transparence judiciaire, fact-checking."
+        url="https://poligraph.fr/statistiques"
+        numberOfItems={totalAggregated}
+      />
       <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb items={[{ label: "Statistiques" }]} />
         <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">Statistiques</h1>

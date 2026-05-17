@@ -19,6 +19,7 @@ import {
   getPoliticianFactcheckContext,
 } from "@/lib/data/factchecks";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import type { FactCheckRating } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
@@ -122,6 +123,12 @@ export default async function FactChecksPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <CollectionPageJsonLd
+        name="Fact-checks politiques"
+        description="Vérification des déclarations des responsables politiques français. Fact-checks d'AFP Factuel, Les Décodeurs et autres sources reconnues."
+        url="https://poligraph.fr/factchecks"
+        numberOfItems={stats.totalFactChecks}
+      />
       <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb items={[{ label: "Fact-checks" }]} />
         {/* Header */}

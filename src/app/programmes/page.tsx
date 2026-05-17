@@ -6,6 +6,7 @@ import { Info } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getLatestPlatformsPerParty } from "@/lib/data/platforms";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 300;
 
@@ -23,6 +24,12 @@ export default async function ProgrammesPage() {
 
   return (
     <div className="container mx-auto px-4 pt-4 pb-8">
+      <CollectionPageJsonLd
+        name="Programmes des partis politiques"
+        description="Comparez les positions des partis politiques français sur les grands axes thématiques : économie, société, écologie, sécurité, institutions."
+        url="https://poligraph.fr/programmes"
+        numberOfItems={platforms.length}
+      />
       <Breadcrumb items={[{ label: "Programmes" }]} />
 
       <div className="mt-6 space-y-8">

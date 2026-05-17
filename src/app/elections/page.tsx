@@ -6,6 +6,7 @@ import { ElectionCountdown, ElectionTimeline } from "@/components/elections";
 import { ELECTION_TYPE_LABELS, ELECTION_TYPE_ICONS } from "@/config/labels";
 import { getElections, getTypeCounts } from "@/lib/data/elections";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import type { ElectionType } from "@/types";
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
@@ -54,6 +55,12 @@ export default async function ElectionsPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <CollectionPageJsonLd
+        name="Calendrier électoral"
+        description="Calendrier des prochaines élections en France : présidentielle, législatives, municipales, européennes. Compte à rebours, dates et informations clés."
+        url="https://poligraph.fr/elections"
+        numberOfItems={elections.length}
+      />
       <div className="container mx-auto px-4 pt-4 pb-8">
         <Breadcrumb items={[{ label: "Élections" }]} />
         {/* Header */}

@@ -17,13 +17,16 @@ interface PageProps {
 const ITEMS_PER_PAGE = 25;
 
 const STATUS_KEYS = Object.keys(PROMISE_EXTRACTION_STATUS_LABELS) as PromiseExtractionStatus[];
+const THEME_KEYS = Object.keys(THEME_CATEGORY_LABELS) as ThemeCategory[];
 
 export default async function AdminPromisesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const status = STATUS_KEYS.includes(params.status as PromiseExtractionStatus)
     ? (params.status as PromiseExtractionStatus)
     : undefined;
-  const theme = (params.theme as ThemeCategory | undefined) ?? undefined;
+  const theme = THEME_KEYS.includes(params.theme as ThemeCategory)
+    ? (params.theme as ThemeCategory)
+    : undefined;
   const page = params.page ? Math.max(1, Number(params.page)) : 1;
 
   const [result, stats] = await Promise.all([
@@ -35,7 +38,7 @@ export default async function AdminPromisesPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-display font-bold tracking-tight">Promesses — modération</h1>
+        <h1 className="text-2xl font-display font-bold tracking-tight">Promesses : modération</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {stats.total} promesses extraites au total. Filtrer pour voir celles en attente de revue.
         </p>

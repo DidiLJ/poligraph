@@ -5,13 +5,20 @@ import { withValidation } from "@/lib/security/validate";
 import { createPromiseSchema } from "@/lib/security/schemas";
 import { getRequestMeta } from "@/lib/security/audit";
 import { getPromisesForModeration } from "@/lib/data/promises";
+import { PROMISE_EXTRACTION_STATUS_LABELS, THEME_CATEGORY_LABELS } from "@/config/labels";
 import type { PromiseExtractionStatus, ThemeCategory } from "@/types";
+
+const STATUS_KEYS = new Set(Object.keys(PROMISE_EXTRACTION_STATUS_LABELS));
+const THEME_KEYS = new Set(Object.keys(THEME_CATEGORY_LABELS));
 
 export const GET = withAdminAuth(async (request) => {
   const { searchParams } = new URL(request.url);
+  const rawStatus = searchParams.get("status");
+  const rawTheme = searchParams.get("theme");
   const result = await getPromisesForModeration({
-    status: (searchParams.get("status") as PromiseExtractionStatus | null) ?? undefined,
-    theme: (searchParams.get("theme") as ThemeCategory | null) ?? undefined,
+    status:
+      rawStatus && STATUS_KEYS.has(rawStatus) ? (rawStatus as PromiseExtractionStatus) : undefined,
+    theme: rawTheme && THEME_KEYS.has(rawTheme) ? (rawTheme as ThemeCategory) : undefined,
     politicianSlug: searchParams.get("politicianSlug") ?? undefined,
     page: Number(searchParams.get("page") ?? 1),
     pageSize: Number(searchParams.get("pageSize") ?? 25),

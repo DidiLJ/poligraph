@@ -23,6 +23,7 @@ import {
   Heart,
   BookOpen,
   Compass,
+  ShieldAlert,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
@@ -39,6 +40,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   search: Search,
   bookOpen: BookOpen,
   compass: Compass,
+  shieldAlert: ShieldAlert,
 };
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {

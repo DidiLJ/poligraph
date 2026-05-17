@@ -37,6 +37,9 @@ import type { Prisma } from "@/generated/prisma";
 import { SITE_URL } from "@/config/site";
 import { ShareBar } from "@/components/ui/ShareBar";
 import { getAffairPartyDisplay } from "@/lib/affairs/party-display";
+import { SlappBadge } from "@/components/slapp/SlappBadge";
+import { CriteriaList } from "@/components/slapp/CriteriaList";
+import type { SlappCriteriaPayload } from "@/config/slapp";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -220,6 +223,14 @@ export default async function AffairDetailPage({ params }: PageProps) {
                 {INVOLVEMENT_LABELS[affair.involvement as Involvement]}
               </Badge>
             )}
+            {affair.isSlapp && affair.slappCriteria ? (
+              <SlappBadge
+                qualificationRule={
+                  (affair.slappCriteria as unknown as SlappCriteriaPayload).qualificationRule
+                }
+                className="ml-2"
+              />
+            ) : null}
           </div>
           <p className="text-sm text-muted-foreground mb-4">{CERTAINTY_DESCRIPTIONS[certainty]}</p>
 
@@ -299,6 +310,20 @@ export default async function AffairDetailPage({ params }: PageProps) {
             <MarkdownText className="text-muted-foreground">{affair.description}</MarkdownText>
           </CardContent>
         </Card>
+
+        {affair.isSlapp && affair.slappCriteria ? (
+          <section className="my-8">
+            <h2 className="text-xl font-bold mb-4">Critères de qualification SLAPP</h2>
+            <CriteriaList criteria={affair.slappCriteria as unknown as SlappCriteriaPayload} />
+            <p className="mt-4 text-xs text-muted-foreground">
+              Critères évalués selon la méthodologie publiée sur la page{" "}
+              <a href="/procedures-baillons" className="text-primary hover:underline">
+                procédures-bâillons
+              </a>
+              .
+            </p>
+          </section>
+        ) : null}
 
         {/* Dates & Jurisdiction */}
         <div className="grid md:grid-cols-2 gap-6 mb-6">

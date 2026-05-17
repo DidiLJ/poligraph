@@ -92,6 +92,12 @@ export const NAV_SECONDARY: NavItem[] = [
     description: "Groupes de l'AN et du Sénat",
   },
   {
+    href: "/procedures-baillons",
+    label: "Procédures-bâillons",
+    icon: "shieldAlert",
+    description: "Catalogue documenté des procédures-bâillons (SLAPP) en France",
+  },
+  {
     href: "/elections/municipales-2026",
     label: "Municipales 2026",
     icon: "vote",
@@ -199,6 +205,7 @@ export const FOOTER_SECTIONS: FooterSection[] = [
     title: "Explorer",
     links: [
       { href: "/recap", label: "Le Recap" },
+      { href: "/procedures-baillons", label: "Procédures-bâillons" },
       { href: "/programmes", label: "Programmes", featureFlag: "PROGRAMMES_ENABLED" },
       { href: "/presse", label: "Revue de presse", featureFlag: "PRESS_SECTION" },
       { href: "/departements", label: "Départements" },

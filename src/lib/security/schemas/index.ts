@@ -28,6 +28,5 @@ export { createPromiseSchema, updatePromiseSchema } from "./promise";
 export {
   createCandidatePresidentialSchema,
   updateCandidatePresidentialSchema,
-  createCandidacyFromPickerSchema,
   createCandidacyPresidentialFromPickerSchema,
 } from "./candidate";

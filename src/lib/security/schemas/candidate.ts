@@ -30,14 +30,6 @@ export const updateCandidatePresidentialSchema = z.object({
   publicationStatus: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED", "EXCLUDED", "REJECTED"]).optional(),
 });
 
-export const createCandidacyFromPickerSchema = z.object({
-  politicianId: z.string().min(1),
-  electionSlug: z.string().min(1),
-  status: z.enum(["DECLARE", "PRESSENTI", "ENVISAGE", "RETIRE"]).default("PRESSENTI"),
-  slogan: z.string().max(SLOGAN_MAX).optional(),
-  rank: z.number().int().min(0).max(RANK_MAX).optional(),
-});
-
 // Schéma combiné pour POST /api/admin/candidats : crée la Candidacy (via picker)
 // ET les métadonnées CandidacyPresidential dans une seule transaction.
 export const createCandidacyPresidentialFromPickerSchema = z.object({

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation } from "@/lib/security/validate";
-import { createCandidacyFromPickerSchema } from "@/lib/security/schemas";
+import { createCandidacyPresidentialFromPickerSchema } from "@/lib/security/schemas";
 import { getRequestMeta } from "@/lib/security/audit";
 import { getCandidates2027ForModeration } from "@/lib/data/candidates";
 import { invalidateEntity } from "@/lib/cache";
@@ -13,7 +13,7 @@ export const GET = withAdminAuth(async () => {
 });
 
 export const POST = withAdminAuth(
-  withValidation(createCandidacyFromPickerSchema, async (request, _ctx, data) => {
+  withValidation(createCandidacyPresidentialFromPickerSchema, async (request, _ctx, data) => {
     const election = await db.election.findUnique({
       where: { slug: data.electionSlug },
       select: { id: true },
@@ -50,7 +50,12 @@ export const POST = withAdminAuth(
         data: {
           candidacyId: candidacy.id,
           slogan: data.slogan,
+          accentColor: data.accentColor,
+          declaredAt: data.declaredAt ? new Date(data.declaredAt) : undefined,
+          withdrewAt: data.withdrewAt ? new Date(data.withdrewAt) : undefined,
+          withdrewReason: data.withdrewReason,
           rank: data.rank,
+          notes: data.notes,
         },
       });
       return { candidacy, presidential };

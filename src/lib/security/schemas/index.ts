@@ -29,4 +29,5 @@ export {
   createCandidatePresidentialSchema,
   updateCandidatePresidentialSchema,
   createCandidacyFromPickerSchema,
+  createCandidacyPresidentialFromPickerSchema,
 } from "./candidate";

@@ -78,7 +78,7 @@ const getElection = cache(async function getElection(slug: string) {
     return { ...election, candidacies: [] as never[], totalCandidacies };
   }
 
-  const candidacies = await db.candidacy.findMany({
+  const candidaciesRaw = await db.candidacy.findMany({
     where: { electionId: election.id },
     include: {
       politician: {
@@ -102,6 +102,12 @@ const getElection = cache(async function getElection(slug: string) {
     orderBy: { candidateName: "asc" },
     take: 500,
   });
+  // Prisma Decimal ne traverse pas la frontière RSC, on serialize ici.
+  const candidacies = candidaciesRaw.map((c) => ({
+    ...c,
+    round1Pct: c.round1Pct == null ? null : Number(c.round1Pct),
+    round2Pct: c.round2Pct == null ? null : Number(c.round2Pct),
+  }));
 
   return { ...election, candidacies, totalCandidacies: candidacies.length };
 });
@@ -140,6 +146,8 @@ function CandidacyCard({
     partyLabel: string | null;
     constituencyName: string | null;
     isElected: boolean;
+    round1Pct: number | null;
+    round2Pct: number | null;
     politician: { slug: string } | null;
     party: { color: string | null } | null;
   };
@@ -176,7 +184,21 @@ function CandidacyCard({
               <p className="text-xs text-muted-foreground">{candidacy.constituencyName}</p>
             )}
           </div>
-          <div className="ml-auto flex items-center gap-1.5 shrink-0">
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            {(candidacy.round1Pct != null || candidacy.round2Pct != null) && (
+              <div className="text-right text-xs">
+                {candidacy.round1Pct != null && (
+                  <div className="font-semibold tabular-nums">
+                    T1 : {candidacy.round1Pct.toFixed(2)}%
+                  </div>
+                )}
+                {candidacy.round2Pct != null && (
+                  <div className="text-muted-foreground tabular-nums">
+                    T2 : {candidacy.round2Pct.toFixed(2)}%
+                  </div>
+                )}
+              </div>
+            )}
             {candidacy.politician && <PoligraphBadge />}
             {candidacy.isElected && <Badge className="bg-green-100 text-green-800">Élu(e)</Badge>}
           </div>

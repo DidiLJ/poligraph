@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCandidatePresidentialBySlug } from "@/lib/data/candidates";
 import { CompareView, type CompareCandidate } from "@/components/candidates/CompareView";
+import { getProbityStats } from "@/lib/affairs/probity-stats";
 import type { ThemeCategory } from "@/types";
 
 export const metadata = {
@@ -21,7 +22,7 @@ async function loadCompareCandidate(
   if (!candidacy || !candidacy.politician) return null;
   const politician = candidacy.politician;
 
-  const [groupBy, topPromises, affairsCount] = await Promise.all([
+  const [groupBy, topPromises, affairsCount, probityStats] = await Promise.all([
     db.promise.groupBy({
       by: ["theme"],
       where: { politicianId: politician.id, extractionStatus: "PUBLISHED" },
@@ -36,6 +37,7 @@ async function loadCompareCandidate(
     db.affair.count({
       where: { politicianId: politician.id, publicationStatus: "PUBLISHED" },
     }),
+    getProbityStats(politician.id),
   ]);
 
   return {
@@ -46,6 +48,7 @@ async function loadCompareCandidate(
     slogan: candidacy.presidentialData?.slogan ?? null,
     promisesCount: groupBy.reduce((s, g) => s + g._count._all, 0),
     affairsCount,
+    probityStats,
     topPromises: topPromises.map((p) => ({
       id: p.id,
       text: p.text,

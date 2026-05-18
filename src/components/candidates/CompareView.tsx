@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ThemeFocusRadar, type ThemeFocusItem } from "./ThemeFocusRadar";
 import { THEME_CATEGORY_LABELS } from "@/config/labels";
+import { formatProbityBreakdown, type ProbityStats } from "@/lib/affairs/probity-stats";
 import type { ThemeCategory } from "@/types";
 
 export interface CompareCandidate {
@@ -14,6 +15,7 @@ export interface CompareCandidate {
   slogan: string | null;
   promisesCount: number;
   affairsCount: number;
+  probityStats: ProbityStats;
   topPromises: Array<{
     id: string;
     text: string;
@@ -132,13 +134,29 @@ export function CompareView({ left, right }: Props) {
             </tr>
             <tr className="border-t border-slate-200 dark:border-slate-700">
               <th scope="row" className="px-3 py-2 text-left font-medium">
-                Affaires (présomption d{"'"}innocence)
+                Atteintes à la probité
               </th>
-              <td className="px-3 py-2">{left.affairsCount}</td>
-              <td className="px-3 py-2">{right.affairsCount}</td>
+              <td className="px-3 py-2">
+                <ProbityCell stats={left.probityStats} />
+              </td>
+              <td className="px-3 py-2">
+                <ProbityCell stats={right.probityStats} />
+              </td>
+            </tr>
+            <tr className="border-t border-slate-200 dark:border-slate-700">
+              <th scope="row" className="px-3 py-2 text-left font-medium">
+                Total affaires judiciaires
+              </th>
+              <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{left.affairsCount}</td>
+              <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{right.affairsCount}</td>
             </tr>
           </tbody>
         </table>
+        <p className="mt-2 text-[11px] italic text-slate-500 dark:text-slate-400">
+          Atteintes à la probité (corruption, détournement, prise illégale d{"'"}intérêts, emplois
+          fictifs) ciblées car spécifiques au mandat politique. Présomption d{"'"}innocence
+          respectée.
+        </p>
       </CompareBlock>
 
       <p className="text-xs italic text-slate-500 dark:text-slate-400">
@@ -151,6 +169,19 @@ export function CompareView({ left, right }: Props) {
       >
         ← Retour au profil {left.name}
       </Link>
+    </div>
+  );
+}
+
+function ProbityCell({ stats }: { stats: ProbityStats }) {
+  return (
+    <div>
+      <span className="text-base font-bold tabular-nums">{stats.total}</span>
+      {stats.total > 0 && (
+        <div className="mt-0.5 text-[11px] leading-tight text-slate-600 dark:text-slate-400">
+          {formatProbityBreakdown(stats)}
+        </div>
+      )}
     </div>
   );
 }

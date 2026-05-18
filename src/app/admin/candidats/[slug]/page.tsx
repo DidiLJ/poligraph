@@ -8,6 +8,7 @@ import { PromisesSection } from "@/components/candidates/PromisesSection";
 import { CompareToggle } from "@/components/candidates/CompareToggle";
 import { MANDATE_TYPE_LABELS } from "@/config/labels";
 import { formatDate } from "@/lib/utils";
+import { getProbityStats, formatProbityBreakdown } from "@/lib/affairs/probity-stats";
 import type { ThemeCategory } from "@/types";
 
 export const metadata = {
@@ -103,6 +104,7 @@ export default async function AdminCandidatProfilePage({ params }: PageProps) {
     declarationsCount,
     participation,
     crossCycle,
+    probityStats,
   ] = await Promise.all([
     db.promise.groupBy({
       by: ["theme"],
@@ -134,6 +136,7 @@ export default async function AdminCandidatProfilePage({ params }: PageProps) {
       where: { politicianId: politician.id },
     }),
     getCandidateCrossCycle(politician.id, "presidentielle-2027"),
+    getProbityStats(politician.id),
   ]);
 
   const promisesCount = promiseGroups.reduce((s, g) => s + g._count._all, 0);
@@ -158,7 +161,7 @@ export default async function AdminCandidatProfilePage({ params }: PageProps) {
         crossCycle={crossCycle}
         promisesCount={promisesCount}
         votesParticipationPct={participationPct}
-        affairsCount={affairsCount}
+        probityStats={probityStats}
       />
 
       <section aria-labelledby="vision-heading" className="space-y-3">
@@ -305,9 +308,14 @@ export default async function AdminCandidatProfilePage({ params }: PageProps) {
           ) : (
             <>
               <p className="text-slate-700 dark:text-slate-200">
-                {affairsCount} affaire{affairsCount > 1 ? "s" : ""} référencée
-                {affairsCount > 1 ? "s" : ""}. Présomption d{"'"}innocence respectée, les affaires
-                en cours ne préjugent pas de la culpabilité.
+                <strong>Atteintes à la probité : {probityStats.total}</strong>
+                {probityStats.total > 0 && ` (${formatProbityBreakdown(probityStats)}).`}
+              </p>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                {affairsCount} affaire{affairsCount > 1 ? "s" : ""} judiciaire
+                {affairsCount > 1 ? "s" : ""} référencée{affairsCount > 1 ? "s" : ""} au total
+                (toutes catégories). Présomption d{"'"}innocence respectée, les procédures en cours
+                ne préjugent pas de la culpabilité.
               </p>
               <Link
                 href={`/politiques/${politicianSlug}#affaires`}

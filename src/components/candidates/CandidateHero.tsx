@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { formatDate } from "@/lib/utils";
 import type { CandidatePresidentialRow, CrossCycleEntry } from "@/lib/data/candidates";
+import { formatProbityBreakdown, type ProbityStats } from "@/lib/affairs/probity-stats";
 
 const STATUS_BADGE: Record<string, { label: string; bg: string }> = {
   DECLARE: { label: "Candidat déclaré", bg: "bg-emerald-500/90" },
@@ -15,7 +16,7 @@ interface Props {
   crossCycle: (CrossCycleEntry & { round1Pct: number | null })[];
   promisesCount: number;
   votesParticipationPct: number | null;
-  affairsCount: number;
+  probityStats: ProbityStats;
 }
 
 export function CandidateHero({
@@ -23,7 +24,7 @@ export function CandidateHero({
   crossCycle,
   promisesCount,
   votesParticipationPct,
-  affairsCount,
+  probityStats,
 }: Props) {
   const pres = candidacy.presidentialData;
   const accent = pres?.accentColor ?? candidacy.politician?.currentParty?.color ?? "#3b82f6";
@@ -105,8 +106,11 @@ export function CandidateHero({
           </dd>
         </div>
         <div className={`rounded ${subtleBg} px-2 py-2`}>
-          <dt className="opacity-90">Affaires (présomption d{"'"}innocence)</dt>
-          <dd className="mt-0.5 text-lg font-bold">{affairsCount}</dd>
+          <dt className="opacity-90">Atteintes à la probité</dt>
+          <dd className="mt-0.5 text-lg font-bold">{probityStats.total}</dd>
+          <dd className="mt-0.5 text-[10px] leading-tight opacity-90">
+            {formatProbityBreakdown(probityStats)}
+          </dd>
         </div>
       </dl>
     </header>

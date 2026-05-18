@@ -294,6 +294,7 @@ erDiagram
     Party ||--o{ PartyMembership : "membres"
     Election ||--o{ ElectionRound : "tours"
     Election ||--o{ Candidacy : "candidatures"
+    Candidacy ||--o| CandidacyPresidential : "métadonnées 2027"
 
     Politician {
         string slug PK
@@ -338,9 +339,18 @@ erDiagram
         enum extractionStatus "EXTRACTED, PUBLISHED..."
         date publishedAt
     }
+
+    CandidacyPresidential {
+        string slogan
+        string accentColor
+        date declaredAt
+        date withdrewAt
+        int rank
+        enum publicationStatus
+    }
 ```
 
-Le schéma complet comprend 45 modèles Prisma (ajout de `Promise` en Q4 2026 pour le Tracker promesses 2027).
+Le schéma complet comprend 65 modèles Prisma (ajout de `CandidacyPresidential` en Q4 2026 pour le profil candidat présidentielle 2027, après `Promise` pour le Tracker promesses 2027).
 
 ---
 
@@ -455,6 +465,17 @@ Pilier prototype Q4 2026, backend uniquement (pas de page publique avant Q1 2027
 - **Modération** : tableau de bord admin à `/admin/promises` avec filtres status/thème, actions Publier / Rejeter / À retraiter / Supprimer. Toutes les mutations passent par `withAdminAuth` + `withValidation` Zod + `auditLog`.
 - **Préparation Q1** : champ `linkedVoteId?` réservé sur `Promise` pour la future jointure « promesse vs réalité » (issue #202).
 - **Pas de feature flag** : aucune surface publique en Q4, donc rien à gater.
+
+### 6.11 Profil candidat présidentielle
+
+Pilier prototype Q4 2026, admin-gated. Surface publique différée à Q1 2027.
+
+- **Modèle dédié 1:1** : `CandidacyPresidential` extension de `Candidacy` (pattern identique à `MandateLocal`, `MandateGovernment`). Réutilise les 11 `Candidacy` déjà sourcées pour `presidentielle-2027` plutôt qu'une table parallèle.
+- **Layout linéaire mobile-first** : 6 sections numérotées dans l'ordre éditorial Vision, Boussole, Action, Parcours, Intégrité, Affaires. Desktop devient 2-col en `lg:` pour les sections riches (radar + promesses).
+- **2 composants nouveaux et limités** : `CandidateHero` (entête éditorial, chip cross-cycle 2022, contraste WCAG AA adaptatif aux couleurs de parti claires), `ThemeFocusRadar` (SVG natif sans dépendance, axes à 72° pour 5 thèmes max, liste textuelle accessible et SVG `aria-hidden`). Les sections Action, Parcours, Intégrité et Affaires renvoient pour l'instant vers la fiche politicien existante (le Q1 connectera les composants riches).
+- **Comparateur** : route dédiée `/admin/candidats/[slug]/comparer/[otherSlug]`. Split-screen 50/50 desktop, tabs sticky sur mobile pour le radar. Pas de score ni de classement, mise en parallèle factuelle uniquement.
+- **Seed cross-cycle** : minimal `presidentielle-2022` (12 `Candidacy` cibles, 10 effectives après filtre sur les politiciens présents en base, 2 `ElectionRound`, résultats T1 et T2 sur `Candidacy.round1Pct`/`round2Pct`) pour permettre le chip « Déjà candidat 2022 » dans le hero.
+- **Admin only Q4** : toutes les routes sous `/admin/candidats/...` avec `withAdminAuth` + `withValidation` Zod + `auditLog`. `CandidacyPresidential.publicationStatus = DRAFT` par défaut, Q1 flippera à `PUBLISHED` pour la route publique.
 
 ---
 

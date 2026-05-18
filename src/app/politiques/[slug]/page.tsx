@@ -294,6 +294,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                         : undefined,
                     }}
                   >
+                    <span className="opacity-70 mr-1">Parti :</span>
                     {politician.currentParty.name}
                   </Badge>
                 </Link>
@@ -308,8 +309,9 @@ export default async function PoliticianPage({ params }: PageProps) {
                       ? ensureContrast(currentGroup.color, "#ffffff")
                       : undefined,
                   }}
+                  title={currentGroup.name}
                 >
-                  Groupe {currentGroup.code}
+                  Groupe parlementaire : {currentGroup.code}
                 </Badge>
               )}
               {politician.partyHistory

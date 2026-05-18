@@ -1,4 +1,4 @@
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // ─── Cache tiers for API responses ────────────────────────────────
 
@@ -45,6 +45,12 @@ export interface InvalidateOptions {
   affectsListings?: boolean;
 }
 
+// Next 16 requires a cacheLife profile as the second arg to revalidateTag.
+// "minutes" matches the default cacheLife used across the codebase; "hours"
+// matches election pages where data only flips on election day.
+const DEFAULT_PROFILE = "minutes";
+const ELECTION_PROFILE = "hours";
+
 /**
  * Invalidate CDN cache and data cache for a given entity.
  * Call after admin mutations or sync operations.
@@ -63,18 +69,18 @@ export function invalidateEntity(
         revalidatePath(`/api/politiques/${slug}/affaires`, "layout");
         revalidatePath(`/api/politiques/${slug}/relations`, "layout");
         revalidatePath(`/api/politiques/${slug}/factchecks`, "layout");
-        updateTag(`politician:${slug}`);
+        revalidateTag(`politician:${slug}`, DEFAULT_PROFILE);
       }
-      updateTag("politicians");
+      revalidateTag("politicians", DEFAULT_PROFILE);
       break;
 
     case "party":
       revalidatePath("/api/partis", "layout");
       if (slug) {
         revalidatePath(`/api/partis/${slug}`, "layout");
-        updateTag(`party:${slug}`);
+        revalidateTag(`party:${slug}`, DEFAULT_PROFILE);
       }
-      updateTag("parties");
+      revalidateTag("parties", DEFAULT_PROFILE);
       break;
 
     case "affair":
@@ -82,7 +88,7 @@ export function invalidateEntity(
       if (slug) {
         revalidatePath(`/api/affaires/${slug}`, "layout");
       }
-      updateTag("affairs");
+      revalidateTag("affairs", DEFAULT_PROFILE);
       break;
 
     case "mandate": {
@@ -91,7 +97,7 @@ export function invalidateEntity(
         revalidatePath("/api/mandats", "layout");
         revalidatePath("/api/deputies/by-department", "layout");
         revalidatePath("/api/deputies/by-commune", "layout");
-        updateTag("politicians");
+        revalidateTag("politicians", DEFAULT_PROFILE);
       }
       // No-listings path: nothing to invalidate beyond the audit log row.
       // Mandate URL/title/dates are not surfaced on any cached listing.
@@ -100,32 +106,32 @@ export function invalidateEntity(
 
     case "vote":
       revalidatePath("/api/votes", "layout");
-      updateTag("votes");
+      revalidateTag("votes", DEFAULT_PROFILE);
       break;
 
     case "factcheck":
       if (slug) {
-        updateTag(`factcheck:${slug}`);
+        revalidateTag(`factcheck:${slug}`, DEFAULT_PROFILE);
       }
-      updateTag("factchecks");
+      revalidateTag("factchecks", DEFAULT_PROFILE);
       break;
 
     case "dossier":
-      updateTag("dossiers");
+      revalidateTag("dossiers", DEFAULT_PROFILE);
       break;
 
     case "stats":
       revalidatePath("/api/votes/stats", "layout");
       revalidatePath("/api/stats/departments", "layout");
-      updateTag("stats");
+      revalidateTag("stats", DEFAULT_PROFILE);
       break;
 
     case "election":
-      updateTag("elections");
+      revalidateTag("elections", ELECTION_PROFILE);
       break;
 
     case "election-2026":
-      updateTag("elections-municipales-2026");
+      revalidateTag("elections-municipales-2026", ELECTION_PROFILE);
       break;
   }
 }
@@ -150,15 +156,16 @@ export type CacheTag = (typeof ALL_TAGS)[number];
  */
 export function revalidateAll(): void {
   for (const tag of ALL_TAGS) {
-    updateTag(tag);
+    revalidateTag(tag, tag === "elections" ? ELECTION_PROFILE : DEFAULT_PROFILE);
   }
 }
 
 /**
- * Revalidate specific tags by name.
+ * Revalidate specific tags by name. Defaults to the "minutes" cacheLife
+ * profile; pass `profile` to override for slow-changing data.
  */
-export function revalidateTags(tags: string[]): void {
+export function revalidateTags(tags: string[], profile: string = DEFAULT_PROFILE): void {
   for (const tag of tags) {
-    updateTag(tag);
+    revalidateTag(tag, profile);
   }
 }

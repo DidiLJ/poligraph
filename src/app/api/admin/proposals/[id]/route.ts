@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { updateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation } from "@/lib/security/validate";
 import { updateProposalSchema } from "@/lib/validations/platforms";
-import { invalidateEntity } from "@/lib/cache";
+import { invalidateEntity, revalidateTags } from "@/lib/cache";
 import { getRequestMeta } from "@/lib/security/audit";
 
 // PUT: update proposal
@@ -43,7 +42,7 @@ export const PUT = withAdminAuth(
     });
 
     invalidateEntity("party");
-    updateTag("platforms");
+    revalidateTags(["platforms"]);
 
     return NextResponse.json(proposal);
   })
@@ -73,7 +72,7 @@ export const DELETE = withAdminAuth(async (request, context) => {
   });
 
   invalidateEntity("party");
-  updateTag("platforms");
+  revalidateTags(["platforms"]);
 
   return NextResponse.json({ success: true });
 });

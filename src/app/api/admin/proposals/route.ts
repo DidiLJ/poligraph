@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { updateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation } from "@/lib/security/validate";
 import { createProposalSchema } from "@/lib/validations/platforms";
-import { invalidateEntity } from "@/lib/cache";
+import { invalidateEntity, revalidateTags } from "@/lib/cache";
 import { getRequestMeta } from "@/lib/security/audit";
 
 // GET: list proposals for a platform
@@ -53,7 +52,7 @@ export const POST = withAdminAuth(
     });
 
     invalidateEntity("party");
-    updateTag("platforms");
+    revalidateTags(["platforms"]);
 
     return NextResponse.json(proposal, { status: 201 });
   })

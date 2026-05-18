@@ -1614,6 +1614,8 @@ model Candidacy {
   round2Pct   Decimal? @db.Decimal(5, 2)
   isElected   Boolean  @default(false)
 
+  presidentialData CandidacyPresidential?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1627,6 +1629,30 @@ model Candidacy {
   @@index([candidateId])
   @@index([communeId])
   @@index([electoralListId])
+}
+
+// Presidentielle : metadonnees editoriales 1:1 sur Candidacy (cf. spec sub-plan I)
+model CandidacyPresidential {
+  id          String    @id @default(cuid())
+  candidacy   Candidacy @relation(fields: [candidacyId], references: [id], onDelete: Cascade)
+  candidacyId String    @unique
+
+  slogan      String?
+  accentColor String?
+
+  declaredAt     DateTime?
+  withdrewAt     DateTime?
+  withdrewReason String?   @db.Text
+
+  rank  Int?
+  notes String? @db.Text
+
+  publicationStatus PublicationStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([publicationStatus])
 }
 
 model ElectoralList {

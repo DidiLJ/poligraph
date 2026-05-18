@@ -69,7 +69,7 @@ export async function getCandidateCrossCycle(
     electionSlug: r.election.slug,
     electionTitle: r.election.title,
     round1Date: r.election.round1Date,
-    round1Pct: r.round1Pct ? Number(r.round1Pct) : null,
+    round1Pct: r.round1Pct == null ? null : Number(r.round1Pct),
   }));
 }
 
@@ -78,5 +78,5 @@ export async function getCandidateRound1Pct(candidacyId: string): Promise<number
     where: { id: candidacyId },
     select: { round1Pct: true },
   });
-  return candidacy?.round1Pct ? Number(candidacy.round1Pct) : null;
+  return candidacy?.round1Pct == null ? null : Number(candidacy.round1Pct);
 }

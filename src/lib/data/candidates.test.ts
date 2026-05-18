@@ -52,6 +52,22 @@ describe("getCandidateCrossCycle", () => {
     );
   });
 
+  it("preserves round1Pct = 0 instead of mapping to null (regression)", async () => {
+    vi.mocked(db.candidacy.findMany).mockResolvedValueOnce([
+      {
+        id: "c2",
+        round1Pct: { toString: () => "0", valueOf: () => 0 } as never,
+        election: {
+          slug: "presidentielle-2022",
+          title: "Présidentielle 2022",
+          round1Date: new Date("2022-04-10"),
+        },
+      },
+    ] as never);
+    const result = await getCandidateCrossCycle("p1", "presidentielle-2027");
+    expect(result[0]?.round1Pct).toBe(0);
+  });
+
   it("converts Decimal round1Pct to number for serialization", async () => {
     vi.mocked(db.candidacy.findMany).mockResolvedValueOnce([
       {

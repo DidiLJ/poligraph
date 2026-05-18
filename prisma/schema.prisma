@@ -1631,7 +1631,7 @@ model Candidacy {
   @@index([electoralListId])
 }
 
-// Presidentielle : metadonnees editoriales 1:1 sur Candidacy (cf. spec sub-plan I)
+// Présidentielle : métadonnées éditoriales 1:1 sur Candidacy (cf. spec sub-plan I)
 model CandidacyPresidential {
   id          String    @id @default(cuid())
   candidacy   Candidacy @relation(fields: [candidacyId], references: [id], onDelete: Cascade)

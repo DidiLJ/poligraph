@@ -14,29 +14,39 @@ export const GET = withAdminAuth(async () => {
 
 export const POST = withAdminAuth(
   withValidation(createCandidacyPresidentialFromPickerSchema, async (request, _ctx, data) => {
-    const election = await db.election.findUnique({
-      where: { slug: data.electionSlug },
-      select: { id: true },
-    });
-    if (!election) {
-      return NextResponse.json({ error: "Élection non trouvée" }, { status: 404 });
-    }
-    const politician = await db.politician.findUnique({
-      where: { id: data.politicianId },
-      select: { id: true, fullName: true, currentPartyId: true },
-    });
-    if (!politician) {
-      return NextResponse.json({ error: "Politicien non trouvé" }, { status: 404 });
-    }
-    const existing = await db.candidacy.findFirst({
-      where: { electionId: election.id, politicianId: politician.id },
-      select: { id: true },
-    });
-    if (existing) {
-      return NextResponse.json({ error: "Candidature déjà enregistrée" }, { status: 409 });
-    }
+    type CreateOutcome =
+      | {
+          kind: "ok";
+          candidacy: Awaited<ReturnType<typeof db.candidacy.create>>;
+          presidential: Awaited<ReturnType<typeof db.candidacyPresidential.create>>;
+        }
+      | { kind: "error"; status: number; message: string };
 
-    const result = await db.$transaction(async (tx) => {
+    // TOCTOU: la garde de doublon vit dans la transaction pour limiter la fenêtre.
+    // Une vraie protection demande un index unique partiel sur (electionId, politicianId)
+    // (politicianId nullable pour les locales), à appliquer en migration SQL.
+    const outcome: CreateOutcome = await db.$transaction(async (tx) => {
+      const election = await tx.election.findUnique({
+        where: { slug: data.electionSlug },
+        select: { id: true },
+      });
+      if (!election) {
+        return { kind: "error", status: 404, message: "Élection non trouvée" };
+      }
+      const politician = await tx.politician.findUnique({
+        where: { id: data.politicianId },
+        select: { id: true, fullName: true, currentPartyId: true },
+      });
+      if (!politician) {
+        return { kind: "error", status: 404, message: "Politicien non trouvé" };
+      }
+      const existing = await tx.candidacy.findFirst({
+        where: { electionId: election.id, politicianId: politician.id },
+        select: { id: true },
+      });
+      if (existing) {
+        return { kind: "error", status: 409, message: "Candidature déjà enregistrée" };
+      }
       const candidacy = await tx.candidacy.create({
         data: {
           electionId: election.id,
@@ -58,28 +68,39 @@ export const POST = withAdminAuth(
           notes: data.notes,
         },
       });
-      return { candidacy, presidential };
+      return { kind: "ok", candidacy, presidential };
     });
 
-    const meta = getRequestMeta(request);
+    if (outcome.kind === "error") {
+      return NextResponse.json({ error: outcome.message }, { status: outcome.status });
+    }
+
+    const { ip, userAgent } = getRequestMeta(request);
     await db.auditLog.create({
       data: {
         action: "CREATE",
         entityType: "CandidacyPresidential",
-        entityId: result.presidential.id,
+        entityId: outcome.presidential.id,
         changes: {
           electionSlug: data.electionSlug,
-          politicianId: politician.id,
+          politicianId: data.politicianId,
           status: data.status,
+          slogan: data.slogan,
+          accentColor: data.accentColor,
+          declaredAt: data.declaredAt,
+          withdrewAt: data.withdrewAt,
+          withdrewReason: data.withdrewReason,
+          rank: data.rank,
+          notes: data.notes,
         },
-        ipAddress: meta.ip,
-        userAgent: meta.userAgent,
+        ipAddress: ip,
+        userAgent: userAgent,
       },
     });
 
     invalidateEntity("election");
     return NextResponse.json(
-      { candidacy: result.candidacy, presidential: result.presidential },
+      { candidacy: outcome.candidacy, presidential: outcome.presidential },
       { status: 201 }
     );
   })

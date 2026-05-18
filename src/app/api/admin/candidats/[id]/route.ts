@@ -19,24 +19,26 @@ export const PATCH = withAdminAuth(
     if (Object.keys(body).length === 0) {
       return NextResponse.json({ error: "Aucun champ à mettre à jour" }, { status: 400 });
     }
+    // null passe à Prisma pour effacer le champ, undefined l'omet.
+    // Asymétrie volontaire avec POST où null n'est pas dans le schéma.
     const updateData = {
       ...body,
       declaredAt: body.declaredAt ? new Date(body.declaredAt) : body.declaredAt,
       withdrewAt: body.withdrewAt ? new Date(body.withdrewAt) : body.withdrewAt,
     };
     const updated = await db.candidacyPresidential.update({
-      where: { id: id! },
+      where: { id },
       data: updateData,
     });
-    const meta = getRequestMeta(request);
+    const { ip, userAgent } = getRequestMeta(request);
     await db.auditLog.create({
       data: {
         action: "UPDATE",
         entityType: "CandidacyPresidential",
         entityId: id!,
         changes: body,
-        ipAddress: meta.ip,
-        userAgent: meta.userAgent,
+        ipAddress: ip,
+        userAgent: userAgent,
       },
     });
     invalidateEntity("election");
@@ -53,19 +55,19 @@ export const DELETE = withAdminAuth(async (request, context) => {
   if (!existing) {
     return NextResponse.json({ error: "Métadonnées candidature non trouvées" }, { status: 404 });
   }
-  await db.candidacyPresidential.delete({ where: { id: id! } });
+  await db.candidacyPresidential.delete({ where: { id } });
   // NB: on ne supprime PAS la Candidacy associée. Si l'admin veut retirer
   // entièrement le candidat de l'élection, il passe par /admin/candidats UI
   // qui supprime la Candidacy elle-même (Task 4).
-  const meta = getRequestMeta(request);
+  const { ip, userAgent } = getRequestMeta(request);
   await db.auditLog.create({
     data: {
       action: "DELETE",
       entityType: "CandidacyPresidential",
       entityId: id!,
       changes: {},
-      ipAddress: meta.ip,
-      userAgent: meta.userAgent,
+      ipAddress: ip,
+      userAgent: userAgent,
     },
   });
   invalidateEntity("election");

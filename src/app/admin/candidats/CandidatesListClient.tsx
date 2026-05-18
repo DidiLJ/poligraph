@@ -47,7 +47,9 @@ export function CandidatesListClient({ initialCandidates }: Props) {
             <th className="text-left px-3 py-2">Parti</th>
             <th className="text-left px-3 py-2">Statut</th>
             <th className="text-left px-3 py-2">Slogan</th>
-            <th className="text-left px-3 py-2"></th>
+            <th className="text-left px-3 py-2">
+              <span className="sr-only">Actions</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -124,7 +126,7 @@ export function CandidatesListClient({ initialCandidates }: Props) {
           )}
         </tbody>
       </table>
-      <div className="border-t bg-muted/30 p-3 text-xs">
+      <div className="border-t bg-muted/30 p-3 text-xs text-foreground">
         Pour ajouter un candidat manquant (ex : Dominique de Villepin), recherche-le via la barre de
         recherche admin et utilise le bouton « Désigner comme candidat 2027 » depuis sa fiche
         politicien. Cette mécanique sera affinée dans une itération suivante.

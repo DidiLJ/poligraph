@@ -6,10 +6,8 @@ export interface PromiseItem {
   id: string;
   text: string;
   theme: ThemeCategory;
-  themeConfidence: number | null;
   sourceLabel: string | null;
   sourceUrl: string | null;
-  publishedAt: Date;
 }
 
 interface Props {

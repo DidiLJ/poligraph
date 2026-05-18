@@ -60,7 +60,9 @@ export function ThemeFocusRadar({
     .join(" ");
   const axisLines = top.map((_, i) => computeAxisCoordinates(i, top.length, outerRadius));
 
-  const viewBox = `${-(outerRadius + 30)} ${-(outerRadius + 30)} ${(outerRadius + 30) * 2} ${(outerRadius + 30) * 2}`;
+  // Padding élargi pour absorber les labels longs comme « Affaires étrangères & Défense ».
+  const padding = 70;
+  const viewBox = `${-(outerRadius + padding)} ${-(outerRadius + padding)} ${(outerRadius + padding) * 2} ${(outerRadius + padding) * 2}`;
 
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
@@ -71,13 +73,8 @@ export function ThemeFocusRadar({
         {candidateName} · {filtered.reduce((s, i) => s + i.count, 0)} promesses extraites
       </div>
       <div className="my-3 flex justify-center">
-        <svg
-          viewBox={viewBox}
-          width="260"
-          height="260"
-          role="img"
-          aria-label={`Radar des axes de focalisation de ${candidateName}`}
-        >
+        {/* SVG décoratif : la liste textuelle ci-dessous porte l'information accessible. */}
+        <svg viewBox={viewBox} width="260" height="260" aria-hidden="true">
           <g stroke="currentColor" strokeOpacity="0.15" fill="none">
             <circle r={outerRadius} />
             <circle r={outerRadius * 0.75} />

@@ -25,3 +25,8 @@ export {
 } from "./admin";
 export { updateFactcheckSchema, addFactcheckMentionSchema, updateMentionSchema } from "./factcheck";
 export { createPromiseSchema, updatePromiseSchema } from "./promise";
+export {
+  createCandidatePresidentialSchema,
+  updateCandidatePresidentialSchema,
+  createCandidacyFromPickerSchema,
+} from "./candidate";

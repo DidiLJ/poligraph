@@ -25,10 +25,9 @@ export interface CompareCandidate {
 interface Props {
   left: CompareCandidate;
   right: CompareCandidate;
-  electionSlug: string;
 }
 
-export function CompareView({ left, right, electionSlug: _electionSlug }: Props) {
+export function CompareView({ left, right }: Props) {
   const [mobileSelected, setMobileSelected] = useState<"left" | "right">("left");
 
   return (
@@ -73,23 +72,24 @@ export function CompareView({ left, right, electionSlug: _electionSlug }: Props)
       </div>
 
       <CompareBlock title="Radar des axes de focalisation">
-        <div
-          className={`lg:grid lg:grid-cols-2 lg:gap-3 ${
-            mobileSelected === "left" ? "" : "hidden"
-          } lg:block`}
-        >
+        <div className="hidden gap-3 lg:grid lg:grid-cols-2">
           <ThemeFocusRadar
             items={left.themeFocus}
             candidateName={left.name}
             accentColor={left.partyColor ?? undefined}
           />
-          <div className="hidden lg:block">
-            <ThemeFocusRadar
-              items={right.themeFocus}
-              candidateName={right.name}
-              accentColor={right.partyColor ?? undefined}
-            />
-          </div>
+          <ThemeFocusRadar
+            items={right.themeFocus}
+            candidateName={right.name}
+            accentColor={right.partyColor ?? undefined}
+          />
+        </div>
+        <div className={`lg:hidden ${mobileSelected === "left" ? "" : "hidden"}`}>
+          <ThemeFocusRadar
+            items={left.themeFocus}
+            candidateName={left.name}
+            accentColor={left.partyColor ?? undefined}
+          />
         </div>
         <div className={`lg:hidden ${mobileSelected === "right" ? "" : "hidden"}`}>
           <ThemeFocusRadar
@@ -109,6 +109,19 @@ export function CompareView({ left, right, electionSlug: _electionSlug }: Props)
 
       <CompareBlock title="Comptes synthétiques">
         <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 dark:border-slate-700">
+              <th scope="col" className="px-3 py-2 text-left">
+                <span className="sr-only">Indicateur</span>
+              </th>
+              <th scope="col" className="px-3 py-2 text-left font-semibold">
+                {left.name}
+              </th>
+              <th scope="col" className="px-3 py-2 text-left font-semibold">
+                {right.name}
+              </th>
+            </tr>
+          </thead>
           <tbody>
             <tr className="border-t border-slate-200 dark:border-slate-700">
               <th scope="row" className="px-3 py-2 text-left font-medium">

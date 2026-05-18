@@ -12,10 +12,9 @@ interface CandidateOption {
 interface Props {
   currentSlug: string;
   currentName: string;
-  electionSlug: string;
 }
 
-export function CompareToggle({ currentSlug, currentName, electionSlug: _electionSlug }: Props) {
+export function CompareToggle({ currentSlug, currentName }: Props) {
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<CandidateOption[]>([]);
   const [loaded, setLoaded] = useState(false);

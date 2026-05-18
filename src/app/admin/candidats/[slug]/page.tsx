@@ -320,11 +320,7 @@ export default async function AdminCandidatProfilePage({ params }: PageProps) {
         </div>
       </section>
 
-      <CompareToggle
-        currentSlug={slug}
-        currentName={candidacy.candidateName}
-        electionSlug="presidentielle-2027"
-      />
+      <CompareToggle currentSlug={slug} currentName={candidacy.candidateName} />
     </div>
   );
 }

@@ -74,7 +74,7 @@ export default async function AdminCompareCandidatesPage({ params }: PageProps) 
       <h1 className="font-display text-xl font-bold tracking-tight">
         Comparer : {left.name} ↔ {right.name}
       </h1>
-      <CompareView left={left} right={right} electionSlug="presidentielle-2027" />
+      <CompareView left={left} right={right} />
     </div>
   );
 }

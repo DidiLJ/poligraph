@@ -8,6 +8,9 @@
 .perf-baseline.json
 /docs/superpowers/
 
+# brainstorm visual companion (local only)
+.superpowers/
+
 # storybook
 /storybook-static/
 

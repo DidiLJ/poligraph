@@ -152,6 +152,27 @@ const nextConfig: NextConfig = {
         destination: "/partis/renaissance",
         permanent: true,
       },
+      // Affair slugs that leaked the "À vérifier" moderation prefix (2026-04 -> 2026-05).
+      // Cleaned in DB on 2026-05-17; these 308s preserve the SEO of the old URLs.
+      {
+        source: "/affaires/a-verifier-plainte-pour-manquements-lors-d-une-garde-a-vue",
+        destination: "/affaires/plainte-pour-manquements-lors-d-une-garde-a-vue",
+        statusCode: 308,
+      },
+      {
+        source:
+          "/affaires/a-verifier-tentatives-d-ingerence-presumees-de-lagardere-news-dans-une-commission-parlementaire",
+        destination:
+          "/affaires/tentatives-d-ingerence-presumees-de-lagardere-news-dans-une-commission-parlementaire",
+        statusCode: 308,
+      },
+      {
+        source:
+          "/affaires/a-verifier-plainte-pour-prise-illegale-d-interets-dans-le-cadre-de-la-commission-sur-l-audiovisuel-public",
+        destination:
+          "/affaires/plainte-pour-prise-illegale-d-interets-dans-le-cadre-de-la-commission-sur-l-audiovisuel-public",
+        statusCode: 308,
+      },
     ];
   },
 };

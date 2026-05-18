@@ -14,7 +14,7 @@
 
 import { db } from "@/lib/db";
 import type { AffairCategory, AffairStatus, SourceType } from "@/generated/prisma";
-import { generateSlug, sleep } from "@/lib/utils";
+import { cleanAffairTitle, generateSlug, sleep } from "@/lib/utils";
 import { getArticleScraper } from "@/lib/api/article-scraper";
 import {
   analyzeArticle,
@@ -495,7 +495,7 @@ async function createAffairFromPress(
   }
 
   try {
-    const baseSlug = generateSlug(title);
+    const baseSlug = generateSlug(cleanAffairTitle(title));
     let slug = baseSlug;
 
     // Ensure unique slug

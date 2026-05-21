@@ -122,7 +122,7 @@ Full list in `package.json` under `scripts`. Most have a `:stats` dry-run varian
 - **Enrichment**: `sync:hatvp`, `sync:photos`, `sync:deceased`, `sync:birthdates`, `sync:careers`, `sync:partis`
 - **Votes**: `sync:scrutins-an`, `sync:scrutins-senat`
 - **Legislation**: `sync:legislation`, `sync:legislation:content`
-- **Content**: `sync:press`, `sync:factchecks`, `sync:judilibre`, `sync:moderate`, `sync:enrich`
+- **Content**: `sync:press`, `sync:factchecks`, `sync:judilibre:deprecated`, `sync:moderate`, `sync:enrich`
 - **Elections**: `sync:rne:maires`, `sync:elections:municipales`, `sync:resultats-csv`
 - **Orchestration**: `sync:daily`, `sync:full`
 
@@ -304,6 +304,7 @@ These are scar-tissue lessons. Reading them costs thirty seconds; rediscovering 
 - **After `prisma generate` with new models, restart the dev server.** The `globalForPrisma` singleton caches the old client; `db.newModel` will be `undefined` until restart.
 - **`Prisma.sql` template literals parameterize values as text.** `::uuid` casts in raw SQL VALUES therefore fail. Use individual `db.model.update()` calls with concurrency batching for bulk UUID updates.
 - **`{ not: null }` fails on some nullable fields in Prisma 7.** Use `$queryRaw` with `IS NOT NULL`.
+- **`Politician.id` is a cuid (TEXT), not a UUID.** Never cast `::uuid` in a `$executeRaw` update against `Politician`; `adapter-pg` rejects with `42883: operator does not exist: text = uuid`. Pattern fix in `scripts/recalculate-prominence.ts`.
 
 ### PostgreSQL
 
@@ -322,10 +323,19 @@ These are scar-tissue lessons. Reading them costs thirty seconds; rediscovering 
 - **Use template literals to concat text**, not JSX fragments. `{a} {b}` creates multiple text nodes and breaks Satori; `` `${a} ${b}` `` works.
 - **Test every OG image at `/path/opengraph-image`** before committing.
 
+### Storybook
+
+- **`storybook-static/` is not in `eslint.config` `globalIgnores`.** If you build Storybook locally, `npm run lint` reports thousands of false errors from minified JS. The folder is gitignored, so CI never sees it. Lint specific files, or add the folder to ignores before running a full lint.
+
 ### Async jobs
 
 - **Inngest `step.run()` serializes dates as ISO strings.** Rehydrate with `new Date(data.someDate)` in subsequent steps.
 - **Parallel sync race conditions**: if a data-fix script runs while a sync process is still active, the sync can reintroduce bad data. Wait for all syncs to finish before running fixes.
+
+### AI SDK streaming
+
+- **`toTextStreamResponse()` silently swallows API errors** and returns HTTP 200 with zero bytes. The chat route (`src/app/api/chat/route.ts`) uses a manual `ReadableStream` with try/catch instead. Do not revert.
+- **`TextDecoder` `stream` option goes on the `.decode(value, { stream: true })` call**, not on the constructor.
 
 ### Elections and scale
 
@@ -333,6 +343,10 @@ These are scar-tissue lessons. Reading them costs thirty seconds; rediscovering 
 - **`generateStaticParams` with heavy queries = Vercel OOM.** Return `[]` for ISR-only on heavy detail pages.
 - **A _list_ is elected at T1, not a commune.** Only lists with >50% round-1 percentage win. `seatsWon > 0` is wrong (proportional seats go to losing lists too).
 - **`municipales-2026-resultats` StatsSnapshot is not refreshed by `sync:compute-stats`.** Refresh via `scripts/tmp-update-stats.ts`.
+
+### Programmes (politician platforms)
+
+- **Position scale is -3..+3 (Int), not ternary -1/0/1.** Constant: `POSITION_MAX = 3` in `src/lib/programmes/matching.ts`. Radar uses `Math.abs(position) / POSITION_MAX * 100` for display.
 
 ### Data quality
 
@@ -361,6 +375,8 @@ On push to `main` or `staging`, four parallel jobs run: **lint**, **typecheck**,
 **Security headers** (`.github/workflows/security-headers.yml`) validates production response headers on every deploy.
 
 If a CI check fails, fix the underlying issue. Never skip hooks with `--no-verify`.
+
+**Workflow secrets live in two places.** Any API key used by a daily-sync script must exist both as a GitHub `production` environment secret and in the `env:` block of `.github/workflows/sync-daily.yml`. A secret defined only on the GitHub side never reaches the runner.
 
 ---
 

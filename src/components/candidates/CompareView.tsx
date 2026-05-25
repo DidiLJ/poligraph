@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ThemeFocusRadar, type ThemeFocusItem } from "./ThemeFocusRadar";
 import { THEME_CATEGORY_LABELS } from "@/config/labels";
-import { formatProbityBreakdown, type ProbityStats } from "@/lib/affairs/probity-stats";
+import { formatProbityBreakdown, type ProbityStats } from "@/lib/affairs/probity-stats-format";
 import type { ThemeCategory } from "@/types";
 
 export interface CompareCandidate {

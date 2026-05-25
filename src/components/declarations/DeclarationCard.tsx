@@ -48,6 +48,13 @@ function cleanCompanyName(name: string): string {
   return name.includes("[Données non publiées]") ? "Société (nom non publié)" : name;
 }
 
+const DECLARATION_LABEL: Record<string, string> = {
+  PATRIMOINE_DEBUT_MANDAT: "Patrimoine (début mandat)",
+  PATRIMOINE_FIN_MANDAT: "Patrimoine (fin mandat)",
+  PATRIMOINE_MODIFICATION: "Patrimoine (modification)",
+  INTERETS: "Intérêts",
+};
+
 export function DeclarationCard({ id, declarations, politicianHatvpUrl }: DeclarationCardProps) {
   if (declarations.length === 0) return null;
 
@@ -229,9 +236,9 @@ export function DeclarationCard({ id, declarations, politicianHatvpUrl }: Declar
         {/* All declaration links */}
         <div className="flex flex-wrap gap-2 pt-4 border-t">
           {declarations.map((d) => (
-            <a key={d.id} href={d.hatvpUrl} target="_blank" rel="noopener noreferrer">
+            <a key={d.id} href={d.pdfUrl ?? d.hatvpUrl} target="_blank" rel="noopener noreferrer">
               <Badge variant="outline" className="hover:bg-accent cursor-pointer">
-                {d.type === "INTERETS" ? "Intérêts" : "Patrimoine"} {d.year} ↗
+                {DECLARATION_LABEL[d.type] ?? d.type} {d.year} ↗
               </Badge>
             </a>
           ))}

@@ -5,8 +5,15 @@
       <mj-text line-height="1.6" />
     </mj-attributes>
     <mj-style>
-      a { color: #1e3a5f; }
-      .h2 { font-size: 18px; font-weight: 700; color: #1e3a5f; padding-bottom: 8px; }
+      a {
+        color: #1e3a5f;
+      }
+      .h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e3a5f;
+        padding-bottom: 8px;
+      }
     </mj-style>
   </mj-head>
   <mj-body background-color="#f3f4f6">
@@ -21,7 +28,8 @@
     <mj-section background-color="#ffffff" padding="20px 24px">
       <mj-column>
         <mj-text>
-          Tu viens de t'abonner à La Semaine Poligraph. Chaque dimanche, tu reçois le récap parlementaire avec les votes, affaires, fact-checks et la presse de la semaine.
+          Tu viens de t'abonner à La Semaine Poligraph. Chaque dimanche, tu reçois le récap
+          parlementaire avec les votes, affaires, fact-checks et la presse de la semaine.
         </mj-text>
       </mj-column>
     </mj-section>
@@ -30,7 +38,7 @@
     <mj-section background-color="#ffffff" padding="0 24px 20px">
       <mj-column>
         <mj-text><span class="h2">Ton député</span></mj-text>
-        <mj-text>{{deputyName}} ({{deputyParty}})</mj-text>
+        <mj-text>{{ deputyName }} ({{ deputyParty }})</mj-text>
         <mj-text>
           <a href="{{deputyProfileUrl}}">Voir son profil complet</a>
         </mj-text>

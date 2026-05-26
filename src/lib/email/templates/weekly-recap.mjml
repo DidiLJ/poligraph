@@ -104,7 +104,7 @@
     {{#if hasPersonalDeputy}}
     <mj-section background-color="#ffffff" padding="0 24px 8px">
       <mj-column>
-        {{personalDeputyHtml}}
+        {{ personalDeputyHtml }}
       </mj-column>
     </mj-section>
     <mj-section padding="4px 0"></mj-section>

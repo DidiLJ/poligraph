@@ -5,7 +5,9 @@
       <mj-text line-height="1.6" />
     </mj-attributes>
     <mj-style>
-      a { color: #1e3a5f; }
+      a {
+        color: #1e3a5f;
+      }
     </mj-style>
   </mj-head>
   <mj-body background-color="#f3f4f6">
@@ -19,18 +21,26 @@
 
     <mj-section background-color="#ffffff" padding="24px">
       <mj-column>
-        <mj-text>
-          Bonjour,
-        </mj-text>
+        <mj-text> Bonjour, </mj-text>
         <mj-text padding-top="12px">
-          Tu viens de t'inscrire à La Semaine Poligraph, le récap parlementaire hebdomadaire. Pour activer ton inscription, clique sur le bouton ci-dessous.
+          Tu viens de t'inscrire à La Semaine Poligraph, le récap parlementaire hebdomadaire. Pour
+          activer ton inscription, clique sur le bouton ci-dessous.
         </mj-text>
       </mj-column>
     </mj-section>
 
     <mj-section background-color="#ffffff" padding="0 24px 24px">
       <mj-column>
-        <mj-button href="{{confirmUrl}}" background-color="#1e3a5f" color="#ffffff" font-size="14px" font-weight="600" padding="0" inner-padding="14px 28px" border-radius="6px">
+        <mj-button
+          href="{{confirmUrl}}"
+          background-color="#1e3a5f"
+          color="#ffffff"
+          font-size="14px"
+          font-weight="600"
+          padding="0"
+          inner-padding="14px 28px"
+          border-radius="6px"
+        >
           Confirmer mon inscription
         </mj-button>
       </mj-column>
@@ -42,10 +52,11 @@
           Si le bouton ne fonctionne pas, copie ce lien dans ton navigateur :
         </mj-text>
         <mj-text font-size="12px" color="#6b7280" padding-top="4px">
-          <a href="{{confirmUrl}}">{{confirmUrl}}</a>
+          <a href="{{confirmUrl}}">{{ confirmUrl }}</a>
         </mj-text>
         <mj-text font-size="12px" color="#6b7280" padding-top="16px">
-          Si tu n'es pas à l'origine de cette inscription, ignore simplement cet email. Aucune autre suite ne sera donnée.
+          Si tu n'es pas à l'origine de cette inscription, ignore simplement cet email. Aucune autre
+          suite ne sera donnée.
         </mj-text>
       </mj-column>
     </mj-section>

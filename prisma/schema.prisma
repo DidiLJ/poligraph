@@ -911,6 +911,10 @@ model Scrutin {
   analysis          ScrutinAnalysis?
   debateTranscripts DebateTranscript[]
 
+  // Policy-title feature
+  policyTitle    ScrutinPolicyTitle?
+  amendmentLinks ScrutinAmendment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1173,26 +1177,41 @@ enum DossierStatus {
 }
 
 model Amendment {
-  id         String @id @default(cuid())
-  externalId String @unique
-  dossierId  String
-  number     Int
+  id         String  @id @default(cuid())
+  externalId String  @unique
+  dossierId  String?
+  number     String // numeroLong AN — peut être non-numérique (ex: "CL8", "I-390", "600 (Rect)")
 
   authorType String? // Groupe, Gouvernement, Individuel
   authorName String?
 
-  article String? // Article modifié
-  content String? @db.Text // Texte de l'amendement
-  summary String? // Résumé IA (1-2 phrases)
+  article String? // Article modifié (référence seulement, ex: "8", "8 bis")
+  content String? @db.Text // Dispositif (HTML AN brut)
+  summary String? @db.Text // Exposé sommaire (HTML AN brut) — repurposed from former "Résumé IA"
 
   status AmendmentStatus
 
-  dossier LegislativeDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  texteRef String? // Référence texte AN (texteLegislatifRef, ex: "PIONANR5L17B1432") — ancre de résolution pour le linker regex
+
+  parentAmendmentId String?
+  parentAmendment   Amendment?  @relation("AmendmentParent", fields: [parentAmendmentId], references: [id])
+  subAmendments     Amendment[] @relation("AmendmentParent")
+  identicalGroupKey String?
+  legislature       Int         @default(17)
+  chamber           Chamber     @default(AN)
+
+  dossier      LegislativeDossier? @relation(fields: [dossierId], references: [id], onDelete: SetNull)
+  scrutinLinks ScrutinAmendment[]
 
   createdAt DateTime @default(now())
 
   @@index([dossierId])
   @@index([status])
+  @@index([dossierId, article])
+  @@index([parentAmendmentId])
+  @@index([identicalGroupKey])
+  @@index([texteRef, number])
+  @@index([legislature, chamber, number])
 }
 
 enum AmendmentStatus {
@@ -1201,6 +1220,126 @@ enum AmendmentStatus {
   REJETE // Rejeté
   RETIRE // Retiré
   TOMBE // Tombé (sans objet)
+}
+
+// ============================================
+// POLICY TITLES (citizen-facing vote titles)
+// ============================================
+
+enum PolicyTitleConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum PolicyTitleSource {
+  DETERMINISTIC
+  LLM
+  MANUAL
+  FALLBACK
+}
+
+enum PolicyTitleStatus {
+  DRAFT
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  STALE
+}
+
+enum RegenerationStatus {
+  idle
+  queued
+  running
+  failed
+}
+
+enum ScrutinAmendmentRole {
+  PRINCIPAL
+  SUB_AMENDMENT
+  PARENT_AMENDMENT
+  IDENTICAL
+  INFERRED
+  UNKNOWN
+}
+
+enum ScrutinAmendmentSource {
+  STRUCTURED_AN // reserved for a future AN data improvement — INACTIVE in V1
+  TITLE_REGEX
+  MANUAL
+}
+
+model ScrutinPolicyTitle {
+  id                    String                       @id @default(cuid())
+  scrutinId             String                       @unique
+  scrutin               Scrutin                      @relation(fields: [scrutinId], references: [id], onDelete: Cascade)
+
+  officialTitleSnapshot String                       @db.Text
+  officialSourceUrl     String?
+  sources               Json                         @default("[]")
+
+  inputHash             String
+
+  policyTitle           String?                      @db.VarChar(140)
+  policySubtitle        String?                      @db.Text
+  proceduralLabel       String
+
+  confidence            PolicyTitleConfidence
+  qualitySignals        Json
+  generationSource      PolicyTitleSource
+  modelVersion          String?
+  promptVersion         String?
+
+  evidenceQuotes        Json                         @default("[]")
+  generationWarnings    Json                         @default("[]")
+  currentWarnings       Json                         @default("[]")
+  inputs                Json                         @default("{}")
+
+  status                PolicyTitleStatus
+  reviewedAt            DateTime?
+  reviewedBy            String?
+  editedFromGenerated   Boolean                      @default(false)
+
+  regenerationStatus    RegenerationStatus           @default(idle)
+  regenerationError     String?
+
+  generatedAt           DateTime                     @default(now())
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+
+  history               ScrutinPolicyTitleRevision[]
+
+  @@index([status, generatedAt])
+  @@index([confidence, status])
+  @@index([inputHash])
+}
+
+model ScrutinPolicyTitleRevision {
+  id            String             @id @default(cuid())
+  policyTitleId String
+  policyTitle   ScrutinPolicyTitle @relation(fields: [policyTitleId], references: [id], onDelete: Cascade)
+  snapshot      Json
+  action        String
+  actorId       String?
+  createdAt     DateTime           @default(now())
+
+  @@index([policyTitleId, createdAt])
+}
+
+model ScrutinAmendment {
+  scrutinId        String
+  amendmentId      String
+  role             ScrutinAmendmentRole
+  source           ScrutinAmendmentSource
+  parserConfidence Float?
+  parserWarnings   Json?
+
+  scrutin   Scrutin   @relation(fields: [scrutinId], references: [id], onDelete: Cascade)
+  amendment Amendment @relation(fields: [amendmentId], references: [id], onDelete: Cascade)
+
+  @@id([scrutinId, amendmentId])
+  @@index([amendmentId])
+  @@index([scrutinId, role])
 }
 
 // ============================================

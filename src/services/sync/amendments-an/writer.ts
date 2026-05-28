@@ -11,13 +11,18 @@ export interface BatchResult {
 
 /**
  * Idempotent upsert by externalId. Resolves dossierRefFromPath -> dossierId via
- * a bulk lookup, then per-row create/update. Returns counts of dossier-refs that
- * resolved vs. did not (for visibility into amendments referencing a dossier we
- * haven't ingested).
+ * a bulk lookup, then a 2-step partition:
+ *   1. SELECT existing externalIds in this batch (one query).
+ *   2. createMany() for new rows (one bulk insert).
+ *   3. per-row update() for rows that already existed (incremental path).
+ *
+ * On a backfill (empty table) step 3 is empty, so a 1000-row batch costs 2
+ * round-trips total (~ms each via the pooler) instead of 1000 × 2. On the daily
+ * incremental run, the existing-rows path stays correct via per-row update().
+ *
+ * Returns counts of dossier-refs that resolved vs. did not.
  */
 export async function writeAmendmentBatch(batch: NormalizedAmendment[]): Promise<BatchResult> {
-  let created = 0;
-  let updated = 0;
   let dossiersResolved = 0;
   let dossiersUnresolved = 0;
 
@@ -33,9 +38,24 @@ export async function writeAmendmentBatch(batch: NormalizedAmendment[]): Promise
     : [];
   const dossierIdByRef = new Map(dossiers.map((d) => [d.externalId, d.id]));
 
+  // Build the rows we actually intend to write (skip records missing externalId / number).
+  type Row = {
+    externalId: string;
+    number: string;
+    texteRef: string | null;
+    article: string | null;
+    content: string | null;
+    summary: string | null;
+    status: NormalizedAmendment["status"];
+    authorType: string | null;
+    authorName: string | null;
+    legislature: number;
+    chamber: NormalizedAmendment["chamber"];
+    dossierId: string | null;
+  };
+  const rows: Row[] = [];
   for (const a of batch) {
     if (!a.externalId || !a.number) continue;
-
     let dossierId: string | null = null;
     if (a.dossierRefFromPath) {
       const resolved = dossierIdByRef.get(a.dossierRefFromPath);
@@ -46,8 +66,8 @@ export async function writeAmendmentBatch(batch: NormalizedAmendment[]): Promise
         dossiersUnresolved++;
       }
     }
-
-    const data = {
+    rows.push({
+      externalId: a.externalId,
       number: a.number,
       texteRef: a.texteRef,
       article: a.article,
@@ -59,23 +79,40 @@ export async function writeAmendmentBatch(batch: NormalizedAmendment[]): Promise
       legislature: a.legislature,
       chamber: a.chamber,
       dossierId,
-    };
-
-    const existing = await db.amendment.findUnique({
-      where: { externalId: a.externalId },
-      select: { id: true },
     });
-
-    if (existing) {
-      await db.amendment.update({ where: { externalId: a.externalId }, data });
-      updated++;
-    } else {
-      await db.amendment.create({ data: { externalId: a.externalId, ...data } });
-      created++;
-    }
   }
 
-  return { created, updated, dossiersResolved, dossiersUnresolved };
+  if (rows.length === 0) return { created: 0, updated: 0, dossiersResolved, dossiersUnresolved };
+
+  // 1. Bulk-fetch which externalIds already exist in the batch's externalId set.
+  const externalIds = rows.map((r) => r.externalId);
+  const existing = await db.amendment.findMany({
+    where: { externalId: { in: externalIds } },
+    select: { externalId: true },
+  });
+  const existingSet = new Set(existing.map((e) => e.externalId));
+
+  // 2. Partition.
+  const newRows = rows.filter((r) => !existingSet.has(r.externalId));
+  const updateRows = rows.filter((r) => existingSet.has(r.externalId));
+
+  // 3a. Bulk insert all new rows in a single createMany.
+  if (newRows.length > 0) {
+    await db.amendment.createMany({ data: newRows });
+  }
+
+  // 3b. Per-row update for the (usually small) existing set.
+  for (const r of updateRows) {
+    const { externalId, ...data } = r;
+    await db.amendment.update({ where: { externalId }, data });
+  }
+
+  return {
+    created: newRows.length,
+    updated: updateRows.length,
+    dossiersResolved,
+    dossiersUnresolved,
+  };
 }
 
 /**

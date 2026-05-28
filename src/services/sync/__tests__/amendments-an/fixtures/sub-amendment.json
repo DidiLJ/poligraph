@@ -1,0 +1,17 @@
+{
+  "amendement": {
+    "uid": "AMANR5L17XXP0D1N000037",
+    "identification": { "numeroLong": "I-390" },
+    "texteLegislatifRef": "PIONANR5L17B1432",
+    "corps": {
+      "contenuAuteur": {
+        "dispositif": "<p>R&#xE9;diger ainsi.</p>",
+        "exposeSommaire": "<p>Pr&#xE9;cision.</p>"
+      }
+    },
+    "cycleDeVie": { "sort": "Rejeté" },
+    "amendementParentRef": "AMANR5L17XXP0D1N000028",
+    "discussionIdentique": { "@xsi:nil": "true" },
+    "legislature": "17"
+  }
+}

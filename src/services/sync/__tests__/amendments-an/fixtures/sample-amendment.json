@@ -1,0 +1,19 @@
+{
+  "amendement": {
+    "uid": "AMANR5L17PO59051B1432P0D1N000008",
+    "identification": { "numeroLong": "CL8", "numeroOrdreDepot": "8" },
+    "texteLegislatifRef": "PIONANR5L17B1432",
+    "corps": {
+      "contenuAuteur": {
+        "dispositif": "<p>Supprimer l'alin&#xE9;a 3.</p>",
+        "exposeSommaire": "<p>Cet amendement supprime la d&#xE9;rogation.</p>"
+      }
+    },
+    "cycleDeVie": { "sort": "Adopté" },
+    "amendementParentRef": { "@xsi:nil": "true" },
+    "discussionIdentique": { "idDiscussion": "12345", "typePosition": "Premier" },
+    "pointeurFragmentTexte": { "division": { "articleDesignation": "Article 8" } },
+    "signataires": { "auteur": { "typeAuteur": "Député" }, "libelle": "M. Potier" },
+    "legislature": "17"
+  }
+}

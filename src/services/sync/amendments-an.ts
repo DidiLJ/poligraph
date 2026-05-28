@@ -1,0 +1,159 @@
+import { mkdirSync, existsSync, rmSync } from "fs";
+import path from "path";
+import os from "os";
+import { downloadAmendmentsZip, AMENDMENTS_ZIP_URL } from "./amendments-an/download";
+import {
+  iterateZipJsonEntries,
+  dossierRefFromEntryPath,
+  texteRefFromEntryPath,
+} from "./amendments-an/zip-iterator";
+import { normalizeAmendment } from "./amendments-an/normalize";
+import {
+  writeAmendmentBatch,
+  resolveParents,
+  resolveIdenticalGroups,
+} from "./amendments-an/writer";
+import { loadFeedState, saveFeedState } from "./amendments-an/feed-state";
+import type {
+  NormalizedAmendment,
+  SyncAmendmentsANOptions,
+  SyncAmendmentsANStats,
+  SyncWarning,
+} from "./amendments-an/types";
+
+function emptyStats(warnings: SyncWarning[]): SyncAmendmentsANStats {
+  return {
+    amendmentsSeen: 0,
+    amendmentsCreated: 0,
+    amendmentsUpdated: 0,
+    amendmentsSkipped: 0,
+    parentLinksResolved: 0,
+    parentLinksDeferred: 0,
+    identicalGroupsResolved: 0,
+    dossiersResolved: 0,
+    dossiersUnresolved: 0,
+    warnings,
+    durationMs: 0,
+  };
+}
+
+export async function syncAmendmentsAN(
+  opts: SyncAmendmentsANOptions = {}
+): Promise<SyncAmendmentsANStats> {
+  const started = Date.now();
+  const legislature = opts.legislature ?? 17;
+  const batchSize = opts.batchSize ?? 500;
+  const warnings: SyncWarning[] = [];
+  const stats = emptyStats(warnings);
+
+  // zipPath mode = explicit local/debug ZIP. We do NOT delete a caller-provided
+  // ZIP, and we do NOT touch feed-state (the caller is responsible for state).
+  const usingProvidedZip = Boolean(opts.zipPath);
+  let zipPath: string | null = opts.zipPath ?? null;
+  let tmpDir: string | null = null;
+
+  let downloadedBytes = 0;
+  let freshEtag: string | undefined;
+  let freshLastModified: string | undefined;
+
+  if (!usingProvidedZip) {
+    const prevState = opts.force ? null : await loadFeedState(legislature);
+
+    tmpDir = path.join(os.tmpdir(), `amendments-an-${legislature}-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    zipPath = path.join(tmpDir, "Amendements.json.zip");
+
+    const dl = await downloadAmendmentsZip(zipPath, {
+      url: AMENDMENTS_ZIP_URL,
+      etag: prevState?.etag ?? null,
+    });
+
+    if (dl.notModified) {
+      rmSync(tmpDir, { recursive: true, force: true });
+      stats.notModified = true;
+      stats.downloadedBytes = 0;
+      stats.durationMs = Date.now() - started;
+      if (opts.verbose) {
+        console.log(`[amendments] 304 not modified (etag ${prevState?.etag ?? "?"})`);
+      }
+      return stats;
+    }
+
+    downloadedBytes = dl.bytes;
+    freshEtag = dl.etag;
+    freshLastModified = dl.lastModified;
+    if (opts.verbose) {
+      console.log(`[amendments] downloaded ${downloadedBytes} bytes`);
+    }
+  }
+
+  const all: NormalizedAmendment[] = [];
+  let batch: NormalizedAmendment[] = [];
+
+  const flush = async () => {
+    if (batch.length === 0) return;
+    if (!opts.dryRun) {
+      const r = await writeAmendmentBatch(batch);
+      stats.amendmentsCreated += r.created;
+      stats.amendmentsUpdated += r.updated;
+      stats.dossiersResolved += r.dossiersResolved;
+      stats.dossiersUnresolved += r.dossiersUnresolved;
+    }
+    batch = [];
+  };
+
+  const onWarning = (w: { entryPath: string; error: string }) => {
+    stats.amendmentsSkipped++;
+    warnings.push({ code: "INVALID_JSON", message: `${w.entryPath}: ${w.error}` });
+  };
+
+  try {
+    for await (const entry of iterateZipJsonEntries(zipPath!, { limit: opts.limit, onWarning })) {
+      stats.amendmentsSeen++;
+      const dossierRefFromPath = dossierRefFromEntryPath(entry.entryPath);
+      const texteRefFromPath = texteRefFromEntryPath(entry.entryPath);
+      const n = normalizeAmendment(entry.json, {
+        dossierRefFromPath,
+        texteRefFromPath,
+        legislature,
+      });
+      if (!n.externalId || !n.number) {
+        stats.amendmentsSkipped++;
+        warnings.push({
+          code: "MISSING_KEY",
+          message: `entry ${entry.entryPath} missing uid/number`,
+        });
+        continue;
+      }
+      all.push(n);
+      batch.push(n);
+      if (batch.length >= batchSize) await flush();
+    }
+    await flush();
+
+    if (!opts.dryRun) {
+      const p = await resolveParents(all);
+      stats.parentLinksResolved = p.resolved;
+      stats.parentLinksDeferred = p.deferred;
+      const g = await resolveIdenticalGroups(all);
+      stats.identicalGroupsResolved = g.groups;
+    }
+
+    if (!usingProvidedZip && !opts.dryRun && freshEtag !== undefined) {
+      await saveFeedState(legislature, {
+        etag: freshEtag,
+        lastModified: freshLastModified,
+        contentLength: downloadedBytes,
+        lastSuccessfulSyncAt: new Date().toISOString(),
+      });
+    }
+  } finally {
+    if (tmpDir && !usingProvidedZip && existsSync(tmpDir)) {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  }
+
+  stats.downloadedBytes = downloadedBytes;
+  stats.durationMs = Date.now() - started;
+  return stats;
+}

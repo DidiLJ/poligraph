@@ -104,11 +104,18 @@ export async function resolveParents(
       deferred++;
       continue;
     }
-    await db.amendment.update({
-      where: { externalId: r.externalId },
+    // Skip the write when parentAmendmentId is already correct. updateMany
+    // matches only when the FK is NULL or set to a different parent — Postgres
+    // three-valued logic means we spell out "NULL or != pid" rather than
+    // `NOT: { parentAmendmentId: pid }` (which would silently miss NULL rows).
+    await db.amendment.updateMany({
+      where: {
+        externalId: r.externalId,
+        OR: [{ parentAmendmentId: null }, { parentAmendmentId: { not: pid } }],
+      },
       data: { parentAmendmentId: pid },
     });
-    resolved++;
+    resolved++; // pid found = link resolved (whether newly written or already correct)
   }
   return { resolved, deferred };
 }

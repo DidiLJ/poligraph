@@ -1,7 +1,7 @@
 import { escapeXmlText } from "@/lib/text/escape-xml";
 import type { SubstanceTextBlock, EvidenceCandidate } from "./types";
 
-export const PROMPT_VERSION = "policy-title-v1";
+export const PROMPT_VERSION = "policy-title-v2";
 
 export interface BuildPromptArgs {
   scrutinTitle: string;
@@ -26,9 +26,11 @@ Mauvais exemples (procéduraux, à proscrire) :
 Bon exemple (concret, parle au citoyen) :
 - "Limiter les dérogations aux seuils de qualité de l'eau"
 
+Neutralité absolue : décris UNIQUEMENT ce que la mesure ferait, jamais l'intention, l'opinion ou la critique de son auteur. L'exposé sommaire contient souvent le point de vue de l'auteur (par exemple "dispositif inefficace", "coût excessif", "concurrence déloyale") : ce sont des arguments, PAS des faits, ne les reprends jamais dans le titre ni le sous-titre. N'emploie aucun jugement même implicite, aucune comparaison appréciative ("plus … que …", "critiquée pour…"), aucun adjectif évaluatif. Si la mesure demande un rapport, dis "Demander un rapport sur X", pas "Évaluer l'utilité de X critiquée pour…".
+
 Règle d'ancrage stricte : chaque affirmation concrète doit provenir des extraits du bloc <evidence> ; cite-les dans evidenceQuotes ; ne cite jamais d'autre source. Le bloc <contexte-editorial> est purement informatif et ne constitue PAS une source : n'en extrais aucune citation, ne le mentionne dans aucun evidenceQuotes.
 
-Longueur du titre : vise 90 caractères, sans jamais dépasser 140 caractères absolus.`;
+Longueur du titre : vise 90 caractères ou moins. Un titre court et neutre est toujours préférable à un titre long. Ne dépasse jamais 140 caractères. Mets toute précision dans le sous-titre, pas dans le titre.`;
 
 function buildSourcesXml(blocks: SubstanceTextBlock[]): string {
   if (blocks.length === 0) return "  <source />";

@@ -1,10 +1,10 @@
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
 
-import { db } from "@/lib/db";
-import {
-  detectStalePolicyTitles,
-  recomputeInputHashForScrutin,
-} from "@/services/sync/detect-stale-policy-titles";
+const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip;
+
+let db: typeof import("@/lib/db").db;
+let detectStalePolicyTitles: typeof import("@/services/sync/detect-stale-policy-titles").detectStalePolicyTitles;
+let recomputeInputHashForScrutin: typeof import("@/services/sync/detect-stale-policy-titles").recomputeInputHashForScrutin;
 
 const PFX = "TEST_PT11_";
 
@@ -85,49 +85,51 @@ async function createPolicyTitleRow(
   });
 }
 
-beforeAll(async () => {
-  await cleanup();
-  await db.legislativeDossier.create({
-    data: {
-      externalId: `${PFX}DLR`,
-      slug: `${PFX}dossier`,
-      title: "Test dossier PT11",
-      status: "EN_COURS",
-    },
+describeIfDb("detectStalePolicyTitles", () => {
+  beforeAll(async () => {
+    ({ db } = await import("@/lib/db"));
+    ({ detectStalePolicyTitles, recomputeInputHashForScrutin } =
+      await import("@/services/sync/detect-stale-policy-titles"));
+    await cleanup();
+    await db.legislativeDossier.create({
+      data: {
+        externalId: `${PFX}DLR`,
+        slug: `${PFX}dossier`,
+        title: "Test dossier PT11",
+        status: "EN_COURS",
+      },
+    });
+
+    const approved = await seedScrutin("100", "Substance stable initiale.");
+    approvedScrutinId = approved.scrutinId;
+    await createPolicyTitleRow(
+      approvedScrutinId,
+      await recomputeInputHashForScrutin(approvedScrutinId),
+      "APPROVED"
+    );
+
+    const flip = await seedScrutin("200", "Substance qui va changer.");
+    flipScrutinId = flip.scrutinId;
+    flipAmendmentId = flip.amendmentId;
+    await createPolicyTitleRow(
+      flipScrutinId,
+      await recomputeInputHashForScrutin(flipScrutinId),
+      "APPROVED"
+    );
+
+    const draft = await seedScrutin("300", "Substance pour un DRAFT.");
+    draftScrutinId = draft.scrutinId;
+    await createPolicyTitleRow(
+      draftScrutinId,
+      await recomputeInputHashForScrutin(draftScrutinId),
+      "NEEDS_REVIEW"
+    );
   });
 
-  const approved = await seedScrutin("100", "Substance stable initiale.");
-  approvedScrutinId = approved.scrutinId;
-  await createPolicyTitleRow(
-    approvedScrutinId,
-    await recomputeInputHashForScrutin(approvedScrutinId),
-    "APPROVED"
-  );
+  afterAll(async () => {
+    await cleanup();
+  });
 
-  const flip = await seedScrutin("200", "Substance qui va changer.");
-  flipScrutinId = flip.scrutinId;
-  flipAmendmentId = flip.amendmentId;
-  await createPolicyTitleRow(
-    flipScrutinId,
-    await recomputeInputHashForScrutin(flipScrutinId),
-    "APPROVED"
-  );
-
-  const draft = await seedScrutin("300", "Substance pour un DRAFT.");
-  draftScrutinId = draft.scrutinId;
-  await createPolicyTitleRow(
-    draftScrutinId,
-    await recomputeInputHashForScrutin(draftScrutinId),
-    "NEEDS_REVIEW"
-  );
-});
-
-afterAll(async () => {
-  await cleanup();
-  await db.$disconnect();
-});
-
-describe("detectStalePolicyTitles", () => {
   it("inputs unchanged → APPROVED row stays APPROVED", async () => {
     await detectStalePolicyTitles();
     const row = await db.scrutinPolicyTitle.findUniqueOrThrow({

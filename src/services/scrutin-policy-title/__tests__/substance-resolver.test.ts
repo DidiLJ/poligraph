@@ -1,133 +1,138 @@
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
-import { db } from "@/lib/db";
-import { resolveSubstanceSources } from "@/services/scrutin-policy-title/substance-resolver";
+
+const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 const PFX = "TEST_PT_";
 let scrutinId: string;
 let emptyScrutinId: string;
+let db: typeof import("@/lib/db").db;
+let resolveSubstanceSources: typeof import("@/services/scrutin-policy-title/substance-resolver").resolveSubstanceSources;
 
-beforeAll(async () => {
-  await db.scrutinAmendment.deleteMany({
-    where: { amendment: { externalId: { startsWith: PFX } } },
-  });
-  await db.scrutin.deleteMany({ where: { externalId: { startsWith: PFX } } });
-  await db.amendment.deleteMany({ where: { externalId: { startsWith: PFX } } });
-  await db.legislativeDossier.deleteMany({ where: { externalId: `${PFX}DLR` } });
+describeIfDb("resolveSubstanceSources", () => {
+  beforeAll(async () => {
+    ({ db } = await import("@/lib/db"));
+    ({ resolveSubstanceSources } =
+      await import("@/services/scrutin-policy-title/substance-resolver"));
 
-  const dossier = await db.legislativeDossier.create({
-    data: {
-      externalId: `${PFX}DLR`,
-      slug: `${PFX}dossier`,
-      title: "Test dossier agricole",
-      status: "EN_COURS",
-    },
-  });
+    await db.scrutinAmendment.deleteMany({
+      where: { amendment: { externalId: { startsWith: PFX } } },
+    });
+    await db.scrutin.deleteMany({ where: { externalId: { startsWith: PFX } } });
+    await db.amendment.deleteMany({ where: { externalId: { startsWith: PFX } } });
+    await db.legislativeDossier.deleteMany({ where: { externalId: `${PFX}DLR` } });
 
-  const parent = await db.amendment.create({
-    data: {
-      externalId: `${PFX}2058`,
-      number: "2058",
-      dossierId: dossier.id,
-      status: "ADOPTE",
-      legislature: 17,
-      chamber: "AN",
-      content: "<p>Contenu du parent 2058.</p>",
-      summary: "<p>Expos&#xE9; du parent.</p>",
-      identicalGroupKey: "GRP_PT",
-    },
-  });
-  const sub = await db.amendment.create({
-    data: {
-      externalId: `${PFX}2368`,
-      number: "2368",
-      dossierId: dossier.id,
-      status: "ADOPTE",
-      legislature: 17,
-      chamber: "AN",
-      content: "<p>Supprime la d&#xE9;rogation aux seuils de qualit&#xE9; de l'eau.</p>",
-      summary: "<p>Le pr&#xE9;sent sous-amendement supprime une exon&#xE9;ration.</p>",
-      parentAmendmentId: parent.id,
-    },
-  });
-  const identical = await db.amendment.create({
-    data: {
-      externalId: `${PFX}2074`,
-      number: "2074",
-      dossierId: dossier.id,
-      status: "ADOPTE",
-      legislature: 17,
-      chamber: "AN",
-      content: "<p>Identique 2074.</p>",
-      identicalGroupKey: "GRP_PT",
-    },
-  });
-
-  const scrutin = await db.scrutin.create({
-    data: {
-      externalId: `${PFX}S1`,
-      title: "le sous-amendement n° 2368 ...",
-      votingDate: new Date(),
-      legislature: 17,
-      chamber: "AN",
-      votesFor: 1,
-      votesAgainst: 0,
-      votesAbstain: 0,
-      result: "ADOPTED",
-      dossierLegislatifId: dossier.id,
-      amendmentLinks: {
-        create: [
-          { amendmentId: sub.id, role: "SUB_AMENDMENT", source: "TITLE_REGEX" },
-          { amendmentId: parent.id, role: "PARENT_AMENDMENT", source: "TITLE_REGEX" },
-          { amendmentId: identical.id, role: "IDENTICAL", source: "TITLE_REGEX" },
-        ],
+    const dossier = await db.legislativeDossier.create({
+      data: {
+        externalId: `${PFX}DLR`,
+        slug: `${PFX}dossier`,
+        title: "Test dossier agricole",
+        status: "EN_COURS",
       },
-    },
-  });
-  scrutinId = scrutin.id;
+    });
 
-  const emptyAmd = await db.amendment.create({
-    data: {
-      externalId: `${PFX}EMPTY`,
-      number: "9",
-      dossierId: dossier.id,
-      status: "DEPOSE",
-      legislature: 17,
-      chamber: "AN",
-      content: null,
-      summary: null,
-    },
-  });
-  const emptyScrutin = await db.scrutin.create({
-    data: {
-      externalId: `${PFX}S2`,
-      title: "l'amendement n° 9 ...",
-      votingDate: new Date(),
-      legislature: 17,
-      chamber: "AN",
-      votesFor: 1,
-      votesAgainst: 0,
-      votesAbstain: 0,
-      result: "ADOPTED",
-      dossierLegislatifId: dossier.id,
-      amendmentLinks: {
-        create: [{ amendmentId: emptyAmd.id, role: "PRINCIPAL", source: "TITLE_REGEX" }],
+    const parent = await db.amendment.create({
+      data: {
+        externalId: `${PFX}2058`,
+        number: "2058",
+        dossierId: dossier.id,
+        status: "ADOPTE",
+        legislature: 17,
+        chamber: "AN",
+        content: "<p>Contenu du parent 2058.</p>",
+        summary: "<p>Expos&#xE9; du parent.</p>",
+        identicalGroupKey: "GRP_PT",
       },
-    },
-  });
-  emptyScrutinId = emptyScrutin.id;
-});
+    });
+    const sub = await db.amendment.create({
+      data: {
+        externalId: `${PFX}2368`,
+        number: "2368",
+        dossierId: dossier.id,
+        status: "ADOPTE",
+        legislature: 17,
+        chamber: "AN",
+        content: "<p>Supprime la d&#xE9;rogation aux seuils de qualit&#xE9; de l'eau.</p>",
+        summary: "<p>Le pr&#xE9;sent sous-amendement supprime une exon&#xE9;ration.</p>",
+        parentAmendmentId: parent.id,
+      },
+    });
+    const identical = await db.amendment.create({
+      data: {
+        externalId: `${PFX}2074`,
+        number: "2074",
+        dossierId: dossier.id,
+        status: "ADOPTE",
+        legislature: 17,
+        chamber: "AN",
+        content: "<p>Identique 2074.</p>",
+        identicalGroupKey: "GRP_PT",
+      },
+    });
 
-afterAll(async () => {
-  await db.scrutinAmendment.deleteMany({
-    where: { amendment: { externalId: { startsWith: PFX } } },
-  });
-  await db.scrutin.deleteMany({ where: { externalId: { startsWith: PFX } } });
-  await db.amendment.deleteMany({ where: { externalId: { startsWith: PFX } } });
-  await db.legislativeDossier.deleteMany({ where: { externalId: `${PFX}DLR` } });
-  await db.$disconnect();
-});
+    const scrutin = await db.scrutin.create({
+      data: {
+        externalId: `${PFX}S1`,
+        title: "le sous-amendement n° 2368 ...",
+        votingDate: new Date(),
+        legislature: 17,
+        chamber: "AN",
+        votesFor: 1,
+        votesAgainst: 0,
+        votesAbstain: 0,
+        result: "ADOPTED",
+        dossierLegislatifId: dossier.id,
+        amendmentLinks: {
+          create: [
+            { amendmentId: sub.id, role: "SUB_AMENDMENT", source: "TITLE_REGEX" },
+            { amendmentId: parent.id, role: "PARENT_AMENDMENT", source: "TITLE_REGEX" },
+            { amendmentId: identical.id, role: "IDENTICAL", source: "TITLE_REGEX" },
+          ],
+        },
+      },
+    });
+    scrutinId = scrutin.id;
 
-describe("resolveSubstanceSources", () => {
+    const emptyAmd = await db.amendment.create({
+      data: {
+        externalId: `${PFX}EMPTY`,
+        number: "9",
+        dossierId: dossier.id,
+        status: "DEPOSE",
+        legislature: 17,
+        chamber: "AN",
+        content: null,
+        summary: null,
+      },
+    });
+    const emptyScrutin = await db.scrutin.create({
+      data: {
+        externalId: `${PFX}S2`,
+        title: "l'amendement n° 9 ...",
+        votingDate: new Date(),
+        legislature: 17,
+        chamber: "AN",
+        votesFor: 1,
+        votesAgainst: 0,
+        votesAbstain: 0,
+        result: "ADOPTED",
+        dossierLegislatifId: dossier.id,
+        amendmentLinks: {
+          create: [{ amendmentId: emptyAmd.id, role: "PRINCIPAL", source: "TITLE_REGEX" }],
+        },
+      },
+    });
+    emptyScrutinId = emptyScrutin.id;
+  });
+
+  afterAll(async () => {
+    await db.scrutinAmendment.deleteMany({
+      where: { amendment: { externalId: { startsWith: PFX } } },
+    });
+    await db.scrutin.deleteMany({ where: { externalId: { startsWith: PFX } } });
+    await db.amendment.deleteMany({ where: { externalId: { startsWith: PFX } } });
+    await db.legislativeDossier.deleteMany({ where: { externalId: `${PFX}DLR` } });
+  });
+
   it("emits sub-amendment blocks first, then parent, then identical — all official, plain text", async () => {
     const r = await resolveSubstanceSources(scrutinId);
     expect(r.substanceDepth).toBe("subAmendment");

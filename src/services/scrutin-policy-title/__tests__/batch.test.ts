@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 
 // The batch wrapper must not touch the LLM when there are no scrutins to process.
 const mockCall = vi.fn();
@@ -7,14 +7,16 @@ vi.mock("@/lib/api/mistral", async (orig) => {
   return { ...actual, callMistral: (...a: unknown[]) => mockCall(...a) };
 });
 
-import { db } from "@/lib/db";
-import { generateScrutinPolicyTitles } from "@/services/sync/generate-scrutin-policy-titles";
+const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip;
 
-afterAll(async () => {
-  await db.$disconnect();
-});
+let generateScrutinPolicyTitles: typeof import("@/services/sync/generate-scrutin-policy-titles").generateScrutinPolicyTitles;
 
-describe("generateScrutinPolicyTitles (batch smoke)", () => {
+describeIfDb("generateScrutinPolicyTitles (batch smoke)", () => {
+  beforeAll(async () => {
+    ({ generateScrutinPolicyTitles } =
+      await import("@/services/sync/generate-scrutin-policy-titles"));
+  });
+
   it("limit 0 + dryRun → zeroed stats, no LLM call", async () => {
     const stats = await generateScrutinPolicyTitles({ limit: 0, dryRun: true });
     expect(stats.processed).toBe(0);

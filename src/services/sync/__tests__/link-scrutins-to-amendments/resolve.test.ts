@@ -1,94 +1,13 @@
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
-import { db } from "@/lib/db";
-import { resolveLinks } from "@/services/sync/link-scrutins-to-amendments/resolve";
 import type { ParsedTitle } from "@/services/sync/link-scrutins-to-amendments/types";
+
+const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip;
+
+let db: typeof import("@/lib/db").db;
+let resolveLinks: typeof import("@/services/sync/link-scrutins-to-amendments/resolve").resolveLinks;
 
 const SCRUTIN_PFX = "TEST_LINK_S_";
 const AMEND_PFX = "TEST_LINK_A_";
-
-beforeAll(async () => {
-  await db.legislativeDossier.upsert({
-    where: { externalId: "TEST_LINK_DLR_1" },
-    create: {
-      externalId: "TEST_LINK_DLR_1",
-      slug: "test-link-dossier",
-      title: "Test dossier",
-      status: "EN_COURS",
-    },
-    update: {},
-  });
-  const dossierId = (
-    await db.legislativeDossier.findUniqueOrThrow({ where: { externalId: "TEST_LINK_DLR_1" } })
-  ).id;
-
-  await db.scrutinAmendment.deleteMany({
-    where: { amendment: { externalId: { startsWith: AMEND_PFX } } },
-  });
-  await db.amendment.deleteMany({ where: { externalId: { startsWith: AMEND_PFX } } });
-  await db.amendment.createMany({
-    data: [
-      {
-        externalId: `${AMEND_PFX}2058`,
-        number: "2058",
-        texteRef: "TEST_PIONANR_1",
-        dossierId,
-        status: "ADOPTE",
-        legislature: 17,
-        chamber: "AN",
-        identicalGroupKey: "GRP_TEST",
-      },
-      {
-        externalId: `${AMEND_PFX}2074`,
-        number: "2074",
-        texteRef: "TEST_PIONANR_1",
-        dossierId,
-        status: "ADOPTE",
-        legislature: 17,
-        chamber: "AN",
-        identicalGroupKey: "GRP_TEST",
-      },
-      {
-        externalId: `${AMEND_PFX}2368`,
-        number: "2368",
-        texteRef: "TEST_PIONANR_1",
-        dossierId,
-        status: "ADOPTE",
-        legislature: 17,
-        chamber: "AN",
-      },
-    ],
-  });
-
-  await db.scrutinAmendment.deleteMany({
-    where: { scrutin: { externalId: { startsWith: SCRUTIN_PFX } } },
-  });
-  await db.scrutin.deleteMany({ where: { externalId: { startsWith: SCRUTIN_PFX } } });
-  await db.scrutin.create({
-    data: {
-      externalId: `${SCRUTIN_PFX}1`,
-      title:
-        "le sous-amendement n° 2368 de M. Potier à l'amendement n° 2058 du Gouvernement et l'amendement identique suivant",
-      votingDate: new Date("2026-05-22T10:00:00Z"),
-      legislature: 17,
-      chamber: "AN",
-      votesFor: 287,
-      votesAgainst: 222,
-      votesAbstain: 14,
-      result: "ADOPTED",
-      dossierLegislatifId: dossierId,
-    },
-  });
-});
-
-afterAll(async () => {
-  await db.scrutinAmendment.deleteMany({
-    where: { scrutin: { externalId: { startsWith: SCRUTIN_PFX } } },
-  });
-  await db.scrutin.deleteMany({ where: { externalId: { startsWith: SCRUTIN_PFX } } });
-  await db.amendment.deleteMany({ where: { externalId: { startsWith: AMEND_PFX } } });
-  await db.legislativeDossier.deleteMany({ where: { externalId: "TEST_LINK_DLR_1" } });
-  await db.$disconnect();
-});
 
 const parsedPotier: ParsedTitle = {
   principalNumbers: [],
@@ -100,7 +19,92 @@ const parsedPotier: ParsedTitle = {
   confidence: 0.85,
 };
 
-describe("resolveLinks", () => {
+describeIfDb("resolveLinks", () => {
+  beforeAll(async () => {
+    ({ db } = await import("@/lib/db"));
+    ({ resolveLinks } = await import("@/services/sync/link-scrutins-to-amendments/resolve"));
+    await db.legislativeDossier.upsert({
+      where: { externalId: "TEST_LINK_DLR_1" },
+      create: {
+        externalId: "TEST_LINK_DLR_1",
+        slug: "test-link-dossier",
+        title: "Test dossier",
+        status: "EN_COURS",
+      },
+      update: {},
+    });
+    const dossierId = (
+      await db.legislativeDossier.findUniqueOrThrow({ where: { externalId: "TEST_LINK_DLR_1" } })
+    ).id;
+
+    await db.scrutinAmendment.deleteMany({
+      where: { amendment: { externalId: { startsWith: AMEND_PFX } } },
+    });
+    await db.amendment.deleteMany({ where: { externalId: { startsWith: AMEND_PFX } } });
+    await db.amendment.createMany({
+      data: [
+        {
+          externalId: `${AMEND_PFX}2058`,
+          number: "2058",
+          texteRef: "TEST_PIONANR_1",
+          dossierId,
+          status: "ADOPTE",
+          legislature: 17,
+          chamber: "AN",
+          identicalGroupKey: "GRP_TEST",
+        },
+        {
+          externalId: `${AMEND_PFX}2074`,
+          number: "2074",
+          texteRef: "TEST_PIONANR_1",
+          dossierId,
+          status: "ADOPTE",
+          legislature: 17,
+          chamber: "AN",
+          identicalGroupKey: "GRP_TEST",
+        },
+        {
+          externalId: `${AMEND_PFX}2368`,
+          number: "2368",
+          texteRef: "TEST_PIONANR_1",
+          dossierId,
+          status: "ADOPTE",
+          legislature: 17,
+          chamber: "AN",
+        },
+      ],
+    });
+
+    await db.scrutinAmendment.deleteMany({
+      where: { scrutin: { externalId: { startsWith: SCRUTIN_PFX } } },
+    });
+    await db.scrutin.deleteMany({ where: { externalId: { startsWith: SCRUTIN_PFX } } });
+    await db.scrutin.create({
+      data: {
+        externalId: `${SCRUTIN_PFX}1`,
+        title:
+          "le sous-amendement n° 2368 de M. Potier à l'amendement n° 2058 du Gouvernement et l'amendement identique suivant",
+        votingDate: new Date("2026-05-22T10:00:00Z"),
+        legislature: 17,
+        chamber: "AN",
+        votesFor: 287,
+        votesAgainst: 222,
+        votesAbstain: 14,
+        result: "ADOPTED",
+        dossierLegislatifId: dossierId,
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await db.scrutinAmendment.deleteMany({
+      where: { scrutin: { externalId: { startsWith: SCRUTIN_PFX } } },
+    });
+    await db.scrutin.deleteMany({ where: { externalId: { startsWith: SCRUTIN_PFX } } });
+    await db.amendment.deleteMany({ where: { externalId: { startsWith: AMEND_PFX } } });
+    await db.legislativeDossier.deleteMany({ where: { externalId: "TEST_LINK_DLR_1" } });
+  });
+
   it("resolves SUB + PARENT + IDENTICAL roles when the scrutin is dossier-scoped", async () => {
     const scrutin = await db.scrutin.findUniqueOrThrow({
       where: { externalId: `${SCRUTIN_PFX}1` },
@@ -297,7 +301,7 @@ describe("resolveLinks", () => {
   });
 });
 
-describe("dedupeLinks (pure)", () => {
+describeIfDb("dedupeLinks (pure)", () => {
   it("collapses the same amendment to one link with the higher-priority role", async () => {
     const { dedupeLinks } = await import("@/services/sync/link-scrutins-to-amendments/resolve");
     const out = dedupeLinks([

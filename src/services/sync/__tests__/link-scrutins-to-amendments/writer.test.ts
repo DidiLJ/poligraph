@@ -1,47 +1,58 @@
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
-import { db } from "@/lib/db";
-import { writeScrutinAmendments } from "@/services/sync/link-scrutins-to-amendments/writer";
 import type { ResolvedLink } from "@/services/sync/link-scrutins-to-amendments/types";
+
+const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip;
+
+let db: typeof import("@/lib/db").db;
+let writeScrutinAmendments: typeof import("@/services/sync/link-scrutins-to-amendments/writer").writeScrutinAmendments;
 
 let scrutinId: string;
 let amendmentId: string;
 
-beforeAll(async () => {
-  await db.scrutinAmendment.deleteMany({
-    where: { scrutin: { externalId: { startsWith: "TEST_W_" } } },
+describeIfDb("writeScrutinAmendments", () => {
+  beforeAll(async () => {
+    ({ db } = await import("@/lib/db"));
+    ({ writeScrutinAmendments } =
+      await import("@/services/sync/link-scrutins-to-amendments/writer"));
+    await db.scrutinAmendment.deleteMany({
+      where: { scrutin: { externalId: { startsWith: "TEST_W_" } } },
+    });
+    await db.scrutin.deleteMany({ where: { externalId: { startsWith: "TEST_W_" } } });
+    await db.amendment.deleteMany({ where: { externalId: { startsWith: "TEST_W_" } } });
+    const s = await db.scrutin.create({
+      data: {
+        externalId: "TEST_W_S",
+        title: "test",
+        votingDate: new Date(),
+        legislature: 17,
+        chamber: "AN",
+        votesFor: 1,
+        votesAgainst: 0,
+        votesAbstain: 0,
+        result: "ADOPTED",
+      },
+    });
+    const a = await db.amendment.create({
+      data: {
+        externalId: "TEST_W_A",
+        number: "1",
+        legislature: 17,
+        chamber: "AN",
+        status: "DEPOSE",
+      },
+    });
+    scrutinId = s.id;
+    amendmentId = a.id;
   });
-  await db.scrutin.deleteMany({ where: { externalId: { startsWith: "TEST_W_" } } });
-  await db.amendment.deleteMany({ where: { externalId: { startsWith: "TEST_W_" } } });
-  const s = await db.scrutin.create({
-    data: {
-      externalId: "TEST_W_S",
-      title: "test",
-      votingDate: new Date(),
-      legislature: 17,
-      chamber: "AN",
-      votesFor: 1,
-      votesAgainst: 0,
-      votesAbstain: 0,
-      result: "ADOPTED",
-    },
-  });
-  const a = await db.amendment.create({
-    data: { externalId: "TEST_W_A", number: "1", legislature: 17, chamber: "AN", status: "DEPOSE" },
-  });
-  scrutinId = s.id;
-  amendmentId = a.id;
-});
 
-afterAll(async () => {
-  await db.scrutinAmendment.deleteMany({
-    where: { scrutin: { externalId: { startsWith: "TEST_W_" } } },
+  afterAll(async () => {
+    await db.scrutinAmendment.deleteMany({
+      where: { scrutin: { externalId: { startsWith: "TEST_W_" } } },
+    });
+    await db.scrutin.deleteMany({ where: { externalId: { startsWith: "TEST_W_" } } });
+    await db.amendment.deleteMany({ where: { externalId: { startsWith: "TEST_W_" } } });
   });
-  await db.scrutin.deleteMany({ where: { externalId: { startsWith: "TEST_W_" } } });
-  await db.amendment.deleteMany({ where: { externalId: { startsWith: "TEST_W_" } } });
-  await db.$disconnect();
-});
 
-describe("writeScrutinAmendments", () => {
   const link = (): ResolvedLink => ({
     scrutinId,
     amendmentId,

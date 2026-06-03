@@ -7,11 +7,10 @@ vi.mock("@/lib/api/mistral", async (orig) => {
   return { ...actual, callMistral: (...a: unknown[]) => mockCall(...a) };
 });
 
-import { db } from "@/lib/db";
-import {
-  generateScrutinPolicyTitle,
-  assertNotApprovedByGenerator,
-} from "@/services/scrutin-policy-title";
+const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip;
+
+let db: typeof import("@/lib/db").db;
+let generateScrutinPolicyTitle: typeof import("@/services/scrutin-policy-title").generateScrutinPolicyTitle;
 
 const PFX = "TEST_PT9_";
 let linkedScrutinId: string;
@@ -38,144 +37,145 @@ function mistralResponse(content: string) {
   return { choices: [{ message: { role: "assistant", content }, finish_reason: "stop" }] };
 }
 
-beforeAll(async () => {
-  await db.scrutinAmendment.deleteMany({
-    where: { amendment: { externalId: { startsWith: PFX } } },
-  });
-  await db.scrutinPolicyTitle.deleteMany({
-    where: { scrutin: { externalId: { startsWith: PFX } } },
-  });
-  await db.scrutin.deleteMany({ where: { externalId: { startsWith: PFX } } });
-  await db.amendment.deleteMany({ where: { externalId: { startsWith: PFX } } });
-  await db.legislativeDossier.deleteMany({ where: { externalId: `${PFX}DLR` } });
+describeIfDb("generateScrutinPolicyTitle", () => {
+  beforeAll(async () => {
+    ({ db } = await import("@/lib/db"));
+    ({ generateScrutinPolicyTitle } = await import("@/services/scrutin-policy-title"));
+    await db.scrutinAmendment.deleteMany({
+      where: { amendment: { externalId: { startsWith: PFX } } },
+    });
+    await db.scrutinPolicyTitle.deleteMany({
+      where: { scrutin: { externalId: { startsWith: PFX } } },
+    });
+    await db.scrutin.deleteMany({ where: { externalId: { startsWith: PFX } } });
+    await db.amendment.deleteMany({ where: { externalId: { startsWith: PFX } } });
+    await db.legislativeDossier.deleteMany({ where: { externalId: `${PFX}DLR` } });
 
-  const dossier = await db.legislativeDossier.create({
-    data: {
-      externalId: `${PFX}DLR`,
-      slug: `${PFX}dossier`,
-      title: "Test dossier agricole",
-      status: "EN_COURS",
-    },
-  });
-
-  const parent = await db.amendment.create({
-    data: {
-      externalId: `${PFX}2058`,
-      number: "2058",
-      dossierId: dossier.id,
-      status: "ADOPTE",
-      legislature: 17,
-      chamber: "AN",
-      content: "<p>Contenu du parent 2058.</p>",
-      summary: "<p>Expos&#xE9; du parent.</p>",
-    },
-  });
-  const sub = await db.amendment.create({
-    data: {
-      externalId: `${PFX}2368`,
-      number: "2368",
-      dossierId: dossier.id,
-      status: "ADOPTE",
-      legislature: 17,
-      chamber: "AN",
-      content: "<p>Supprime la d&#xE9;rogation aux seuils de qualit&#xE9; de l'eau.</p>",
-      summary: "<p>Le pr&#xE9;sent sous-amendement supprime une exon&#xE9;ration.</p>",
-      parentAmendmentId: parent.id,
-    },
-  });
-  subAmendmentId = sub.id;
-
-  const linkedScrutin = await db.scrutin.create({
-    data: {
-      externalId: `${PFX}S1`,
-      title: "le sous-amendement n° 2368 ...",
-      sourceUrl: "https://www.assemblee-nationale.fr/dyn/17/scrutins/test-pt9-s1",
-      votingDate: new Date(),
-      legislature: 17,
-      chamber: "AN",
-      votesFor: 1,
-      votesAgainst: 0,
-      votesAbstain: 0,
-      result: "ADOPTED",
-      dossierLegislatifId: dossier.id,
-      amendmentLinks: {
-        create: [
-          { amendmentId: sub.id, role: "SUB_AMENDMENT", source: "TITLE_REGEX" },
-          { amendmentId: parent.id, role: "PARENT_AMENDMENT", source: "TITLE_REGEX" },
-        ],
+    const dossier = await db.legislativeDossier.create({
+      data: {
+        externalId: `${PFX}DLR`,
+        slug: `${PFX}dossier`,
+        title: "Test dossier agricole",
+        status: "EN_COURS",
       },
-    },
-  });
-  linkedScrutinId = linkedScrutin.id;
+    });
 
-  const emptyAmd = await db.amendment.create({
-    data: {
-      externalId: `${PFX}EMPTY`,
-      number: "9",
-      dossierId: dossier.id,
-      status: "DEPOSE",
-      legislature: 17,
-      chamber: "AN",
-      content: null,
-      summary: null,
-    },
-  });
-  const emptyScrutin = await db.scrutin.create({
-    data: {
-      externalId: `${PFX}S2`,
-      title: "l'amendement n° 9 ...",
-      sourceUrl: "https://www.assemblee-nationale.fr/dyn/17/scrutins/test-pt9-s2",
-      votingDate: new Date(),
-      legislature: 17,
-      chamber: "AN",
-      votesFor: 1,
-      votesAgainst: 0,
-      votesAbstain: 0,
-      result: "ADOPTED",
-      dossierLegislatifId: dossier.id,
-      amendmentLinks: {
-        create: [{ amendmentId: emptyAmd.id, role: "PRINCIPAL", source: "TITLE_REGEX" }],
+    const parent = await db.amendment.create({
+      data: {
+        externalId: `${PFX}2058`,
+        number: "2058",
+        dossierId: dossier.id,
+        status: "ADOPTE",
+        legislature: 17,
+        chamber: "AN",
+        content: "<p>Contenu du parent 2058.</p>",
+        summary: "<p>Expos&#xE9; du parent.</p>",
       },
-    },
-  });
-  emptyScrutinId = emptyScrutin.id;
+    });
+    const sub = await db.amendment.create({
+      data: {
+        externalId: `${PFX}2368`,
+        number: "2368",
+        dossierId: dossier.id,
+        status: "ADOPTE",
+        legislature: 17,
+        chamber: "AN",
+        content: "<p>Supprime la d&#xE9;rogation aux seuils de qualit&#xE9; de l'eau.</p>",
+        summary: "<p>Le pr&#xE9;sent sous-amendement supprime une exon&#xE9;ration.</p>",
+        parentAmendmentId: parent.id,
+      },
+    });
+    subAmendmentId = sub.id;
 
-  const unlinkedScrutin = await db.scrutin.create({
-    data: {
-      externalId: `${PFX}S3`,
-      title: "le projet de loi agricole ...",
-      sourceUrl: "https://www.assemblee-nationale.fr/dyn/17/scrutins/test-pt9-s3",
-      votingDate: new Date(),
-      legislature: 17,
-      chamber: "AN",
-      votesFor: 1,
-      votesAgainst: 0,
-      votesAbstain: 0,
-      result: "ADOPTED",
-      dossierLegislatifId: dossier.id,
-    },
-  });
-  unlinkedScrutinId = unlinkedScrutin.id;
-});
+    const linkedScrutin = await db.scrutin.create({
+      data: {
+        externalId: `${PFX}S1`,
+        title: "le sous-amendement n° 2368 ...",
+        sourceUrl: "https://www.assemblee-nationale.fr/dyn/17/scrutins/test-pt9-s1",
+        votingDate: new Date(),
+        legislature: 17,
+        chamber: "AN",
+        votesFor: 1,
+        votesAgainst: 0,
+        votesAbstain: 0,
+        result: "ADOPTED",
+        dossierLegislatifId: dossier.id,
+        amendmentLinks: {
+          create: [
+            { amendmentId: sub.id, role: "SUB_AMENDMENT", source: "TITLE_REGEX" },
+            { amendmentId: parent.id, role: "PARENT_AMENDMENT", source: "TITLE_REGEX" },
+          ],
+        },
+      },
+    });
+    linkedScrutinId = linkedScrutin.id;
 
-afterAll(async () => {
-  await db.scrutinAmendment.deleteMany({
-    where: { amendment: { externalId: { startsWith: PFX } } },
-  });
-  await db.scrutinPolicyTitle.deleteMany({
-    where: { scrutin: { externalId: { startsWith: PFX } } },
-  });
-  await db.scrutin.deleteMany({ where: { externalId: { startsWith: PFX } } });
-  await db.amendment.deleteMany({ where: { externalId: { startsWith: PFX } } });
-  await db.legislativeDossier.deleteMany({ where: { externalId: `${PFX}DLR` } });
-  await db.$disconnect();
-});
+    const emptyAmd = await db.amendment.create({
+      data: {
+        externalId: `${PFX}EMPTY`,
+        number: "9",
+        dossierId: dossier.id,
+        status: "DEPOSE",
+        legislature: 17,
+        chamber: "AN",
+        content: null,
+        summary: null,
+      },
+    });
+    const emptyScrutin = await db.scrutin.create({
+      data: {
+        externalId: `${PFX}S2`,
+        title: "l'amendement n° 9 ...",
+        sourceUrl: "https://www.assemblee-nationale.fr/dyn/17/scrutins/test-pt9-s2",
+        votingDate: new Date(),
+        legislature: 17,
+        chamber: "AN",
+        votesFor: 1,
+        votesAgainst: 0,
+        votesAbstain: 0,
+        result: "ADOPTED",
+        dossierLegislatifId: dossier.id,
+        amendmentLinks: {
+          create: [{ amendmentId: emptyAmd.id, role: "PRINCIPAL", source: "TITLE_REGEX" }],
+        },
+      },
+    });
+    emptyScrutinId = emptyScrutin.id;
 
-beforeEach(() => {
-  mockCall.mockReset();
-});
+    const unlinkedScrutin = await db.scrutin.create({
+      data: {
+        externalId: `${PFX}S3`,
+        title: "le projet de loi agricole ...",
+        sourceUrl: "https://www.assemblee-nationale.fr/dyn/17/scrutins/test-pt9-s3",
+        votingDate: new Date(),
+        legislature: 17,
+        chamber: "AN",
+        votesFor: 1,
+        votesAgainst: 0,
+        votesAbstain: 0,
+        result: "ADOPTED",
+        dossierLegislatifId: dossier.id,
+      },
+    });
+    unlinkedScrutinId = unlinkedScrutin.id;
+  });
 
-describe("generateScrutinPolicyTitle", () => {
+  afterAll(async () => {
+    await db.scrutinAmendment.deleteMany({
+      where: { amendment: { externalId: { startsWith: PFX } } },
+    });
+    await db.scrutinPolicyTitle.deleteMany({
+      where: { scrutin: { externalId: { startsWith: PFX } } },
+    });
+    await db.scrutin.deleteMany({ where: { externalId: { startsWith: PFX } } });
+    await db.amendment.deleteMany({ where: { externalId: { startsWith: PFX } } });
+    await db.legislativeDossier.deleteMany({ where: { externalId: `${PFX}DLR` } });
+  });
+
+  beforeEach(() => {
+    mockCall.mockReset();
+  });
+
   it("happy path → DRAFT row, generationSource LLM, grounded title", async () => {
     mockCall.mockResolvedValue(
       mistralResponse(goodLlmJson.replace("WILL_REPLACE", subAmendmentId))
@@ -304,8 +304,9 @@ describe("generateScrutinPolicyTitle", () => {
   });
 });
 
-describe("assertNotApprovedByGenerator", () => {
-  it("throws if status APPROVED", () => {
+describeIfDb("assertNotApprovedByGenerator", () => {
+  it("throws if status APPROVED", async () => {
+    const { assertNotApprovedByGenerator } = await import("@/services/scrutin-policy-title");
     expect(() => assertNotApprovedByGenerator("APPROVED")).toThrow();
     expect(() => assertNotApprovedByGenerator("DRAFT")).not.toThrow();
   });

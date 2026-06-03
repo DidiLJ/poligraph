@@ -82,6 +82,21 @@ export interface GenerateOptions {
   verbose?: boolean;
 }
 
+/** Debug payload attached to a GenerateResult only when `opts.verbose`. Carries
+ *  the extra context the debug script prints (officialTitle, links, evidence)
+ *  that the lean result does not normally need. */
+export interface GenerateResultDebug {
+  officialTitle: string;
+  officialSourceUrl: string | null;
+  proceduralLabel: string;
+  links: { role: string; amendmentNumber: string; amendmentId: string }[];
+  substanceDepth: SubstanceDepth | null;
+  evidenceQuotes: EvidenceQuote[];
+  confidence: "HIGH" | "MEDIUM" | "LOW" | null;
+  prompt?: { system: string; user: string };
+  rawLlmText?: string;
+}
+
 export interface GenerateResult {
   scrutinId: string;
   outcome: "generated" | "fallback" | "skipped";
@@ -92,6 +107,7 @@ export interface GenerateResult {
   written: boolean; // true only on a real (non-dryRun) write
   skipReason?: string; // "ROW_EXISTS" | "NO_LINKED_AMENDMENT" | "OUT_OF_SCOPE"
   warnings: GenerationWarning[];
+  debug?: GenerateResultDebug; // populated ONLY when opts.verbose
 }
 
 export interface GeneratePolicyTitlesStats {

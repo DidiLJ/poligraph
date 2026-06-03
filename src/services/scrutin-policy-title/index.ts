@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { callMistral, extractMistralText } from "@/lib/api/mistral";
 import { resolveSubstanceSources } from "./substance-resolver";
 import { extractEvidenceCandidates } from "./evidence-extractor";
-import { computeInputHash } from "./input-hash";
+import { computeInputHash, type InputHashInput } from "./input-hash";
 import { buildPrompt, PROMPT_VERSION } from "./prompt";
 import { parsePolicyTitleOutput } from "./parse-output";
 import { runValidators } from "./validators";
@@ -10,6 +10,7 @@ import { deriveConfidence, deriveStatus } from "./confidence";
 import type {
   GenerateOptions,
   GenerateResult,
+  GenerateResultDebug,
   GenerationWarning,
   PolicyTitleOutput,
   QualitySignals,
@@ -58,6 +59,35 @@ export function proceduralLabel(links: ScrutinAmendmentLink[]): string {
   const principal = links.find((l) => l.role === "PRINCIPAL" || l.role === "PARENT_AMENDMENT");
   if (principal) return `Amendement n°${principal.amendment.number}`;
   return "Scrutin";
+}
+
+/**
+ * Assembles the exact InputHashInput shape fed to `computeInputHash`. Shared by
+ * the orchestrator AND the STALE detector (`detect-stale-policy-titles.ts`) so
+ * both compute identical hashes from the same scrutin + resolved blocks. Any
+ * drift here would falsely flag every APPROVED row STALE.
+ */
+export function buildInputHashInput(
+  scrutin: Pick<LoadedScrutin, "title" | "sourceUrl" | "amendmentLinks">,
+  label: string,
+  blocks: SubstanceTextBlock[]
+): InputHashInput {
+  return {
+    scrutinTitle: scrutin.title,
+    scrutinSourceUrl: scrutin.sourceUrl,
+    proceduralLabel: label,
+    links: scrutin.amendmentLinks.map((l) => ({
+      amendmentId: l.amendment.id,
+      amendmentNumber: l.amendment.number,
+      role: l.role,
+    })),
+    sources: blocks.map((b) => ({
+      sourceType: b.sourceType,
+      sourceId: b.sourceId,
+      field: b.field,
+      text: b.text,
+    })),
+  };
 }
 
 function modelVersionString(opts: GenerateOptions): string {
@@ -234,16 +264,13 @@ export async function generateScrutinPolicyTitle(
       modelVersion,
       promptVersion,
       blocks: [],
-      inputHash: computeInputHash({
-        scrutinTitle: scrutin.title,
-        scrutinSourceUrl: scrutin.sourceUrl,
-        proceduralLabel: label,
-        links: [],
-        sources: [],
-      }),
+      inputHash: computeInputHash(
+        buildInputHashInput({ ...scrutin, amendmentLinks: [] }, label, [])
+      ),
       warnings: [warning],
       dryRun,
       force,
+      verbose: opts.verbose,
     });
   }
 
@@ -266,22 +293,7 @@ export async function generateScrutinPolicyTitle(
 
   // ── Substance ────────────────────────────────────────────────────────────────
   const resolved = await resolveSubstanceSources(scrutinId);
-  const inputHash = computeInputHash({
-    scrutinTitle: scrutin.title,
-    scrutinSourceUrl: scrutin.sourceUrl,
-    proceduralLabel: label,
-    links: scrutin.amendmentLinks.map((l) => ({
-      amendmentId: l.amendment.id,
-      amendmentNumber: l.amendment.number,
-      role: l.role,
-    })),
-    sources: resolved.blocks.map((b) => ({
-      sourceType: b.sourceType,
-      sourceId: b.sourceId,
-      field: b.field,
-      text: b.text,
-    })),
-  });
+  const inputHash = computeInputHash(buildInputHashInput(scrutin, label, resolved.blocks));
 
   if (resolved.blocks.length === 0) {
     const warnings: GenerationWarning[] = resolved.warnings.some(
@@ -306,6 +318,7 @@ export async function generateScrutinPolicyTitle(
       warnings,
       dryRun,
       force,
+      verbose: opts.verbose,
     });
   }
 
@@ -320,6 +333,45 @@ export async function generateScrutinPolicyTitle(
     candidates,
     citizenImpact: scrutin.citizenImpact,
   });
+
+  // ── skipLlm: resolve + build prompt, but never call the model nor write. ─────
+  // Reports a structural "skipped(SKIP_LLM)" with substanceDepth-based confidence
+  // so the debug script can inspect the prepared inputs without spending tokens.
+  if (opts.skipLlm) {
+    const structuralConfidence: "MEDIUM" | "LOW" =
+      resolved.substanceDepth === "subAmendment" || resolved.substanceDepth === "amendment"
+        ? "MEDIUM"
+        : "LOW";
+    return {
+      scrutinId,
+      outcome: "skipped",
+      status: null,
+      confidence: structuralConfidence,
+      policyTitle: null,
+      policySubtitle: null,
+      written: false,
+      skipReason: "SKIP_LLM",
+      warnings: resolved.warnings,
+      ...(opts.verbose
+        ? {
+            debug: {
+              officialTitle: scrutin.title,
+              officialSourceUrl: scrutin.sourceUrl,
+              proceduralLabel: label,
+              links: scrutin.amendmentLinks.map((l) => ({
+                role: l.role,
+                amendmentNumber: l.amendment.number,
+                amendmentId: l.amendment.id,
+              })),
+              substanceDepth: resolved.substanceDepth,
+              evidenceQuotes: candidates,
+              confidence: structuralConfidence,
+              prompt: { system, user },
+            } satisfies GenerateResultDebug,
+          }
+        : {}),
+    };
+  }
 
   const response = await callMistral([{ role: "user", content: user }], {
     system,
@@ -348,6 +400,7 @@ export async function generateScrutinPolicyTitle(
       ],
       dryRun,
       force,
+      verbose: opts.verbose,
     });
   }
 
@@ -414,6 +467,25 @@ export async function generateScrutinPolicyTitle(
     policySubtitle: output.policySubtitle,
     written: !dryRun,
     warnings: flags,
+    ...(opts.verbose
+      ? {
+          debug: {
+            officialTitle: scrutin.title,
+            officialSourceUrl: scrutin.sourceUrl,
+            proceduralLabel: label,
+            links: scrutin.amendmentLinks.map((l) => ({
+              role: l.role,
+              amendmentNumber: l.amendment.number,
+              amendmentId: l.amendment.id,
+            })),
+            substanceDepth: resolved.substanceDepth,
+            evidenceQuotes: output.evidenceQuotes,
+            confidence,
+            prompt: { system, user },
+            rawLlmText: text,
+          } satisfies GenerateResultDebug,
+        }
+      : {}),
   };
 }
 
@@ -427,6 +499,7 @@ interface FallbackArgs {
   warnings: GenerationWarning[];
   dryRun: boolean;
   force: boolean;
+  verbose?: boolean;
 }
 
 async function fallbackResult(args: FallbackArgs): Promise<GenerateResult> {
@@ -471,5 +544,22 @@ async function fallbackResult(args: FallbackArgs): Promise<GenerateResult> {
     policySubtitle: null,
     written: !args.dryRun,
     warnings: args.warnings,
+    ...(args.verbose
+      ? {
+          debug: {
+            officialTitle: args.scrutin.title,
+            officialSourceUrl: args.scrutin.sourceUrl,
+            proceduralLabel: args.label,
+            links: args.scrutin.amendmentLinks.map((l) => ({
+              role: l.role,
+              amendmentNumber: l.amendment.number,
+              amendmentId: l.amendment.id,
+            })),
+            substanceDepth: null,
+            evidenceQuotes: [],
+            confidence,
+          } satisfies GenerateResultDebug,
+        }
+      : {}),
   };
 }

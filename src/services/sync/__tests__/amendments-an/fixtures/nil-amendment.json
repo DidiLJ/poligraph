@@ -1,0 +1,18 @@
+{
+  "amendement": {
+    "uid": "AMANR5L17XXP0D1N000099",
+    "identification": { "numeroLong": "600 (Rect)" },
+    "texteLegislatifRef": "PIONANR5L17B1432",
+    "corps": {
+      "contenuAuteur": {
+        "dispositif": { "@xsi:nil": "true" },
+        "exposeSommaire": { "@xsi:nil": "true" }
+      }
+    },
+    "cycleDeVie": { "sort": { "@xsi:nil": "true" } },
+    "amendementParentRef": { "@xsi:nil": "true" },
+    "discussionIdentique": { "@xsi:nil": "true" },
+    "signataires": { "libelle": "Gouvernement" },
+    "legislature": "17"
+  }
+}

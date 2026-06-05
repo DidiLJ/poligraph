@@ -20,9 +20,27 @@ const RESULT_LABELS: Record<string, string> = {
   REJECTED: "Rejeté",
 };
 
-export function QueueRow({ row }: { row: QueueRowData }) {
+interface QueueRowProps {
+  row: QueueRowData;
+  selected?: boolean;
+  onToggle?: (scrutinId: string, checked: boolean) => void;
+}
+
+export function QueueRow({ row, selected, onToggle }: QueueRowProps) {
   return (
     <tr className="hover:bg-muted/30 transition-colors align-top">
+      {onToggle ? (
+        <td className="px-4 py-3 align-top">
+          <input
+            type="checkbox"
+            checked={selected ?? false}
+            onChange={(e) => onToggle(row.scrutinId, e.target.checked)}
+            aria-label={`Sélectionner le titre du scrutin ${row.scrutinExternalId}`}
+            className="mt-0.5 h-4 w-4"
+          />
+        </td>
+      ) : null}
+
       {/* Meta: externalId · date · proceduralLabel */}
       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
         <div className="font-mono">{row.scrutinExternalId}</div>

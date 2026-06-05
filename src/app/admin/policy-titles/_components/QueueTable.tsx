@@ -1,8 +1,34 @@
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { QueueRow as QueueRowData } from "../_data/queue-query";
 import { QueueRow } from "./QueueRow";
+import { BulkActionsBar } from "./BulkActionsBar";
 
 export function QueueTable({ rows, total }: { rows: QueueRowData[]; total: number }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  function toggle(scrutinId: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(scrutinId);
+      else next.delete(scrutinId);
+      return next;
+    });
+  }
+
+  function toggleAll(checked: boolean) {
+    setSelected(checked ? new Set(rows.map((r) => r.scrutinId)) : new Set());
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  const selectedIds = Array.from(selected);
+  const allChecked = rows.length > 0 && rows.every((r) => selected.has(r.scrutinId));
+
   return (
     <Card>
       <CardContent className="p-0">
@@ -19,6 +45,15 @@ export function QueueTable({ rows, total }: { rows: QueueRowData[]; total: numbe
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
+                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={(e) => toggleAll(e.target.checked)}
+                        aria-label="Tout sélectionner"
+                        className="h-4 w-4"
+                      />
+                    </th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Scrutin</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Titres</th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">Signaux</th>
@@ -27,7 +62,12 @@ export function QueueTable({ rows, total }: { rows: QueueRowData[]; total: numbe
                 </thead>
                 <tbody className="divide-y divide-border">
                   {rows.map((row) => (
-                    <QueueRow key={row.scrutinId} row={row} />
+                    <QueueRow
+                      key={row.scrutinId}
+                      row={row}
+                      selected={selected.has(row.scrutinId)}
+                      onToggle={toggle}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -38,7 +78,7 @@ export function QueueTable({ rows, total }: { rows: QueueRowData[]; total: numbe
               {rows.map((row) => (
                 <table key={row.scrutinId} className="w-full text-sm">
                   <tbody>
-                    <QueueRow row={row} />
+                    <QueueRow row={row} selected={selected.has(row.scrutinId)} onToggle={toggle} />
                   </tbody>
                 </table>
               ))}
@@ -50,6 +90,8 @@ export function QueueTable({ rows, total }: { rows: QueueRowData[]; total: numbe
           </div>
         )}
       </CardContent>
+
+      <BulkActionsBar rows={rows} selectedIds={selectedIds} onClearSelection={clearSelection} />
     </Card>
   );
 }

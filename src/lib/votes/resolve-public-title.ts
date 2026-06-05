@@ -6,7 +6,10 @@ export interface ScrutinForDisplay {
   result: VotingResult;
   chamber: Chamber;
   sourceUrl: string | null;
-  proceduralLabel: string;
+  /** Lives only on ScrutinPolicyTitle, so it is optional here: scrutins without
+   *  a policy row have none, and the procedural chip is then omitted. Sourced by
+   *  toPublicTitleView from the policy relation; never derived from scrutin.type. */
+  proceduralLabel?: string | null;
 }
 export interface PolicyTitleForDisplay {
   status: PolicyTitleStatus;
@@ -30,11 +33,12 @@ export type PublicTitleView =
     };
 
 function buildChips(s: ScrutinForDisplay): Chip[] {
-  return [
-    { kind: "procedural", label: s.proceduralLabel },
-    { kind: "result", result: s.result },
-    { kind: "date", iso: s.votingDate.toISOString() },
-  ];
+  const chips: Chip[] = [];
+  const procedural = s.proceduralLabel?.trim();
+  if (procedural) chips.push({ kind: "procedural", label: procedural });
+  chips.push({ kind: "result", result: s.result });
+  chips.push({ kind: "date", iso: s.votingDate.toISOString() });
+  return chips;
 }
 
 /** The ONLY gate for public display. A generated title is shown publicly IFF the

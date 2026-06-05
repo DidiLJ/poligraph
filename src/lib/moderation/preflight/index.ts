@@ -48,6 +48,28 @@ export async function runPreflight(
     normalizedLastName: p.normalizedLastName ?? p.fullName,
   }));
 
+  // Published affairs of the drafted politicians, for duplicate detection
+  // against the existing catalogue (a draft often duplicates an affair
+  // already published from an earlier sync wave).
+  const draftPoliticianIds = [
+    ...new Set(drafts.map((d) => d.politicianId).filter((id): id is string => Boolean(id))),
+  ];
+  const publishedAffairs = draftPoliticianIds.length
+    ? await db.affair.findMany({
+        where: {
+          politicianId: { in: draftPoliticianIds },
+          publicationStatus: "PUBLISHED",
+        },
+        select: { politicianId: true, title: true },
+      })
+    : [];
+  const publishedTitlesByPolitician = new Map<string, string[]>();
+  for (const affair of publishedAffairs) {
+    const list = publishedTitlesByPolitician.get(affair.politicianId) ?? [];
+    list.push(affair.title);
+    publishedTitlesByPolitician.set(affair.politicianId, list);
+  }
+
   const duplicates = await findPotentialDuplicates();
   const duplicateGroups = buildDuplicateGroups(duplicates);
   const duplicatesByAffair = buildDuplicateIndex(duplicates);
@@ -79,6 +101,7 @@ export async function runPreflight(
         verdictDate: draft.verdictDate?.toISOString() ?? null,
         court: draft.court ?? null,
         sentence: draft.sentence ?? null,
+        existingAffairTitles: publishedTitlesByPolitician.get(draft.politicianId) ?? [],
       });
     } catch (err) {
       console.error(`[preflight] moderateAffair failed for draft ${draft.id}:`, err);
@@ -91,6 +114,7 @@ export async function runPreflight(
         correctedDescription: null,
         correctedStatus: null,
         correctedCategory: null,
+        correctedInvolvement: null,
         model: "fallback",
       };
     }
@@ -121,6 +145,7 @@ export async function runPreflight(
       preflight: {
         moderationRecommendation: mapModerationRec(moderation),
         moderationIssues: moderation.issues,
+        correctedInvolvement: moderation.correctedInvolvement,
         attribution,
         duplicateOf: duplicatesByAffair.get(draft.id) ?? [],
       },

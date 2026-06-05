@@ -42,6 +42,8 @@ export interface ModerationInput {
   court: string | null;
   sentence: string | null;
   existingAffairTitles?: string[];
+  /** ISO date (YYYY-MM-DD) used as "today" for date checks. Defaults to the current date. */
+  today?: string;
 }
 
 export interface ModerationIssue {
@@ -57,6 +59,7 @@ export interface ModerationResult {
   correctedDescription: string | null;
   correctedStatus: string | null;
   correctedCategory: string | null;
+  correctedInvolvement: string | null;
   issues: ModerationIssue[];
   model: string;
 }
@@ -113,6 +116,14 @@ export const AFFAIR_CATEGORIES = [
   "RECEL",
   "CONFLIT_INTERETS",
   "AUTRE",
+] as const;
+
+export const INVOLVEMENTS = [
+  "DIRECT",
+  "INDIRECT",
+  "MENTIONED_ONLY",
+  "VICTIM",
+  "PLAINTIFF",
 ] as const;
 
 export const ISSUE_TYPES = [
@@ -178,6 +189,12 @@ const MODERATION_TOOL = {
         description:
           "Catégorie juridique corrigée si la catégorie actuelle est incorrecte. null si la catégorie est correcte.",
       },
+      corrected_involvement: {
+        type: ["string", "null"],
+        enum: [...INVOLVEMENTS, null],
+        description:
+          "Implication corrigée si l'implication actuelle est incorrecte au vu des sources. Suggérer VICTIM si le politicien est victime des faits, PLAINTIFF s'il est plaignant. null si l'implication est correcte.",
+      },
       issues: {
         type: "array",
         description: "Liste des problèmes détectés dans l'affaire.",
@@ -206,6 +223,7 @@ const MODERATION_TOOL = {
       "corrected_description",
       "corrected_status",
       "corrected_category",
+      "corrected_involvement",
       "issues",
     ],
   },
@@ -218,6 +236,12 @@ const MODERATION_TOOL = {
 const SYSTEM_PROMPT = `Tu es un modérateur juridique pour Poligraph, un projet citoyen de transparence politique. Tu analyses des affaires judiciaires importées automatiquement pour décider si elles peuvent être publiées.
 
 MISSION : Vérifier la qualité des données, la conformité juridique et la fiabilité de chaque affaire AVANT publication.
+
+PÉRIMÈTRE ÉDITORIAL :
+
+- Les affaires où le politicien est MIS EN CAUSE (prévenu, mis en examen, condamné) sont le cœur du périmètre
+- Les affaires où le politicien est VICTIME ou PLAIGNANT sont AUSSI dans le périmètre éditorial. Ne JAMAIS recommander REJECT au seul motif que le politicien est victime ou plaignant
+- Si l'implication renseignée est incorrecte (ex. MENTIONED_ONLY alors que les sources montrent que le politicien est victime des faits ou a déposé plainte), proposer corrected_involvement (VICTIM ou PLAINTIFF) au lieu de rejeter
 
 RÈGLES STRICTES — SÉCURITÉ JURIDIQUE :
 
@@ -241,7 +265,7 @@ REJECT :
 - Ce n'est pas une vraie affaire judiciaire (rumeur, polémique politique sans dimension judiciaire)
 - Données manifestement insuffisantes (pas de source, description vide ou incohérente)
 - Doublon évident d'une affaire existante
-- Le politicien n'est clairement pas impliqué (simple mention ou homonyme)
+- Le politicien n'est ni mis en cause, ni victime, ni plaignant (simple mention contextuelle ou homonyme)
 
 NEEDS_REVIEW :
 - Catégorie sensible (AGRESSION_SEXUELLE, HARCELEMENT_SEXUEL, VIOLENCE) — TOUJOURS
@@ -265,12 +289,14 @@ NETTOYAGE DE LA DESCRIPTION :
 IMPLICATION DU POLITICIEN :
 - VICTIM et PLAINTIFF : ces affaires présentent MOINS de risque juridique car le politicien n'est pas mis en cause. Être plus souple sur la recommandation PUBLISH pour ces cas
 - DIRECT : risque de diffamation maximal, vérification stricte
-- INDIRECT et MENTIONED_ONLY : vérifier que l'implication est correctement qualifiée
+- INDIRECT et MENTIONED_ONLY : vérifier que l'implication est correctement qualifiée et proposer corrected_involvement si elle est fausse
 
 VÉRIFICATION DES DATES :
-- factsDate doit être antérieure à startDate (les faits précèdent la médiatisation)
+- Le message fournit la « Date du jour » : comparer TOUTE date à cette référence, JAMAIS à tes connaissances internes
+- Une date antérieure ou égale à la date du jour n'est PAS une date future
+- factsDate doit être antérieure ou égale à startDate (les faits précèdent la médiatisation)
 - verdictDate doit être postérieure à factsDate
-- Si les dates sont incohérentes, signaler INVALID_DATES
+- Si les dates sont incohérentes entre elles ou réellement postérieures à la date du jour, signaler INVALID_DATES
 
 DÉTECTION DE DOUBLONS :
 - Si la liste d'affaires existantes du même politicien contient un titre similaire, signaler POSSIBLE_DUPLICATE`;
@@ -284,8 +310,11 @@ DÉTECTION DE DOUBLONS :
  * Returns a structured recommendation (PUBLISH / REJECT / NEEDS_REVIEW).
  */
 export async function moderateAffair(input: ModerationInput): Promise<ModerationResult> {
+  const today = input.today ?? new Date().toISOString().slice(0, 10);
+
   // Build user message with all affair data
-  let userContent = `Modère cette affaire judiciaire :\n`;
+  let userContent = `Date du jour : ${today}\n`;
+  userContent += `\nModère cette affaire judiciaire :\n`;
   userContent += `\nPoliticien : ${input.politicianName} (slug: ${input.politicianSlug})`;
   userContent += `\nTitre : ${input.title}`;
   userContent += `\nDescription : ${input.description}`;
@@ -368,6 +397,13 @@ export async function moderateAffair(input: ModerationInput): Promise<Moderation
         null as unknown as (typeof AFFAIR_CATEGORIES)[number]
       )
     : null;
+  const correctedInvolvement = result.corrected_involvement
+    ? validateEnum(
+        result.corrected_involvement as string,
+        INVOLVEMENTS,
+        null as unknown as (typeof INVOLVEMENTS)[number]
+      )
+    : null;
 
   const issues: ModerationIssue[] = Array.isArray(result.issues)
     ? result.issues
@@ -410,6 +446,7 @@ export async function moderateAffair(input: ModerationInput): Promise<Moderation
     correctedDescription,
     correctedStatus,
     correctedCategory,
+    correctedInvolvement,
     issues,
     model: MODEL,
   };

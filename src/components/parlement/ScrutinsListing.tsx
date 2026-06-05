@@ -337,6 +337,7 @@ export async function ScrutinsListing({ searchParams: params }: ScrutinsListingP
                 theme={scrutin.theme}
                 type={scrutin.type}
                 dossier={scrutin.dossierLegislatif}
+                policy={scrutin.policyTitle}
               />
             ))}
           </div>

@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { VotingResultBadge } from "./VoteBadge";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
 import { Calendar, Star } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { VotingResult, ThemeCategory } from "@/types";
+import {
+  toPublicTitleView,
+  displayTitleOf,
+  type PolicyForView,
+} from "@/lib/votes/to-public-title-view";
 
 interface KeyVoteCardProps {
   id: string;
@@ -19,6 +25,7 @@ interface KeyVoteCardProps {
   summary: string | null;
   citizenImpact: string | null;
   isKeyVote?: boolean;
+  policy?: PolicyForView | null;
 }
 
 export function KeyVoteCard({
@@ -34,8 +41,20 @@ export function KeyVoteCard({
   summary,
   citizenImpact,
   isKeyVote = true,
+  policy,
 }: KeyVoteCardProps) {
   const href = `/parlement/votes/${slug || id}`;
+  // Public title: policy iff APPROVED + valid, else official (no leak).
+  const view = toPublicTitleView({
+    title,
+    votingDate: new Date(votingDate),
+    result,
+    chamber: "AN",
+    sourceUrl: null,
+    policyTitle: policy ?? null,
+  });
+  const heading = displayTitleOf(view);
+  const isPolicy = view.mode === "policy";
   const total = votesFor + votesAgainst + votesAbstain;
   const forPct = total > 0 ? (votesFor / total) * 100 : 0;
   const againstPct = total > 0 ? (votesAgainst / total) * 100 : 0;
@@ -53,7 +72,14 @@ export function KeyVoteCard({
         )}
 
         <Link href={href} prefetch={false} className="hover:underline">
-          <p className="font-medium text-sm line-clamp-2 mb-2">{title}</p>
+          <p className="font-medium text-sm line-clamp-2 mb-2">
+            {heading}
+            {isPolicy && (
+              <Badge variant="accent" className="ml-1.5 align-middle text-[10px] font-medium">
+                Titre explicatif
+              </Badge>
+            )}
+          </p>
         </Link>
 
         {(citizenImpact || summary) && (

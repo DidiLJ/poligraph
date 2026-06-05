@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { VotingResultBadge } from "./VoteBadge";
+import {
+  toPublicTitleView,
+  displayTitleOf,
+  type PolicyForView,
+} from "@/lib/votes/to-public-title-view";
 import { formatDate } from "@/lib/utils";
 import type { VotingResult, Chamber, ThemeCategory, ScrutinType } from "@/types";
 import {
@@ -30,6 +36,9 @@ interface VoteCardProps {
   theme?: ThemeCategory | null;
   type?: ScrutinType | null;
   dossier?: { title: string; slug: string | null } | null;
+  /** Plan 6: the joined policy-title row. When APPROVED + valid, the card shows
+   *  the policy title + "Titre explicatif" badge; otherwise the official title. */
+  policy?: PolicyForView | null;
 }
 
 function extractScrutinNumber(externalId: string): string | null {
@@ -57,9 +66,22 @@ export function VoteCard({
   theme,
   type,
   dossier,
+  policy,
 }: VoteCardProps) {
   // Use slug for URL if available, fallback to id
   const href = `/parlement/votes/${slug || id}`;
+  // Public title: policy iff APPROVED + valid, else official (no leak). The card
+  // keeps its own date/result/theme chrome, so no chips are rendered here.
+  const view = toPublicTitleView({
+    title,
+    votingDate: new Date(votingDate),
+    result,
+    chamber: chamber ?? "AN",
+    sourceUrl: sourceUrl ?? null,
+    policyTitle: policy ?? null,
+  });
+  const heading = displayTitleOf(view);
+  const isPolicy = view.mode === "policy";
   const scrutinNumber = extractScrutinNumber(externalId);
   const total = votesFor + votesAgainst + votesAbstain;
   const forPercent = total > 0 ? (votesFor / total) * 100 : 0;
@@ -78,7 +100,12 @@ export function VoteCard({
                     Scrutin n°{scrutinNumber}
                   </span>
                 )}
-                {title}
+                {heading}
+                {isPolicy && (
+                  <Badge variant="accent" className="ml-1.5 align-middle text-[10px] font-medium">
+                    Titre explicatif
+                  </Badge>
+                )}
               </p>
             </Link>
             <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">

@@ -131,6 +131,7 @@ export default async function GroupeDetailPage({ params }: PageProps) {
                 result={gp.scrutin.result}
                 sourceUrl={null}
                 theme={gp.scrutin.theme}
+                policy={gp.scrutin.policyTitle}
               />
             ))}
           </div>

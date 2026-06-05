@@ -190,6 +190,7 @@ function ChamberSection({ chamber, scrutins }: { chamber: Chamber; scrutins: Dai
               sourceUrl={s.sourceUrl}
               theme={s.theme}
               type={s.type}
+              policy={s.policyTitle}
             />
             {s.summary && <SummaryExcerpt summary={s.summary} />}
           </div>

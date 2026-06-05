@@ -36,6 +36,7 @@ export const DraftCandidateSchema = z.object({
   preflight: z.object({
     moderationRecommendation: ModerationRecommendationSchema,
     moderationIssues: z.array(ModerationIssueSchema),
+    correctedInvolvement: z.string().nullable(),
     attribution: AttributionAuditSchema,
     duplicateOf: z.array(z.string()),
   }),

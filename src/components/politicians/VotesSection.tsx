@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { VOTE_POSITION_DOT_COLORS } from "@/config/labels";
 import { VotePositionBadge, ParliamentaryCard } from "@/components/votes";
+import {
+  toPublicTitleView,
+  displayTitleOf,
+  type PolicyForView,
+} from "@/lib/votes/to-public-title-view";
+import type { VotingResult } from "@/generated/prisma";
 import type { PoliticianVotingStats } from "@/services/voteStats";
 import type { PoliticianParliamentaryCardData } from "@/services/voteStats";
 import type { PoliticianThemeDistribution } from "@/services/voteStats";
@@ -20,6 +27,7 @@ interface VotesSectionProps {
         title: string;
         votingDate: Date | null;
         result: string | null;
+        policyTitle: PolicyForView | null;
       };
     }[];
   };
@@ -162,21 +170,40 @@ export function VotesSection({
               <div>
                 <p className="text-sm font-medium mb-2">Derniers votes</p>
                 <div className="space-y-2">
-                  {voteData.recentVotes.map((vote) => (
-                    <div key={vote.id} className="flex items-start gap-2 text-sm">
-                      <span
-                        className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${VOTE_POSITION_DOT_COLORS[vote.position]}`}
-                      />
-                      <Link
-                        href={`/parlement/votes/${vote.scrutin.id}`}
-                        prefetch={false}
-                        className="flex-1 hover:underline"
-                      >
-                        {vote.scrutin.title}
-                      </Link>
-                      <VotePositionBadge position={vote.position} size="sm" />
-                    </div>
-                  ))}
+                  {voteData.recentVotes.map((vote) => {
+                    // Public title: policy iff APPROVED + valid, else official (no leak).
+                    const view = toPublicTitleView({
+                      title: vote.scrutin.title,
+                      votingDate: vote.scrutin.votingDate ?? new Date(0),
+                      result: (vote.scrutin.result as VotingResult) ?? "ADOPTED",
+                      chamber: "AN",
+                      sourceUrl: null,
+                      policyTitle: vote.scrutin.policyTitle,
+                    });
+                    return (
+                      <div key={vote.id} className="flex items-start gap-2 text-sm">
+                        <span
+                          className={`w-2 h-2 mt-1.5 shrink-0 rounded-full ${VOTE_POSITION_DOT_COLORS[vote.position]}`}
+                        />
+                        <Link
+                          href={`/parlement/votes/${vote.scrutin.id}`}
+                          prefetch={false}
+                          className="flex-1 hover:underline"
+                        >
+                          {displayTitleOf(view)}
+                          {view.mode === "policy" && (
+                            <Badge
+                              variant="accent"
+                              className="ml-1.5 align-middle text-[10px] font-medium"
+                            >
+                              Titre explicatif
+                            </Badge>
+                          )}
+                        </Link>
+                        <VotePositionBadge position={vote.position} size="sm" />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

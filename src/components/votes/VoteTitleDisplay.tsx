@@ -5,6 +5,11 @@ import type { VotingResult } from "@/generated/prisma";
 interface VoteTitleDisplayProps {
   view: PublicTitleView;
   variant: "card" | "detail" | "preview";
+  /** Host cards already render date/result chrome, so they pass false to avoid
+   *  duplicating the chip row. Default true (detail/preview show chips). */
+  showChips?: boolean;
+  /** The "Titre officiel" disclosure (policy mode only). Default true. */
+  showOfficialDisclosure?: boolean;
 }
 
 function resultLabel(result: VotingResult): string {
@@ -41,7 +46,12 @@ function ChipRow({ chips }: { chips: Chip[] }) {
   );
 }
 
-export function VoteTitleDisplay({ view, variant }: VoteTitleDisplayProps) {
+export function VoteTitleDisplay({
+  view,
+  variant,
+  showChips = true,
+  showOfficialDisclosure = true,
+}: VoteTitleDisplayProps) {
   if (view.mode === "policy") {
     return (
       <div data-variant={variant} data-mode="policy">
@@ -52,11 +62,13 @@ export function VoteTitleDisplay({ view, variant }: VoteTitleDisplayProps) {
         {view.policySubtitle ? (
           <p className="mt-1 text-sm text-muted-foreground">{view.policySubtitle}</p>
         ) : null}
-        <ChipRow chips={view.chips} />
-        <details className="mt-2 text-sm">
-          <summary className="cursor-pointer text-muted-foreground">Titre officiel</summary>
-          <p className="mt-1">{view.officialTitle}</p>
-        </details>
+        {showChips ? <ChipRow chips={view.chips} /> : null}
+        {showOfficialDisclosure ? (
+          <details className="mt-2 text-sm">
+            <summary className="cursor-pointer text-muted-foreground">Titre officiel</summary>
+            <p className="mt-1">{view.officialTitle}</p>
+          </details>
+        ) : null}
       </div>
     );
   }
@@ -64,7 +76,7 @@ export function VoteTitleDisplay({ view, variant }: VoteTitleDisplayProps) {
   return (
     <div data-variant={variant} data-mode="official">
       <h3 className="font-semibold">{view.officialTitle}</h3>
-      <ChipRow chips={view.chips} />
+      {showChips ? <ChipRow chips={view.chips} /> : null}
     </div>
   );
 }

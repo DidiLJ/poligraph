@@ -1,4 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Mock db so the module can be imported without a database connection
+// (sameCategoryFamily is pure, but matching.ts imports @/lib/db at module level).
+vi.mock("@/lib/db", () => ({ db: {} }));
+
+import { sameCategoryFamily } from "./matching";
 
 // We need to test the normalizeAffairTitle function indirectly since it's private.
 // Instead, we test the exported behavior by importing and calling it via a test helper.
@@ -75,5 +81,35 @@ describe("normalizeAffairTitle", () => {
 
   it("works without politician name", () => {
     expect(normalizeAffairTitle("Fraude fiscale")).toBe("fraude fiscale");
+  });
+});
+
+describe("sameCategoryFamily", () => {
+  it("matches identical categories", () => {
+    expect(sameCategoryFamily("MENACE", "MENACE")).toBe(true);
+  });
+
+  it("matches sibling categories within the probity family", () => {
+    expect(sameCategoryFamily("DETOURNEMENT_FONDS_PUBLICS", "FAVORITISME")).toBe(true);
+    expect(sameCategoryFamily("CONFLIT_INTERETS", "PRISE_ILLEGALE_INTERETS")).toBe(true);
+  });
+
+  it("matches sibling categories within the persons family", () => {
+    expect(sameCategoryFamily("VIOLENCE", "MENACE")).toBe(true);
+    expect(sameCategoryFamily("AGRESSION_SEXUELLE", "HARCELEMENT_SEXUEL")).toBe(true);
+  });
+
+  it("treats AUTRE as a wildcard", () => {
+    expect(sameCategoryFamily("AUTRE", "DETOURNEMENT_FONDS_PUBLICS")).toBe(true);
+    expect(sameCategoryFamily("MENACE", "AUTRE")).toBe(true);
+  });
+
+  it("rejects categories from different families", () => {
+    expect(sameCategoryFamily("MENACE", "FRAUDE_FISCALE")).toBe(false);
+    expect(sameCategoryFamily("DIFFAMATION", "VIOLENCE")).toBe(false);
+  });
+
+  it("rejects unknown categories that are not AUTRE", () => {
+    expect(sameCategoryFamily("UNKNOWN_A", "UNKNOWN_B")).toBe(false);
   });
 });

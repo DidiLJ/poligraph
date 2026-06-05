@@ -25,6 +25,7 @@ import { ScrutinContext } from "@/components/votes/ScrutinContext";
 import type { VotePosition } from "@/types";
 import { SITE_URL } from "@/config/site";
 import { ShareBar } from "@/components/ui/ShareBar";
+import { toPublicTitleView } from "@/lib/votes/to-public-title-view";
 
 // Matches bare YYYY-MM-DD (never collides with scrutin slugs which are YYYY-MM-DD-title)
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -103,6 +104,16 @@ const getScrutinWithRedirect = cache(async function getScrutinWithRedirect(slugO
       },
     },
     importance: { select: { isKeyVote: true } },
+    // Plan 6: public policy title (shown only when APPROVED + valid).
+    policyTitle: {
+      select: {
+        status: true,
+        policyTitle: true,
+        policySubtitle: true,
+        officialSourceUrl: true,
+        proceduralLabel: true,
+      },
+    },
   } as const;
 
   // 1. Try by slug first (canonical URL - most common case)
@@ -189,11 +200,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const total = scrutin.votesFor + scrutin.votesAgainst + scrutin.votesAbstain;
   const isThinContent = !scrutin.summary && total === 0;
 
+  // Public title: policy title iff APPROVED + valid, else official (no leak).
+  const view = toPublicTitleView(scrutin);
+  const displayTitle = view.mode === "policy" ? view.policyTitle : view.officialTitle;
+
   const scrutinNumber = extractScrutinNumber(scrutin.externalId);
   const chamberLabel = scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat";
   const seoTitle = scrutinNumber
-    ? `Scrutin n° ${scrutinNumber} ${chamberLabel} - ${scrutin.title}`
-    : scrutin.title;
+    ? `Scrutin n° ${scrutinNumber} ${chamberLabel} - ${displayTitle}`
+    : displayTitle;
 
   return {
     title: seoTitle,
@@ -250,7 +265,12 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
   const againstPercent = total > 0 ? (scrutin.votesAgainst / total) * 100 : 0;
   const abstainPercent = total > 0 ? (scrutin.votesAbstain / total) * 100 : 0;
 
-  // Motion de censure: special threshold-based display (289 = absolute majority of 577 deputies)
+  // Public title: policy title iff APPROVED + valid, else official (no leak).
+  const view = toPublicTitleView(scrutin);
+  const displayTitle = view.mode === "policy" ? view.policyTitle : view.officialTitle;
+
+  // Motion de censure: special threshold-based display (289 = absolute majority of 577 deputies).
+  // Detected against the OFFICIAL title (logic, not display).
   const isMotionDeCensure = /motion\s+de\s+censure/i.test(scrutin.title);
   const CENSURE_THRESHOLD = 289;
 
@@ -258,7 +278,7 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
     <>
       {scrutin.summary && (
         <ArticleJsonLd
-          headline={scrutin.title}
+          headline={displayTitle}
           description={scrutin.citizenImpact?.replace(/\*\*/g, "").split(/[.!?]\s/)[0] || undefined}
           datePublished={scrutin.votingDate.toISOString()}
           url={`${SITE_URL}/parlement/votes/${scrutin.slug}`}
@@ -267,8 +287,8 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
       )}
       <ShareBar
         data={{
-          title: scrutin.title,
-          text: `${formatExternalId(scrutin.externalId, scrutin.chamber)} : ${scrutin.title} (${scrutin.result === "ADOPTED" ? "Adopté" : "Rejeté"}, ${scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat"})`,
+          title: displayTitle,
+          text: `${formatExternalId(scrutin.externalId, scrutin.chamber)} : ${displayTitle} (${scrutin.result === "ADOPTED" ? "Adopté" : "Rejeté"}, ${scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat"})`,
           url: `${SITE_URL}/parlement/votes/${scrutin.slug}`,
         }}
       />
@@ -292,10 +312,29 @@ export default async function ScrutinPage({ params, searchParams }: PageProps) {
                 {" · "}
                 {scrutin.chamber === "AN" ? "Assemblée nationale" : "Sénat"}
               </span>
-              {scrutin.title}
+              <span className="inline-flex flex-wrap items-center gap-2 align-middle">
+                {displayTitle}
+                {view.mode === "policy" ? (
+                  <Badge variant="accent" className="align-middle text-xs font-medium">
+                    Titre explicatif
+                  </Badge>
+                ) : null}
+              </span>
             </h1>
             <VotingResultBadge result={scrutin.result} />
           </div>
+
+          {view.mode === "policy" ? (
+            <div className="mb-4">
+              {view.policySubtitle ? (
+                <p className="text-base text-muted-foreground">{view.policySubtitle}</p>
+              ) : null}
+              <details className="mt-2 text-sm">
+                <summary className="cursor-pointer text-muted-foreground">Titre officiel</summary>
+                <p className="mt-1">{view.officialTitle}</p>
+              </details>
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             {scrutin.type && scrutin.type !== "AUTRE" && (

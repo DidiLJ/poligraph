@@ -18,6 +18,7 @@ import type {
   SubstanceTextBlock,
 } from "@/services/scrutin-policy-title/types";
 import { queryQueue, type QueueFilters } from "@/app/admin/policy-titles/_data/queue-query";
+import { themeToSlug } from "@/lib/theme-utils";
 import { ApproveBlockedError } from "@/app/admin/policy-titles/errors";
 import type { Prisma, ScrutinPolicyTitle } from "@/generated/prisma";
 
@@ -113,6 +114,27 @@ function revalidate(scrutinId: string): void {
   revalidatePath(`/admin/policy-titles/${scrutinId}`);
 }
 
+/**
+ * Plan 6 V1 (path-based): revalidate the public surfaces a title appears on after
+ * a status/title change, so an approval becomes visible and a reject/regenerate
+ * hides it. Covers vote detail + list + theme + (when spotlight-eligible) home.
+ * Politician vote tabs intentionally refresh on their own ISR interval (V1).
+ */
+async function revalidatePublicForScrutin(scrutinId: string): Promise<void> {
+  const scrutin = await db.scrutin.findUnique({
+    where: { id: scrutinId },
+    select: { slug: true, theme: true, importance: { select: { isKeyVote: true } } },
+  });
+  if (!scrutin) return;
+  if (scrutin.slug) revalidatePath(`/parlement/votes/${scrutin.slug}`);
+  revalidatePath("/parlement/votes");
+  if (scrutin.theme) revalidatePath(`/parlement/votes/themes/${themeToSlug(scrutin.theme)}`);
+  if (scrutin.importance?.isKeyVote) {
+    revalidatePath("/");
+    revalidatePath("/parlement");
+  }
+}
+
 function asJson(value: unknown): Prisma.InputJsonValue {
   return value as unknown as Prisma.InputJsonValue;
 }
@@ -164,6 +186,8 @@ export async function editScrutinPolicyTitle(
   });
 
   revalidate(scrutinId);
+  // An edit to an APPROVED row changes what the public sees.
+  if (row.status === "APPROVED") await revalidatePublicForScrutin(scrutinId);
 }
 
 /** True when the row is REJECTED and its most-recent revision is a rejection. */
@@ -241,6 +265,7 @@ export async function approveScrutinPolicyTitle(scrutinId: string): Promise<void
 
   await persistApproval({ ctx });
   revalidate(scrutinId);
+  await revalidatePublicForScrutin(scrutinId);
 }
 
 /**
@@ -278,6 +303,7 @@ export async function approveWithOverrideScrutinPolicyTitle(
 
   await persistApproval({ ctx, approvalOverride: { reason: trimmed, actor: ACTOR } });
   revalidate(scrutinId);
+  await revalidatePublicForScrutin(scrutinId);
 }
 
 /**
@@ -343,6 +369,8 @@ export async function rejectScrutinPolicyTitle(scrutinId: string, reason: string
   });
 
   revalidate(scrutinId);
+  // A reject can hide a previously-approved title.
+  if (row.status === "APPROVED") await revalidatePublicForScrutin(scrutinId);
 }
 
 /**
@@ -356,6 +384,9 @@ export async function regenerateScrutinPolicyTitle(scrutinId: string): Promise<v
 
   const row = await db.scrutinPolicyTitle.findUnique({ where: { scrutinId } });
   if (!row) throw new Error(`Aucun titre public pour le scrutin ${scrutinId}`);
+  // Regeneration cannot leave a row APPROVED; if it WAS approved, the public title
+  // must be hidden afterwards.
+  const wasApproved = row.status === "APPROVED";
 
   await db.$transaction(async (tx) => {
     await tx.scrutinPolicyTitleRevision.create({
@@ -389,6 +420,7 @@ export async function regenerateScrutinPolicyTitle(scrutinId: string): Promise<v
   }
 
   revalidate(scrutinId);
+  if (wasApproved) await revalidatePublicForScrutin(scrutinId);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -485,6 +517,7 @@ export async function batchApprove(scrutinIds: string[]): Promise<BatchApproveRe
   for (const ctx of contexts) {
     await persistApproval({ ctx });
     revalidate(ctx.scrutin.id);
+    await revalidatePublicForScrutin(ctx.scrutin.id);
   }
 
   return { approved: contexts.length, failures: [] };

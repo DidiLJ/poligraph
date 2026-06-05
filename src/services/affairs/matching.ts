@@ -11,6 +11,62 @@ import type { AffairCategory } from "@/generated/prisma";
 
 export type MatchConfidence = "CERTAIN" | "HIGH" | "POSSIBLE";
 
+/**
+ * Category families for fuzzy duplicate clustering.
+ * Affairs from the same news event are often imported with sibling categories
+ * (e.g. DETOURNEMENT_FONDS_PUBLICS vs FAVORITISME vs CONFLIT_INTERETS for the
+ * same probity investigation), so duplicate detection compares families
+ * rather than exact categories. AUTRE acts as a wildcard.
+ */
+const CATEGORY_FAMILIES: Record<string, string[]> = {
+  probite: [
+    "CORRUPTION",
+    "CORRUPTION_PASSIVE",
+    "TRAFIC_INFLUENCE",
+    "PRISE_ILLEGALE_INTERETS",
+    "FAVORITISME",
+    "DETOURNEMENT_FONDS_PUBLICS",
+    "EMPLOI_FICTIF",
+    "CONFLIT_INTERETS",
+    "RECEL",
+    "ABUS_BIENS_SOCIAUX",
+    "ABUS_CONFIANCE",
+    "BLANCHIMENT",
+    "FRAUDE_FISCALE",
+    "FINANCEMENT_ILLEGAL_CAMPAGNE",
+    "FINANCEMENT_ILLEGAL_PARTI",
+    "FAUX_ET_USAGE_FAUX",
+  ],
+  personnes: [
+    "VIOLENCE",
+    "MENACE",
+    "AGRESSION_SEXUELLE",
+    "HARCELEMENT_SEXUEL",
+    "HARCELEMENT_MORAL",
+  ],
+  expression: ["DIFFAMATION", "INJURE", "INCITATION_HAINE"],
+};
+
+function categoryFamily(category: string): string | null {
+  for (const [family, categories] of Object.entries(CATEGORY_FAMILIES)) {
+    if (categories.includes(category)) return family;
+  }
+  return null;
+}
+
+/**
+ * Check whether two affair categories belong to the same family.
+ * AUTRE matches any family (imports frequently fall back to AUTRE
+ * when the legal qualification is unclear).
+ */
+export function sameCategoryFamily(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a === "AUTRE" || b === "AUTRE") return true;
+  const familyA = categoryFamily(a);
+  const familyB = categoryFamily(b);
+  return familyA !== null && familyA === familyB;
+}
+
 export interface MatchResult {
   affairId: string;
   confidence: MatchConfidence;

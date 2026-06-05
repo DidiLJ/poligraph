@@ -2,6 +2,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import type { Chamber, VotingResult, ThemeCategory, ScrutinType } from "@/generated/prisma";
 import { KEY_VOTES_HUB_WINDOW_DAYS, KEY_VOTES_GRID_COUNT } from "@/config/scrutin-importance";
+import type { PolicyForView } from "@/lib/votes/to-public-title-view";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,6 +25,7 @@ export interface DailyScrutin {
   type: ScrutinType | null;
   summary: string | null;
   citizenImpact: string | null;
+  policyTitle: PolicyForView | null;
 }
 
 export interface DailyVotesData {
@@ -68,6 +70,16 @@ const DAILY_SELECT = {
   type: true,
   summary: true,
   citizenImpact: true,
+  // Plan 6: public policy title (shown only when APPROVED + valid, via resolvePublicTitle).
+  policyTitle: {
+    select: {
+      status: true,
+      policyTitle: true,
+      policySubtitle: true,
+      officialSourceUrl: true,
+      proceduralLabel: true,
+    },
+  },
 } as const;
 
 // ---------------------------------------------------------------------------

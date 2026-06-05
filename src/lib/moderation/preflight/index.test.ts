@@ -41,31 +41,37 @@ describe("runPreflight", () => {
   });
 
   it("aggregates moderation, attribution, and duplicates per draft", async () => {
-    (db.affair.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        id: "a1",
-        title: "Affaire François Fillon",
-        description: "Le député François Fillon...",
-        publicationStatus: "DRAFT",
-        createdAt: new Date("2026-05-13T08:00:00Z"),
-        category: "EMPLOI_FICTIF",
-        status: "INSTRUCTION",
-        involvement: "DIRECT",
-        factsDate: null,
-        startDate: null,
-        verdictDate: null,
-        court: null,
-        sentence: null,
-        politician: {
-          id: "p1",
-          slug: "francois-fillon",
-          fullName: "François Fillon",
-          normalizedLastName: "fillon",
-        },
-        sources: [],
-        events: [],
+    const draftRow = {
+      id: "a1",
+      title: "Affaire François Fillon",
+      description: "Le député François Fillon...",
+      publicationStatus: "DRAFT",
+      createdAt: new Date("2026-05-13T08:00:00Z"),
+      category: "EMPLOI_FICTIF",
+      status: "INSTRUCTION",
+      involvement: "DIRECT",
+      factsDate: null,
+      startDate: null,
+      verdictDate: null,
+      court: null,
+      sentence: null,
+      politicianId: "p1",
+      politician: {
+        id: "p1",
+        slug: "francois-fillon",
+        fullName: "François Fillon",
+        normalizedLastName: "fillon",
       },
-    ]);
+      sources: [],
+      events: [],
+    };
+    // First call loads DRAFT affairs, second call loads PUBLISHED titles
+    (db.affair.findMany as ReturnType<typeof vi.fn>).mockImplementation(
+      async (args: { where?: { publicationStatus?: string } }) =>
+        args?.where?.publicationStatus === "PUBLISHED"
+          ? [{ politicianId: "p1", title: "Affaire déjà publiée" }]
+          : [draftRow]
+    );
     (db.politician.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: "p1", fullName: "François Fillon", normalizedLastName: "fillon" },
     ]);
@@ -73,6 +79,7 @@ describe("runPreflight", () => {
       recommendation: "PUBLISH",
       issues: [],
       confidence: 90,
+      correctedInvolvement: "VICTIM",
     });
     (findPotentialDuplicates as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
@@ -84,6 +91,13 @@ describe("runPreflight", () => {
     expect(report.drafts[0]!.preflight.attribution.confidence).toBe("STRONG");
     expect(report.drafts[0]!.preflight.duplicateOf).toEqual([]);
     expect(report.stats.autoPublishCandidates).toBe(1);
+
+    // Published titles of the same politician are passed for duplicate detection
+    expect(moderateAffair).toHaveBeenCalledWith(
+      expect.objectContaining({ existingAffairTitles: ["Affaire déjà publiée"] })
+    );
+    // The suggested involvement surfaces in the report
+    expect(report.drafts[0]!.preflight.correctedInvolvement).toBe("VICTIM");
   });
 
   it("links duplicates from findPotentialDuplicates into per-draft duplicateOf", async () => {

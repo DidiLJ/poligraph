@@ -7,7 +7,7 @@
 
 import { db } from "@/lib/db";
 import { Prisma, type SourceType } from "@/generated/prisma";
-import { findMatchingAffairs, type MatchConfidence } from "./matching";
+import { findMatchingAffairs, sameCategoryFamily, type MatchConfidence } from "./matching";
 
 // ============================================
 // TYPES
@@ -39,6 +39,12 @@ export interface ReconciliationStats {
 // ============================================
 
 /**
+ * Window (in days) for clustering DRAFT affairs of the same politician.
+ * Press sync waves spread coverage of a single event over up to two weeks.
+ */
+const DRAFT_CLUSTER_WINDOW_DAYS = 14;
+
+/**
  * Find potential duplicate pairs among unverified affairs.
  *
  * Groups affairs by politician, then compares each pair using
@@ -57,6 +63,8 @@ export async function findPotentialDuplicates(): Promise<PotentialDuplicate[]> {
       category: true,
       verdictDate: true,
       politicianId: true,
+      createdAt: true,
+      publicationStatus: true,
       sources: { select: { sourceType: true } },
     },
   });
@@ -120,6 +128,52 @@ export async function findPotentialDuplicates(): Promise<PotentialDuplicate[]> {
             score: matchForA.score,
           });
         }
+      }
+    }
+  }
+
+  // Second pass — DRAFT clustering by creation window.
+  // Drafts from the same news event are imported over a few days with
+  // divergent titles and sibling categories (e.g. 13 drafts for the same
+  // Le Havre investigation), which the identifier/title matching above
+  // cannot catch. Pair drafts of the same politician created within
+  // DRAFT_CLUSTER_WINDOW_DAYS when their categories share a family.
+  // POSSIBLE only (score 0.45): never auto-merged, surfaced for human review.
+  const foundPairs = new Set(duplicates.map((d) => [d.affairA.id, d.affairB.id].sort().join(":")));
+
+  for (const group of byPolitician.values()) {
+    const draftGroup = group.filter((a) => a.publicationStatus === "DRAFT");
+    if (draftGroup.length < 2) continue;
+
+    for (let i = 0; i < draftGroup.length; i++) {
+      for (let j = i + 1; j < draftGroup.length; j++) {
+        const a = draftGroup[i]!;
+        const b = draftGroup[j]!;
+
+        const pairKey = [a.id, b.id].sort().join(":");
+        if (dismissedSet.has(pairKey) || foundPairs.has(pairKey)) continue;
+
+        const daysApart =
+          Math.abs(a.createdAt.getTime() - b.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysApart > DRAFT_CLUSTER_WINDOW_DAYS) continue;
+        if (!sameCategoryFamily(a.category, b.category)) continue;
+
+        foundPairs.add(pairKey);
+        duplicates.push({
+          affairA: {
+            id: a.id,
+            title: a.title,
+            sources: [...new Set(a.sources.map((s) => s.sourceType))],
+          },
+          affairB: {
+            id: b.id,
+            title: b.title,
+            sources: [...new Set(b.sources.map((s) => s.sourceType))],
+          },
+          confidence: "POSSIBLE",
+          matchedBy: "politician+category+window",
+          score: 0.45,
+        });
       }
     }
   }

@@ -79,7 +79,22 @@ async function getVotes(
   const [votes, total, stats, totalAll, amendmentCount] = await Promise.all([
     db.vote.findMany({
       where,
-      include: { scrutin: true },
+      include: {
+        scrutin: {
+          include: {
+            // Plan 6: public policy title (shown only when APPROVED + valid).
+            policyTitle: {
+              select: {
+                status: true,
+                policyTitle: true,
+                policySubtitle: true,
+                officialSourceUrl: true,
+                proceduralLabel: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { votingDate: "desc" },
       skip,
       take: limit,

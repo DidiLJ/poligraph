@@ -103,6 +103,16 @@ const getScrutinWithRedirect = cache(async function getScrutinWithRedirect(slugO
       },
     },
     importance: { select: { isKeyVote: true } },
+    // Plan 6: public policy title (shown only when APPROVED + valid).
+    policyTitle: {
+      select: {
+        status: true,
+        policyTitle: true,
+        policySubtitle: true,
+        officialSourceUrl: true,
+        proceduralLabel: true,
+      },
+    },
   } as const;
 
   // 1. Try by slug first (canonical URL - most common case)

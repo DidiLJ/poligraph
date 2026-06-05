@@ -68,6 +68,16 @@ const DAILY_SELECT = {
   type: true,
   summary: true,
   citizenImpact: true,
+  // Plan 6: public policy title (shown only when APPROVED + valid, via resolvePublicTitle).
+  policyTitle: {
+    select: {
+      status: true,
+      policyTitle: true,
+      policySubtitle: true,
+      officialSourceUrl: true,
+      proceduralLabel: true,
+    },
+  },
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { SimplePagination } from "@/components/ui/SimplePagination";
 import { db } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { toPublicTitleView, displayTitleOf } from "@/lib/votes/to-public-title-view";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { VoteStats, VotePositionBadge, VotingResultBadge } from "@/components/votes";
 import { ScrutinTypeTabs } from "@/components/votes/ScrutinTypeTabs";
@@ -232,44 +234,56 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
         <div className="lg:col-span-2">
           {votes.length > 0 ? (
             <div className="space-y-3">
-              {votes.map((vote) => (
-                <Card key={vote.id} className="hover:shadow-sm transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <Link
-                          href={`/parlement/votes/${vote.scrutin.slug || vote.scrutin.id}`}
-                          className="font-medium hover:underline line-clamp-2"
-                        >
-                          {vote.scrutin.title}
-                        </Link>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          {vote.scrutin.type && vote.scrutin.type !== "AUTRE" && (
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-xs font-medium ${SCRUTIN_TYPE_COLORS[vote.scrutin.type]}`}
-                            >
-                              {SCRUTIN_TYPE_LABELS[vote.scrutin.type]}
-                            </span>
-                          )}
-                          <span>{formatDate(vote.scrutin.votingDate)}</span>
-                          <VotingResultBadge result={vote.scrutin.result} />
-                          {vote.scrutin.sourceUrl && (
-                            <a
-                              href={vote.scrutin.sourceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 hover:text-foreground"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
+              {votes.map((vote) => {
+                // Public title: policy iff APPROVED + valid, else official (no leak).
+                const view = toPublicTitleView(vote.scrutin);
+                return (
+                  <Card key={vote.id} className="hover:shadow-sm transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            href={`/parlement/votes/${vote.scrutin.slug || vote.scrutin.id}`}
+                            className="font-medium hover:underline line-clamp-2"
+                          >
+                            {displayTitleOf(view)}
+                            {view.mode === "policy" && (
+                              <Badge
+                                variant="accent"
+                                className="ml-1.5 align-middle text-[10px] font-medium"
+                              >
+                                Titre explicatif
+                              </Badge>
+                            )}
+                          </Link>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            {vote.scrutin.type && vote.scrutin.type !== "AUTRE" && (
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-xs font-medium ${SCRUTIN_TYPE_COLORS[vote.scrutin.type]}`}
+                              >
+                                {SCRUTIN_TYPE_LABELS[vote.scrutin.type]}
+                              </span>
+                            )}
+                            <span>{formatDate(vote.scrutin.votingDate)}</span>
+                            <VotingResultBadge result={vote.scrutin.result} />
+                            {vote.scrutin.sourceUrl && (
+                              <a
+                                href={vote.scrutin.sourceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 hover:text-foreground"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
                         </div>
+                        <VotePositionBadge position={vote.position} />
                       </div>
-                      <VotePositionBadge position={vote.position} />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <Card>

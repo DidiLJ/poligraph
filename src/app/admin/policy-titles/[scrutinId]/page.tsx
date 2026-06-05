@@ -9,7 +9,10 @@ import { TitleTokenAnchors } from "../_components/TitleTokenAnchors";
 import { WarningsPanel } from "../_components/WarningsPanel";
 import { QualitySignalsCard } from "../_components/QualitySignalsCard";
 import { RevisionHistory } from "../_components/RevisionHistory";
+import { EditAndPreview } from "../_components/EditAndPreview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Chamber, VotingResult } from "@/generated/prisma";
+import type { ScrutinForDisplay } from "@/lib/votes/resolve-public-title";
 import type {
   EvidenceQuote,
   GenerationWarning,
@@ -36,6 +39,15 @@ export default async function PolicyTitleReviewPage({ params }: PageProps) {
   const qualitySignals = policy.qualitySignals as unknown as QualitySignals;
   const evidenceQuotes = (policy.evidenceQuotes ?? []) as unknown as EvidenceQuote[];
   const generationWarnings = (policy.generationWarnings ?? []) as unknown as GenerationWarning[];
+
+  const scrutinForDisplay: ScrutinForDisplay = {
+    title: scrutin.title,
+    votingDate: scrutin.votingDate,
+    result: scrutin.result as VotingResult,
+    chamber: scrutin.chamber as Chamber,
+    sourceUrl: scrutin.sourceUrl,
+    proceduralLabel: scrutin.proceduralLabel,
+  };
 
   return (
     <div className="space-y-6">
@@ -80,7 +92,21 @@ export default async function PolicyTitleReviewPage({ params }: PageProps) {
         </div>
 
         <div className="space-y-6">
-          {/* TODO(Plan 5.5): PolicyTitleEditor mounts here (edit form + actions). */}
+          {/* Editor + live preview. Save/approve server actions are TODO(5.6). */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Édition et aperçu public</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EditAndPreview
+                scrutinId={scrutin.id}
+                scrutin={scrutinForDisplay}
+                status={policy.status}
+                initialTitle={policy.policyTitle}
+                initialSubtitle={policy.policySubtitle}
+              />
+            </CardContent>
+          </Card>
           <WarningsPanel
             generationWarnings={generationWarnings}
             currentWarnings={currentWarnings}

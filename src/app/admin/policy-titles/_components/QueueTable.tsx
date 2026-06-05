@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { QueueRow as QueueRowData } from "../_data/queue-query";
+import type { QueueRow as QueueRowData, QueueFilters } from "../_data/queue-query";
 import { QueueRow } from "./QueueRow";
 import { BulkActionsBar } from "./BulkActionsBar";
 
-export function QueueTable({ rows, total }: { rows: QueueRowData[]; total: number }) {
+export function QueueTable({
+  rows,
+  total,
+  filters,
+}: {
+  rows: QueueRowData[];
+  total: number;
+  filters: QueueFilters;
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   function toggle(scrutinId: string, checked: boolean) {
@@ -91,7 +99,12 @@ export function QueueTable({ rows, total }: { rows: QueueRowData[]; total: numbe
         )}
       </CardContent>
 
-      <BulkActionsBar rows={rows} selectedIds={selectedIds} onClearSelection={clearSelection} />
+      <BulkActionsBar
+        rows={rows}
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
+        filters={filters}
+      />
     </Card>
   );
 }

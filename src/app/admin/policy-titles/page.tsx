@@ -83,7 +83,7 @@ export default async function AdminPolicyTitlesPage({ searchParams }: PageProps)
 
       <QueueFilters />
 
-      <QueueTable rows={rows} total={total} />
+      <QueueTable rows={rows} total={total} filters={filters} />
     </div>
   );
 }

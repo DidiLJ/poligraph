@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import type { QueueRow } from "../_data/queue-query";
+import type { QueueRow, QueueFilters } from "../_data/queue-query";
 import { batchApprove, batchRegenerate, exportPolicyTitlesCsv } from "../actions";
 
 interface BulkActionsBarProps {
@@ -13,6 +13,10 @@ interface BulkActionsBarProps {
   rows: QueueRow[];
   selectedIds: string[];
   onClearSelection: () => void;
+  /** The active on-screen queue filters, so the CSV export covers exactly the
+   *  filtered set rather than every status. Pagination (skip/take) is ignored
+   *  server-side: the export always pulls the full filtered set. */
+  filters: QueueFilters;
 }
 
 /**
@@ -30,7 +34,12 @@ function looksBatchEligible(row: QueueRow): boolean {
   );
 }
 
-export function BulkActionsBar({ rows, selectedIds, onClearSelection }: BulkActionsBarProps) {
+export function BulkActionsBar({
+  rows,
+  selectedIds,
+  onClearSelection,
+  filters,
+}: BulkActionsBarProps) {
   const [pending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -89,9 +98,7 @@ export function BulkActionsBar({ rows, selectedIds, onClearSelection }: BulkActi
   function runExport() {
     startTransition(async () => {
       try {
-        const csv = await exportPolicyTitlesCsv({
-          status: ["DRAFT", "NEEDS_REVIEW", "APPROVED", "REJECTED", "STALE"],
-        });
+        const csv = await exportPolicyTitlesCsv(filters);
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");

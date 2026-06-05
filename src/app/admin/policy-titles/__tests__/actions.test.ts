@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+import { toPublicTitleView } from "@/lib/votes/to-public-title-view";
 
 const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip;
 
@@ -9,9 +10,10 @@ vi.mock("@/lib/auth", () => ({
   isAuthenticated: () => Promise.resolve(true),
 }));
 
-// revalidatePath throws outside a Next request context; no-op it under vitest.
+// revalidatePath throws outside a Next request context; spy it under vitest so we
+// can assert public revalidation (Plan 6).
 vi.mock("next/cache", () => ({
-  revalidatePath: () => {},
+  revalidatePath: vi.fn(),
 }));
 
 // Mock ONLY generateScrutinPolicyTitle; keep buildInputHashInput real (actions
@@ -404,5 +406,89 @@ describeIfDb("policy-title server actions", () => {
     expect((await db.scrutinPolicyTitle.findUnique({ where: { scrutinId } }))?.status).toBe(
       "REJECTED"
     );
+  });
+
+  // ── Public revalidation + visibility transitions (Plan 6.8) ───────────────
+  async function publicMode(scrutinId: string): Promise<"policy" | "official"> {
+    const s = await db.scrutin.findUnique({
+      where: { id: scrutinId },
+      select: {
+        title: true,
+        votingDate: true,
+        result: true,
+        chamber: true,
+        sourceUrl: true,
+        policyTitle: {
+          select: {
+            status: true,
+            policyTitle: true,
+            policySubtitle: true,
+            officialSourceUrl: true,
+            proceduralLabel: true,
+          },
+        },
+      },
+    });
+    return toPublicTitleView(s!).mode;
+  }
+
+  async function revalidateSpy() {
+    return vi.mocked((await import("next/cache")).revalidatePath);
+  }
+
+  it("DRAFT → APPROVED triggers public revalidation and resolves to policy mode", async () => {
+    const { scrutinId } = await seedRow({
+      suffix: "PUB_APPROVE",
+      policyTitle: "Supprimer une dérogation aux seuils de qualité de l'eau",
+    });
+    const spy = await revalidateSpy();
+    spy.mockClear();
+    await actions.approveScrutinPolicyTitle(scrutinId);
+    expect(spy).toHaveBeenCalledWith("/parlement/votes");
+    expect(await publicMode(scrutinId)).toBe("policy");
+  });
+
+  it("APPROVED → REJECTED triggers public revalidation and reverts to official (hide)", async () => {
+    const { scrutinId } = await seedRow({
+      suffix: "PUB_REJECT",
+      policyTitle: "Supprimer une dérogation aux seuils de qualité de l'eau",
+      status: "APPROVED",
+    });
+    const spy = await revalidateSpy();
+    spy.mockClear();
+    await actions.rejectScrutinPolicyTitle(scrutinId, "raison");
+    expect(spy).toHaveBeenCalledWith("/parlement/votes");
+    expect(await publicMode(scrutinId)).toBe("official");
+  });
+
+  it("APPROVED → edited title triggers public revalidation (stays policy with new text)", async () => {
+    const { scrutinId } = await seedRow({
+      suffix: "PUB_EDIT",
+      policyTitle: "Supprimer une dérogation aux seuils de qualité de l'eau",
+      status: "APPROVED",
+    });
+    const spy = await revalidateSpy();
+    spy.mockClear();
+    await actions.editScrutinPolicyTitle(scrutinId, {
+      policyTitle: "Supprimer une dérogation aux seuils de qualité de l'eau (révisé)",
+      policySubtitle: null,
+    });
+    expect(spy).toHaveBeenCalledWith("/parlement/votes");
+    expect(await publicMode(scrutinId)).toBe("policy");
+  });
+
+  it("APPROVED → regenerate triggers public revalidation and hides (no longer policy)", async () => {
+    const { scrutinId } = await seedRow({
+      suffix: "PUB_REGEN",
+      policyTitle: "Supprimer une dérogation aux seuils de qualité de l'eau",
+      status: "APPROVED",
+    });
+    // Generator mocked: it does not re-write the row, but the action must still
+    // revalidate the public surfaces because the row WAS approved.
+    mockGenerate.mockResolvedValue({ outcome: "generated", written: true });
+    const spy = await revalidateSpy();
+    spy.mockClear();
+    await actions.regenerateScrutinPolicyTitle(scrutinId);
+    expect(spy).toHaveBeenCalledWith("/parlement/votes");
   });
 });

@@ -110,6 +110,14 @@ const POLICY_VERBS = [
   "control",
 ] as const;
 
+/** Verbatim-or-fuzzy quote match: exact substring first, else normalized
+ *  (diacritics/punctuation/whitespace-insensitive) substring. Shared by the
+ *  EvidenceGrounding validator and the evidence-drift helper. */
+export function quoteAppearsInText(quote: string, text: string): boolean {
+  if (text.includes(quote)) return true;
+  return normalizeForMatch(text).includes(normalizeForMatch(quote));
+}
+
 function tokenize(title: string): string[] {
   return normalizeForMatch(title)
     .split(/\s+/)
@@ -245,10 +253,7 @@ function validateEvidenceGrounding(input: ValidatorInput): GenerationWarning[] {
         },
       ];
     }
-    const haystack = normalizeForMatch(block.text);
-    const needle = normalizeForMatch(q.quote);
-    const verbatim = block.text.includes(q.quote);
-    if (!verbatim && !haystack.includes(needle)) {
+    if (!quoteAppearsInText(q.quote, block.text)) {
       return [
         {
           code: "EVIDENCE_GROUNDING",

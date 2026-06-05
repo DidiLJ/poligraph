@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { VotingResultBadge } from "./VoteBadge";
 import { MarkdownText } from "@/components/ui/markdown";
+import { Badge } from "@/components/ui/badge";
 import { THEME_CATEGORY_LABELS, THEME_CATEGORY_COLORS } from "@/config/labels";
 import { Calendar, Users, Star } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { VotingResult, ThemeCategory } from "@/types";
+import {
+  toPublicTitleView,
+  displayTitleOf,
+  type PolicyForView,
+} from "@/lib/votes/to-public-title-view";
 
 interface HeroSpotlightProps {
   slug: string | null;
@@ -18,6 +24,7 @@ interface HeroSpotlightProps {
   theme: ThemeCategory | null;
   summary: string | null;
   citizenImpact: string | null;
+  policy?: PolicyForView | null;
 }
 
 export function HeroSpotlight({
@@ -32,8 +39,20 @@ export function HeroSpotlight({
   theme,
   summary,
   citizenImpact,
+  policy,
 }: HeroSpotlightProps) {
   const href = `/parlement/votes/${slug || id}`;
+  // Public title: policy iff APPROVED + valid, else official (no leak).
+  const view = toPublicTitleView({
+    title,
+    votingDate: new Date(votingDate),
+    result,
+    chamber: "AN",
+    sourceUrl: null,
+    policyTitle: policy ?? null,
+  });
+  const heading = displayTitleOf(view);
+  const isPolicy = view.mode === "policy";
   const total = votesFor + votesAgainst + votesAbstain;
   const forPct = total > 0 ? (votesFor / total) * 100 : 0;
   const againstPct = total > 0 ? (votesAgainst / total) * 100 : 0;
@@ -50,7 +69,15 @@ export function HeroSpotlight({
       </div>
 
       <h2 className="text-xl md:text-2xl font-display font-extrabold tracking-tight mb-3">
-        {title}
+        {heading}
+        {isPolicy && (
+          <Badge
+            variant="accent"
+            className="ml-2 align-middle text-[11px] font-medium uppercase tracking-normal"
+          >
+            Titre explicatif
+          </Badge>
+        )}
       </h2>
 
       {(citizenImpact || summary) && (

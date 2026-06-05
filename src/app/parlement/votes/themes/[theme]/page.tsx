@@ -80,6 +80,18 @@ export default async function ThemePage({
       orderBy: { votingDate: "desc" },
       skip,
       take: PAGE_SIZE,
+      include: {
+        // Plan 6: public policy title (shown only when APPROVED + valid).
+        policyTitle: {
+          select: {
+            status: true,
+            policyTitle: true,
+            policySubtitle: true,
+            officialSourceUrl: true,
+            proceduralLabel: true,
+          },
+        },
+      },
     }),
     db.scrutin.count({ where }),
     db.scrutin.groupBy({
@@ -238,6 +250,7 @@ export default async function ThemePage({
               sourceUrl={scrutin.sourceUrl}
               theme={scrutin.theme}
               type={scrutin.type}
+              policy={scrutin.policyTitle}
             />
           ))}
         </div>

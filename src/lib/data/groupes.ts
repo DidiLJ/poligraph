@@ -162,6 +162,16 @@ export async function getGroupKeyVotes(groupId: string, limit = 5) {
           votesAbstain: true,
           result: true,
           theme: true,
+          // Plan 6: public policy title (shown only when APPROVED + valid).
+          policyTitle: {
+            select: {
+              status: true,
+              policyTitle: true,
+              policySubtitle: true,
+              officialSourceUrl: true,
+              proceduralLabel: true,
+            },
+          },
         },
       },
     },

@@ -109,7 +109,7 @@ function sentenceSplit(text: string): string[] {
 
 /** Lowercased, accent-normalized content words (length > 3), minus stopwords and
  *  procedural nouns. These are the "concrete object" candidates. */
-function extractContentKeywords(sentence: string): string[] {
+export function extractContentKeywords(sentence: string): string[] {
   const seen = new Set<string>();
   const keywords: string[] = [];
   for (const raw of sentence.split(/[^A-Za-zÀ-ÿ-]+/)) {

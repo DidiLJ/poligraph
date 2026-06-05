@@ -18,21 +18,8 @@ import type {
   SubstanceTextBlock,
 } from "@/services/scrutin-policy-title/types";
 import { queryQueue, type QueueFilters } from "@/app/admin/policy-titles/_data/queue-query";
+import { ApproveBlockedError } from "@/app/admin/policy-titles/errors";
 import type { Prisma, ScrutinPolicyTitle } from "@/generated/prisma";
-
-/**
- * Thrown when a transition to APPROVED is blocked. Carries the machine-readable
- * blocker codes (hard blockers from the guard, or "WARNINGS_REQUIRE_OVERRIDE" /
- * "REJECTED_NOT_REVISED") so the UI can surface them via toast.
- */
-export class ApproveBlockedError extends Error {
-  codes: string[];
-  constructor(codes: string[]) {
-    super(`Approbation bloquée : ${codes.join(", ")}`);
-    this.name = "ApproveBlockedError";
-    this.codes = codes;
-  }
-}
 
 /**
  * The admin auth in this project is a single signed cookie with no per-user

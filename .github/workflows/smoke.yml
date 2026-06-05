@@ -1,0 +1,69 @@
+name: Post-deploy smoke
+
+# Runs the production smoke test (scripts/smoke-prod.ts) automatically after a
+# successful Vercel production deployment, so a 5xx regression is caught even on
+# deploys nobody ran `/smoke` against (teammate merges, GitHub-UI deploys).
+#
+# Vercel's GitHub integration emits a `deployment_status` event for each deploy.
+# We act only on successful PRODUCTION deployments.
+#
+# NOTE (verify on first run): the exact `environment` string Vercel sets is not
+# confirmed here — the `if` below matches case-insensitively against "production".
+# If this job never triggers, check a real `deployment_status` payload in the
+# Actions run logs and adjust the condition. Likewise, this smokes the canonical
+# site (SITE_URL = poligraph.fr) rather than `deployment_status.target_url`,
+# because target_url may be a deployment-specific or dashboard URL. To smoke the
+# exact build instead, set SMOKE_BASE_URL to the target_url once you've confirmed
+# what it contains.
+
+on:
+  deployment_status: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    # Only on a successful production deployment (or a manual dispatch).
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       contains(toJSON(github.event.deployment_status.environment), 'roduction'))
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Let the production alias settle
+        run: sleep 20
+
+      - name: Run smoke
+        run: npx tsx scripts/smoke-prod.ts
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Post-deploy smoke" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Date**: $(date -u +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY

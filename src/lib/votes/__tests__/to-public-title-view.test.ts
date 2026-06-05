@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toPublicTitleView, type ScrutinRowForView } from "../to-public-title-view";
+import { toPublicTitleView, displayTitleOf, type ScrutinRowForView } from "../to-public-title-view";
 
 const base: Omit<ScrutinRowForView, "policyTitle"> = {
   title: "Projet de loi de finances pour 2026",
@@ -104,5 +104,16 @@ describe("toPublicTitleView", () => {
     const v = toPublicTitleView({ ...base, policyTitle: policy({ proceduralLabel: null }) });
     expect(v.mode).toBe("policy");
     expect(hasProceduralChip(v.chips)).toBe(false);
+  });
+
+  describe("displayTitleOf", () => {
+    it("returns the policy title in policy mode", () => {
+      const v = toPublicTitleView({ ...base, policyTitle: policy({}) });
+      expect(displayTitleOf(v)).toBe("Augmenter le budget de l'éducation");
+    });
+    it("returns the official title in official mode (no leak)", () => {
+      const v = toPublicTitleView({ ...base, policyTitle: policy({ status: "DRAFT" }) });
+      expect(displayTitleOf(v)).toBe(base.title);
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { db } from "@/lib/db";
 import { OgLayout, OgCategoryLabel, OgBadge, OG_SIZE, truncateOg } from "@/lib/og-utils";
+import { toPublicTitleView, displayTitleOf } from "@/lib/votes/to-public-title-view";
 
 export const alt = "Vote parlementaire sur Poligraph";
 export const size = OG_SIZE;
@@ -16,9 +17,20 @@ export default async function Image({ params }: { params: Promise<{ slug: string
       title: true,
       votingDate: true,
       result: true,
+      chamber: true,
+      sourceUrl: true,
       votesFor: true,
       votesAgainst: true,
       votesAbstain: true,
+      policyTitle: {
+        select: {
+          status: true,
+          policyTitle: true,
+          policySubtitle: true,
+          officialSourceUrl: true,
+          proceduralLabel: true,
+        },
+      },
     },
   });
   if (!scrutin) {
@@ -28,9 +40,20 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         title: true,
         votingDate: true,
         result: true,
+        chamber: true,
+        sourceUrl: true,
         votesFor: true,
         votesAgainst: true,
         votesAbstain: true,
+        policyTitle: {
+          select: {
+            status: true,
+            policyTitle: true,
+            policySubtitle: true,
+            officialSourceUrl: true,
+            proceduralLabel: true,
+          },
+        },
       },
     });
   }
@@ -54,6 +77,9 @@ export default async function Image({ params }: { params: Promise<{ slug: string
       { ...OG_SIZE }
     );
   }
+
+  // Public title: policy title iff APPROVED + valid, else official (no leak).
+  const ogTitle = displayTitleOf(toPublicTitleView(scrutin));
 
   const isAdopted = scrutin.result === "ADOPTED";
   const resultLabel = isAdopted ? "Adopté" : "Rejeté";
@@ -84,7 +110,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           marginBottom: 24,
         }}
       >
-        {truncateOg(scrutin.title, 130)}
+        {truncateOg(ogTitle, 130)}
       </div>
 
       {/* Result badge */}

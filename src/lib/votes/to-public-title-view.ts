@@ -1,6 +1,13 @@
 import { resolvePublicTitle, type PublicTitleView } from "./resolve-public-title";
 import type { PolicyTitleStatus, VotingResult, Chamber } from "@/generated/prisma";
 
+/** The single string to render as the heading for a resolved view: the policy
+ *  title in policy mode, the official title otherwise. Centralizes the choice so
+ *  surfaces (detail h1, OG, cards) never re-derive it. */
+export function displayTitleOf(view: PublicTitleView): string {
+  return view.mode === "policy" ? view.policyTitle : view.officialTitle;
+}
+
 /** The policy fields a public surface must select alongside its scrutin.
  *  `proceduralLabel` and `officialSourceUrl` live on the policy row, not the
  *  scrutin, so they ride here. */

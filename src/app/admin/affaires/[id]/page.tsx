@@ -28,7 +28,10 @@ async function getAffair(id: string) {
   });
 }
 
-async function updatePublicationStatus(id: string, status: PublicationStatus) {
+async function updatePublicationStatus(
+  id: string,
+  status: PublicationStatus
+): Promise<{ ok: true } | { ok: false; error: string }> {
   "use server";
   const { isAuthenticated } = await import("@/lib/auth");
   const { db } = await import("@/lib/db");
@@ -39,17 +42,23 @@ async function updatePublicationStatus(id: string, status: PublicationStatus) {
 
   const authenticated = await isAuthenticated();
   if (!authenticated) {
-    throw new Error("Non autorisé");
+    return { ok: false, error: "Non autorisé" };
   }
 
   if (status === PUBLISHED_STATUS) {
     // RGPD art. 10 : publication uniquement via le guard (sources +
     // rattachements validés, verifiedAt/verifiedBy écrits atomiquement).
+    // Le refus est RETOURNÉ, pas jeté : en production, Next masque le message
+    // des erreurs levées par une action serveur et la page tombe sur l'error
+    // boundary générique au lieu d'afficher la raison au modérateur.
     try {
       await assertPublishable(id, { verifiedBy: VERIFIED_BY_MODERATION });
     } catch (err) {
       if (err instanceof PublishGuardError) {
-        throw new Error(`Affaire non publiable : ${err.reasons.map((r) => r.message).join(" ; ")}`);
+        return {
+          ok: false,
+          error: `Affaire non publiable : ${err.reasons.map((r) => r.message).join(" ; ")}`,
+        };
       }
       throw err;
     }
@@ -71,6 +80,7 @@ async function updatePublicationStatus(id: string, status: PublicationStatus) {
 
   invalidateEntity("affair");
   revalidatePath(`/admin/affaires/${id}`);
+  return { ok: true };
 }
 
 export default async function AdminAffairDetailPage({ params }: PageProps) {

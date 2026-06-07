@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { PublicationStatus } from "@/generated/prisma";
 
 const STATUS_OPTIONS: { value: PublicationStatus; label: string }[] = [
@@ -23,7 +23,11 @@ interface PublicationStatusSelectProps {
   entityId: string;
   entityType: "affair" | "politician" | "factcheck";
   currentStatus: PublicationStatus;
-  onChange: (id: string, status: PublicationStatus) => Promise<void>;
+  /** L'action peut retourner un refus structuré ({ ok: false, error }) à afficher. */
+  onChange: (
+    id: string,
+    status: PublicationStatus
+  ) => Promise<void | { ok: boolean; error?: string }>;
 }
 
 export function PublicationStatusSelect({
@@ -32,26 +36,38 @@ export function PublicationStatusSelect({
   onChange,
 }: PublicationStatusSelectProps) {
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   return (
-    <select
-      value={currentStatus}
-      disabled={isPending}
-      aria-label="Statut de publication"
-      className={`h-8 rounded-md border px-2 text-sm font-medium cursor-pointer appearance-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${STATUS_STYLES[currentStatus]} ${isPending ? "opacity-50 cursor-wait" : ""}`}
-      onChange={(e) => {
-        const newStatus = e.target.value as PublicationStatus;
-        if (newStatus === currentStatus) return;
-        startTransition(async () => {
-          await onChange(entityId, newStatus);
-        });
-      }}
-    >
-      {STATUS_OPTIONS.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
+    <div className="flex flex-col items-end gap-1">
+      <select
+        value={currentStatus}
+        disabled={isPending}
+        aria-label="Statut de publication"
+        className={`h-8 rounded-md border px-2 text-sm font-medium cursor-pointer appearance-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${STATUS_STYLES[currentStatus]} ${isPending ? "opacity-50 cursor-wait" : ""}`}
+        onChange={(e) => {
+          const newStatus = e.target.value as PublicationStatus;
+          if (newStatus === currentStatus) return;
+          setError(null);
+          startTransition(async () => {
+            const result = await onChange(entityId, newStatus);
+            if (result && result.ok === false) {
+              setError(result.error ?? "La mise à jour a échoué");
+            }
+          });
+        }}
+      >
+        {STATUS_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <p role="alert" className="max-w-xs text-right text-xs text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

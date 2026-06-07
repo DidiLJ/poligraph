@@ -269,6 +269,8 @@ These rules apply to AI assistants specifically when generating code, queries, o
 - **Write party-asymmetric logic.** No conditional branching on party name for editorial treatment.
 - **Escalate `Affair.involvement` automatically.** The default `MENTIONED_ONLY` exists to protect the presumption of innocence. Only human moderators can upgrade involvement.
 - **Auto-link politicians to affairs below threshold.** The resolver returns `SAME / UNDECIDED / NO_MATCH`. Only `SAME` (>= 0.95 for identity, above `SAME_THRESHOLD` for affair-matching) auto-links. `UNDECIDED` requires manual review.
+- **Publish a judicial affair outside the guard (RGPD art. 10).** Never write `publicationStatus: "PUBLISHED"` on `Affair` directly. The only path to publication is `assertPublishable()` in `src/lib/affairs/publish-guard.ts`, which requires a source, requires every automated matching decision to be human-validated, and writes `verifiedAt` + `verifiedBy` atomically. A CI guard rejects direct `PUBLISHED` literals; variable-based writes are caught in review.
+- **Let an automated pipeline create a non-DRAFT affair.** Press, Wikidata, Wikipedia, Judilibre and any future source create affairs in `DRAFT` only. Publication is always a separate, explicit human action.
 - **Import data from unverified sources.** Blogs, forums, social media, unverified aggregators are not allowed as primary sources.
 - **Add feature flags or compatibility shims** when the code can be changed directly.
 - **Use em dashes (—) in any generated content.** Commas, colons, and parentheses do the job.
@@ -279,6 +281,7 @@ These rules apply to AI assistants specifically when generating code, queries, o
 - **Pair data fixes with regression tests.** If you fix a false-positive mention or a wrong party display, add a test reproducing the bug before implementing the fix.
 - **Prefer editing existing files** over creating new ones. Prefer deleting dead code over keeping legacy shims.
 - **Use domain helpers**: `getAffairPartyDisplay()`, `getCertaintyLevel()`, `NUANCE_POLITIQUE_MAPPING`, `callAnthropic()`, `withAdminAuth()`, `withValidation()`, `parsePagination()`, `stripMarkdownForCSV()`. They encode editorial and security constraints.
+- **Filter affairs through the centralized builders on every public surface.** Web pages, public API routes, CSV/JSON exports and the MCP server must use the where-builders in `src/lib/affairs/public-filters.ts` (`getPublishedAffairWhere`, `getAdverseAffairWhere`, `getMisEnCauseWhere`, `getFavorableOutcomeWhere`) and the per-role counters in `affair-counts.ts`. Never hand-roll a `publicationStatus`/status filter in a public surface: the MCP server consumes the public API and inherits its filters, so no judicial data leaks through a side door. Methodology is documented in `/methodologie` and the RGPD art. 10 measures in `docs/LEGAL.md` §7.
 - **Default to small commits.** Under 400 changed lines per commit when possible. Split large features into schema, service, UI commits.
 - **Write tests for every new service, data function, or pure utility** added by a `feat()` commit. Reference examples: `resolver.test.ts`, `hatvp-xml.test.ts`, `confidence.test.ts`.
 

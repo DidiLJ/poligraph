@@ -168,18 +168,28 @@ export default function MethodologiePage() {
               Procédures closes sans condamnation
             </h3>
             <p>
-              Relaxe, acquittement, non-lieu, prescription, classement sans suite. Ces procédures
-              sont affichées séparément comme signal positif : elles montrent que la justice a
-              examiné et écarté les accusations.
+              Relaxe, acquittement, non-lieu et classement sans suite : la procédure s{"'"}est
+              terminée sans condamnation. Ces issues favorables sont affichées séparément des
+              condamnations et ne sont jamais présentées comme une mise en cause active.
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium text-foreground mb-1">
+              Action publique éteinte par prescription
+            </h3>
+            <p>
+              La prescription clôt la procédure sans condamnation, mais à la différence d{"'"}une
+              relaxe ou d{"'"}un non-lieu, elle ne constitue pas une décision sur le fond. Elle est
+              donc signalée distinctement, et non assimilée à une issue favorable au fond.
             </p>
           </div>
           <div className="rounded-lg border p-4">
             <h3 className="font-medium text-foreground mb-1">Implication directe et indirecte</h3>
             <p>
               Seules les affaires où le politicien est directement ou indirectement impliqué (mis en
-              cause, poursuivi ou condamné) sont comptabilisées. Les simples mentions dans une
-              affaire tierce ou les cas où le politicien est victime/plaignant ne sont pas inclus
-              dans les compteurs.
+              cause, poursuivi ou condamné) sont comptabilisées dans les agrégats à charge. Les
+              simples mentions dans une affaire tierce ou les cas où le politicien est
+              victime/plaignant ne sont pas inclus dans ces compteurs.
             </p>
           </div>
           <div className="rounded-lg border p-4">
@@ -190,6 +200,62 @@ export default function MethodologiePage() {
               affaires.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Section 3b: Per-role counters on the politician page */}
+      <section className="mb-12">
+        <h2 className="text-xl font-display font-semibold mb-4">
+          Compteurs d{"'"}affaires sur la fiche d{"'"}un politicien
+        </h2>
+        <p className="text-muted-foreground mb-6">
+          La fiche d{"'"}un politicien expose plusieurs compteurs, qui ne mesurent pas la même
+          chose. Ils sont volontairement distincts pour ne pas mélanger une mise en cause, une
+          simple mention et une situation de victime.
+        </p>
+        <div className="space-y-3 text-sm text-muted-foreground">
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium text-foreground mb-1">
+              Total des affaires publiées (tous rôles confondus)
+            </h3>
+            <p>
+              Le compteur général recense toutes les affaires publiées impliquant la personne, quel
+              que soit son rôle : mise en cause, simplement mentionnée, victime ou plaignante. Ce
+              chiffre ne dit donc rien, à lui seul, du degré de mise en cause.
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium text-foreground mb-1">À charge (procédures validées)</h3>
+            <p>
+              Affaires où la personne est mise en cause (directement ou indirectement) et où un juge
+              a validé la procédure : condamnations et procédures validées par un juge. Les enquêtes
+              préliminaires en sont exclues.
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium text-foreground mb-1">Issues favorables</h3>
+            <p>
+              Affaires où la personne était mise en cause et dont la procédure s{"'"}est terminée
+              sans condamnation : relaxe, acquittement, non-lieu, classement sans suite et
+              prescription.
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium text-foreground mb-1">Simple mention</h3>
+            <p>Affaires où la personne est citée sans être mise en cause ni poursuivie.</p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <h3 className="font-medium text-foreground mb-1">Victime ou plaignant</h3>
+            <p>
+              Affaires où la personne est victime ou a porté plainte. Ces affaires ne sont jamais
+              comptées comme une mise en cause.
+            </p>
+          </div>
+          <p className="text-xs">
+            Ces compteurs ne se cumulent pas pour reconstituer le total : une enquête préliminaire
+            visant directement la personne, par exemple, n{"'"}entre ni dans les affaires à charge
+            (faute de validation par un juge), ni dans les issues favorables.
+          </p>
         </div>
       </section>
 

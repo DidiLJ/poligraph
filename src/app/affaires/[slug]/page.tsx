@@ -37,6 +37,7 @@ import type { Prisma } from "@/generated/prisma";
 import { SITE_URL } from "@/config/site";
 import { ShareBar } from "@/components/ui/ShareBar";
 import { getAffairPartyDisplay } from "@/lib/affairs/party-display";
+import { buildPublicAffairLookupWheres } from "@/lib/affairs/affair-lookup";
 import { SlappBadge } from "@/components/slapp/SlappBadge";
 import { CriteriaList } from "@/components/slapp/CriteriaList";
 import type { SlappCriteriaPayload } from "@/config/slapp";
@@ -123,16 +124,18 @@ type AffairResult = NonNullable<Awaited<ReturnType<typeof findAffair>>>;
 const getAffairWithRedirect = cache(async function getAffairWithRedirect(
   slugOrId: string
 ): Promise<{ affair: AffairResult | null; redirect: string | null }> {
-  // 1. Try current slug (canonical)
-  let affair = await findAffair({ slug: slugOrId, publicationStatus: "PUBLISHED" });
+  const [bySlug, byOldSlug, byId] = buildPublicAffairLookupWheres(slugOrId);
+
+  // 1. Slug canonique
+  let affair = await findAffair(bySlug);
   if (affair) return { affair, redirect: null };
 
-  // 2. Try old slugs (301 redirect)
-  affair = await findAffair({ oldSlugs: { has: slugOrId }, publicationStatus: "PUBLISHED" });
+  // 2. Ancien slug (redirection 301)
+  affair = await findAffair(byOldSlug);
   if (affair) return { affair, redirect: affair.slug };
 
-  // 3. Try by ID (CUID)
-  affair = await findAffair({ id: slugOrId });
+  // 3. Id (CUID) — filtré PUBLISHED comme les autres voies
+  affair = await findAffair(byId);
   if (affair) return { affair, redirect: affair.slug };
 
   return { affair: null, redirect: null };

@@ -11,15 +11,22 @@ import { db } from "@/lib/db";
 import { generateAffairSlug, generateUniqueSlug } from "@/lib/utils";
 import { WikidataService } from "@/lib/api/wikidata";
 import { WD_PROPS } from "@/config/wikidata";
-import { mapWikidataOffense, getOffenseLabel, isKnownOffense } from "@/config/wikidata-affairs";
+import { mapWikidataOffense, getOffenseLabel } from "@/config/wikidata-affairs";
 import { mapWikidataPenalty, parseDurationToMonths } from "@/config/wikidata-penalties";
+import {
+  buildWikidataDiscoveredAffair,
+  type DiscoveredAffair,
+  type ExtractedPenaltyData,
+} from "@/services/sync/discover-affairs-builders";
+
+export type { ExtractedPenaltyData };
 import { wikipediaService } from "@/lib/api/wikipedia";
 import type { WikidataClaim } from "@/lib/api/wikidata";
 import { extractAffairsFromWikipedia } from "@/services/wikipedia-affair-extraction";
 import { findMatchingAffairs } from "@/services/affairs/matching";
 import { clampConfidenceScore } from "@/services/affairs/confidence";
 import { extractDateFromUrl } from "@/lib/extract-date-from-url";
-import type { AffairCategory, AffairStatus, Involvement, SourceType } from "@/generated/prisma";
+import type { AffairCategory, AffairStatus, SourceType } from "@/generated/prisma";
 import { scoreAffairAgainstCandidates, resolveAffairPolitician } from "@/lib/affair-matching";
 import { loadCandidatePool } from "@/lib/affair-matching/persistence";
 import type { AffairCandidateRecord } from "@/lib/affair-matching";
@@ -62,35 +69,6 @@ export async function saveDiscoverAffairsCursor(lastName: string | null): Promis
   });
 }
 
-interface DiscoveredAffair {
-  politicianId: string;
-  politicianName: string;
-  title: string;
-  description: string;
-  category: AffairCategory;
-  status: AffairStatus;
-  involvement: Involvement;
-  factsDate: Date | null;
-  court: string | null;
-  prisonMonths: number | null;
-  prisonSuspended: boolean | null;
-  ineligibilityMonths: number | null;
-  communityService: number | null;
-  otherSentence: string | null;
-  courtQid: string | null;
-  charges: string[];
-  confidenceScore: number;
-  publicationStatus: "PUBLISHED" | "DRAFT";
-  sources: Array<{
-    url: string;
-    title: string;
-    publisher: string;
-    sourceType: "WIKIDATA" | "WIKIPEDIA" | "PRESSE";
-    publishedAt: Date | null;
-  }>;
-  phase: "wikidata" | "wikipedia";
-}
-
 export interface DiscoverAffairsResult {
   politiciansProcessed: number;
   wikidataAffairsFound: number;
@@ -98,17 +76,6 @@ export interface DiscoverAffairsResult {
   duplicatesSkipped: number;
   affairsCreated: number;
   errors: string[];
-}
-
-export interface ExtractedPenaltyData {
-  prisonMonths?: number;
-  prisonSuspended?: boolean;
-  hasFine?: boolean;
-  ineligibilityMonths?: number;
-  communityService?: number;
-  otherSentence?: string;
-  verdictDate?: Date;
-  courtQid?: string;
 }
 
 /**
@@ -375,20 +342,11 @@ async function runPhase1Wikidata(
           const label = getOffenseLabel(offenseQid);
           const penaltyData = extractPenaltyData(claim);
 
-          const isConviction = prop === "P1399";
-          const knownOffense = isKnownOffense(offenseQid);
-          // Only auto-publish convictions with known offense types.
-          // Unknown Q-IDs produce "Infraction inconnue" titles -> DRAFT for review.
-          const publicationStatus = isConviction && knownOffense ? "PUBLISHED" : "DRAFT";
-          const confidence = isConviction ? 95 : 75;
-          const titlePrefix = isConviction ? "" : "[\u00c0 V\u00c9RIFIER] ";
-          const title = `${titlePrefix}${label} \u2014 ${politician.fullName}`;
-
-          // Call the resolver for audit-trail uniformity. The external-id signal
-          // fires at +10.0 via the Q-ID match, so this is a no-op confirmation.
-          // Non-blocking: resolver failure must not prevent affair creation.
+          // Invariant I1 : le resolver est appel\u00e9 pour l'audit trail et la
+          // future liaison d\u00e9cision\u2192affaire, jamais pour publier.
+          let decisionId: string | null = null;
           try {
-            await resolveAffairPolitician({
+            const resolveResult = await resolveAffairPolitician({
               text: `${politician.fullName}: ${label}`,
               metadata: {
                 source: "WIKIDATA" as SourceType,
@@ -397,6 +355,7 @@ async function runPhase1Wikidata(
                 externalIds: { wikidataQId: qid },
               },
             });
+            decisionId = resolveResult.decisionId;
           } catch (resolveErr) {
             console.warn(
               `[discover-affairs] Wikidata resolver call failed for ${politician.fullName} (${qid}):`,
@@ -404,36 +363,19 @@ async function runPhase1Wikidata(
             );
           }
 
-          discovered.push({
-            politicianId: politician.id,
-            politicianName: politician.fullName,
-            title,
-            description: `${label} (${isConviction ? "condamnation" : "mise en cause"}) \u2014 source Wikidata (${qid}, propri\u00e9t\u00e9 ${prop}).`,
-            category,
-            status,
-            involvement: isConviction ? "DIRECT" : "MENTIONED_ONLY",
-            factsDate: penaltyData.verdictDate ?? null,
-            court: null,
-            prisonMonths: penaltyData.prisonMonths ?? null,
-            prisonSuspended: penaltyData.prisonSuspended ?? null,
-            ineligibilityMonths: penaltyData.ineligibilityMonths ?? null,
-            communityService: penaltyData.communityService ?? null,
-            otherSentence: penaltyData.otherSentence ?? null,
-            courtQid: penaltyData.courtQid ?? null,
-            charges: [label],
-            confidenceScore: clampConfidenceScore(confidence),
-            publicationStatus: publicationStatus as "PUBLISHED" | "DRAFT",
-            sources: [
-              {
-                url: `https://www.wikidata.org/wiki/${qid}`,
-                title: `Wikidata \u2014 ${politician.fullName}`,
-                publisher: "Wikidata",
-                sourceType: "WIKIDATA",
-                publishedAt: null,
-              },
-            ],
-            phase: "wikidata",
-          });
+          discovered.push(
+            buildWikidataDiscoveredAffair({
+              politicianId: politician.id,
+              politicianName: politician.fullName,
+              qid,
+              prop,
+              offenseLabel: label,
+              category,
+              status,
+              penaltyData,
+              decisionId,
+            })
+          );
 
           stats.wikidataAffairsFound++;
         }
@@ -573,6 +515,7 @@ async function runPhase2Wikipedia(
             charges: extracted.charges,
             confidenceScore: clampConfidenceScore(extracted.confidenceScore),
             publicationStatus: "DRAFT",
+            decisionId: null,
             sources,
             phase: "wikipedia",
           });
@@ -702,7 +645,6 @@ async function runPhase3Reconciliation(
           sentence: buildSentenceSummary(affair),
           confidenceScore: affair.confidenceScore,
           publicationStatus: affair.publicationStatus,
-          verifiedAt: affair.publicationStatus === "PUBLISHED" ? new Date() : null,
           sources: {
             create: affair.sources.map((s) => ({
               url: s.url,

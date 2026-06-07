@@ -17,8 +17,9 @@ describe("buildPublicAffairLookupWheres — contrat no-leak", () => {
 });
 
 describe("pickPublicLinkedAffair — contrat no-leak", () => {
-  const published = { slug: "a", title: "A", publicationStatus: "PUBLISHED" as const };
-  const draft = { slug: "b", title: "B", publicationStatus: "DRAFT" as const };
+  type AffairFixture = { slug: string; title: string; publicationStatus: "PUBLISHED" | "DRAFT" };
+  const published: AffairFixture = { slug: "a", title: "A", publicationStatus: "PUBLISHED" };
+  const draft: AffairFixture = { slug: "b", title: "B", publicationStatus: "DRAFT" };
 
   it("retourne l'affaire liée publiée", () => {
     expect(pickPublicLinkedAffair(published, [])).toBe(published);

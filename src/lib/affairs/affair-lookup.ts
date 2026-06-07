@@ -17,14 +17,15 @@ interface LinkedAffairLike {
  * Sélectionne l'affaire liée à afficher publiquement.
  *
  * Prisma ne permet pas de filtrer une relation to-one (`linkedAffair`) par
- * `where` : le filtre publicationStatus doit donc être appliqué ici. Aucune
- * affaire liée non publiée ne doit être rendue (titre, slug), même depuis la
- * page d'une affaire publiée (RGPD article 10, invariant I7).
+ * un `where` imbriqué dans un `select` : le filtre publicationStatus doit
+ * donc être appliqué ici. Aucune affaire liée non publiée ne doit être
+ * rendue (titre, slug), même depuis la page d'une affaire publiée (RGPD
+ * article 10, invariant I7).
  */
-export function pickPublicLinkedAffair<A extends LinkedAffairLike, B extends LinkedAffairLike>(
-  linkedAffair: A | null | undefined,
-  linkedBy: B[] | null | undefined
-): A | B | null {
+export function pickPublicLinkedAffair<T extends LinkedAffairLike>(
+  linkedAffair: T | null | undefined,
+  linkedBy: T[] | null | undefined
+): T | null {
   if (linkedAffair && linkedAffair.publicationStatus === "PUBLISHED") return linkedAffair;
   return linkedBy?.find((a) => a.publicationStatus === "PUBLISHED") ?? null;
 }

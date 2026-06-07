@@ -399,34 +399,3 @@ export async function getVictimStats() {
     ongoingProcedures,
   };
 }
-
-export async function getLinkedAffair(affairId: string) {
-  const affair = await db.affair.findUnique({
-    where: { id: affairId },
-    select: {
-      linkedAffair: {
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          involvement: true,
-          politician: { select: { id: true, fullName: true, slug: true } },
-        },
-      },
-      linkedBy: {
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          involvement: true,
-          politician: { select: { id: true, fullName: true, slug: true } },
-        },
-      },
-    },
-  });
-
-  if (!affair) return null;
-  if (affair.linkedAffair) return affair.linkedAffair;
-  if (affair.linkedBy.length > 0) return affair.linkedBy[0];
-  return null;
-}

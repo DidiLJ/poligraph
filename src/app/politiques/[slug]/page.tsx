@@ -213,10 +213,11 @@ export default async function PoliticianPage({ params }: PageProps) {
   const condamnationsCount = directAndIndirect.filter(
     (a) => getJudicialMaturity(a.status) === "CONDAMNATION"
   ).length;
-  const proceduresEnCoursCount = directAndIndirect.filter((a) => {
-    const m = getJudicialMaturity(a.status);
-    return m === "PROCEDURE_VALIDEE" || m === "ENQUETE";
-  }).length;
+  // Tier 2 strict : les enquêtes préliminaires ne comptent pas comme
+  // procédure validée par un juge (RGPD art. 10, invariant I4)
+  const proceduresEnCoursCount = directAndIndirect.filter(
+    (a) => getJudicialMaturity(a.status) === "PROCEDURE_VALIDEE"
+  ).length;
 
   // Encart: only condamnations (Tier 1)
   const encartAffairs = directAffairs.filter(
@@ -700,7 +701,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                 )}
                 {proceduresEnCoursCount > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Procédures en cours</span>
+                    <span className="text-muted-foreground">Procédures validées en cours</span>
                     <span className="font-semibold">{proceduresEnCoursCount}</span>
                   </div>
                 )}

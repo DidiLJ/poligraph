@@ -136,7 +136,88 @@ Les représentants politiques mentionnés disposent de :
 
 ---
 
-## 7. Propriété intellectuelle
+## 7. Traitement de données pénales (article 10 RGPD)
+
+> Cette section décrit des **mesures de réduction du risque**. Elle ne constitue
+> pas un avis juridique et n'affirme pas que le traitement est conforme. La
+> qualification finale relève d'un avocat spécialisé et, le cas échéant, d'une
+> analyse d'impact (AIPD). Voir la section 8.
+
+### 7.1 Pourquoi ces données sont sensibles
+
+Une affaire judiciaire rattachée nommément à une personne est une donnée
+relative à une infraction ou à une procédure pénale. Le regroupement
+automatisé et structuré de telles données par personne, surtout à grande
+échelle, peut relever de l'article 10 du RGPD, qui encadre strictement le
+traitement des données pénales. Le risque ne vient pas de la mention isolée
+d'une affaire sourcée, mais de la constitution d'un fichier durable
+d'antécédents ou de mises en cause.
+
+### 7.2 Poligraph n'est pas un casier judiciaire
+
+Poligraph documente des affaires déjà publiques, issues de sources vérifiables,
+dans un objectif d'information citoyenne sur la vie politique. Le site ne
+reconstitue pas, ne vend pas et ne prétend pas refléter le casier judiciaire
+d'une personne. Une affaire absente du site ne signifie rien sur la situation
+judiciaire réelle d'une personne, et une affaire présente n'établit pas une
+culpabilité (voir la présomption d'innocence, section 4).
+
+### 7.3 Mesures techniques mises en place
+
+Ces garde-fous sont implémentés dans le code et vérifiés par des tests
+automatisés :
+
+- **Aucune publication automatique.** Tout pipeline automatisé (presse,
+  Wikidata, Wikipédia, Judilibre) crée une affaire en brouillon (`DRAFT`),
+  jamais publiée directement. Même une condamnation issue d'une source
+  structurée reste en attente de revue.
+- **Validation humaine obligatoire avant publication.** La mise en ligne d'une
+  affaire passe par un point de contrôle unique côté serveur qui exige au moins
+  une source vérifiable, refuse la publication si un rattachement automatique
+  n'a pas été validé par un humain, et enregistre qui a validé et quand.
+- **Pas de rattachement publié sur un score algorithmique seul.** Le moteur de
+  rapprochement personne / affaire ne fait que proposer un candidat avec un
+  score et des indices. Aucun rattachement pénal n'est rendu public sur la
+  seule base de ce score : un modérateur confirme l'identité, le statut
+  judiciaire, l'implication et les sources.
+- **Issues favorables affichées de manière dominante.** Une relaxe, un
+  acquittement, un non-lieu ou un classement sans suite est signalé clairement,
+  avant toute description, et n'est jamais présenté comme une mise en cause
+  active.
+- **Prescription distinguée.** L'extinction de l'action publique par
+  prescription est affichée séparément (« action publique éteinte par
+  prescription ») et n'est pas assimilée à une relaxe : elle clôt la procédure
+  sans décision sur le fond.
+- **Agrégats prudents.** Les compteurs publics distinguent les condamnations,
+  les procédures validées par un juge, les enquêtes préliminaires et les
+  procédures closes sans condamnation. Les enquêtes préliminaires ne sont pas
+  comptées comme des procédures validées par un juge (voir la page
+  Méthodologie).
+- **Mêmes règles sur toutes les surfaces.** Les pages web, les routes API
+  publiques, les exports et le serveur MCP appliquent les mêmes filtres : ils
+  n'exposent que des affaires publiées après validation humaine. Une affaire en
+  brouillon, archivée, exclue ou rejetée n'est accessible par aucune de ces
+  voies.
+
+### 7.4 Droits des personnes concernées
+
+Au-delà des droits rappelés en section 5 (droit de réponse) et 6.3 (accès,
+rectification, opposition), toute personne concernée peut demander la
+correction d'une information inexacte ou le réexamen d'un rattachement. En cas
+de doute sérieux, l'affaire est repassée en brouillon le temps de la
+vérification. Le contact est indiqué dans les mentions légales.
+
+### 7.5 Limites assumées
+
+Ces mesures réduisent le risque, elles ne le suppriment pas. Une montée en
+échelle du nombre d'affaires traitées, ou l'ajout de nouvelles sources
+automatisées, doit être précédée d'un réexamen juridique. Les points listés en
+section 8.4 restent à valider par un avocat spécialisé avant tout changement
+d'échelle.
+
+---
+
+## 8. Propriété intellectuelle
 
 ### 7.1 Contenus du site
 
@@ -154,32 +235,48 @@ Les représentants politiques mentionnés disposent de :
 
 ---
 
-## 8. Recommandations
+## 9. Recommandations
 
-### 8.1 Avant mise en production
+### 9.1 Avant mise en production
 
 - [ ] Consulter un avocat spécialisé (presse/données)
 - [ ] Vérifier l'assurance RC Pro (si association/société)
 - [ ] Définir une procédure de retrait d'urgence
 - [ ] Compléter les mentions légales (éditeur, contact)
 
-### 8.2 En continu
+### 9.2 En continu
 
 - [ ] Vérifier les sources avant publication
 - [ ] Mettre à jour les statuts des affaires
 - [ ] Répondre aux demandes de rectification
 - [ ] Archiver les preuves (sources, dates)
 
-### 8.3 Bonnes pratiques (inspirées de Regards Citoyens)
+### 9.3 Bonnes pratiques (inspirées de Regards Citoyens)
 
 - Transparence sur la collecte et le traitement
 - Licences ouvertes pour la réutilisation
 - Pas de cession de données à des tiers
 - Anonymisation si analytics
 
+### 9.4 Points à valider par un avocat spécialisé
+
+Les mesures de la section 7 réduisent le risque sans garantir la conformité.
+Les questions suivantes doivent être tranchées par un avocat spécialisé avant
+toute montée en échelle :
+
+- [ ] Qualification du traitement au regard de l'article 10 RGPD (données
+      pénales) et base de licéité retenue.
+- [ ] Applicabilité du régime journalistique et de la liberté d'expression
+      (articles 80 RGPD et 67 de la loi Informatique et Libertés).
+- [ ] Durées de conservation des affaires, notamment après une issue favorable
+      ou pour les procédures anciennes.
+- [ ] Statuts judiciaires admissibles dans les agrégats publics.
+- [ ] Traitement de la prescription (affichage et conservation).
+- [ ] Conditions de publication d'un rattachement personne / affaire.
+
 ---
 
-## 9. Ressources
+## 10. Ressources
 
 - [HATVP - Open Data](https://www.hatvp.fr/open-data/)
 - [CNIL - Données publiques](https://www.cnil.fr)

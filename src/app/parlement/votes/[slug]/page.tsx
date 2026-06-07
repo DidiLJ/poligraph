@@ -52,13 +52,19 @@ function extractScrutinNumber(externalId: string): string | null {
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
-// This route must NOT access `searchParams`: doing so opts the whole route into
-// dynamic rendering, which silently disables the ISR above and makes every
-// scrutin-detail request re-run the heavy votes query. The date-archive `type`
-// tab is therefore read client-side inside DailyVotesList (useSearchParams), so
-// /parlement/votes/YYYY-MM-DD?type=amendements still works while the route stays
-// ISR-cacheable. (Do not add `generateStaticParams` either — heavy detail pages
-// rely on ISR + on-demand revalidation, not build-time prerendering.)
+// ISR-only: return [] so no page is prerendered at build (too many scrutins to
+// prerender, and it would OOM on Vercel), but the presence of generateStaticParams
+// makes the route ISR-cacheable instead of fully dynamic. Each URL is rendered on
+// first request, then served from cache until the next revalidation.
+//
+// This is only safe because the route does NOT access `searchParams`: combining
+// generateStaticParams + searchParams + the "use cache" data functions triggers
+// DYNAMIC_SERVER_USAGE. The date-archive `type` tab is therefore read client-side
+// inside DailyVotesList (useSearchParams), so /parlement/votes/YYYY-MM-DD?type=
+// still works while the route stays cacheable.
+export async function generateStaticParams() {
+  return [];
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>;

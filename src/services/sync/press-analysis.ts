@@ -277,7 +277,15 @@ export async function syncPressAnalysis(
             dryRun,
             verbose
           );
-          if (enriched) stats.affairsEnriched++;
+          if (enriched) {
+            stats.affairsEnriched++;
+            if (!dryRun) {
+              await db.affairPoliticianDecision.update({
+                where: { id: resolveResult.decisionId },
+                data: { affairId: bestMatch.affairId },
+              });
+            }
+          }
         } else if (detected.isNewRevelation) {
           // Reject low-confidence detections before creating
           if (detected.confidenceScore < MIN_CONFIDENCE_THRESHOLD) {
@@ -294,6 +302,7 @@ export async function syncPressAnalysis(
             article.feedSource,
             article.publishedAt,
             detected,
+            resolveResult.decisionId,
             dryRun,
             verbose
           );
@@ -484,6 +493,7 @@ async function createAffairFromPress(
   feedSource: string,
   publishedAt: Date,
   detected: DetectedAffair,
+  decisionId: string | null,
   dryRun: boolean,
   verbose?: boolean
 ): Promise<boolean> {
@@ -533,6 +543,15 @@ async function createAffairFromPress(
 
     // Link article to affair
     await linkArticleToAffair(articleId, affair.id, "REVELATION");
+
+    // Lie la décision du resolver à l'affaire créée (audit du rattachement,
+    // prérequis du publish-guard Phase 2).
+    if (decisionId) {
+      await db.affairPoliticianDecision.update({
+        where: { id: decisionId },
+        data: { affairId: affair.id },
+      });
+    }
 
     if (verbose) {
       const scoreLabel = detected.confidenceScore >= 70 ? "✓" : "⚠";

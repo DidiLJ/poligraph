@@ -616,6 +616,15 @@ async function runPhase3Reconciliation(
           }
         }
 
+        // Même en cas de doublon enrichi, la décision resolver est rattachée
+        // à l'affaire existante pour la piste d'audit du rattachement.
+        if (affair.decisionId) {
+          await db.affairPoliticianDecision.update({
+            where: { id: affair.decisionId },
+            data: { affairId: highMatch.affairId },
+          });
+        }
+
         stats.duplicatesSkipped++;
         continue;
       }
@@ -626,7 +635,7 @@ async function runPhase3Reconciliation(
       });
       const slug = await generateUniqueAffairSlug(politician?.slug ?? "", affair.title);
 
-      await db.affair.create({
+      const createdAffair = await db.affair.create({
         data: {
           politicianId: affair.politicianId,
           title: affair.title,
@@ -655,7 +664,17 @@ async function runPhase3Reconciliation(
             })),
           },
         },
+        select: { id: true },
       });
+
+      // Lie la décision du resolver à l'affaire créée : le publish-guard
+      // (Phase 2) exigera une revue humaine de cette décision avant publication.
+      if (affair.decisionId) {
+        await db.affairPoliticianDecision.update({
+          where: { id: affair.decisionId },
+          data: { affairId: createdAffair.id },
+        });
+      }
 
       stats.affairsCreated++;
     } catch (error) {

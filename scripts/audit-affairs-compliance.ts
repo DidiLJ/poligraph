@@ -48,15 +48,20 @@ async function main() {
     select: { id: true, slug: true, title: true },
   });
 
-  // 5. Issues favorables : vérification structurelle (jamais comptées à charge)
-  const favorablesDansAgregat = await db.affair.count({
-    where: {
-      ...getAdverseAffairWhere(),
-      status: {
-        in: ["RELAXE", "ACQUITTEMENT", "NON_LIEU", "CLASSEMENT_SANS_SUITE", "PRESCRIPTION"],
-      },
-    },
-  });
+  // 5. Issues favorables : vérification structurelle. L'agrégat à charge ne
+  //    doit contenir aucun statut favorable (intersection vide). Contrôle en
+  //    mémoire sur la config, pas en base : c'est une propriété du code.
+  const FAVORABLE_STATUSES = [
+    "RELAXE",
+    "ACQUITTEMENT",
+    "NON_LIEU",
+    "CLASSEMENT_SANS_SUITE",
+    "PRESCRIPTION",
+  ] as const;
+  const adverseStatuses = (getAdverseAffairWhere().status as { in: string[] }).in;
+  const favorablesDansAgregat = FAVORABLE_STATUSES.filter((s) =>
+    adverseStatuses.includes(s)
+  ).length;
 
   // 6. Décisions resolver orphelines pointant vers une affaire PUBLISHED
   //    (rattachement probable issu d'un resolver mais sans affairId lié)

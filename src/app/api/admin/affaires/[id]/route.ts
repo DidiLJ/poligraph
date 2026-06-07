@@ -6,6 +6,12 @@ import { generateAffairSlug } from "@/lib/utils";
 import { trackStatusChange } from "@/services/affairs/status-tracking";
 import { updateAffairSchema } from "@/lib/validations/affairs";
 import { computeSeverity, isInherentlyMandateCategory } from "@/config/labels";
+import {
+  assertPublishable,
+  PublishGuardError,
+  VERIFIED_BY_MODERATION,
+  PUBLISHED_STATUS,
+} from "@/lib/affairs/publish-guard";
 
 export const GET = withAdminAuth(async (_request: NextRequest, context) => {
   const { id } = await context.params;
@@ -95,7 +101,13 @@ export const PUT = withAdminAuth(async (request: NextRequest, context) => {
       severity,
       isRelatedToMandate: mandateRelated,
       involvement: data.involvement || "DIRECT",
-      ...(data.publicationStatus && { publicationStatus: data.publicationStatus }),
+      // RGPD art. 10 : la transition vers PUBLISHED passe exclusivement par
+      // le guard (après application des champs et des sources). Les autres
+      // statuts (dépublication) restent des écritures directes.
+      ...(data.publicationStatus &&
+        data.publicationStatus !== PUBLISHED_STATUS && {
+          publicationStatus: data.publicationStatus,
+        }),
       factsDate: data.factsDate ? new Date(data.factsDate) : null,
       startDate: data.startDate ? new Date(data.startDate) : null,
       verdictDate: data.verdictDate ? new Date(data.verdictDate) : null,
@@ -143,6 +155,28 @@ export const PUT = withAdminAuth(async (request: NextRequest, context) => {
       sourceType: s.sourceType || "MANUAL",
     }))!,
   });
+
+  // Transition vers PUBLISHED : via le guard, qui re-vérifie sources et
+  // rattachements puis écrit verifiedAt/verifiedBy atomiquement.
+  const wantsPublish =
+    data.publicationStatus === PUBLISHED_STATUS && existing.publicationStatus !== PUBLISHED_STATUS;
+  if (wantsPublish) {
+    try {
+      await assertPublishable(id!, { verifiedBy: VERIFIED_BY_MODERATION });
+    } catch (err) {
+      if (err instanceof PublishGuardError) {
+        return NextResponse.json(
+          {
+            error: "Affaire non publiable",
+            reasons: err.reasons.map((r) => r.message),
+            fieldsSaved: true,
+          },
+          { status: 422 }
+        );
+      }
+      throw err;
+    }
+  }
 
   // Log action
   await db.auditLog.create({

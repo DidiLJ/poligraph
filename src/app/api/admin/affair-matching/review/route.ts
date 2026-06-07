@@ -6,7 +6,7 @@ import { parsePagination } from "@/lib/api/pagination";
 import { AffairPoliticianJudgment } from "@/generated/prisma";
 
 const querySchema = z.object({
-  tab: z.enum(["UNDECIDED", "NO_MATCH"]),
+  tab: z.enum(["UNDECIDED", "NO_MATCH", "SAME"]),
 });
 
 export const GET = withAdminAuth(async (request: NextRequest) => {
@@ -50,6 +50,10 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
         source: true,
         sourceRef: true,
         createdAt: true,
+        chosenPoliticianId: true,
+        chosenPolitician: { select: { id: true, fullName: true, slug: true } },
+        affairId: true,
+        affair: { select: { id: true, title: true, publicationStatus: true } },
       },
     }),
     db.affairPoliticianDecision.count({ where }),

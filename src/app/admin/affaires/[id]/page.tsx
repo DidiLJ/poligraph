@@ -34,16 +34,31 @@ async function updatePublicationStatus(id: string, status: PublicationStatus) {
   const { db } = await import("@/lib/db");
   const { invalidateEntity } = await import("@/lib/cache");
   const { revalidatePath } = await import("next/cache");
+  const { assertPublishable, PublishGuardError, VERIFIED_BY_MODERATION, PUBLISHED_STATUS } =
+    await import("@/lib/affairs/publish-guard");
 
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     throw new Error("Non autorisé");
   }
 
-  await db.affair.update({
-    where: { id },
-    data: { publicationStatus: status },
-  });
+  if (status === PUBLISHED_STATUS) {
+    // RGPD art. 10 : publication uniquement via le guard (sources +
+    // rattachements validés, verifiedAt/verifiedBy écrits atomiquement).
+    try {
+      await assertPublishable(id, { verifiedBy: VERIFIED_BY_MODERATION });
+    } catch (err) {
+      if (err instanceof PublishGuardError) {
+        throw new Error(`Affaire non publiable : ${err.reasons.map((r) => r.message).join(" ; ")}`);
+      }
+      throw err;
+    }
+  } else {
+    await db.affair.update({
+      where: { id },
+      data: { publicationStatus: status },
+    });
+  }
 
   await db.auditLog.create({
     data: {

@@ -4,13 +4,18 @@ import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation } from "@/lib/security/validate";
 import { moderateAffairSchema } from "@/lib/security/schemas/affair";
 import { invalidateEntity } from "@/lib/cache";
+import {
+  assertPublishable,
+  PublishGuardError,
+  VERIFIED_BY_MODERATION,
+  PUBLISHED_STATUS,
+} from "@/lib/affairs/publish-guard";
 import type { PublicationStatus } from "@/generated/prisma";
 import type { z } from "zod/v4";
 
 type ModerateBody = z.infer<typeof moderateAffairSchema>;
 
-const ACTION_TO_STATUS: Record<ModerateBody["action"], PublicationStatus> = {
-  publish: "PUBLISHED",
+const ACTION_TO_STATUS: Record<Exclude<ModerateBody["action"], "publish">, PublicationStatus> = {
   exclude: "EXCLUDED",
   reject: "REJECTED",
   archive: "ARCHIVED",
@@ -64,6 +69,45 @@ export const GET = withAdminAuth(async () => {
 export const POST = withAdminAuth(
   withValidation(moderateAffairSchema, async (_request, _context, body: ModerateBody) => {
     const { ids, action } = body;
+
+    if (action === "publish") {
+      // RGPD art. 10 : la publication passe par le guard, qui exige sources
+      // + rattachements validés et écrit verifiedAt/verifiedBy atomiquement.
+      const published: string[] = [];
+      const failed: Array<{ id: string; reasons: string[] }> = [];
+
+      for (const id of ids) {
+        try {
+          await assertPublishable(id, { verifiedBy: VERIFIED_BY_MODERATION });
+          published.push(id);
+        } catch (err) {
+          if (err instanceof PublishGuardError) {
+            failed.push({ id, reasons: err.reasons.map((r) => r.message) });
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      if (published.length > 0) {
+        await db.auditLog.createMany({
+          data: published.map((id) => ({
+            action: "UPDATE" as const,
+            entityType: "Affair",
+            entityId: id,
+            changes: {
+              publicationStatus: PUBLISHED_STATUS,
+              moderationAction: action,
+              verifiedBy: VERIFIED_BY_MODERATION,
+            },
+          })),
+        });
+        invalidateEntity("affair");
+      }
+
+      return NextResponse.json({ updated: published.length, failed });
+    }
+
     const publicationStatus = ACTION_TO_STATUS[action];
 
     const result = await db.affair.updateMany({
@@ -71,7 +115,6 @@ export const POST = withAdminAuth(
       data: { publicationStatus },
     });
 
-    // Audit log for each
     await db.auditLog.createMany({
       data: ids.map((id) => ({
         action: "UPDATE" as const,

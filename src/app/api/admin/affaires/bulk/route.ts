@@ -4,6 +4,12 @@ import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation } from "@/lib/security/validate";
 import { bulkAffairSchema } from "@/lib/security/schemas/affair";
 import { invalidateEntity } from "@/lib/cache";
+import {
+  assertPublishable,
+  PublishGuardError,
+  VERIFIED_BY_MODERATION,
+  PUBLISHED_STATUS,
+} from "@/lib/affairs/publish-guard";
 import type { z } from "zod/v4";
 
 type BulkBody = z.infer<typeof bulkAffairSchema>;
@@ -32,13 +38,45 @@ export const POST = withAdminAuth(
       return NextResponse.json({ deleted: result.count });
     }
 
-    const publicationStatus = action === "publish" ? "PUBLISHED" : "REJECTED";
+    if (action === "publish") {
+      // RGPD art. 10 : publication uniquement via le guard.
+      const published: string[] = [];
+      const failed: Array<{ id: string; reasons: string[] }> = [];
 
+      for (const id of ids) {
+        try {
+          await assertPublishable(id, { verifiedBy: VERIFIED_BY_MODERATION });
+          published.push(id);
+        } catch (err) {
+          if (err instanceof PublishGuardError) {
+            failed.push({ id, reasons: err.reasons.map((r) => r.message) });
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      if (published.length > 0) {
+        await db.auditLog.createMany({
+          data: published.map((id) => ({
+            action: "UPDATE" as const,
+            entityType: "Affair",
+            entityId: id,
+            changes: { publicationStatus: PUBLISHED_STATUS, verifiedBy: VERIFIED_BY_MODERATION },
+          })),
+        });
+        invalidateEntity("affair");
+      }
+
+      return NextResponse.json({ updated: published.length, failed });
+    }
+
+    // action === "reject"
     const result = await db.affair.updateMany({
       where: { id: { in: ids } },
       data: {
-        publicationStatus,
-        ...(action === "reject" ? { rejectionReason } : {}),
+        publicationStatus: "REJECTED",
+        ...(rejectionReason ? { rejectionReason } : {}),
       },
     });
 
@@ -48,7 +86,7 @@ export const POST = withAdminAuth(
         action: "UPDATE" as const,
         entityType: "Affair",
         entityId: id,
-        changes: { publicationStatus, ...(rejectionReason ? { rejectionReason } : {}) },
+        changes: { publicationStatus: "REJECTED", ...(rejectionReason ? { rejectionReason } : {}) },
       })),
     });
 

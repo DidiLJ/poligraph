@@ -33,6 +33,10 @@ interface DecisionRow {
   source: string;
   sourceRef: string | null;
   createdAt: string;
+  chosenPoliticianId: string | null;
+  chosenPolitician: { id: string; fullName: string; slug: string } | null;
+  affairId: string | null;
+  affair: { id: string; title: string; publicationStatus: string } | null;
 }
 
 interface PoliticianSearchResult {
@@ -51,13 +55,14 @@ interface ReviewResponse {
   totalPages: number;
 }
 
-type TabValue = "UNDECIDED" | "NO_MATCH";
+type TabValue = "UNDECIDED" | "NO_MATCH" | "SAME";
 
 // ─── Constants ───────────────────────────────────────────────────
 
 const TABS: { key: TabValue; label: string }[] = [
   { key: "UNDECIDED", label: "En attente" },
   { key: "NO_MATCH", label: "Sans candidat" },
+  { key: "SAME", label: "SAME à confirmer" },
 ];
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -73,7 +78,8 @@ export default function AffairMatchingReviewPage() {
   const searchParams = useSearchParams();
 
   const rawTab = searchParams.get("tab");
-  const tab: TabValue = rawTab === "NO_MATCH" ? "NO_MATCH" : "UNDECIDED";
+  const tab: TabValue =
+    rawTab === "NO_MATCH" ? "NO_MATCH" : rawTab === "SAME" ? "SAME" : "UNDECIDED";
   const currentPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
 
   const [data, setData] = useState<ReviewResponse | null>(null);
@@ -269,7 +275,9 @@ export default function AffairMatchingReviewPage() {
             <p className="text-sm text-muted-foreground">
               {tab === "UNDECIDED"
                 ? "Aucune décision en attente."
-                : "Aucune décision sans candidat."}
+                : tab === "SAME"
+                  ? "Aucun rattachement automatique à confirmer."
+                  : "Aucune décision sans candidat."}
             </p>
           </CardContent>
         </Card>
@@ -495,6 +503,81 @@ function DecisionCard({
             actionInProgress={actionInProgress}
             onResolve={onNoMatchResolve}
           />
+        )}
+
+        {/* SAME tab: confirm or reject the high-confidence rattachement */}
+        {tab === "SAME" && (
+          <div className="space-y-3 pt-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Rattachement automatique
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Rattachements automatiques à confiance élevée. À confirmer avant publication de l{"'"}
+              affaire liée.
+            </p>
+
+            {/* Chosen politician */}
+            {row.chosenPolitician && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Politicien rattaché</p>
+                <p className="text-sm font-medium">{row.chosenPolitician.fullName}</p>
+                <code className="text-[11px] font-mono text-muted-foreground">
+                  {row.chosenPolitician.id}
+                </code>
+              </div>
+            )}
+
+            {/* Linked affair */}
+            {row.affair && (
+              <div className="rounded-lg border border-border px-3 py-2.5 space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Affaire liée</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm">{row.affair.title}</p>
+                  <Badge variant="outline" className="text-[11px] shrink-0">
+                    {row.affair.publicationStatus}
+                  </Badge>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                size="sm"
+                onClick={() =>
+                  row.chosenPoliticianId
+                    ? void onConfirm(row.id, row.chosenPoliticianId)
+                    : undefined
+                }
+                disabled={actionInProgress !== null || row.chosenPoliticianId === null}
+                aria-label={
+                  row.chosenPolitician
+                    ? `Confirmer le rattachement à ${row.chosenPolitician.fullName}`
+                    : "Confirmer le rattachement"
+                }
+              >
+                {actionInProgress === `confirm-${row.id}-${row.chosenPoliticianId ?? ""}` ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                ) : null}
+                Confirmer le rattachement
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  void onRejectAll(row.id, row.chosenPoliticianId ? [row.chosenPoliticianId] : [])
+                }
+                disabled={actionInProgress !== null}
+                aria-label="Rejeter ce rattachement automatique"
+              >
+                {actionInProgress === `reject-${row.id}` ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                ) : null}
+                Rejeter
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </article>

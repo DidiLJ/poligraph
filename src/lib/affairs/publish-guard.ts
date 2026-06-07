@@ -52,14 +52,14 @@ export class PublishGuardError extends Error {
  */
 type GuardClient = {
   affair: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    findUnique: (args: any) => Promise<{
-      id: string;
-      politicianId: string;
-      sources: { url: string }[];
-    } | null>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    update: (args: any) => Promise<unknown>;
+    findUnique: (args: {
+      where: Prisma.AffairWhereUniqueInput;
+      select: Prisma.AffairSelect;
+    }) => Promise<{ id: string; politicianId: string; sources: { url: string }[] } | null>;
+    update: (args: {
+      where: Prisma.AffairWhereUniqueInput;
+      data: Prisma.AffairUpdateInput;
+    }) => Promise<unknown>;
   };
   affairPoliticianDecision: {
     findMany: (args: {

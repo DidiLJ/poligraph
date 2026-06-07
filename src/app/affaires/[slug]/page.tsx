@@ -37,7 +37,7 @@ import type { Prisma } from "@/generated/prisma";
 import { SITE_URL } from "@/config/site";
 import { ShareBar } from "@/components/ui/ShareBar";
 import { getAffairPartyDisplay } from "@/lib/affairs/party-display";
-import { buildPublicAffairLookupWheres } from "@/lib/affairs/affair-lookup";
+import { buildPublicAffairLookupWheres, pickPublicLinkedAffair } from "@/lib/affairs/affair-lookup";
 import { SlappBadge } from "@/components/slapp/SlappBadge";
 import { CriteriaList } from "@/components/slapp/CriteriaList";
 import type { SlappCriteriaPayload } from "@/config/slapp";
@@ -99,15 +99,18 @@ const affairInclude = {
       slug: true,
       title: true,
       involvement: true,
+      publicationStatus: true,
       politician: { select: { fullName: true, slug: true } },
     },
   },
   linkedBy: {
+    where: { publicationStatus: "PUBLISHED" as const },
     select: {
       id: true,
       slug: true,
       title: true,
       involvement: true,
+      publicationStatus: true,
       politician: { select: { fullName: true, slug: true } },
     },
   },
@@ -180,7 +183,7 @@ export default async function AffairDetailPage({ params }: PageProps) {
     partyAtTime: affair.partyAtTime,
     currentParty: affair.politician.currentParty,
   });
-  const linked = affair.linkedAffair || affair.linkedBy?.[0];
+  const linked = pickPublicLinkedAffair(affair.linkedAffair, affair.linkedBy);
 
   return (
     <>

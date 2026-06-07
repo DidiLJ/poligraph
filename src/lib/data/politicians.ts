@@ -37,15 +37,18 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
               slug: true,
               title: true,
               involvement: true,
+              publicationStatus: true,
               politician: { select: { id: true, fullName: true, slug: true } },
             },
           },
           linkedBy: {
+            where: { publicationStatus: "PUBLISHED" as const },
             select: {
               id: true,
               slug: true,
               title: true,
               involvement: true,
+              publicationStatus: true,
               politician: { select: { id: true, fullName: true, slug: true } },
             },
           },

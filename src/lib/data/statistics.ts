@@ -7,12 +7,8 @@ import {
   AFFAIR_CATEGORY_LABELS,
   type AffairSuperCategory,
 } from "@/config/labels";
-import {
-  getJudicialMaturity,
-  CONDAMNATION_STATUSES,
-  EN_COURS_STATUSES,
-  type JudicialMaturity,
-} from "@/config/judicial-maturity";
+import { getJudicialMaturity, type JudicialMaturity } from "@/config/judicial-maturity";
+import { getConvictionOnlyWhere, getMisEnCauseWhere } from "@/lib/affairs/public-filters";
 import type { AffairStatus, AffairCategory } from "@/types";
 import type { Chamber } from "@/generated/prisma";
 
@@ -58,13 +54,14 @@ export async function getJudicialData() {
       }),
       // Unique politicians with condamnation (Tier 1)
       db.affair.findMany({
-        where: { ...directFilter, status: { in: CONDAMNATION_STATUSES } },
+        where: getConvictionOnlyWhere(),
         select: { politicianId: true },
         distinct: ["politicianId"],
       }),
-      // Unique politicians with procedures en cours (Tier 2 + 3)
+      // Unique politicians mis en cause (Tier 2 strict : validé par un juge,
+      // les enquêtes préliminaires ne sont pas comptabilisées)
       db.affair.findMany({
-        where: { ...directFilter, status: { in: EN_COURS_STATUSES } },
+        where: getMisEnCauseWhere(),
         select: { politicianId: true },
         distinct: ["politicianId"],
       }),

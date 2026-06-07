@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pickPublicLinkedAffair } from "@/lib/affairs/affair-lookup";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -89,7 +90,7 @@ export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
                     </p>
                     <div className="space-y-6">
                       {levelAffairs.map((affair) => {
-                        const linked = affair.linkedAffair || affair.linkedBy?.[0];
+                        const linked = pickPublicLinkedAffair(affair.linkedAffair, affair.linkedBy);
                         return (
                           <div key={affair.id}>
                             <AffairCard
@@ -211,7 +212,7 @@ export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
           <CardContent>
             <div className="space-y-6">
               {victimAffairs.map((affair) => {
-                const linked = affair.linkedAffair || affair.linkedBy?.[0];
+                const linked = pickPublicLinkedAffair(affair.linkedAffair, affair.linkedBy);
                 return (
                   <div
                     key={affair.id}

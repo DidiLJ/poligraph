@@ -35,8 +35,8 @@ const STATUS_COLORS: Partial<Record<AffairStatus, string>> = {
 
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const affair = await db.affair.findUnique({
-    where: { slug },
+  const affair = await db.affair.findFirst({
+    where: { slug, publicationStatus: "PUBLISHED" },
     select: {
       title: true,
       status: true,

@@ -138,8 +138,9 @@ export function JudicialSection({
             </div>
             <div className="text-sm text-muted-foreground mt-1">Élus mis en cause</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              {maturityCounts.PROCEDURE_VALIDEE + maturityCounts.ENQUETE} procédure
-              {maturityCounts.PROCEDURE_VALIDEE + maturityCounts.ENQUETE !== 1 ? "s" : ""} en cours
+              {maturityCounts.PROCEDURE_VALIDEE} procédure
+              {maturityCounts.PROCEDURE_VALIDEE !== 1 ? "s" : ""} validée
+              {maturityCounts.PROCEDURE_VALIDEE !== 1 ? "s" : ""} par un juge
             </div>
           </CardContent>
         </Card>
@@ -244,9 +245,12 @@ export function JudicialSection({
         Les &laquo;&nbsp;atteintes à la probité&nbsp;&raquo; regroupent les infractions liées à
         l&apos;exercice du mandat public : corruption, trafic d&apos;influence, détournement de
         fonds publics, prise illégale d&apos;intérêts, emplois fictifs, financement illégal de
-        campagne ou de parti, et incitation à la haine. Les compteurs ne prennent en compte que les
-        affaires validées par un juge (condamnations et procédures en cours). Les enquêtes
-        préliminaires ne sont pas comptabilisées.{" "}
+        campagne ou de parti, et incitation à la haine. Les compteurs &laquo;&nbsp;Élus
+        condamnés&nbsp;&raquo; et &laquo;&nbsp;Élus mis en cause&nbsp;&raquo; ne prennent en compte
+        que les affaires validées par un juge : condamnations, mises en examen, instructions,
+        renvois devant un tribunal et procès en cours. Les enquêtes préliminaires, les simples
+        mentions, les personnes victimes ou plaignantes et les procédures closes sans condamnation
+        en sont exclues.{" "}
         <a href="/methodologie#comment-nous-comptons" className="text-primary hover:underline">
           Comment nous comptons
         </a>

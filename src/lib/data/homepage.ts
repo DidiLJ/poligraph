@@ -3,10 +3,10 @@ import { db } from "@/lib/db";
 import { cacheTag, cacheLife } from "next/cache";
 import { FACTCHECK_ALLOWED_SOURCES } from "@/config/labels";
 import {
-  CONDAMNATION_STATUSES,
-  EN_COURS_STATUSES,
-  CLOSE_STATUSES,
-} from "@/config/judicial-maturity";
+  getConvictionOnlyWhere,
+  getMisEnCauseWhere,
+  getFavorableOutcomeWhere,
+} from "@/lib/affairs/public-filters";
 
 export interface HomepageKPIs {
   politiciansCount: number;
@@ -22,11 +22,6 @@ export async function getHomepageKPIs(): Promise<HomepageKPIs> {
   cacheTag("politicians", "affairs", "votes", "factchecks");
   cacheLife("minutes");
 
-  const affairBase = {
-    publicationStatus: "PUBLISHED" as const,
-    involvement: { in: ["DIRECT" as const, "INDIRECT" as const] },
-  };
-
   const [
     politiciansCount,
     condamnationsCount,
@@ -36,15 +31,9 @@ export async function getHomepageKPIs(): Promise<HomepageKPIs> {
     factchecksCount,
   ] = await Promise.all([
     db.politician.count({ where: { publicationStatus: "PUBLISHED" } }),
-    db.affair.count({
-      where: { ...affairBase, status: { in: CONDAMNATION_STATUSES } },
-    }),
-    db.affair.count({
-      where: { ...affairBase, status: { in: EN_COURS_STATUSES } },
-    }),
-    db.affair.count({
-      where: { ...affairBase, status: { in: CLOSE_STATUSES } },
-    }),
+    db.affair.count({ where: getConvictionOnlyWhere() }),
+    db.affair.count({ where: getMisEnCauseWhere() }),
+    db.affair.count({ where: getFavorableOutcomeWhere() }),
     db.scrutin.count(),
     db.factCheck.count({
       where: {

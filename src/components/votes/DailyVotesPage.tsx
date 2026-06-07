@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { DateNavigation } from "./DateNavigation";
 import { DailyVotesList } from "./DailyVotesList";
+import { DailyVotesContent } from "./DailyVotesContent";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getScrutinsByDate, getAdjacentVoteDates } from "@/lib/data/scrutins";
@@ -59,7 +60,15 @@ export async function DailyVotesPage({ date, isToday }: DailyVotesPageProps) {
         </div>
 
         {data.total > 0 ? (
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={
+              <DailyVotesContent
+                scrutins={data.scrutins}
+                typeTab="votes"
+                canonicalPath={canonicalPath}
+              />
+            }
+          >
             <DailyVotesList scrutins={data.scrutins} canonicalPath={canonicalPath} />
           </Suspense>
         ) : (

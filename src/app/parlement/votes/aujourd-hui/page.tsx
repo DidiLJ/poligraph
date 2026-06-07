@@ -20,12 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function AujourdhuiPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ type?: string }>;
-}) {
+export default async function AujourdhuiPage() {
   const today = getParisToday();
-  const { type: typeTab } = await searchParams;
-  return <DailyVotesPage date={today} isToday typeTab={typeTab} />;
+  // The `type` tab is read client-side in DailyVotesList, so this route stays ISR.
+  return <DailyVotesPage date={today} isToday />;
 }

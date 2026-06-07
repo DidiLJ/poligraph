@@ -52,17 +52,16 @@ function extractScrutinNumber(externalId: string): string | null {
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
-// NOTE: Do NOT add `generateStaticParams` here.
-// This page reads `searchParams.type` (date-archive branch) and downstream
-// calls `"use cache"` functions in `@/lib/data/scrutins`. Combining all three
-// (generateStaticParams + searchParams + "use cache") triggers
-// DYNAMIC_SERVER_USAGE on date-archive URLs like /parlement/votes/2026-04-08.
-// Rely on `revalidate = 3600` ISR alone, the same pattern used by the
-// sibling `parlement/votes/aujourd-hui/page.tsx`.
+// This route must NOT access `searchParams`: doing so opts the whole route into
+// dynamic rendering, which silently disables the ISR above and makes every
+// scrutin-detail request re-run the heavy votes query. The date-archive `type`
+// tab is therefore read client-side inside DailyVotesList (useSearchParams), so
+// /parlement/votes/YYYY-MM-DD?type=amendements still works while the route stays
+// ISR-cacheable. (Do not add `generateStaticParams` either — heavy detail pages
+// rely on ISR + on-demand revalidation, not build-time prerendering.)
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ type?: string }>;
 }
 
 /**
@@ -218,15 +217,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ScrutinPage({ params, searchParams }: PageProps) {
+export default async function ScrutinPage({ params }: PageProps) {
   const { slug } = await params;
 
-  // Date archive page (e.g., /votes/2026-03-04)
+  // Date archive page (e.g., /votes/2026-03-04). The `type` tab is handled
+  // client-side in DailyVotesList, so this route never reads searchParams.
   if (DATE_REGEX.test(slug)) {
     const date = new Date(slug + "T00:00:00Z");
     if (!isNaN(date.getTime())) {
-      const { type: typeTab } = await searchParams;
-      return <DailyVotesPage date={slug} typeTab={typeTab} />;
+      return <DailyVotesPage date={slug} />;
     }
   }
 

@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/utils";
 import { ArrowLeft, ExternalLink, Info } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { feminizeRole, SCRUTIN_TYPE_LABELS, SCRUTIN_TYPE_COLORS } from "@/config/labels";
-import { getPoliticianVotingStats } from "@/services/voteStats";
+import { getPoliticianVotingStats, getPoliticianVoteTabCounts } from "@/services/voteStats";
 import type { ScrutinType } from "@/generated/prisma";
 import type { Prisma } from "@/generated/prisma";
 
@@ -78,7 +78,12 @@ async function getVotes(
     ...(hasScrutinFilter && { scrutin: scrutinWhere }),
   };
 
-  const [votes, total, stats, totalAll, amendmentCount] = await Promise.all([
+  // The per-page list is the only query that varies by page/tab, so it stays live.
+  // Counts + stats are per-politician (identical across pages/tabs) and come from
+  // cached helpers, so navigating pages/tabs no longer re-counts (those counts +
+  // the stats groupBy were the dominant DB cost). The active tab's `total` is
+  // derived from the cached counts instead of a fresh count query.
+  const [votes, stats, counts] = await Promise.all([
     db.vote.findMany({
       where,
       include: {
@@ -101,11 +106,17 @@ async function getVotes(
       skip,
       take: limit,
     }),
-    db.vote.count({ where }),
     getPoliticianVotingStats(politicianId),
-    db.vote.count({ where: { politicianId } }),
-    db.vote.count({ where: { politicianId, scrutin: { type: "AMENDEMENT" } } }),
+    getPoliticianVoteTabCounts(politicianId),
   ]);
+
+  const { totalAll, amendmentCount, nonAmendmentCount } = counts;
+  const total =
+    typeFilter.type === "AMENDEMENT"
+      ? amendmentCount
+      : typeFilter.excludeType === "AMENDEMENT"
+        ? nonAmendmentCount
+        : totalAll;
 
   return {
     votes,
@@ -114,7 +125,7 @@ async function getVotes(
     stats,
     totalAll,
     amendmentCount,
-    nonAmendmentCount: totalAll - amendmentCount,
+    nonAmendmentCount,
   };
 }
 

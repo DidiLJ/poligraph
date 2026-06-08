@@ -1,3 +1,4 @@
+import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import { Chamber, MandateType, Prisma } from "@/generated/prisma";
 import type { ThemeCategory } from "@/generated/prisma";
@@ -350,6 +351,14 @@ export async function getPoliticianVotingStats(
   politicianId: string,
   mandateType?: MandateType
 ): Promise<PoliticianVotingStats> {
+  "use cache";
+  // Per-politician aggregate, identical across page/tab navigations — cache it so
+  // it is computed once per politician per window instead of on every page view
+  // (this groupBy was ~15% of total DB time). Invalidated by the votes/politicians
+  // cache tags after a sync.
+  cacheTag("votes", "politicians");
+  cacheLife("minutes");
+
   // Find current parliamentary mandate first — we need it to scope vote counts
   const mandate = await db.mandate.findFirst({
     where: {
@@ -438,6 +447,30 @@ export async function getPoliticianVotingStats(
   }
 
   return votingStats;
+}
+
+/**
+ * Per-politician vote tab counts (total + amendments), identical across pages of
+ * the votes view. Cached so the votes page derives every tab's count from one
+ * cached call instead of re-counting (with a Scrutin join for amendments) on
+ * every page/tab navigation. Invalidated by the votes/politicians cache tags.
+ */
+export async function getPoliticianVoteTabCounts(
+  politicianId: string
+): Promise<{ totalAll: number; amendmentCount: number; nonAmendmentCount: number }> {
+  "use cache";
+  cacheTag("votes", "politicians");
+  cacheLife("minutes");
+
+  // nonAmendmentCount uses the same `{ not: "AMENDEMENT" }` filter as the list
+  // query (so it matches the "Textes de loi" tab exactly even if a scrutin's type
+  // is null — `not` excludes nulls), rather than deriving it by subtraction.
+  const [totalAll, amendmentCount, nonAmendmentCount] = await Promise.all([
+    db.vote.count({ where: { politicianId } }),
+    db.vote.count({ where: { politicianId, scrutin: { type: "AMENDEMENT" } } }),
+    db.vote.count({ where: { politicianId, scrutin: { type: { not: "AMENDEMENT" } } } }),
+  ]);
+  return { totalAll, amendmentCount, nonAmendmentCount };
 }
 
 // ============================================

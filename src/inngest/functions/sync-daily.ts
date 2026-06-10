@@ -1,4 +1,5 @@
 import { inngest } from "../client";
+import { POLICY_TITLE_CRON } from "@/config/policy-titles";
 
 interface DailyStep {
   name: string;
@@ -63,6 +64,58 @@ const DAILY_STEPS: DailyStep[] = [
     run: async () => {
       const { reconcileScrutinDossier } = await import("@/services/sync/reconcile-scrutin-dossier");
       return reconcileScrutinDossier();
+    },
+  },
+  // Policy-title pipeline: import new amendments → link them to scrutins →
+  // generate simplified titles → auto-approve the settled HIGH-confidence ones.
+  // Each step is bounded/idempotent. Auto-approve only touches DRAFT rows ≥24h
+  // old, via the shared guard; new titles surface on the public ISR pages.
+  {
+    name: "amendments-an",
+    run: async () => {
+      const { syncAmendmentsAN } = await import("@/services/sync/amendments-an");
+      const stats = await syncAmendmentsAN({
+        force: false,
+        limit: POLICY_TITLE_CRON.amendmentsImportLimit,
+      });
+      console.info("[sync-daily] amendments-an", stats);
+      return stats;
+    },
+  },
+  {
+    name: "link-scrutins-amendments",
+    run: async () => {
+      const { linkScrutinsToAmendments } =
+        await import("@/services/sync/link-scrutins-to-amendments");
+      const stats = await linkScrutinsToAmendments({
+        legislature: 17,
+        limit: POLICY_TITLE_CRON.linkLimit,
+      });
+      console.info("[sync-daily] link-scrutins-amendments", stats);
+      return stats;
+    },
+  },
+  {
+    name: "generate-policy-titles",
+    run: async () => {
+      if (!process.env.MISTRAL_API_KEY) return { skipped: "no MISTRAL_API_KEY" };
+      const { generateScrutinPolicyTitles } =
+        await import("@/services/sync/generate-scrutin-policy-titles");
+      const stats = await generateScrutinPolicyTitles({ limit: POLICY_TITLE_CRON.generateLimit });
+      console.info("[sync-daily] generate-policy-titles", stats);
+      return stats;
+    },
+  },
+  {
+    name: "approve-policy-titles",
+    run: async () => {
+      const { autoApproveBatchEligible } = await import("@/services/scrutin-policy-title/approval");
+      const stats = await autoApproveBatchEligible({
+        limit: POLICY_TITLE_CRON.approveLimit,
+        minAgeHours: POLICY_TITLE_CRON.approveMinAgeHours,
+      });
+      console.info("[sync-daily] approve-policy-titles", stats);
+      return stats;
     },
   },
   {

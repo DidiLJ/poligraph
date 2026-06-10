@@ -6,17 +6,19 @@ import { isAuthenticated } from "@/lib/auth";
 import {
   approveGuard,
   computeCurrentWarnings,
-  detectEvidenceDrift,
   type HardBlocker,
 } from "@/app/admin/policy-titles/approve-guard";
-import { buildInputHashInput, generateScrutinPolicyTitle } from "@/services/scrutin-policy-title";
-import { computeInputHash } from "@/services/scrutin-policy-title/input-hash";
-import { resolveSubstanceSources } from "@/services/scrutin-policy-title/substance-resolver";
-import type {
-  EvidenceQuote,
-  GenerationWarning,
-  SubstanceTextBlock,
-} from "@/services/scrutin-policy-title/types";
+import { generateScrutinPolicyTitle } from "@/services/scrutin-policy-title";
+import type { EvidenceQuote, GenerationWarning } from "@/services/scrutin-policy-title/types";
+import {
+  recomputeApprovalContext,
+  evaluateBatchEligibility,
+  persistApproval,
+  isRejectedNotRevised,
+  snapshot,
+  asJson,
+  type ApprovalContext,
+} from "@/services/scrutin-policy-title/approval";
 import { queryQueue, type QueueFilters } from "@/app/admin/policy-titles/_data/queue-query";
 import { themeToSlug } from "@/lib/theme-utils";
 import { ApproveBlockedError } from "@/app/admin/policy-titles/errors";
@@ -33,81 +35,9 @@ async function assertAuthenticated(): Promise<void> {
   if (!(await isAuthenticated())) throw new Error("Non autorisé");
 }
 
-interface ApprovalContext {
-  row: ScrutinPolicyTitle;
-  scrutin: {
-    id: string;
-    title: string;
-    sourceUrl: string | null;
-    amendmentLinks: { role: string; amendment: { id: string; number: string } }[];
-  };
-  blocks: SubstanceTextBlock[];
-  currentInputHash: string;
-  currentWarnings: GenerationWarning[];
-  evidenceDrift: boolean;
-}
-
-/**
- * Loads the row + scrutin and recomputes substance, input hash, validator
- * warnings and evidence drift FRESH. Never trusts the stored values: every
- * approval decision must reflect what the official text says today. Shared by
- * the approve/edit actions so the guard always sees current reality.
- */
-async function recomputeApprovalContext(scrutinId: string): Promise<ApprovalContext> {
-  const policy = await db.scrutinPolicyTitle.findUnique({
-    where: { scrutinId },
-    include: {
-      scrutin: {
-        select: {
-          id: true,
-          title: true,
-          sourceUrl: true,
-          amendmentLinks: {
-            select: { role: true, amendment: { select: { id: true, number: true } } },
-          },
-        },
-      },
-    },
-  });
-
-  if (!policy) throw new Error(`Aucun titre public pour le scrutin ${scrutinId}`);
-
-  const { scrutin, ...row } = policy;
-
-  const resolved = await resolveSubstanceSources(scrutinId);
-  const currentInputHash = computeInputHash(
-    buildInputHashInput(
-      {
-        title: scrutin.title,
-        sourceUrl: scrutin.sourceUrl,
-        amendmentLinks: scrutin.amendmentLinks.map((l) => ({
-          role: l.role,
-          amendment: { id: l.amendment.id, number: l.amendment.number },
-        })),
-      },
-      row.proceduralLabel,
-      resolved.blocks
-    )
-  );
-
-  const evidenceQuotes = (row.evidenceQuotes ?? []) as unknown as EvidenceQuote[];
-  const currentWarnings = computeCurrentWarnings(
-    row.policyTitle,
-    row.policySubtitle,
-    evidenceQuotes,
-    resolved.blocks
-  );
-  const evidenceDrift = detectEvidenceDrift(evidenceQuotes, resolved.blocks);
-
-  return {
-    row: policy as ScrutinPolicyTitle,
-    scrutin,
-    blocks: resolved.blocks,
-    currentInputHash,
-    currentWarnings,
-    evidenceDrift,
-  };
-}
+// Approval context recompute, the batch-eligibility guard, and persistence live
+// in the shared service so the cron applies the EXACT same rules. See
+// `@/services/scrutin-policy-title/approval`.
 
 function revalidate(scrutinId: string): void {
   revalidatePath("/admin/policy-titles");
@@ -133,15 +63,6 @@ async function revalidatePublicForScrutin(scrutinId: string): Promise<void> {
     revalidatePath("/");
     revalidatePath("/parlement");
   }
-}
-
-function asJson(value: unknown): Prisma.InputJsonValue {
-  return value as unknown as Prisma.InputJsonValue;
-}
-
-/** Snapshot of the row as stored, for revision history. */
-function snapshot(row: ScrutinPolicyTitle): Prisma.InputJsonValue {
-  return row as unknown as Prisma.InputJsonValue;
 }
 
 /**
@@ -190,52 +111,6 @@ export async function editScrutinPolicyTitle(
   if (row.status === "APPROVED") await revalidatePublicForScrutin(scrutinId);
 }
 
-/** True when the row is REJECTED and its most-recent revision is a rejection. */
-async function isRejectedNotRevised(row: ScrutinPolicyTitle): Promise<boolean> {
-  if (row.status !== "REJECTED") return false;
-  const latest = await db.scrutinPolicyTitleRevision.findFirst({
-    where: { policyTitleId: row.id },
-    orderBy: { createdAt: "desc" },
-  });
-  return latest?.action === "rejected";
-}
-
-interface ApprovePersistArgs {
-  ctx: ApprovalContext;
-  approvalOverride?: { reason: string; actor: string };
-}
-
-/** Persists APPROVED + the freshly recomputed hash/warnings + an "approved"
- *  revision. Only ever called after approveGuard returns ok. */
-async function persistApproval({ ctx, approvalOverride }: ApprovePersistArgs): Promise<void> {
-  const { row, currentInputHash, currentWarnings } = ctx;
-  const reviewedAt = new Date();
-
-  await db.$transaction(async (tx) => {
-    await tx.scrutinPolicyTitleRevision.create({
-      data: {
-        policyTitleId: row.id,
-        snapshot: {
-          ...(snapshot(row) as object),
-          ...(approvalOverride ? { approvalOverride } : {}),
-        } as Prisma.InputJsonValue,
-        action: "approved",
-        actorId: ACTOR,
-      },
-    });
-    await tx.scrutinPolicyTitle.update({
-      where: { id: row.id },
-      data: {
-        status: "APPROVED",
-        reviewedAt,
-        reviewedBy: ACTOR,
-        inputHash: currentInputHash,
-        currentWarnings: asJson(currentWarnings),
-      },
-    });
-  });
-}
-
 /**
  * Approves a clean row. Order: REJECTED-not-revised check, then approveGuard in
  * single mode. On INPUT_DRIFT the row is flipped to STALE (with a revision) before
@@ -263,7 +138,7 @@ export async function approveScrutinPolicyTitle(scrutinId: string): Promise<void
     await handleGuardFailure(row, scrutinId, result.hardBlockers);
   }
 
-  await persistApproval({ ctx });
+  await persistApproval(ctx, { actor: ACTOR });
   revalidate(scrutinId);
   await revalidatePublicForScrutin(scrutinId);
 }
@@ -301,7 +176,7 @@ export async function approveWithOverrideScrutinPolicyTitle(
     await handleGuardFailure(row, scrutinId, result.hardBlockers);
   }
 
-  await persistApproval({ ctx, approvalOverride: { reason: trimmed, actor: ACTOR } });
+  await persistApproval(ctx, { actor: ACTOR, approvalOverride: { reason: trimmed, actor: ACTOR } });
   revalidate(scrutinId);
   await revalidatePublicForScrutin(scrutinId);
 }
@@ -439,51 +314,6 @@ export interface BatchApproveResult {
 }
 
 /**
- * Per-id batch eligibility. Recomputes the approval context FRESH and runs the
- * guard in batch mode (which enforces HIGH confidence, zero currentWarnings, no
- * input/evidence drift, non-empty/<=140 title, no validation blocker). On top of
- * the guard, two explicit extra checks that batch mode must never relax:
- *   - zero generationWarnings (a row that generated with ANY warning is not clean)
- *   - the row is NOT a FALLBACK row
- * Returns the failure reasons for a row, or an empty array when batch-eligible.
- */
-async function evaluateBatchEligibility(scrutinId: string): Promise<string[]> {
-  const ctx = await recomputeApprovalContext(scrutinId);
-  const { row, currentInputHash, currentWarnings, evidenceDrift } = ctx;
-  const reasons: string[] = [];
-
-  // REJECTED-not-revised is a hard precondition for the single path too.
-  if (await isRejectedNotRevised(row)) {
-    reasons.push("REJECTED_NOT_REVISED");
-  }
-
-  // Extra explicit checks (not all covered by the guard in batch mode).
-  const generationWarnings = (row.generationWarnings ?? []) as unknown as GenerationWarning[];
-  if (generationWarnings.length > 0) {
-    reasons.push("GENERATION_WARNINGS");
-  }
-  if (row.generationSource === "FALLBACK") {
-    reasons.push("FALLBACK_ROW");
-  }
-
-  const result = approveGuard({
-    row,
-    currentInputHash,
-    currentWarnings,
-    evidenceDrift,
-    mode: "batch",
-  });
-  if (!result.ok) {
-    for (const code of result.hardBlockers) reasons.push(code);
-    // In batch mode the guard reports overridable warnings (incl. HIGH-confidence
-    // failure) by leaving hardBlockers empty; surface that explicitly.
-    if (result.hardBlockers.length === 0) reasons.push("NOT_BATCH_CLEAN");
-  }
-
-  return reasons;
-}
-
-/**
  * Approves a set of rows, EXTRA conservative and ALL-OR-NOTHING. Every id is
  * recomputed and evaluated against the batch guard plus the explicit extra
  * checks (zero generationWarnings, not FALLBACK). If ANY id fails, NONE are
@@ -501,11 +331,12 @@ export async function batchApprove(scrutinIds: string[]): Promise<BatchApproveRe
   const contexts: ApprovalContext[] = [];
 
   for (const scrutinId of ids) {
-    const reasons = await evaluateBatchEligibility(scrutinId);
+    const ctx = await recomputeApprovalContext(scrutinId);
+    const reasons = await evaluateBatchEligibility(ctx);
     if (reasons.length > 0) {
       failures.push({ scrutinId, reasons });
     } else {
-      contexts.push(await recomputeApprovalContext(scrutinId));
+      contexts.push(ctx);
     }
   }
 
@@ -515,7 +346,7 @@ export async function batchApprove(scrutinIds: string[]): Promise<BatchApproveRe
   }
 
   for (const ctx of contexts) {
-    await persistApproval({ ctx });
+    await persistApproval(ctx, { actor: ACTOR });
     revalidate(ctx.scrutin.id);
     await revalidatePublicForScrutin(ctx.scrutin.id);
   }

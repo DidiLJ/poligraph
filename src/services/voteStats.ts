@@ -462,13 +462,14 @@ export async function getPoliticianVoteTabCounts(
   cacheTag("votes", "politicians");
   cacheLife("minutes");
 
-  // nonAmendmentCount uses the same `{ not: "AMENDEMENT" }` filter as the list
-  // query (so it matches the "Textes de loi" tab exactly even if a scrutin's type
-  // is null — `not` excludes nulls), rather than deriving it by subtraction.
+  // Filters the denormalized Vote.scrutinType directly (Issue #377) to drop the
+  // forced JOIN on Scrutin. nonAmendmentCount uses the same `{ not: "AMENDEMENT" }`
+  // filter as the list query (matches the "Textes de loi" tab exactly even if a
+  // scrutin's type is null — `not` excludes nulls), rather than deriving by subtraction.
   const [totalAll, amendmentCount, nonAmendmentCount] = await Promise.all([
     db.vote.count({ where: { politicianId } }),
-    db.vote.count({ where: { politicianId, scrutin: { type: "AMENDEMENT" } } }),
-    db.vote.count({ where: { politicianId, scrutin: { type: { not: "AMENDEMENT" } } } }),
+    db.vote.count({ where: { politicianId, scrutinType: "AMENDEMENT" } }),
+    db.vote.count({ where: { politicianId, scrutinType: { not: "AMENDEMENT" } } }),
   ]);
   return { totalAll, amendmentCount, nonAmendmentCount };
 }

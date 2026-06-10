@@ -23,23 +23,25 @@ describe("Vote denorm fields are populated by sync write paths", () => {
     updateMock.mockReset();
   });
 
-  it("writeVotesForScrutin writes votingDate AND chamber on every Vote row", async () => {
+  it("writeVotesForScrutin writes votingDate, chamber AND scrutinType on every Vote row", async () => {
     // Simulate the per-scrutin write block: load votesToCreate + scrutin metadata,
-    // call createMany with denormalized votingDate + chamber.
+    // call createMany with denormalized votingDate + chamber + scrutinType.
     const scrutinVotingDate = new Date("2025-03-15T15:00:00Z");
     const scrutinChamber = "AN" as const;
+    const scrutinType = "FINAL" as const;
     const votesToCreate = [
       { politicianId: "p1", position: "POUR" },
       { politicianId: "p2", position: "CONTRE" },
     ];
 
-    // This is the SHAPE we want production code to produce after Task 5a.3:
+    // This is the SHAPE we want production code to produce:
     const expectedData = votesToCreate.map((v) => ({
       scrutinId: "s1",
       politicianId: v.politicianId,
       position: v.position,
       votingDate: scrutinVotingDate, // <-- denorm field 1
       chamber: scrutinChamber, // <-- denorm field 2
+      scrutinType, // <-- denorm field 3 (Issue #377)
     }));
 
     const { writeVotesForScrutin } = await import("@/services/sync/scrutins-vote-writer");
@@ -48,6 +50,7 @@ describe("Vote denorm fields are populated by sync write paths", () => {
       scrutinId: "s1",
       votingDate: scrutinVotingDate,
       chamber: scrutinChamber,
+      scrutinType,
       votes: votesToCreate as never,
     });
 
@@ -66,6 +69,7 @@ describe("Vote denorm fields are populated by sync write paths", () => {
         // @ts-expect-error -- intentional missing field
         votingDate: undefined,
         chamber: "AN",
+        scrutinType: "FINAL",
         votes: [],
       })
     ).rejects.toThrow(/votingDate is required/);
@@ -80,6 +84,7 @@ describe("Vote denorm fields are populated by sync write paths", () => {
         votingDate: new Date(),
         // @ts-expect-error -- intentional missing field
         chamber: undefined,
+        scrutinType: "FINAL",
         votes: [],
       })
     ).rejects.toThrow(/chamber is required/);

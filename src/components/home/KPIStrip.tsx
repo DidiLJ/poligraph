@@ -71,7 +71,7 @@ export function KPIStrip({ kpis }: { kpis: HomepageKPIs }) {
         <KPICard
           count={kpis.condamnationsCount}
           label="Condamnations"
-          href="/affaires?certainty=ETABLI"
+          href="/affaires/condamnations?view=stats"
           color="#DC2626"
           subtext={condamnationsSubtextParts.join(" · ") || undefined}
         />

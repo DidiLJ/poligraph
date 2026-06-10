@@ -67,15 +67,12 @@ async function getVotes(
 ) {
   const skip = (page - 1) * limit;
 
-  const scrutinWhere: Prisma.ScrutinWhereInput = {
-    ...(typeFilter.type && { type: typeFilter.type }),
-    ...(typeFilter.excludeType && { type: { not: typeFilter.excludeType } }),
-  };
-  const hasScrutinFilter = Object.keys(scrutinWhere).length > 0;
-
+  // Filter the denormalized Vote.scrutinType directly (Issue #377) instead of
+  // `scrutin: { type }`, which forced a JOIN on Scrutin for every paginated page.
   const where: Prisma.VoteWhereInput = {
     politicianId,
-    ...(hasScrutinFilter && { scrutin: scrutinWhere }),
+    ...(typeFilter.type && { scrutinType: typeFilter.type }),
+    ...(typeFilter.excludeType && { scrutinType: { not: typeFilter.excludeType } }),
   };
 
   // The per-page list is the only query that varies by page/tab, so it stays live.

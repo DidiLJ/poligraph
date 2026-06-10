@@ -10,6 +10,11 @@ export function TrustStrip() {
         Parlement européen, HATVP et sources de presse vérifiées. Notre méthode et nos principes
         sont documentés et consultables.
       </p>
+      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+        Nous distinguons les affaires en cours, les procédures, les classements et les condamnations
+        définitives, ainsi que les fact-checks. Une mise en cause ne vaut pas condamnation : la
+        présomption d{"'"}innocence s{"'"}applique.
+      </p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <Link
           href="/sources"

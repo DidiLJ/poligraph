@@ -6,8 +6,9 @@ import { getEnabledFlags } from "@/lib/feature-flags";
 import { HomeHero } from "@/components/home/HomeHero";
 import { KPIStrip } from "@/components/home/KPIStrip";
 import { ElectionBanner } from "@/components/home/ElectionBanner";
+import { HomeIntentGrid } from "@/components/home/HomeIntentGrid";
+import { PopularData } from "@/components/home/PopularData";
 import { ActivityFeed } from "@/components/home/ActivityFeed";
-import { IntentionGrid } from "@/components/home/IntentionGrid";
 import { TrustStrip } from "@/components/home/TrustStrip";
 import { SupportBar } from "@/components/home/SupportBar";
 
@@ -45,7 +46,9 @@ export default async function HomePage() {
 
       <KPIStrip kpis={kpis} />
 
-      <IntentionGrid enabledFlags={enabledFlags} />
+      <HomeIntentGrid enabledFlags={enabledFlags} />
+
+      <PopularData />
 
       <ActivityFeed recap={weeklyRecap} />
 

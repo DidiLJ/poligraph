@@ -1,17 +1,14 @@
 import { Metadata } from "next";
-import { WebSiteJsonLd } from "@/components/seo/JsonLd";
-import { SITE_URL } from "@/config/site";
 import { getWeeklyRecap, getWeekStart } from "@/lib/data/recap";
 import { getFeaturedElection } from "@/lib/data/elections";
 import { getHomepageKPIs } from "@/lib/data/homepage";
-import { getTopMovers } from "@/lib/data/top-movers";
 import { getEnabledFlags } from "@/lib/feature-flags";
-import { WelcomeBar } from "@/components/home/WelcomeBar";
+import { HomeHero } from "@/components/home/HomeHero";
 import { KPIStrip } from "@/components/home/KPIStrip";
 import { ElectionBanner } from "@/components/home/ElectionBanner";
-import { TopMovers } from "@/components/home/TopMovers";
 import { ActivityFeed } from "@/components/home/ActivityFeed";
-import { QuickAccess } from "@/components/home/QuickAccess";
+import { IntentionGrid } from "@/components/home/IntentionGrid";
+import { TrustStrip } from "@/components/home/TrustStrip";
 import { SupportBar } from "@/components/home/SupportBar";
 
 export const revalidate = 300;
@@ -27,9 +24,8 @@ export default async function HomePage() {
   const now = new Date();
   const currentWeekStart = getWeekStart(now);
 
-  const [kpis, topMovers, weeklyRecap, featuredElection, enabledFlags] = await Promise.all([
+  const [kpis, weeklyRecap, featuredElection, enabledFlags] = await Promise.all([
     getHomepageKPIs(),
-    getTopMovers(),
     getWeeklyRecap(currentWeekStart),
     getFeaturedElection(),
     getEnabledFlags(),
@@ -42,28 +38,20 @@ export default async function HomePage() {
     : null;
 
   return (
-    <>
-      <WebSiteJsonLd
-        name="Poligraph"
-        description="Observatoire citoyen de la vie politique. Mandats, votes, patrimoine, affaires judiciaires et fact-checking."
-        url={SITE_URL}
-      />
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        <WelcomeBar />
+    <div className="container mx-auto px-4 py-8 space-y-10">
+      <HomeHero />
 
-        {featuredElection && <ElectionBanner election={featuredElection} daysUntil={daysUntil} />}
+      {featuredElection && <ElectionBanner election={featuredElection} daysUntil={daysUntil} />}
 
-        <KPIStrip kpis={kpis} />
+      <KPIStrip kpis={kpis} />
 
-        <TopMovers movers={topMovers} />
+      <IntentionGrid enabledFlags={enabledFlags} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ActivityFeed recap={weeklyRecap} />
-          <QuickAccess enabledFlags={enabledFlags} />
-        </div>
+      <ActivityFeed recap={weeklyRecap} />
 
-        <SupportBar />
-      </div>
-    </>
+      <TrustStrip />
+
+      <SupportBar />
+    </div>
   );
 }

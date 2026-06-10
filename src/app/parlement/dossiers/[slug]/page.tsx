@@ -20,6 +20,7 @@ import { LegislationJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { formatDate } from "@/lib/utils";
+import { extractText } from "@/lib/parsing/html-utils";
 import type { MandateType } from "@/generated/prisma";
 
 export const revalidate = 3600; // ISR: revalidate every hour
@@ -296,14 +297,18 @@ export default async function DossierDetailPage({ params }: PageProps) {
                       </div>
                       {amendment.authorName && (
                         <p className="text-sm text-muted-foreground">
-                          Par {amendment.authorName}
+                          Par {extractText(amendment.authorName)}
                           {amendment.authorType && ` (${amendment.authorType})`}
                         </p>
                       )}
                       {amendment.article && (
-                        <p className="text-sm text-muted-foreground">Article {amendment.article}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Article {extractText(amendment.article)}
+                        </p>
                       )}
-                      {amendment.summary && <p className="text-sm mt-2">{amendment.summary}</p>}
+                      {amendment.summary && (
+                        <p className="text-sm mt-2">{extractText(amendment.summary)}</p>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -249,3 +249,52 @@ describe("PIPELINE_REGISTRY", () => {
     }
   });
 });
+
+describe("policy-title pipeline steps", () => {
+  // id → the SyncMetadata key the matching sync-daily step writes via markCompleted.
+  const STEP_KEYS: Record<string, string> = {
+    "policy-amendments": "policy-titles:amendments",
+    "policy-link": "policy-titles:link",
+    "policy-generate": "policy-titles:generate",
+    "policy-approve": "policy-titles:approve",
+  };
+
+  it("registers all four steps with their sync-metadata keys", () => {
+    for (const [id, key] of Object.entries(STEP_KEYS)) {
+      const config = getPipelineConfig(id);
+      expect(config, `pipeline ${id} should be registered`).toBeDefined();
+      expect(config!.metadataKeys).toContain(key);
+      expect(config!.enabled).toBe(true);
+      expect(config!.category).toBe("votes");
+    }
+  });
+
+  it("flags a step as warning then critical as its last run goes stale", () => {
+    const config = getPipelineConfig("policy-approve")!;
+    expect(
+      computePipelineHealth(
+        config,
+        makeLastRun({ lastRunAt: hoursAgo(40), status: "completed" }),
+        NOW
+      ).status
+    ).toBe("warning");
+    expect(
+      computePipelineHealth(
+        config,
+        makeLastRun({ lastRunAt: hoursAgo(100), status: "completed" }),
+        NOW
+      ).status
+    ).toBe("critical");
+  });
+
+  it("is healthy right after a successful run, surfacing counts", () => {
+    const config = getPipelineConfig("policy-generate")!;
+    const result = computePipelineHealth(
+      config,
+      makeLastRun({ lastRunAt: hoursAgo(3), itemCount: 5, status: "completed" }),
+      NOW
+    );
+    expect(result.status).toBe("healthy");
+    expect(result.lastItemCount).toBe(5);
+  });
+});

@@ -183,6 +183,58 @@ export const PIPELINE_REGISTRY: PipelineConfig[] = [
     enabled: true,
   },
 
+  // Policy-title pipeline (Inngest, sync-daily steps). Each writes its own
+  // SyncMetadata key so freshness is tracked per step. Public-facing + partly
+  // AI-driven, so monitored separately rather than as one black box.
+  {
+    id: "policy-amendments",
+    name: "Titres de votes : import amendements",
+    category: "votes",
+    frequency: "daily",
+    source: "inngest",
+    warnAfterHours: 30,
+    criticalAfterHours: 72,
+    metadataKeys: ["policy-titles:amendments"],
+    command: "sync-daily (amendments-an)",
+    enabled: true,
+  },
+  {
+    id: "policy-link",
+    name: "Titres de votes : liaison scrutins",
+    category: "votes",
+    frequency: "daily",
+    source: "inngest",
+    warnAfterHours: 30,
+    criticalAfterHours: 72,
+    metadataKeys: ["policy-titles:link"],
+    command: "sync-daily (link-scrutins-amendments)",
+    enabled: true,
+  },
+  {
+    id: "policy-generate",
+    name: "Titres de votes : génération IA",
+    category: "votes",
+    frequency: "daily",
+    source: "inngest",
+    warnAfterHours: 30,
+    criticalAfterHours: 72,
+    metadataKeys: ["policy-titles:generate"],
+    command: "sync-daily (generate-policy-titles)",
+    enabled: true,
+  },
+  {
+    id: "policy-approve",
+    name: "Titres de votes : auto-approbation",
+    category: "votes",
+    frequency: "daily",
+    source: "inngest",
+    warnAfterHours: 30,
+    criticalAfterHours: 72,
+    metadataKeys: ["policy-titles:approve"],
+    command: "sync-daily (approve-policy-titles)",
+    enabled: true,
+  },
+
   // Weekly pipelines (GitHub Actions)
   {
     id: "deputes",

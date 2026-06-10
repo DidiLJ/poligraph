@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { POLICY_TITLE_CRON } from "@/config/policy-titles";
+import { syncMetadata } from "@/lib/sync/sync-metadata";
 
 interface DailyStep {
   name: string;
@@ -78,6 +79,16 @@ const DAILY_STEPS: DailyStep[] = [
         force: false,
         limit: POLICY_TITLE_CRON.amendmentsImportLimit,
       });
+      await syncMetadata.markCompleted("policy-titles:amendments", {
+        itemCount: stats.amendmentsCreated,
+        durationS: stats.durationMs / 1000,
+        extra: {
+          seen: stats.amendmentsSeen,
+          created: stats.amendmentsCreated,
+          updated: stats.amendmentsUpdated,
+          skipped: stats.amendmentsSkipped,
+        },
+      });
       console.info("[sync-daily] amendments-an", stats);
       return stats;
     },
@@ -91,6 +102,15 @@ const DAILY_STEPS: DailyStep[] = [
         legislature: 17,
         limit: POLICY_TITLE_CRON.linkLimit,
       });
+      await syncMetadata.markCompleted("policy-titles:link", {
+        itemCount: stats.linksCreated,
+        durationS: stats.durationMs / 1000,
+        extra: {
+          scanned: stats.scrutinsScanned,
+          linked: stats.scrutinsLinked,
+          linksCreated: stats.linksCreated,
+        },
+      });
       console.info("[sync-daily] link-scrutins-amendments", stats);
       return stats;
     },
@@ -102,6 +122,16 @@ const DAILY_STEPS: DailyStep[] = [
       const { generateScrutinPolicyTitles } =
         await import("@/services/sync/generate-scrutin-policy-titles");
       const stats = await generateScrutinPolicyTitles({ limit: POLICY_TITLE_CRON.generateLimit });
+      await syncMetadata.markCompleted("policy-titles:generate", {
+        itemCount: stats.generated,
+        durationS: stats.durationMs / 1000,
+        extra: {
+          processed: stats.processed,
+          generated: stats.generated,
+          fallbacks: stats.fallbacks,
+          errors: stats.errors.length,
+        },
+      });
       console.info("[sync-daily] generate-policy-titles", stats);
       return stats;
     },
@@ -113,6 +143,16 @@ const DAILY_STEPS: DailyStep[] = [
       const stats = await autoApproveBatchEligible({
         limit: POLICY_TITLE_CRON.approveLimit,
         minAgeHours: POLICY_TITLE_CRON.approveMinAgeHours,
+      });
+      await syncMetadata.markCompleted("policy-titles:approve", {
+        itemCount: stats.approved,
+        durationS: stats.durationMs / 1000,
+        extra: {
+          scanned: stats.scanned,
+          approved: stats.approved,
+          skipped: stats.skipped,
+          byReason: stats.byReason,
+        },
       });
       console.info("[sync-daily] approve-policy-titles", stats);
       return stats;

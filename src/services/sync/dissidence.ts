@@ -1,3 +1,23 @@
+import { Prisma } from "@/generated/prisma";
+
+/**
+ * Shared FROM/JOIN/WHERE for BOTH dissidence scans (compute-stats.ts): the group
+ * majority aggregation AND the per-politician vote scan. Both MUST run on the same
+ * vote population. Past bug: the majority query lacked the mandate date filter, so
+ * out-of-mandate votes polluted the majority (333 (scrutin, group) majorities
+ * flipped, ~140 politicians judged against a wrong majority). Single source of truth.
+ */
+export const CURRENT_GROUP_VOTES_FROM = Prisma.sql`
+  FROM "Vote" v
+  JOIN "Mandate" m ON m."politicianId" = v."politicianId"
+    AND m."isCurrent" = true
+    AND m.type IN ('DEPUTE'::"MandateType", 'SENATEUR'::"MandateType")
+  JOIN "MandateParliamentary" mp ON mp."mandateId" = m.id
+  WHERE v.position IN ('POUR', 'CONTRE', 'ABSTENTION')
+    AND v."votingDate" >= m."startDate"
+    AND (m."endDate" IS NULL OR v."votingDate" <= m."endDate")
+`;
+
 export interface GroupVoteEntry {
   scrutinId: string;
   groupId: string;

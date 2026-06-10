@@ -13,7 +13,7 @@ export function ActivityFeed({ recap }: ActivityFeedProps) {
   if (recap.votes && recap.votes.total > 0) {
     const n = recap.votes.total;
     items.push({
-      label: `${n} vote${n > 1 ? "s" : ""} cette semaine`,
+      label: `${n} vote${n > 1 ? "s" : ""} récemment analysé${n > 1 ? "s" : ""}`,
       count: n,
       href: "/parlement/votes",
       color: "bg-blue-500",
@@ -23,7 +23,7 @@ export function ActivityFeed({ recap }: ActivityFeedProps) {
   if (recap.affairs && recap.affairs.newAffairs.length > 0) {
     const n = recap.affairs.newAffairs.length;
     items.push({
-      label: `${n} nouvelle${n > 1 ? "s" : ""} affaire${n > 1 ? "s" : ""}`,
+      label: `${n} nouvelle${n > 1 ? "s" : ""} affaire${n > 1 ? "s" : ""} documentée${n > 1 ? "s" : ""}`,
       count: n,
       href: "/affaires",
       color: "bg-red-500",
@@ -33,7 +33,7 @@ export function ActivityFeed({ recap }: ActivityFeedProps) {
   if (recap.factChecks && recap.factChecks.total > 0) {
     const n = recap.factChecks.total;
     items.push({
-      label: `${n} fact-check${n > 1 ? "s" : ""}`,
+      label: `${n} fact-check${n > 1 ? "s" : ""} ajouté${n > 1 ? "s" : ""}`,
       count: n,
       href: "/factchecks",
       color: "bg-amber-500",
@@ -45,7 +45,7 @@ export function ActivityFeed({ recap }: ActivityFeedProps) {
   return (
     <section>
       <h2 className="text-lg font-display font-bold mb-4">Activité récente</h2>
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {items.map((item) => (
           <Link
             key={item.href}
@@ -61,6 +61,10 @@ export function ActivityFeed({ recap }: ActivityFeedProps) {
           </Link>
         ))}
       </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Les affaires en cours ne valent pas condamnation. Poligraph distingue les procédures, les
+        classements, les relaxes et les condamnations.
+      </p>
     </section>
   );
 }

@@ -1,10 +1,11 @@
 import { db } from "@/lib/db";
-import type { Chamber, VotePosition } from "@/generated/prisma";
+import type { Chamber, ScrutinType, VotePosition } from "@/generated/prisma";
 
 export interface WriteVotesParams {
   scrutinId: string;
   votingDate: Date;
   chamber: Chamber;
+  scrutinType: ScrutinType | null;
   votes: Array<{ politicianId: string; position: VotePosition }>;
 }
 
@@ -44,6 +45,7 @@ export async function writeVotesForScrutin(params: WriteVotesParams): Promise<vo
       position: v.position,
       votingDate: params.votingDate,
       chamber: params.chamber,
+      scrutinType: params.scrutinType,
     })),
     skipDuplicates: true,
   });

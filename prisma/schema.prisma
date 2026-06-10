@@ -943,6 +943,10 @@ model Vote {
   // is updated. See docs/superpowers/plans/2026-04-07-supabase-perf-improvements.md.
   votingDate DateTime
   chamber    Chamber
+  // Also denormalized from Scrutin.type to drop the JOIN on the per-politician votes
+  // list/counts filtered by tab (Textes de loi / Amendements). Same trigger and INSERT
+  // path as votingDate/chamber. Nullable: mirrors Scrutin.type (which can be null).
+  scrutinType ScrutinType?
 
   @@unique([scrutinId, politicianId])
   // Covering index for the dissidence aggregations (compute-stats.ts): index-only
@@ -951,6 +955,10 @@ model Vote {
   @@index([politicianId, position, votingDate, scrutinId])
   @@index([politicianId, votingDate(sort: Desc)], map: "Vote_politicianId_votingDate_idx")
   @@index([politicianId, chamber, votingDate(sort: Desc)], map: "Vote_politicianId_chamber_votingDate_idx")
+  // Covering index for the per-politician votes list/counts filtered by tab
+  // (Issue #377): index-only scan, drops the JOIN on Scrutin. Created in prod via
+  // CREATE INDEX CONCURRENTLY.
+  @@index([politicianId, scrutinType, votingDate(sort: Desc)])
 }
 
 model ScrutinImportance {

@@ -607,6 +607,7 @@ async function seed() {
           position: positions[i % positions.length]!,
           votingDate: scrutin.votingDate,
           chamber: scrutin.chamber,
+          scrutinType: scrutin.type,
         },
       });
     }

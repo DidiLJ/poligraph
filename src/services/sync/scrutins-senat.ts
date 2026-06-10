@@ -440,6 +440,7 @@ export async function syncScrutinsSenat(
                   scrutinId: scrutin.id,
                   votingDate: scrutin.votingDate,
                   chamber: scrutin.chamber,
+                  scrutinType: scrutin.type,
                   votes: votesToCreate,
                 });
 

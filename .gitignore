@@ -85,3 +85,6 @@ job-logs.txt
 
 # git worktrees
 /.worktrees
+
+# Local Search Console analysis (exports + plans with private SEO data, not committed)
+/docs/search-console/

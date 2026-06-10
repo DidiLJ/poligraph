@@ -10,6 +10,7 @@ import {
   DOSSIER_CATEGORY_COLORS,
 } from "@/config/labels";
 import { formatDate } from "@/lib/utils";
+import { extractText } from "@/lib/parsing/html-utils";
 import { DossierSummaryEditor } from "@/components/admin/DossierSummaryEditor";
 
 interface PageProps {
@@ -166,10 +167,12 @@ export default async function AdminDossierDetailPage({ params }: PageProps) {
                   <div>
                     <span className="font-mono text-sm">#{amendment.number}</span>
                     {amendment.article && (
-                      <span className="text-muted-foreground ml-2">Art. {amendment.article}</span>
+                      <span className="text-muted-foreground ml-2">
+                        Art. {extractText(amendment.article)}
+                      </span>
                     )}
                     {amendment.authorName && (
-                      <span className="text-sm ml-2">{amendment.authorName}</span>
+                      <span className="text-sm ml-2">{extractText(amendment.authorName)}</span>
                     )}
                   </div>
                   <Badge

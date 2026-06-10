@@ -39,6 +39,39 @@ describe("normalizeAmendment", () => {
     expect(n.chamber).toBe("AN");
   });
 
+  it("decodes HTML entities in authorName and article (AN double-encoding)", () => {
+    const record = {
+      amendement: {
+        uid: "X",
+        identification: { numeroLong: "1" },
+        pointeurFragmentTexte: {
+          division: { articleDesignation: "APR&#200;S L&#39;ARTICLE 23" },
+        },
+        signataires: {
+          libelle: "Mme&#160;Blin, M.&#160;F&#233;gn&#233;",
+          auteur: { typeAuteur: "Député" },
+        },
+      },
+    };
+    const n = normalizeAmendment(record, {
+      dossierRefFromPath: null,
+      texteRefFromPath: null,
+      legislature: 17,
+    });
+    expect(n.authorName).toBe("Mme Blin, M. Fégné");
+    expect(n.article).toBe("APRÈS L'ARTICLE 23");
+  });
+
+  it("keeps content and summary as raw AN HTML (not decoded)", () => {
+    const n = normalizeAmendment(fx("sample-amendment.json"), {
+      dossierRefFromPath: null,
+      texteRefFromPath: null,
+      legislature: 17,
+    });
+    expect(n.content).toBe("<p>Supprimer l'alin&#xE9;a 3.</p>");
+    expect(n.summary).toBe("<p>Cet amendement supprime la d&#xE9;rogation.</p>");
+  });
+
   it("handles nil-objects as null and pending sort", () => {
     const n = normalizeAmendment(fx("nil-amendment.json"), {
       dossierRefFromPath: null,

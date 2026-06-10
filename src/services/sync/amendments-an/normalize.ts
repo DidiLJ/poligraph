@@ -1,5 +1,17 @@
 import type { AmendmentStatus } from "@/generated/prisma";
+import { decodeHtmlEntities, normalizeWhitespace } from "@/lib/parsing/html-utils";
 import type { NormalizedAmendment } from "./types";
+
+/**
+ * Decode AN's double-encoded HTML entities in plain-text fields, preserving null.
+ *
+ * AN ships HTML inside XML, so a non-breaking space `&#160;` arrives as the literal
+ * text `&#160;` after the XML->JSON parse. authorName/article are rendered as plain
+ * text, so they must be decoded here. content/summary stay raw (HTML AN brut).
+ */
+function decodeText(v: string | null): string | null {
+  return v === null ? null : normalizeWhitespace(decodeHtmlEntities(v));
+}
 
 /** AN XML-derived JSON encodes nil as { "@xsi:nil": "true" }. */
 export function isNil(v: unknown): boolean {
@@ -60,14 +72,14 @@ export function normalizeAmendment(raw: unknown, ctx: NormalizeContext): Normali
     number: numberRaw ?? "",
     texteRef: str(get(a, "texteLegislatifRef")) ?? ctx.texteRefFromPath,
     dossierRefFromPath: ctx.dossierRefFromPath,
-    article: str(get(division, "articleDesignation")),
+    article: decodeText(str(get(division, "articleDesignation"))),
     content: str(get(corps, "dispositif")),
     summary: str(get(corps, "exposeSommaire")),
     status: mapStatus(get(cycleDeVie, "sort")),
     parentExternalId: str(get(a, "amendementParentRef")),
     identicalDiscussionId: str(get(discussionIdentique, "idDiscussion")),
     authorType: str(get(auteur, "typeAuteur")),
-    authorName: str(get(signataires, "libelle")),
+    authorName: decodeText(str(get(signataires, "libelle"))),
     legislature: ctx.legislature,
     chamber: "AN",
   };

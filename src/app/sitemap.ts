@@ -405,7 +405,7 @@ async function buildScrutinsSitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 }
 
-// Sitemap 4: Top 500 communes by population (priority 0.6)
+// Sitemap 4: Top 200 communes by population, restricted to those with candidacies (priority 0.6)
 async function buildCommunesSitemap(): Promise<MetadataRoute.Sitemap> {
   const communes: Array<{ id: string }> = await db.$queryRaw`
     SELECT DISTINCT c.id, c.population

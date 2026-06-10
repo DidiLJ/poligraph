@@ -22,9 +22,9 @@ import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Statistiques",
+  title: "Statistiques de la vie politique française",
   description:
-    "Statistiques sur la vie politique française : travail législatif, transparence judiciaire, fact-checking",
+    "Tableaux de bord sur les responsables politiques français : condamnations par parti, activité parlementaire, votes et fact-checks. Données ouvertes, méthodologie transparente.",
   alternates: { canonical: "/statistiques" },
 };
 

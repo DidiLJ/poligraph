@@ -7,6 +7,8 @@
  */
 
 import { callMistral, extractMistralText, parseMistralJSON } from "@/lib/api/mistral";
+import { escapeXmlText } from "@/lib/text/escape-xml";
+import type { SubstanceTextBlock, SubstanceDepth } from "@/services/scrutin-policy-title/types";
 
 const MISTRAL_MODEL = "mistral-large-latest";
 const MAX_TOKENS = 2000;
@@ -28,6 +30,15 @@ export interface CitizenImpactInput {
   dossierTitle: string | null;
   dossierSummary: string | null;
   sourcePageText: string | null;
+  /**
+   * OFFICIAL substance blocks from `resolveSubstanceSources` (amendment-first).
+   * When non-empty, they are the SOLE basis for describing the voted measure;
+   * `summary` / `dossierSummary` become background context only. Empty for
+   * scrutins with no usable amendment text (whole-text votes, motions).
+   */
+  substanceBlocks: SubstanceTextBlock[];
+  substanceDepth: SubstanceDepth | null;
+  hasLinkedAmendment: boolean;
   links: {
     dossierUrl: string | null;
     dossierLabel: string | null;
@@ -45,7 +56,7 @@ export interface CitizenImpactOutput {
 // PROMPT
 // ============================================
 
-const SYSTEM_PROMPT = `Tu es un rédacteur factuel pour Poligraph, un observatoire citoyen de la politique française.
+export const SYSTEM_PROMPT = `Tu es un rédacteur factuel pour Poligraph, un observatoire citoyen de la politique française.
 
 MISSION : Expliquer factuellement ce que ce vote parlementaire change, ce que la mesure proposait, et pourquoi elle a été adoptée ou rejetée - en restant STRICTEMENT neutre. Le lecteur n'a AUCUNE connaissance juridique ou parlementaire préalable.
 
@@ -98,6 +109,11 @@ VULGARISATION - RÈGLES CRITIQUES :
 18. JAMAIS briser le 4e mur ("sans avoir le contenu exact", "les informations disponibles"). Si tu ne sais pas, confidence < 40
 19. Si le titre mentionne un "projet de loi relatif à X", expliquer ce que X signifie concrètement
 
+SOURCES OFFICIELLES - RÈGLES PRIORITAIRES :
+20. Si un bloc <sources-officielles> est fourni, la section "Ce qui était proposé" doit décrire UNIQUEMENT la mesure contenue dans ce bloc (c'est le texte exact de l'amendement voté). C'est ta seule source pour la mesure.
+21. Dans ce cas, le CONTEXTE GÉNÉRAL (résumé du scrutin, résumé du dossier, titre) ne sert qu'à poser le décor de la loi. Il est INTERDIT de t'en servir pour décrire ce que l'amendement proposait : ces textes parlent de la loi entière, pas de cet amendement précis.
+22. Si <sources-officielles> ne permet pas d'identifier une mesure concrète, ne l'invente pas à partir du contexte général : confidence < 40.
+
 RÉPONSE : Tu DOIS répondre en JSON avec exactement deux champs :
 - "citizen_impact" : l'explication en markdown structuré
 - "confidence" : entier 0-100 (80+ = impact clair, 40-79 = indirect, <40 = procédural)`;
@@ -145,8 +161,26 @@ function sanitizeOutput(text: string): string {
   return result;
 }
 
-function buildUserMessage(input: CitizenImpactInput): string {
+/**
+ * Renders the OFFICIAL amendment substance as an XML block. One <source> per
+ * resolved block, carrying its provenance (type, field, trust, amendment number,
+ * article ref). This is the SOLE measure-bearing source when present.
+ */
+function buildOfficialSourcesXml(blocks: SubstanceTextBlock[]): string {
+  return blocks
+    .map((b) => {
+      const amd = b.meta?.amendmentNumber
+        ? ` amendement="${escapeXmlText(b.meta.amendmentNumber)}"`
+        : "";
+      const art = b.meta?.articleRef ? ` article="${escapeXmlText(b.meta.articleRef)}"` : "";
+      return `  <source type="${escapeXmlText(b.sourceType)}" ref="${escapeXmlText(b.sourceId)}" field="${escapeXmlText(b.field)}" trust="${escapeXmlText(b.trust)}"${amd}${art}>${escapeXmlText(b.text)}</source>`;
+    })
+    .join("\n");
+}
+
+export function buildUserMessage(input: CitizenImpactInput): string {
   const sections: string[] = [];
+  const hasOfficial = input.substanceBlocks.length > 0;
 
   sections.push(`SCRUTIN : ${input.title}`);
   sections.push(
@@ -156,23 +190,49 @@ function buildUserMessage(input: CitizenImpactInput): string {
   sections.push(`Date : ${input.votingDate}`);
   if (input.theme) sections.push(`Thème : ${input.theme}`);
 
-  if (input.summary) {
+  if (hasOfficial) {
+    // OFFICIAL amendment text — the only basis for "Ce qui était proposé".
     sections.push("");
-    sections.push("RÉSUMÉ EXISTANT :");
-    sections.push(input.summary);
-  }
+    sections.push(
+      'SOURCES OFFICIELLES (texte exact de l\'amendement voté — SEULE base pour décrire la mesure dans "Ce qui était proposé") :'
+    );
+    sections.push("<sources-officielles>");
+    sections.push(buildOfficialSourcesXml(input.substanceBlocks));
+    sections.push("</sources-officielles>");
 
-  if (input.dossierTitle || input.dossierSummary) {
-    sections.push("");
-    sections.push("DOSSIER LÉGISLATIF :");
-    if (input.dossierTitle) sections.push(`Titre : ${input.dossierTitle}`);
-    if (input.dossierSummary) sections.push(`Résumé : ${input.dossierSummary}`);
-  }
+    // Everything else is background only. Demoted, explicitly non-measure.
+    const contextLines: string[] = [];
+    if (input.summary) contextLines.push(`Résumé du scrutin : ${input.summary}`);
+    if (input.dossierTitle) contextLines.push(`Loi concernée : ${input.dossierTitle}`);
+    if (input.dossierSummary) contextLines.push(`Résumé du dossier : ${input.dossierSummary}`);
+    if (input.sourcePageText) contextLines.push(`Page source : ${input.sourcePageText}`);
+    if (contextLines.length > 0) {
+      sections.push("");
+      sections.push(
+        'CONTEXTE GÉNÉRAL (pose le décor de la loi — NE décrit PAS la mesure votée, ne PAS l\'utiliser pour "Ce qui était proposé") :'
+      );
+      sections.push(...contextLines);
+    }
+  } else {
+    // Legacy layout: no usable amendment text (whole-text vote, motion, etc.).
+    if (input.summary) {
+      sections.push("");
+      sections.push("RÉSUMÉ EXISTANT :");
+      sections.push(input.summary);
+    }
 
-  if (input.sourcePageText) {
-    sections.push("");
-    sections.push("CONTENU DE LA PAGE SOURCE :");
-    sections.push(input.sourcePageText);
+    if (input.dossierTitle || input.dossierSummary) {
+      sections.push("");
+      sections.push("DOSSIER LÉGISLATIF :");
+      if (input.dossierTitle) sections.push(`Titre : ${input.dossierTitle}`);
+      if (input.dossierSummary) sections.push(`Résumé : ${input.dossierSummary}`);
+    }
+
+    if (input.sourcePageText) {
+      sections.push("");
+      sections.push("CONTENU DE LA PAGE SOURCE :");
+      sections.push(input.sourcePageText);
+    }
   }
 
   const linkLines: string[] = [];
@@ -192,4 +252,117 @@ function buildUserMessage(input: CitizenImpactInput): string {
   }
 
   return sections.join("\n");
+}
+
+// ============================================
+// COHERENCE GUARD
+// ============================================
+
+/**
+ * Below this fraction of the official reference vocabulary echoed in the
+ * generated impact, the impact is treated as ungrounded: the model likely
+ * described a measure from the broad dossier context, not the linked amendment
+ * (the scrutin-2084 failure mode). WEAK lexical signal, not legal correctness.
+ */
+export const MIN_REFERENCE_COVERAGE = 0.3;
+const COVERAGE_PREFIX_LEN = 6;
+
+/** Frequent French words (len >= 5) carrying no topical signal; excluded so
+ *  shared prose boilerplate cannot inflate the coverage score. */
+const COVERAGE_STOPWORDS = new Set([
+  "leurs",
+  "cette",
+  "celle",
+  "celles",
+  "comme",
+  "entre",
+  "selon",
+  "ainsi",
+  "aussi",
+  "toute",
+  "toutes",
+  "aurait",
+  "auraient",
+  "etait",
+  "etaient",
+  "avait",
+  "avaient",
+  "seront",
+  "quand",
+  "alors",
+  "parce",
+  "memes",
+]);
+
+function normalizeForCoverage(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Salient stemmed prefixes of a text: tokens len >= 5, stop-words optionally
+ *  removed, truncated to a fixed prefix to tolerate simple inflection. */
+function coveragePrefixes(s: string, opts?: { dropStopwords?: boolean }): Set<string> {
+  const set = new Set<string>();
+  for (const w of normalizeForCoverage(s).split(" ")) {
+    if (w.length < 5) continue;
+    if (opts?.dropStopwords && COVERAGE_STOPWORDS.has(w)) continue;
+    set.add(w.slice(0, COVERAGE_PREFIX_LEN));
+  }
+  return set;
+}
+
+/**
+ * Fraction of the reference's salient terms that appear in the impact text.
+ * Returns 1 when the reference has no salient term (nothing to compare against,
+ * so never blocks).
+ */
+export function computeReferenceCoverage(impactText: string, referenceText: string): number {
+  const ref = coveragePrefixes(referenceText, { dropStopwords: true });
+  if (ref.size === 0) return 1;
+  const hay = coveragePrefixes(impactText);
+  let hits = 0;
+  for (const term of ref) if (hay.has(term)) hits++;
+  return hits / ref.size;
+}
+
+export interface CoherenceVerdict {
+  coherent: boolean;
+  coverage: number;
+  referenceUsed: "policyTitle" | "amendment" | "none";
+}
+
+/**
+ * Confronts a generated citizen impact with the OFFICIAL reference (the approved
+ * policy title when present, else the resolved amendment substance). If the
+ * impact shares too little vocabulary with that reference, it likely describes a
+ * different measure and must not auto-persist.
+ */
+export function assessCitizenImpactCoherence(args: {
+  impactText: string;
+  policyTitle?: string | null;
+  policySubtitle?: string | null;
+  blocks: SubstanceTextBlock[];
+}): CoherenceVerdict {
+  const titleRef = [args.policyTitle, args.policySubtitle].filter(Boolean).join(" ").trim();
+  let referenceText = "";
+  let referenceUsed: CoherenceVerdict["referenceUsed"] = "none";
+  if (titleRef) {
+    referenceText = titleRef;
+    referenceUsed = "policyTitle";
+  } else if (args.blocks.length > 0) {
+    referenceText = args.blocks.map((b) => b.text).join(" ");
+    referenceUsed = "amendment";
+  }
+
+  if (referenceUsed === "none") {
+    return { coherent: true, coverage: 1, referenceUsed };
+  }
+
+  const coverage = computeReferenceCoverage(args.impactText, referenceText);
+  return { coherent: coverage >= MIN_REFERENCE_COVERAGE, coverage, referenceUsed };
 }

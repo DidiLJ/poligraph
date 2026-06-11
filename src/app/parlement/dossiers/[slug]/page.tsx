@@ -11,16 +11,16 @@ import {
   DossierTimeline,
   DossierAuthors,
   DossierVotesList,
+  DossierAmendments,
 } from "@/components/legislation";
 import type { DossierTimelineEntry } from "@/types/legislation";
-import { AMENDMENT_STATUS_LABELS, AMENDMENT_STATUS_COLORS } from "@/config/labels";
+import { getAmendmentStats, getCuratedAmendments } from "@/lib/data/dossier-amendments";
 
-import { ExternalLink, Calendar, FileText, Vote } from "lucide-react";
+import { ExternalLink, Calendar, Vote } from "lucide-react";
 import { LegislationJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { formatDate } from "@/lib/utils";
-import { extractText } from "@/lib/parsing/html-utils";
 import type { MandateType } from "@/generated/prisma";
 
 export const revalidate = 3600; // ISR: revalidate every hour
@@ -39,10 +39,6 @@ interface PageProps {
 }
 
 const includeOptions = {
-  amendments: {
-    orderBy: { number: "asc" },
-    take: 50,
-  },
   authors: {
     select: {
       role: true,
@@ -177,6 +173,13 @@ export default async function DossierDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  // Curated amendments: stats + the first "adopted" page rendered server-side
+  // (SEO / no-JS); the client component paginates and switches filters from there.
+  const [amendmentStats, initialAmendments] = await Promise.all([
+    getAmendmentStats(dossier.id),
+    getCuratedAmendments(dossier.id, "adopted", 1),
+  ]);
+
   return (
     <>
       <LegislationJsonLd
@@ -271,50 +274,13 @@ export default async function DossierDetailPage({ params }: PageProps) {
         )}
 
         {/* Amendments */}
-        {dossier.amendments.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Amendements ({dossier.amendments.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {dossier.amendments.map((amendment) => (
-                  <div
-                    key={amendment.id}
-                    className="flex items-start justify-between gap-4 py-3 border-b last:border-0"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="font-mono">
-                          N° {amendment.number}
-                        </Badge>
-                        <Badge className={AMENDMENT_STATUS_COLORS[amendment.status]}>
-                          {AMENDMENT_STATUS_LABELS[amendment.status]}
-                        </Badge>
-                      </div>
-                      {amendment.authorName && (
-                        <p className="text-sm text-muted-foreground">
-                          Par {extractText(amendment.authorName)}
-                          {amendment.authorType && ` (${amendment.authorType})`}
-                        </p>
-                      )}
-                      {amendment.article && (
-                        <p className="text-sm text-muted-foreground">
-                          Article {extractText(amendment.article)}
-                        </p>
-                      )}
-                      {amendment.summary && (
-                        <p className="text-sm mt-2">{extractText(amendment.summary)}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        {amendmentStats.total > 0 && (
+          <DossierAmendments
+            dossierId={dossier.id}
+            stats={amendmentStats}
+            sourceUrl={dossier.sourceUrl}
+            initial={initialAmendments}
+          />
         )}
 
         {/* External link */}

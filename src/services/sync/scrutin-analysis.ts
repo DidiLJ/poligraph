@@ -175,6 +175,16 @@ export async function generateScrutinAnalysis(
 
   for (const s of scrutins) {
     try {
+      // Per-group arguments must come from a real debate. With no usable
+      // transcript the model has no argumentative source and fabricates group
+      // positions (see scrutin 2084). Skip rather than invent: no model call,
+      // no write. A future PR will also anchor the topic on the linked amendment.
+      const debateExcerpt = s.debateTranscripts[0]?.content?.trim();
+      if (!debateExcerpt) {
+        skipped++;
+        continue;
+      }
+
       const prompt = buildAnalysisPrompt({
         title: s.title,
         result: s.result,
@@ -188,7 +198,7 @@ export async function generateScrutinAnalysis(
           againstCount: gp.againstCount,
           abstainCount: gp.abstainCount,
         })),
-        debateExcerpt: s.debateTranscripts[0]?.content ?? null,
+        debateExcerpt,
         dossierContext: s.dossierLegislatif?.title ?? null,
       });
 

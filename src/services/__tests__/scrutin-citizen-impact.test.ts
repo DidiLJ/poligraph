@@ -1,19 +1,11 @@
 import { describe, it, expect } from "vitest";
-import {
-  buildUserMessage,
-  assessCitizenImpactCoherence,
-  type CitizenImpactInput,
-} from "@/services/scrutin-citizen-impact";
+import { buildUserMessage, type CitizenImpactInput } from "@/services/scrutin-citizen-impact";
 import type { SubstanceTextBlock } from "@/services/scrutin-policy-title/types";
 import {
   AMENDMENT_2084_CONTENT,
   AMENDMENT_2084_SUMMARY,
-  POLICY_TITLE_2084,
-  POLICY_SUBTITLE_2084,
   DOSSIER_SUMMARY_BROAD,
   SCRUTIN_SUMMARY_WRONG,
-  WRONG_CITIZEN_IMPACT,
-  CORRECT_CITIZEN_IMPACT,
 } from "./fixtures/scrutin-2084";
 
 const amendmentBlocks: SubstanceTextBlock[] = [
@@ -102,49 +94,5 @@ describe("buildUserMessage — official substance blocks", () => {
       baseInput({ substanceBlocks: evil, substanceDepth: "amendment", hasLinkedAmendment: true })
     );
     expect(msg).not.toContain("<inject>");
-  });
-});
-
-describe("assessCitizenImpactCoherence — scrutin 2084 regression", () => {
-  it("flags the shipped import-ban impact as INCOHERENT with the cooperatives-transparency title", () => {
-    const verdict = assessCitizenImpactCoherence({
-      impactText: WRONG_CITIZEN_IMPACT,
-      policyTitle: POLICY_TITLE_2084,
-      policySubtitle: POLICY_SUBTITLE_2084,
-      blocks: amendmentBlocks,
-    });
-    expect(verdict.coherent).toBe(false);
-  });
-
-  it("accepts an impact that actually describes the cooperatives-transparency measure", () => {
-    const verdict = assessCitizenImpactCoherence({
-      impactText: CORRECT_CITIZEN_IMPACT,
-      policyTitle: POLICY_TITLE_2084,
-      policySubtitle: POLICY_SUBTITLE_2084,
-      blocks: amendmentBlocks,
-    });
-    expect(verdict.coherent).toBe(true);
-  });
-
-  it("does not block when there is no official reference to compare against", () => {
-    const verdict = assessCitizenImpactCoherence({
-      impactText: WRONG_CITIZEN_IMPACT,
-      policyTitle: null,
-      policySubtitle: null,
-      blocks: [],
-    });
-    expect(verdict.coherent).toBe(true);
-    expect(verdict.referenceUsed).toBe("none");
-  });
-
-  it("falls back to amendment blocks as the reference when no policy title exists", () => {
-    const verdict = assessCitizenImpactCoherence({
-      impactText: WRONG_CITIZEN_IMPACT,
-      policyTitle: null,
-      policySubtitle: null,
-      blocks: amendmentBlocks,
-    });
-    expect(verdict.referenceUsed).toBe("amendment");
-    expect(verdict.coherent).toBe(false);
   });
 });

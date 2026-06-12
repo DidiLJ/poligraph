@@ -24,9 +24,9 @@ import {
 import {
   buildUserMessage,
   generateCitizenImpact,
-  assessCitizenImpactCoherence,
   SYSTEM_PROMPT,
 } from "@/services/scrutin-citizen-impact";
+import { assessCoherence } from "@/services/scrutin-substance/coherence";
 
 function arg(name: string): string | undefined {
   const i = process.argv.findIndex((a) => a === `--${name}` || a.startsWith(`--${name}=`));
@@ -92,8 +92,8 @@ async function runSingle(): Promise<void> {
   if (generate || write) {
     log("\n=== GENERATED IMPACT ===");
     const result = await generateCitizenImpact(prepared.input);
-    const verdict = assessCitizenImpactCoherence({
-      impactText: result.citizenImpact,
+    const verdict = assessCoherence({
+      text: result.citizenImpact,
       policyTitle: prepared.policyTitle?.policyTitle ?? null,
       policySubtitle: prepared.policyTitle?.policySubtitle ?? null,
       blocks: prepared.input.substanceBlocks,

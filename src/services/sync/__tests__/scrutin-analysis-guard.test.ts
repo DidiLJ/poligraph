@@ -58,6 +58,13 @@ const INCOHERENT_ARGS = {
   argumentsAgainst: "Les opposants craignaient des représailles commerciales.",
 };
 
+// Generic valid arguments (used for non-amendment votes, where there is no
+// official reference to gate against).
+const DEBATE_ARGS = {
+  argumentsFor: "Les partisans, lors du débat, ont défendu la mesure présentée en séance.",
+  argumentsAgainst: "Les opposants ont exprimé leurs réserves pendant la discussion.",
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function keyVoteScrutin(debate: string | null, opts?: { amendmentLinked?: boolean }): any {
   return {
@@ -79,7 +86,8 @@ function keyVoteScrutin(debate: string | null, opts?: { amendmentLinked?: boolea
     debateTranscripts: debate ? [{ content: debate }] : [],
     dossierLegislatif: { title: "Projet de loi d'urgence agricole" },
     amendmentLinks: opts?.amendmentLinked === false ? [] : [{ amendmentId: "amd-2084" }],
-    policyTitle: { policyTitle: POLICY_TITLE, policySubtitle: null },
+    policyTitle:
+      opts?.amendmentLinked === false ? null : { policyTitle: POLICY_TITLE, policySubtitle: null },
   };
 }
 
@@ -141,6 +149,20 @@ describe("generateScrutinAnalysis — substance anchoring", () => {
 
     expect(analysisUpsert).toHaveBeenCalledTimes(1);
     expect(res.generated).toBe(1);
+  });
+
+  it("generates a non-amendment-linked vote from the debate alone (no substance, no coherence gate)", async () => {
+    scrutinFindMany.mockResolvedValue([
+      keyVoteScrutin("Débat réel en séance sur l'ensemble du texte.", { amendmentLinked: false }),
+    ]);
+    resolveSubstanceSources.mockResolvedValue({ blocks: [], substanceDepth: null, warnings: [] });
+    setMistral(DEBATE_ARGS);
+
+    const res = await generateScrutinAnalysis({ limit: 10 });
+
+    expect(analysisUpsert).toHaveBeenCalledTimes(1);
+    expect(res.generated).toBe(1);
+    expect(res.skippedIncoherent).toBe(0);
   });
 });
 

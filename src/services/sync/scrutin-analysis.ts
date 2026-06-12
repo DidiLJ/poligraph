@@ -90,29 +90,36 @@ function buildSujetOfficielXml(blocks: SubstanceTextBlock[]): string {
 }
 
 export function buildAnalysisPrompt(input: PromptInput): string {
-  const sanitize = (s: string) => s.replace(/["\n\r]/g, " ").slice(0, 500);
+  // All free text inserted into XML-like tags is entity-escaped (incl. the raw
+  // debate transcript) so its content can never inject or close a tag.
+  const esc = (s: string, max = 500) => escapeXmlText(s, max);
+  const hasSubstance = input.substanceBlocks.length > 0;
 
   const groupLines = input.groupPositions
     .map(
       (g) =>
-        `- ${sanitize(g.groupName)}: ${g.position} (${g.forCount} pour, ${g.againstCount} contre, ${g.abstainCount} abstentions)`
+        `- ${esc(g.groupName, 200)}: ${g.position} (${g.forCount} pour, ${g.againstCount} contre, ${g.abstainCount} abstentions)`
     )
     .join("\n");
 
-  const sujet =
-    input.substanceBlocks.length > 0
-      ? `\n<sujet-officiel>\n${buildSujetOfficielXml(input.substanceBlocks)}\n</sujet-officiel>\n`
-      : "";
+  const sujet = hasSubstance
+    ? `\n<sujet-officiel>\n${buildSujetOfficielXml(input.substanceBlocks)}\n</sujet-officiel>\n`
+    : "";
   const contexte = input.dossierContext
-    ? `\n<contexte role="informational-only">\n<dossier>${sanitize(input.dossierContext)}</dossier>\n</contexte>\n`
+    ? `\n<contexte role="informational-only">\n<dossier>${esc(input.dossierContext)}</dossier>\n</contexte>\n`
     : "";
   const debat = input.debateExcerpt
-    ? `\n<débat>\n${input.debateExcerpt.slice(0, 3000)}\n</débat>\n`
+    ? `\n<débat>\n${esc(input.debateExcerpt, 3000)}\n</débat>\n`
     : "";
+
+  // Rule 1 adapts to whether an official amendment subject is present.
+  const mesureRule = hasSubstance
+    ? `1. La mesure votée est définie UNIQUEMENT par <sujet-officiel> (le texte exact de l'amendement). <contexte> et <titre-procedural> posent le décor de la loi : ils ne définissent JAMAIS la mesure et ne doivent pas servir à décrire ce qui est voté.`
+    : `1. Aucun texte d'amendement officiel n'est fourni pour ce vote : la mesure votée et les arguments doivent être identifiés UNIQUEMENT à partir du <débat>. <contexte> et <titre-procedural> restent du décor, ils ne définissent JAMAIS la mesure. Si le <débat> ne permet pas d'identifier clairement la mesure, renvoie des champs vides.`;
 
   return `<données>
 <scrutin>
-<titre-procedural>${sanitize(input.title)}</titre-procedural>
+<titre-procedural>${esc(input.title)}</titre-procedural>
 <résultat>${input.result}</résultat>
 <votes>Pour: ${input.votesFor}, Contre: ${input.votesAgainst}, Abstention: ${input.votesAbstain}</votes>
 </scrutin>
@@ -127,9 +134,9 @@ Analyse ce scrutin parlementaire. Produis un JSON avec deux champs :
 - "argumentsAgainst": les arguments des groupes ayant voté CONTRE (2-3 phrases max)
 
 Règles strictes :
-1. La mesure votée est définie UNIQUEMENT par <sujet-officiel> (le texte exact de l'amendement). <contexte> et <titre-procedural> posent le décor de la loi : ils ne définissent JAMAIS la mesure et ne doivent pas servir à décrire ce qui est voté.
+${mesureRule}
 2. Les arguments POUR/CONTRE viennent UNIQUEMENT de <débat>. <positions_groupes> indique QUI a voté, pas POURQUOI : il est interdit d'inventer des arguments à partir des compteurs de vote.
-3. Si <débat> ne contient pas d'arguments portant sur la mesure de <sujet-officiel>, renvoie des champs vides plutôt que d'inventer.
+3. Si <débat> ne contient pas d'arguments exploitables, renvoie des champs vides plutôt que d'inventer.
 4. Neutralité absolue : présente chaque camp avec un poids égal, aucun qualificatif de valeur.
 5. Vulgarisation : explique en français simple, sans jargon non expliqué.
 6. Concision : 2-3 phrases maximum par camp. Pas de statistiques (l'interface affiche les chiffres).

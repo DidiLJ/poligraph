@@ -30,12 +30,16 @@ const CHECKS: QualityCheck[] = [
   // === CRITICAL CHECKS ===
   {
     name: "affairs-without-sources",
-    description: "Affaires sans source (CRITIQUE - risque juridique)",
+    description: "Affaires publiables sans source (CRITIQUE - risque juridique)",
     critical: true,
     check: async () => {
+      // Only DRAFT/PUBLISHED affairs are a legal risk: they are public or about
+      // to be. ARCHIVED/EXCLUDED/REJECTED are hidden by design (rejected duplicates,
+      // wrong attributions, victim cases), where a missing source is expected.
       const affairs = await db.affair.findMany({
         where: {
           sources: { none: {} },
+          publicationStatus: { in: ["DRAFT", "PUBLISHED"] },
         },
         select: { id: true, title: true, politician: { select: { fullName: true } } },
       });

@@ -27,12 +27,15 @@ async function main(): Promise<void> {
 
   const report = await auditDebateContextForAmendmentAnalyses(limit ? { limit } : {});
 
+  log("candidate transcript scope = same-day only, not yet dossier/session-disambiguated.\n");
   log(`scanned : ${report.scanned}`);
   log(
     `HIGH=${report.byConfidence.HIGH}  MEDIUM=${report.byConfidence.MEDIUM}  LOW=${report.byConfidence.LOW}  NONE=${report.byConfidence.NONE}`
   );
   const usable = report.rows.filter((r) => r.usableForGeneration).length;
-  log(`usableForGeneration (HIGH only) : ${usable}\n`);
+  const ambiguousDay = report.rows.filter((r) => r.candidateTranscriptCount > 1).length;
+  log(`usableForGeneration (HIGH only) : ${usable}`);
+  log(`jours ambigus (plusieurs transcripts candidats le même jour) : ${ambiguousDay}\n`);
 
   // Show the HIGH matches (the only ones a future generation could trust).
   for (const r of report.rows.filter((r) => r.confidence === "HIGH")) {

@@ -1,7 +1,12 @@
 /**
  * READ-ONLY resolver around the pure `findAmendmentMention` matcher. For a
- * scrutin, it gathers the same-day candidate transcripts and returns the best
+ * scrutin, it gathers the SAME-DAY candidate transcripts and returns the best
  * mention with a bounded excerpt and a confidence. NO model call, NO DB write.
+ *
+ * CANDIDATE SCOPE = same-day only, NOT yet dossier/session-disambiguated. A HIGH
+ * therefore proves the amendment number appears in a same-day transcript, NOT
+ * that this transcript is the right one when several debates/dossiers coexist on
+ * the same day. `candidateTranscriptCount > 1` flags that ambiguity.
  *
  * PROVISIONAL: depends on the per-séance transcript linkage (a transcript is
  * stored per day) and on the matcher's regex, both still to be hardened. Use for
@@ -15,10 +20,18 @@ import {
   type DebateContextConfidence,
 } from "./debate-context";
 
+/** How candidate transcripts were gathered. Only "same-day" exists today;
+ *  a future PR may add dossier/session disambiguation. */
+export type CandidateScope = "same-day";
+
 export interface DebateContextResult extends AmendmentMention {
   scrutinId: string;
   transcriptSeanceRef: string | null;
   hasCandidateTranscript: boolean;
+  /** Always "same-day" for now — see module header. Never a definitive linkage. */
+  candidateScope: CandidateScope;
+  /** Number of same-day candidate transcripts considered. > 1 => ambiguous day. */
+  candidateTranscriptCount: number;
 }
 
 const RANK: Record<DebateContextConfidence, number> = { HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 };
@@ -66,6 +79,8 @@ export async function resolveDebateContextForScrutin(
     usableForGeneration: false,
     transcriptSeanceRef: null,
     hasCandidateTranscript: false,
+    candidateScope: "same-day",
+    candidateTranscriptCount: 0,
   };
 
   if (!scrutin) return base;
@@ -84,6 +99,7 @@ export async function resolveDebateContextForScrutin(
   });
 
   base.hasCandidateTranscript = candidates.length > 0;
+  base.candidateTranscriptCount = candidates.length;
 
   let best = base;
   for (const t of candidates) {
@@ -100,6 +116,9 @@ export interface DebateContextAuditRow {
   slug: string | null;
   amendment: string;
   hasCandidateTranscript: boolean;
+  /** Always "same-day": candidates are not yet dossier/session-disambiguated. */
+  candidateScope: CandidateScope;
+  candidateTranscriptCount: number;
   confidence: DebateContextConfidence;
   usableForGeneration: boolean;
   reason: string;
@@ -147,6 +166,8 @@ export async function auditDebateContextForAmendmentAnalyses(options?: {
       slug: s.slug,
       amendment: s.amendmentLinks[0]?.amendment.number ?? "?",
       hasCandidateTranscript: ctx.hasCandidateTranscript,
+      candidateScope: ctx.candidateScope,
+      candidateTranscriptCount: ctx.candidateTranscriptCount,
       confidence: ctx.confidence,
       usableForGeneration: ctx.usableForGeneration,
       reason: ctx.reason,

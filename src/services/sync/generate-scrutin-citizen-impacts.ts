@@ -9,12 +9,8 @@
  */
 
 import { db } from "@/lib/db";
-import {
-  generateCitizenImpact,
-  assessCitizenImpactCoherence,
-  type CitizenImpactInput,
-  type CoherenceVerdict,
-} from "@/services/scrutin-citizen-impact";
+import { generateCitizenImpact, type CitizenImpactInput } from "@/services/scrutin-citizen-impact";
+import { assessCoherence, type CoherenceVerdict } from "@/services/scrutin-substance/coherence";
 import { resolveSubstanceSources } from "@/services/scrutin-policy-title/substance-resolver";
 import type { SubstanceDepth } from "@/services/scrutin-policy-title/types";
 import { fetchScrutinContext } from "@/services/scrutin-context-fetcher";
@@ -249,8 +245,8 @@ export async function generateScrutinCitizenImpacts(options?: {
       // official reference (title/amendment). Otherwise the model described a
       // measure from the broad dossier context — do not persist automatically.
       if (prepared.hasLinkedAmendment && prepared.input.substanceBlocks.length > 0) {
-        const verdict = assessCitizenImpactCoherence({
-          impactText: result.citizenImpact,
+        const verdict = assessCoherence({
+          text: result.citizenImpact,
           policyTitle: prepared.policyTitle?.policyTitle ?? null,
           policySubtitle: prepared.policyTitle?.policySubtitle ?? null,
           blocks: prepared.input.substanceBlocks,
@@ -336,8 +332,8 @@ export async function auditCitizenImpactCoherence(options?: {
 
   for (const s of scrutins) {
     const resolved = await resolveSubstanceSources(s.id);
-    const verdict = assessCitizenImpactCoherence({
-      impactText: s.citizenImpact!,
+    const verdict = assessCoherence({
+      text: s.citizenImpact!,
       policyTitle: s.policyTitle?.policyTitle ?? null,
       policySubtitle: s.policyTitle?.policySubtitle ?? null,
       blocks: resolved.blocks,

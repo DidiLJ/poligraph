@@ -1,5 +1,12 @@
 import { db } from "@/lib/db";
 import { callMistral, extractMistralText, parseMistralJSON } from "@/lib/api/mistral";
+import { escapeXmlText } from "@/lib/text/escape-xml";
+import { resolveSubstanceSources } from "@/services/scrutin-policy-title/substance-resolver";
+import { assessCoherence, type CoherenceVerdict } from "@/services/scrutin-substance/coherence";
+import type { SubstanceTextBlock } from "@/services/scrutin-policy-title/types";
+import type { AnalysisSourceType } from "@/generated/prisma";
+
+const MISTRAL_MODEL = "mistral-large-latest";
 
 interface GroupPositionInput {
   groupName: string;
@@ -16,7 +23,11 @@ interface PromptInput {
   votesAgainst: number;
   votesAbstain: number;
   groupPositions: GroupPositionInput[];
+  /** Official amendment substance (resolveSubstanceSources) = what is voted. */
+  substanceBlocks: SubstanceTextBlock[];
+  /** Debate transcript = the ONLY source of for/against arguments. */
   debateExcerpt: string | null;
+  /** Dossier title = general context only, never defines the measure. */
   dossierContext: string | null;
 }
 
@@ -65,6 +76,19 @@ function flattenToString(value: unknown): string {
   return String(value);
 }
 
+/** Official amendment substance as XML, one <source> per resolved block. */
+function buildSujetOfficielXml(blocks: SubstanceTextBlock[]): string {
+  return blocks
+    .map((b) => {
+      const amd = b.meta?.amendmentNumber
+        ? ` amendement="${escapeXmlText(b.meta.amendmentNumber)}"`
+        : "";
+      const art = b.meta?.articleRef ? ` article="${escapeXmlText(b.meta.articleRef)}"` : "";
+      return `  <source type="${escapeXmlText(b.sourceType)}" field="${escapeXmlText(b.field)}" trust="${escapeXmlText(b.trust)}"${amd}${art}>${escapeXmlText(b.text)}</source>`;
+    })
+    .join("\n");
+}
+
 export function buildAnalysisPrompt(input: PromptInput): string {
   const sanitize = (s: string) => s.replace(/["\n\r]/g, " ").slice(0, 500);
 
@@ -75,33 +99,40 @@ export function buildAnalysisPrompt(input: PromptInput): string {
     )
     .join("\n");
 
+  const sujet =
+    input.substanceBlocks.length > 0
+      ? `\n<sujet-officiel>\n${buildSujetOfficielXml(input.substanceBlocks)}\n</sujet-officiel>\n`
+      : "";
+  const contexte = input.dossierContext
+    ? `\n<contexte role="informational-only">\n<dossier>${sanitize(input.dossierContext)}</dossier>\n</contexte>\n`
+    : "";
+  const debat = input.debateExcerpt
+    ? `\n<débat>\n${input.debateExcerpt.slice(0, 3000)}\n</débat>\n`
+    : "";
+
   return `<données>
 <scrutin>
-<titre>${sanitize(input.title)}</titre>
+<titre-procedural>${sanitize(input.title)}</titre-procedural>
 <résultat>${input.result}</résultat>
 <votes>Pour: ${input.votesFor}, Contre: ${input.votesAgainst}, Abstention: ${input.votesAbstain}</votes>
 </scrutin>
-
+${sujet}${contexte}
 <positions_groupes>
 ${groupLines}
 </positions_groupes>
-
-${input.debateExcerpt ? `<débat>\n${input.debateExcerpt.slice(0, 3000)}\n</débat>` : ""}
-${input.dossierContext ? `<dossier>\n${sanitize(input.dossierContext)}\n</dossier>` : ""}
-</données>
+${debat}</données>
 
 Analyse ce scrutin parlementaire. Produis un JSON avec deux champs :
 - "argumentsFor": les arguments des groupes ayant voté POUR (2-3 phrases max)
 - "argumentsAgainst": les arguments des groupes ayant voté CONTRE (2-3 phrases max)
 
 Règles strictes :
-1. Neutralité absolue : présente chaque camp avec un poids égal. Jamais de qualificatif de valeur.
-2. Vulgarisation avec sources : explique d'abord en français simple, puis cite la référence de l'article entre parenthèses si disponible.
-3. Complétude : couvre TOUS les camps, y compris les positions minoritaires qui ont rompu avec leur alliance habituelle.
-4. Fidélité aux sources : utilise UNIQUEMENT les arguments réellement exprimés dans les débats fournis. Si le débat est insuffisant, dis-le plutôt que d'inventer.
-5. Concision : chaque argument en 2-3 phrases maximum. Pas de remplissage, pas de répétition.
-6. Pas de statistiques dans le texte : les chiffres sont affichés par l'interface.
-7. Vérifiabilité : chaque affirmation doit être traçable au débat ou au texte législatif fourni.
+1. La mesure votée est définie UNIQUEMENT par <sujet-officiel> (le texte exact de l'amendement). <contexte> et <titre-procedural> posent le décor de la loi : ils ne définissent JAMAIS la mesure et ne doivent pas servir à décrire ce qui est voté.
+2. Les arguments POUR/CONTRE viennent UNIQUEMENT de <débat>. <positions_groupes> indique QUI a voté, pas POURQUOI : il est interdit d'inventer des arguments à partir des compteurs de vote.
+3. Si <débat> ne contient pas d'arguments portant sur la mesure de <sujet-officiel>, renvoie des champs vides plutôt que d'inventer.
+4. Neutralité absolue : présente chaque camp avec un poids égal, aucun qualificatif de valeur.
+5. Vulgarisation : explique en français simple, sans jargon non expliqué.
+6. Concision : 2-3 phrases maximum par camp. Pas de statistiques (l'interface affiche les chiffres).
 
 Réponds UNIQUEMENT avec le JSON, sans markdown.`;
 }
@@ -136,14 +167,19 @@ export async function generateScrutinAnalysis(
   options: {
     limit?: number;
     force?: boolean;
+    /** Never write to the DB (audit / preview mode). */
+    dryRun?: boolean;
+    /** Restrict processing to these scrutin ids (scoped first in the WHERE). */
+    scrutinIds?: string[];
   } = {}
-): Promise<{ generated: number; skipped: number; errors: string[] }> {
-  const { limit = 10, force = false } = options;
+): Promise<{ generated: number; skipped: number; skippedIncoherent: number; errors: string[] }> {
+  const { limit = 10, force = false, dryRun = false, scrutinIds } = options;
   const errors: string[] = [];
 
-  const where = force
-    ? { importance: { isKeyVote: true } }
-    : { importance: { isKeyVote: true }, analysis: null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = { importance: { isKeyVote: true } };
+  if (scrutinIds && scrutinIds.length > 0) where.id = { in: scrutinIds };
+  if (!force) where.analysis = null;
 
   const scrutins = await db.scrutin.findMany({
     where,
@@ -167,23 +203,27 @@ export async function generateScrutinAnalysis(
       dossierLegislatif: {
         select: { title: true },
       },
+      amendmentLinks: { select: { amendmentId: true } },
+      policyTitle: { select: { policyTitle: true, policySubtitle: true } },
     },
   });
 
   let generated = 0;
   let skipped = 0;
+  let skippedIncoherent = 0;
 
   for (const s of scrutins) {
     try {
-      // Per-group arguments must come from a real debate. With no usable
-      // transcript the model has no argumentative source and fabricates group
-      // positions (see scrutin 2084). Skip rather than invent: no model call,
-      // no write. A future PR will also anchor the topic on the linked amendment.
+      // Guard 1: arguments need a real debate. No usable transcript → never
+      // invent (no resolver, no model call, no write). See scrutin 2084.
       const debateExcerpt = s.debateTranscripts[0]?.content?.trim();
       if (!debateExcerpt) {
         skipped++;
         continue;
       }
+
+      // Anchor the topic on the official amendment substance (what is voted).
+      const resolved = await resolveSubstanceSources(s.id);
 
       const prompt = buildAnalysisPrompt({
         title: s.title,
@@ -198,12 +238,13 @@ export async function generateScrutinAnalysis(
           againstCount: gp.againstCount,
           abstainCount: gp.abstainCount,
         })),
+        substanceBlocks: resolved.blocks,
         debateExcerpt,
         dossierContext: s.dossierLegislatif?.title ?? null,
       });
 
       const response = await callMistral([{ role: "user", content: prompt }], {
-        model: "mistral-large-latest",
+        model: MISTRAL_MODEL,
         maxTokens: 1500,
         temperature: 0.3,
         responseFormat: { type: "json_object" },
@@ -211,40 +252,55 @@ export async function generateScrutinAnalysis(
 
       const text = extractMistralText(response);
       const raw = parseMistralJSON<Record<string, unknown>>(text);
-      // Mistral may return strings, arrays, or nested objects
       const parsed: AnalysisOutput = {
         argumentsFor: flattenToString(raw.argumentsFor),
         argumentsAgainst: flattenToString(raw.argumentsAgainst),
       };
-      const validation = validateAnalysisOutput(parsed);
 
+      const validation = validateAnalysisOutput(parsed);
       if (!validation.valid) {
         errors.push(`${s.id}: validation failed (${validation.errors.join(", ")})`);
         skipped++;
         continue;
       }
 
-      const sourceType =
-        s.debateTranscripts.length > 0
-          ? ("DEBATE_TRANSCRIPT" as const)
-          : ("STRUCTURED_DATA" as const);
+      // Guard 2: arguments must echo the official measure (amendment), not drift
+      // onto a different measure from the broad séance debate.
+      if (s.amendmentLinks.length > 0 && resolved.blocks.length > 0) {
+        const verdict = assessCoherence({
+          text: `${parsed.argumentsFor} ${parsed.argumentsAgainst}`,
+          policyTitle: s.policyTitle?.policyTitle ?? null,
+          policySubtitle: s.policyTitle?.policySubtitle ?? null,
+          blocks: resolved.blocks,
+        });
+        if (!verdict.coherent) {
+          skippedIncoherent++;
+          console.warn(
+            `[scrutin-analysis] INCOHERENT analysis for ${s.id} ` +
+              `(coverage ${verdict.coverage.toFixed(2)}, ref=${verdict.referenceUsed}) — not persisted`
+          );
+          continue;
+        }
+      }
 
-      await db.scrutinAnalysis.upsert({
-        where: { scrutinId: s.id },
-        create: {
-          scrutinId: s.id,
-          argumentsFor: parsed.argumentsFor,
-          argumentsAgainst: parsed.argumentsAgainst,
-          sourceType,
-          modelVersion: "mistral-large-latest",
-        },
-        update: {
-          argumentsFor: parsed.argumentsFor,
-          argumentsAgainst: parsed.argumentsAgainst,
-          sourceType,
-          modelVersion: "mistral-large-latest",
-        },
-      });
+      if (!dryRun) {
+        await db.scrutinAnalysis.upsert({
+          where: { scrutinId: s.id },
+          create: {
+            scrutinId: s.id,
+            argumentsFor: parsed.argumentsFor,
+            argumentsAgainst: parsed.argumentsAgainst,
+            sourceType: "DEBATE_TRANSCRIPT",
+            modelVersion: MISTRAL_MODEL,
+          },
+          update: {
+            argumentsFor: parsed.argumentsFor,
+            argumentsAgainst: parsed.argumentsAgainst,
+            sourceType: "DEBATE_TRANSCRIPT",
+            modelVersion: MISTRAL_MODEL,
+          },
+        });
+      }
 
       generated++;
     } catch (e) {
@@ -253,5 +309,85 @@ export async function generateScrutinAnalysis(
     }
   }
 
-  return { generated, skipped, errors: errors.slice(0, 20) };
+  return { generated, skipped, skippedIncoherent, errors: errors.slice(0, 20) };
+}
+
+// ============================================
+// COHERENCE AUDIT (read-only report, no model, no writes)
+// ============================================
+
+export interface ScrutinAnalysisAuditRow {
+  scrutinId: string;
+  slug: string | null;
+  title: string;
+  sourceType: AnalysisSourceType;
+  hasDebate: boolean;
+  coverage: number;
+  referenceUsed: CoherenceVerdict["referenceUsed"];
+  policyTitle: string | null;
+  argumentsForExcerpt: string;
+}
+
+export interface ScrutinAnalysisAudit {
+  scanned: number;
+  atRisk: ScrutinAnalysisAuditRow[];
+}
+
+/**
+ * Read-only report over amendment-linked analyses. Flags rows that are at risk
+ * of describing a different measure: STRUCTURED_DATA (no real debate), missing
+ * debate transcript, or low lexical coverage with the official substance. No
+ * model call, no write. Backs the scoping of a future regeneration.
+ */
+export async function auditScrutinAnalysisCoherence(options?: {
+  limit?: number;
+}): Promise<ScrutinAnalysisAudit> {
+  const rows = await db.scrutinAnalysis.findMany({
+    where: { scrutin: { amendmentLinks: { some: {} } } },
+    orderBy: { scrutin: { votingDate: "desc" } },
+    select: {
+      argumentsFor: true,
+      argumentsAgainst: true,
+      sourceType: true,
+      scrutin: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          policyTitle: { select: { policyTitle: true, policySubtitle: true } },
+          _count: { select: { debateTranscripts: true } },
+        },
+      },
+    },
+    ...(options?.limit ? { take: options.limit } : {}),
+  });
+
+  const atRisk: ScrutinAnalysisAuditRow[] = [];
+
+  for (const r of rows) {
+    const resolved = await resolveSubstanceSources(r.scrutin.id);
+    const verdict = assessCoherence({
+      text: `${r.argumentsFor} ${r.argumentsAgainst}`,
+      policyTitle: r.scrutin.policyTitle?.policyTitle ?? null,
+      policySubtitle: r.scrutin.policyTitle?.policySubtitle ?? null,
+      blocks: resolved.blocks,
+    });
+    const hasDebate = r.scrutin._count.debateTranscripts > 0;
+    const risky = r.sourceType === "STRUCTURED_DATA" || !hasDebate || !verdict.coherent;
+    if (risky) {
+      atRisk.push({
+        scrutinId: r.scrutin.id,
+        slug: r.scrutin.slug,
+        title: r.scrutin.title,
+        sourceType: r.sourceType,
+        hasDebate,
+        coverage: verdict.coverage,
+        referenceUsed: verdict.referenceUsed,
+        policyTitle: r.scrutin.policyTitle?.policyTitle ?? null,
+        argumentsForExcerpt: r.argumentsFor.slice(0, 160),
+      });
+    }
+  }
+
+  return { scanned: rows.length, atRisk };
 }

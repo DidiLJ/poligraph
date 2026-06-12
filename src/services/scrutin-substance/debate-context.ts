@@ -96,7 +96,8 @@ function extractArticleNumber(article: string): string | null {
   const f = foldLower(article);
   const re = /(?:article\s+)?(\d+(?:\s*(?:bis|ter|quater|quinquies))?)/;
   const m = f.match(/article\s+(\d+(?:\s*(?:bis|ter|quater|quinquies))?)/) ?? f.match(re);
-  return m ? m[1].replace(/\s+/g, " ").trim() : null;
+  const captured = m?.[1];
+  return captured ? captured.replace(/\s+/g, " ").trim() : null;
 }
 
 function articleIndexIn(folded: string, articleNum: string): number {

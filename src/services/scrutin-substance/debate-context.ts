@@ -25,6 +25,9 @@ export interface AmendmentMention {
   matchedAmendmentNumber: string | null;
   /** Only HIGH is trustworthy enough to feed a future generation. */
   usableForGeneration: boolean;
+  /** Diagnostic only: a HIGH match where the author or article is also cited near
+   *  the number. Strengthens confidence but is NEVER required to classify. */
+  reinforced: boolean;
 }
 
 const NONE: AmendmentMention = {
@@ -33,6 +36,7 @@ const NONE: AmendmentMention = {
   excerpt: null,
   matchedAmendmentNumber: null,
   usableForGeneration: false,
+  reinforced: false,
 };
 
 function escapeRegExp(s: string): string {
@@ -106,6 +110,21 @@ function articleIndexIn(folded: string, articleNum: string): number {
   return m ? m.index : -1;
 }
 
+/** Diagnostic: does the author surname or article number appear within ~300 chars
+ *  of the number match? Reinforces a HIGH, never required to classify it. */
+function reinforcedNear(folded: string, idx: number, amd: AmendmentRef): boolean {
+  const win = folded.slice(Math.max(0, idx - 300), idx + 300);
+  const surname =
+    amd.authorSurname && amd.authorSurname.trim().length >= 3
+      ? foldLower(amd.authorSurname.trim())
+      : "";
+  const articleNum = amd.article ? extractArticleNumber(amd.article) : null;
+  const hasSurname = surname.length > 0 && win.includes(surname);
+  const hasArticle =
+    articleNum != null && new RegExp(`article\\s+${escapeRegExp(articleNum)}(?![\\d])`).test(win);
+  return hasSurname || hasArticle;
+}
+
 export function findAmendmentMention(
   transcriptText: string,
   amendments: AmendmentRef[]
@@ -125,6 +144,7 @@ export function findAmendmentMention(
         excerpt: windowAround(spaced, idx),
         matchedAmendmentNumber: amd.number,
         usableForGeneration: true,
+        reinforced: reinforcedNear(folded, idx, amd),
       };
     }
   }
@@ -147,6 +167,7 @@ export function findAmendmentMention(
         excerpt: windowAround(spaced, Math.min(surnameIdx, articleIdx)),
         matchedAmendmentNumber: amd.number,
         usableForGeneration: false,
+        reinforced: false,
       };
     }
     if (!low && (surnameIdx >= 0 || articleIdx >= 0)) {
@@ -156,6 +177,7 @@ export function findAmendmentMention(
         excerpt: windowAround(spaced, surnameIdx >= 0 ? surnameIdx : articleIdx),
         matchedAmendmentNumber: amd.number,
         usableForGeneration: false,
+        reinforced: false,
       };
     }
   }

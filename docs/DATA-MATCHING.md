@@ -16,6 +16,7 @@ Comment Poligraph réconcilie les données de 14+ sources pour construire une fi
 - [Cas concrets](#6-cas-concrets)
 - [Ajouter une nouvelle source](#7-ajouter-une-nouvelle-source)
 - [Pièges connus](#8-pièges-connus)
+- [Rattachement scrutin ↔ débat](#9-rattachement-scrutin--débat)
 
 ---
 
@@ -303,3 +304,74 @@ Si le matching échoue (nom mal normalisé, accent différent), le sync peut cr�
 ### Champs vides dans le CSV HATVP
 
 Le champ `id_origine` est vide pour certains types de mandats (gouvernement, président, commune). C'est normal, le fallback par nom prend le relais.
+
+---
+
+## 9. Rattachement scrutin ↔ débat
+
+Le but : relier un scrutin (`Scrutin`) au bon extrait de compte rendu de séance
+(`DebateTranscript`), de façon **déterministe et auditable**, sans LLM. Ce
+rattachement conditionne la génération de `ScrutinAnalysis` (arguments POUR/CONTRE
+issus du débat). Il n'est volontairement **pas** branché sur la génération tant que
+l'audit ne prouve pas une qualité suffisante.
+
+### Pourquoi le lien historique est fragile
+
+`syncDebateTranscripts()` stocke **un transcript par séance** (clé `seanceRef`),
+tronqué à 5000 caractères, puis l'attache au **premier scrutin du jour sans débat**
+(`debate-transcripts.ts`, lien par date seule). Sur un jour à 100+ scrutins, la
+quasi-totalité reste sans débat et le rare scrutin lié peut l'être au mauvais.
+
+### Le matcher déterministe
+
+Pipeline pur, sans I/O ni modèle (`src/services/scrutin-substance/`) :
+
+1. `findAmendmentMention(text, refs)` (`debate-context.ts`) cherche dans le texte
+   une mention forte de l'amendement voté :
+   - `HIGH` : numéro d'amendement cité explicitement (« l'amendement no 2084 »).
+   - `MEDIUM` : auteur + article à proximité, sans numéro.
+   - `LOW` : auteur ou article seul. `NONE` : rien.
+   - `reinforced` : diagnostic, numéro **et** auteur/article proches (non requis).
+2. `resolveDebateContextForScrutin(id)` (`debate-context-resolver.ts`) rassemble
+   les transcripts **du même jour** (il ignore le lien `scrutinId` cassé), applique
+   le matcher, garde le meilleur. Ce sont des transcripts **same-day**, récupérés
+   par date seule : un transcript same-day n'est **pas** un rattachement prouvé. Le
+   resolver expose `candidateTranscriptCount` (> 1 = jour ambigu) et
+   `transcriptsMentioningAmendment` (= 1 = débat localisable à une seule séance).
+
+   Seul `HIGH` (numéro d'amendement cité) est une référence explicite suffisante. Un
+   article seul ne suffit pas : le cas 2084 mentionne l'article 22 mais jamais
+   l'amendement 2084, il reste donc `unsafe`.
+
+3. `classifyDebateMatch(...)` (`debate-mapping.ts`) rend un verdict strict :
+
+   | Classe      | Règle                                                         | Génération  |
+   | ----------- | ------------------------------------------------------------- | ----------- |
+   | `matched`   | `HIGH` **et** un seul transcript candidat le jour             | exploitable |
+   | `ambiguous` | `HIGH` multi-séances le même jour, **ou** `MEDIUM`            | skip        |
+   | `unsafe`    | transcript présent mais `LOW`/`NONE` (objet voté jamais cité) | skip        |
+   | `missing`   | aucun transcript candidat                                     | skip        |
+
+### Le script d'audit (read-only)
+
+```bash
+npx dotenv -e .env -- npx tsx scripts/audit-scrutin-debate-mapping.ts
+```
+
+Portée : key votes liés à un amendement (seul périmètre où le matcher par numéro
+prouve un lien). Sortie : périmètre, métriques par classe, exemples bons/ambigus/
+mauvais, et le cas sentinelle `VTANR5L17V7183` / amendement 2084 (qui doit rester
+`unsafe`). Aucune écriture, aucun appel modèle, aucun backfill.
+
+### Limite structurelle connue
+
+L'AN siège en 2-3 séances par jour, chacune étant un `DebateTranscript` distinct.
+Sous la règle stricte, tout numéro cité tombe donc sur un jour multi-transcripts et
+finit `ambiguous` : `matched` est quasi inatteignable.
+
+La métrique `uniquelyLocalizable` (numéro présent dans **une seule** séance du jour)
+est un **potentiel, pas une promesse** : elle dit « ces cas semblent localisables de
+façon unique », et non « autant d'analyses générables ». Un scoping **par séance**
+(et non par jour) côté ingestion pourrait les promouvoir en `matched` ; ils
+resteraient ensuite soumis aux garde-fous de génération. C'est le prérequis avant
+tout branchement sur `ScrutinAnalysis`.

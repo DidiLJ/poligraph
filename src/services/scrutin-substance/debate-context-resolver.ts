@@ -19,6 +19,7 @@ import {
   type AmendmentMention,
   type DebateContextConfidence,
 } from "./debate-context";
+import { classifyDebateMatch, type DebateMatchClass } from "./debate-mapping";
 
 /** How candidate transcripts were gathered. Only "same-day" exists today;
  *  a future PR may add dossier/session disambiguation. */
@@ -32,6 +33,10 @@ export interface DebateContextResult extends AmendmentMention {
   candidateScope: CandidateScope;
   /** Number of same-day candidate transcripts considered. > 1 => ambiguous day. */
   candidateTranscriptCount: number;
+  /** How many of those candidates explicitly mention the amendment (HIGH). === 1
+   *  means the debate is uniquely localizable to a single séance, even on a
+   *  multi-séance day — the key signal for a future per-séance scoping. */
+  transcriptsMentioningAmendment: number;
 }
 
 const RANK: Record<DebateContextConfidence, number> = { HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 };
@@ -77,10 +82,12 @@ export async function resolveDebateContextForScrutin(
     excerpt: null,
     matchedAmendmentNumber: null,
     usableForGeneration: false,
+    reinforced: false,
     transcriptSeanceRef: null,
     hasCandidateTranscript: false,
     candidateScope: "same-day",
     candidateTranscriptCount: 0,
+    transcriptsMentioningAmendment: 0,
   };
 
   if (!scrutin) return base;
@@ -102,12 +109,15 @@ export async function resolveDebateContextForScrutin(
   base.candidateTranscriptCount = candidates.length;
 
   let best = base;
+  let mentioning = 0;
   for (const t of candidates) {
     const m = findAmendmentMention(t.content, refs);
+    if (m.confidence === "HIGH") mentioning++;
     if (RANK[m.confidence] > RANK[best.confidence]) {
       best = { ...base, ...m, transcriptSeanceRef: t.seanceRef };
     }
   }
+  best.transcriptsMentioningAmendment = mentioning;
   return best;
 }
 
@@ -176,4 +186,149 @@ export async function auditDebateContextForAmendmentAnalyses(options?: {
   }
 
   return { scanned: scrutins.length, byConfidence, rows };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Key-vote mapping audit: the deterministic scrutin ↔ débat quality measurement.
+// Scope = key votes (ScrutinImportance.isKeyVote) that are linked to an amendment,
+// the only perimeter where the amendment-number matcher can prove a linkage.
+// Read-only: no write, no model call.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface KeyScrutinMappingRow {
+  scrutinId: string;
+  externalId: string;
+  slug: string | null;
+  votingDate: string; // YYYY-MM-DD
+  amendmentNumber: string;
+  matchClass: DebateMatchClass;
+  confidence: DebateContextConfidence;
+  hasCandidateTranscript: boolean;
+  candidateTranscriptCount: number;
+  reinforced: boolean;
+  /** HIGH where exactly one same-day séance cites the amendment: the debate is
+   *  uniquely localizable. Stays `ambiguous` under the strict rule, but measures
+   *  what a per-séance scoping could promote to `matched`. */
+  uniquelyLocalizable: boolean;
+  matchReason: string;
+  classReason: string;
+  transcriptSeanceRef: string | null;
+  excerpt: string | null;
+}
+
+export interface KeyScrutinMappingAudit {
+  scope: {
+    keyVotesWithAmendment: number;
+    keyVotesWithoutAmendment: number;
+  };
+  totals: {
+    scanned: number;
+    /** Transcripts gathered by date only (same-day), NOT a proven linkage. */
+    withSameDayTranscript: number;
+    /** HIGH: amendment number explicitly cited in the debate. The only proof. */
+    confidenceHigh: number;
+    /** MEDIUM/LOW: author/article only, never a sufficient explicit reference. */
+    confidenceMediumLow: number;
+    /** NONE: no exploitable signal, despite a same-day transcript. */
+    confidenceNone: number;
+    matched: number;
+    ambiguous: number;
+    unsafe: number;
+    missing: number;
+    /** Ambiguous cases a per-séance scoping could safely promote to matched. */
+    uniquelyLocalizable: number;
+  };
+  rows: KeyScrutinMappingRow[];
+}
+
+/** Resolve + classify a single scrutin into an auditable mapping row. */
+export async function mapScrutinDebate(scrutin: {
+  id: string;
+  externalId: string;
+  slug: string | null;
+  votingDate: Date;
+  amendmentNumber: string;
+}): Promise<KeyScrutinMappingRow> {
+  const ctx = await resolveDebateContextForScrutin(scrutin.id);
+  const verdict = classifyDebateMatch({
+    hasCandidateTranscript: ctx.hasCandidateTranscript,
+    candidateTranscriptCount: ctx.candidateTranscriptCount,
+    confidence: ctx.confidence,
+  });
+  return {
+    scrutinId: scrutin.id,
+    externalId: scrutin.externalId,
+    slug: scrutin.slug,
+    votingDate: scrutin.votingDate.toISOString().slice(0, 10),
+    amendmentNumber: scrutin.amendmentNumber,
+    matchClass: verdict.class,
+    confidence: ctx.confidence,
+    hasCandidateTranscript: ctx.hasCandidateTranscript,
+    candidateTranscriptCount: ctx.candidateTranscriptCount,
+    reinforced: ctx.reinforced,
+    uniquelyLocalizable: ctx.confidence === "HIGH" && ctx.transcriptsMentioningAmendment === 1,
+    matchReason: ctx.reason,
+    classReason: verdict.reason,
+    transcriptSeanceRef: ctx.transcriptSeanceRef,
+    excerpt: ctx.excerpt,
+  };
+}
+
+export async function auditKeyScrutinDebateMapping(options?: {
+  limit?: number;
+}): Promise<KeyScrutinMappingAudit> {
+  const [keyVotesWithAmendment, keyVotesWithoutAmendment] = await Promise.all([
+    db.scrutin.count({
+      where: { importance: { isKeyVote: true }, amendmentLinks: { some: {} } },
+    }),
+    db.scrutin.count({
+      where: { importance: { isKeyVote: true }, amendmentLinks: { none: {} } },
+    }),
+  ]);
+
+  const scrutins = await db.scrutin.findMany({
+    where: { importance: { isKeyVote: true }, amendmentLinks: { some: {} } },
+    orderBy: { votingDate: "desc" },
+    select: {
+      id: true,
+      externalId: true,
+      slug: true,
+      votingDate: true,
+      amendmentLinks: { select: { amendment: { select: { number: true } } }, take: 1 },
+    },
+    ...(options?.limit ? { take: options.limit } : {}),
+  });
+
+  const rows: KeyScrutinMappingRow[] = [];
+  for (const s of scrutins) {
+    rows.push(
+      await mapScrutinDebate({
+        id: s.id,
+        externalId: s.externalId,
+        slug: s.slug,
+        votingDate: s.votingDate,
+        amendmentNumber: s.amendmentLinks[0]?.amendment.number ?? "?",
+      })
+    );
+  }
+
+  const count = (c: DebateMatchClass): number => rows.filter((r) => r.matchClass === c).length;
+
+  return {
+    scope: { keyVotesWithAmendment, keyVotesWithoutAmendment },
+    totals: {
+      scanned: rows.length,
+      withSameDayTranscript: rows.filter((r) => r.hasCandidateTranscript).length,
+      confidenceHigh: rows.filter((r) => r.confidence === "HIGH").length,
+      confidenceMediumLow: rows.filter((r) => r.confidence === "MEDIUM" || r.confidence === "LOW")
+        .length,
+      confidenceNone: rows.filter((r) => r.confidence === "NONE").length,
+      matched: count("matched"),
+      ambiguous: count("ambiguous"),
+      unsafe: count("unsafe"),
+      missing: count("missing"),
+      uniquelyLocalizable: rows.filter((r) => r.uniquelyLocalizable).length,
+    },
+    rows,
+  };
 }

@@ -126,6 +126,41 @@ describe("findAmendmentMention — real public AN séance formats", () => {
   });
 });
 
+describe("findAmendmentMention — reinforced diagnostic (number + author/article)", () => {
+  it("sets reinforced=true when the amendment number AND the author appear together", () => {
+    const text =
+      "La parole est à Mme Léchon pour soutenir l'amendement no 2084 sur la transparence des coopératives.";
+    const r = findAmendmentMention(text, [
+      { number: "2084", authorSurname: "Lechon", article: "22" },
+    ]);
+    expect(r.confidence).toBe("HIGH");
+    expect(r.reinforced).toBe(true);
+  });
+
+  it("sets reinforced=true when the number AND the article appear together", () => {
+    const text =
+      "Sur l'amendement no 2084, à l'article 22, la commission donne un avis défavorable.";
+    const r = findAmendmentMention(text, [{ number: "2084", article: "APRÈS L'ARTICLE 22" }]);
+    expect(r.confidence).toBe("HIGH");
+    expect(r.reinforced).toBe(true);
+  });
+
+  it("keeps reinforced=false on a bare number match (no author, no article nearby)", () => {
+    const text = "L'amendement no 2084 est mis aux voix.";
+    const r = findAmendmentMention(text, [
+      { number: "2084", authorSurname: "Lechon", article: "22" },
+    ]);
+    expect(r.confidence).toBe("HIGH");
+    expect(r.reinforced).toBe(false);
+  });
+
+  it("keeps reinforced=false for NONE / non-HIGH verdicts", () => {
+    const none = findAmendmentMention("Discussion générale sans numéro.", [{ number: "2084" }]);
+    expect(none.confidence).toBe("NONE");
+    expect(none.reinforced).toBe(false);
+  });
+});
+
 describe("findAmendmentMention — MEDIUM (author + article, no number)", () => {
   it("flags author + article co-located without the number as MEDIUM (audit only)", () => {
     const text =

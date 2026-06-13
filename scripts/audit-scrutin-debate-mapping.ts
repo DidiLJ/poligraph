@@ -107,13 +107,15 @@ async function main(): Promise<void> {
   log(`  transcript sans mention (unsafe)      : ${t.unsafe}  (${pct(t.unsafe, t.scanned)})`);
   log(`  sans transcript same-day (missing)    : ${t.missing}  (${pct(t.missing, t.scanned)})`);
 
-  log("\nDIAGNOSTIC (recommandation)");
+  log("\nDIAGNOSTIC (potentiel, PAS une promesse)");
   log(
-    `  localisables de façon unique          : ${t.uniquelyLocalizable}  (${pct(t.uniquelyLocalizable, t.scanned)})`
+    `  cas qui SEMBLENT localisables de façon unique : ${t.uniquelyLocalizable}  (${pct(t.uniquelyLocalizable, t.scanned)})`
   );
-  log("  = HIGH dont le numéro n'apparaît que dans UNE séance du jour. Classés ambiguous");
-  log("    sous la règle stricte same-day, mais promouvables en matched si l'ingestion");
-  log("    scopait par séance plutôt que par jour.");
+  log("  = HIGH dont le numéro n'apparaît que dans UNE séance du jour. Ils restent");
+  log("    classés ambiguous sous la règle stricte same-day. Lecture correcte :");
+  log("    « ces cas semblent localisables », PAS « autant d'analyses générables ».");
+  log("    Les promouvoir en matched suppose un scoping par séance côté ingestion,");
+  log("    et resterait soumis aux garde-fous de génération.");
 
   printClass("BONS / matched", "matched", report.rows, examples);
   printClass("AMBIGUS / ambiguous", "ambiguous", report.rows, examples);

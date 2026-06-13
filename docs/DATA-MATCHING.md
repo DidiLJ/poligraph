@@ -367,7 +367,11 @@ mauvais, et le cas sentinelle `VTANR5L17V7183` / amendement 2084 (qui doit reste
 
 L'AN siège en 2-3 séances par jour, chacune étant un `DebateTranscript` distinct.
 Sous la règle stricte, tout numéro cité tombe donc sur un jour multi-transcripts et
-finit `ambiguous` : `matched` est quasi inatteignable. La métrique
-`uniquelyLocalizable` (numéro présent dans **une seule** séance du jour) mesure ce
-qu'un scoping **par séance** (et non par jour) pourrait promouvoir en `matched`.
-C'est le prérequis avant tout branchement sur `ScrutinAnalysis`.
+finit `ambiguous` : `matched` est quasi inatteignable.
+
+La métrique `uniquelyLocalizable` (numéro présent dans **une seule** séance du jour)
+est un **potentiel, pas une promesse** : elle dit « ces cas semblent localisables de
+façon unique », et non « autant d'analyses générables ». Un scoping **par séance**
+(et non par jour) côté ingestion pourrait les promouvoir en `matched` ; ils
+resteraient ensuite soumis aux garde-fous de génération. C'est le prérequis avant
+tout branchement sur `ScrutinAnalysis`.

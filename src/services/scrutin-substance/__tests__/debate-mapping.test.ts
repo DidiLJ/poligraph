@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { classifyDebateMatch } from "@/services/scrutin-substance/debate-mapping";
+import {
+  classifyDebateMatch,
+  classifyDebateMatchBySeance,
+} from "@/services/scrutin-substance/debate-mapping";
 
 describe("classifyDebateMatch — strict mapping (matched/ambiguous/missing/unsafe)", () => {
   it("HIGH + exactly 1 candidate transcript → matched (exploitable)", () => {
@@ -81,5 +84,64 @@ describe("classifyDebateMatch — strict mapping (matched/ambiguous/missing/unsa
     });
     expect(v.class).toBe("unsafe");
     expect(v.exploitable).toBe(false);
+  });
+});
+
+describe("classifyDebateMatchBySeance — séance-scoped mapping (full content)", () => {
+  it("exactly 1 séance of the day cites the amendment → matched, even among several séances", () => {
+    const v = classifyDebateMatchBySeance({
+      seanceCount: 3,
+      mentioningHighCount: 1,
+      hasMedium: false,
+    });
+    expect(v.class).toBe("matched");
+    expect(v.exploitable).toBe(true);
+  });
+
+  it("the 2084 shape: single séance of the day, cites the amendment → matched", () => {
+    const v = classifyDebateMatchBySeance({
+      seanceCount: 1,
+      mentioningHighCount: 1,
+      hasMedium: false,
+    });
+    expect(v.class).toBe("matched");
+  });
+
+  it("≥2 séances cite the amendment (debated across sittings) → ambiguous", () => {
+    const v = classifyDebateMatchBySeance({
+      seanceCount: 3,
+      mentioningHighCount: 2,
+      hasMedium: false,
+    });
+    expect(v.class).toBe("ambiguous");
+    expect(v.exploitable).toBe(false);
+  });
+
+  it("no explicit number but an author+article proximity (MEDIUM) → ambiguous", () => {
+    const v = classifyDebateMatchBySeance({
+      seanceCount: 2,
+      mentioningHighCount: 0,
+      hasMedium: true,
+    });
+    expect(v.class).toBe("ambiguous");
+  });
+
+  it("séances exist but none cites the amendment → unsafe (no false positive by date)", () => {
+    const v = classifyDebateMatchBySeance({
+      seanceCount: 2,
+      mentioningHighCount: 0,
+      hasMedium: false,
+    });
+    expect(v.class).toBe("unsafe");
+    expect(v.exploitable).toBe(false);
+  });
+
+  it("no séance that day → missing", () => {
+    const v = classifyDebateMatchBySeance({
+      seanceCount: 0,
+      mentioningHighCount: 0,
+      hasMedium: false,
+    });
+    expect(v.class).toBe("missing");
   });
 });

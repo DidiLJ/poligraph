@@ -375,3 +375,33 @@ façon unique », et non « autant d'analyses générables ». Un scoping **par 
 (et non par jour) côté ingestion pourrait les promouvoir en `matched` ; ils
 resteraient ensuite soumis aux garde-fous de génération. C'est le prérequis avant
 tout branchement sur `ScrutinAnalysis`.
+
+### Ingestion séance-scoped (corrige la limite ci-dessus)
+
+L'ingestion (`debate-transcripts.ts` + `debate-transcript-parse.ts`) stocke
+désormais :
+
+- le **contenu complet** de la séance (fin de la troncature à 5000 caractères : un
+  numéro d'amendement est souvent cité bien au-delà) ;
+- `startTime` (heure de début, parsée du timestamp `<dateSeance>`) et `seanceOrder`
+  (depuis `<numSeanceJour>`), pour distinguer les 2-3 séances d'une même journée.
+
+Le **rattachement naïf au premier scrutin du jour est supprimé** : les nouveaux
+`DebateTranscript` restent `scrutinId = null` (pas de faux lien). Le lien fiable
+reste calculé read-only ; il sera écrit dans une PR ultérieure, après quoi seulement
+la génération pourra être branchée.
+
+Le classifieur `classifyDebateMatchBySeance` compte les **séances qui citent**
+l'amendement : `matched` si exactement une, `ambiguous` si plusieurs (débattu sur
+plusieurs séances) ou MEDIUM seul, `unsafe` si aucune, `missing` si pas de séance.
+
+Audit avant/après (read-only, sans écriture) :
+
+```bash
+npx dotenv -e .env -- npx tsx scripts/audit-debate-ingestion.ts --xml <dir-xml-extrait>
+```
+
+Mesure sur 261 key votes + amendement : `matched` passe de **0 à 174**, `unsafe` de
+**105 à 1** (97 dus à la seule troncature), 77 ambiguïtés levées par le scoping
+séance. Le cas 2084 passe `unsafe -> matched` (mention explicite révélée dans
+l'unique séance du jour). Chiffres calculés hors base, sans backfill.

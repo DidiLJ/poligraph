@@ -66,6 +66,29 @@ describe("resolveDebateContextForScrutin — same-day candidate scope (diagnosti
     expect(r.usableForGeneration).toBe(true); // HIGH, but still "à valider avant branchement"
   });
 
+  it("counts how many same-day transcripts mention the amendment (uniquely localizable when exactly 1)", async () => {
+    scrutinFindUnique.mockResolvedValue({
+      votingDate: new Date("2026-05-30"),
+      amendmentLinks: [{ amendment: { number: "2084", authorName: "Mme Lechon", article: "22" } }],
+    });
+    // Three same-day séances, only the afternoon one cites 2084.
+    transcriptFindMany.mockResolvedValue([
+      { seanceRef: "SEANCE-MATIN", content: "Discussion générale, aucun numéro ici." },
+      {
+        seanceRef: "SEANCE-APREM",
+        content: "La parole est à Mme Léchon pour l'amendement no 2084.",
+      },
+      { seanceRef: "SEANCE-SOIR", content: "Débat sur l'amendement no 999, sans rapport." },
+    ]);
+
+    const r = await resolveDebateContextForScrutin("s1");
+
+    expect(r.confidence).toBe("HIGH");
+    expect(r.candidateTranscriptCount).toBe(3);
+    expect(r.transcriptsMentioningAmendment).toBe(1);
+    expect(r.transcriptSeanceRef).toBe("SEANCE-APREM");
+  });
+
   it("keeps scope=same-day and reports NONE when no same-day candidate mentions the amendment", async () => {
     scrutinFindUnique.mockResolvedValue({
       votingDate: new Date("2026-05-30"),

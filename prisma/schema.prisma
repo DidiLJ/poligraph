@@ -1012,6 +1012,13 @@ model DebateTranscript {
   scrutin   Scrutin? @relation(fields: [scrutinId], references: [id], onDelete: SetNull)
   seanceRef String
   date      DateTime
+  // Séance start timestamp parsed from AN <dateSeance> (YYYYMMDDHHmmss). Enables
+  // ordering same-day sittings; votes carry no time so it is metadata, not a join key.
+  startTime DateTime?
+  // Sitting order within the day, from AN <numSeanceJour> (Unique -> 1, else the int).
+  seanceOrder Int?
+  // Full séance text (NOT truncated). Never index this column and never select it by
+  // default — load it explicitly only when a matcher needs it.
   content   String   @db.Text
   sourceUrl String?
   createdAt DateTime @default(now())
@@ -1020,6 +1027,7 @@ model DebateTranscript {
   @@index([scrutinId])
   @@index([seanceRef])
   @@index([date])
+  @@index([date, seanceOrder])
 }
 
 model ParliamentaryGroupStats {

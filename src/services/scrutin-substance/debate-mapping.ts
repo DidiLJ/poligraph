@@ -73,3 +73,66 @@ export function classifyDebateMatch(input: DebateMatchInput): DebateMatchVerdict
     exploitable: false,
   };
 }
+
+/**
+ * Séance-scoped variant, for the improved ingestion (one full-content record per
+ * séance). Instead of counting all same-day transcripts, it counts how many
+ * séances of the day actually cite the amendment number (HIGH). A vote carries no
+ * time, so a single citing séance is the strongest deterministic proof available.
+ *
+ *   - matched   : exactly ONE séance of the day cites the amendment number.
+ *   - ambiguous : ≥2 séances cite it (debated across sittings), OR only an
+ *                 author/article proximity (MEDIUM), never the number.
+ *   - unsafe    : séance(s) exist but none cites the amendment (the 2084 case while
+ *                 truncated; no false positive from same-day coincidence).
+ *   - missing   : no séance for that day.
+ */
+export interface SeanceScopeInput {
+  /** Number of séances recorded for the voting day. */
+  seanceCount: number;
+  /** Séances whose full content explicitly cites the amendment number (HIGH). */
+  mentioningHighCount: number;
+  /** At least one séance has an author+article proximity without the number. */
+  hasMedium: boolean;
+}
+
+export function classifyDebateMatchBySeance(input: SeanceScopeInput): DebateMatchVerdict {
+  if (input.seanceCount <= 0) {
+    return {
+      class: "missing",
+      reason: "Aucune séance enregistrée pour le jour du vote.",
+      exploitable: false,
+    };
+  }
+
+  if (input.mentioningHighCount === 1) {
+    return {
+      class: "matched",
+      reason: "Numéro d'amendement cité dans une seule séance du jour (séance unique prouvée).",
+      exploitable: true,
+    };
+  }
+
+  if (input.mentioningHighCount >= 2) {
+    return {
+      class: "ambiguous",
+      reason: `Numéro cité dans ${input.mentioningHighCount} séances du jour : séance exacte non prouvée.`,
+      exploitable: false,
+    };
+  }
+
+  if (input.hasMedium) {
+    return {
+      class: "ambiguous",
+      reason:
+        "Auteur et article à proximité, sans le numéro d'amendement : rattachement non prouvé.",
+      exploitable: false,
+    };
+  }
+
+  return {
+    class: "unsafe",
+    reason: "Séance(s) présente(s) mais aucune ne cite explicitement l'amendement voté.",
+    exploitable: false,
+  };
+}

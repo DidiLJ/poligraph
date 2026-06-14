@@ -25,6 +25,11 @@ import {
   Scale,
 } from "lucide-react";
 import { AffairesPageSkeleton } from "./_components/AffairesPageSkeleton";
+import {
+  buildApplyAiPayload,
+  buildBulkPayload,
+  summarizeModerationResult,
+} from "@/lib/admin/moderation-payload";
 import type { PublicationStatus } from "@/generated/prisma";
 
 interface AffairItem {
@@ -93,6 +98,7 @@ export default function AdminAffairsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [applyingAI, setApplyingAI] = useState(false);
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Read state from URL
@@ -146,15 +152,20 @@ export default function AdminAffairsPage() {
   async function handleBulk(action: "publish" | "reject" | "delete", rejectionReason?: string) {
     if (selected.size === 0) return;
     setBulkLoading(true);
+    setFeedback(null);
     try {
       const res = await fetch("/api/admin/affaires/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [...selected], action, rejectionReason }),
+        body: JSON.stringify(buildBulkPayload(action, [...selected], rejectionReason)),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        setFeedback(summarizeModerationResult(data));
         setSelected(new Set());
         fetchData();
+      } else {
+        setFeedback({ ok: false, message: "Échec de l'action groupée. Réessayez." });
       }
     } finally {
       setBulkLoading(false);
@@ -162,20 +173,24 @@ export default function AdminAffairsPage() {
   }
 
   async function handleApplyAI(recommendation: "PUBLISH" | "REJECT") {
-    const reviewIds = affairs
-      .flatMap((a) => a.moderationReviews)
-      .filter((r) => r.recommendation === recommendation)
-      .map((r) => r.id);
-    if (reviewIds.length === 0) return;
+    const payload = buildApplyAiPayload(affairs, recommendation);
+    if (payload.ids.length === 0) return;
 
     setApplyingAI(true);
+    setFeedback(null);
     try {
       const res = await fetch("/api/admin/affaires/moderate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewIds, action: "apply" }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) fetchData();
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setFeedback(summarizeModerationResult(data));
+        fetchData();
+      } else {
+        setFeedback({ ok: false, message: "Échec de l'application des recommandations IA." });
+      }
     } finally {
       setApplyingAI(false);
     }
@@ -232,6 +247,29 @@ export default function AdminAffairsPage() {
           </Link>
         </Button>
       </div>
+
+      {/* Moderation feedback (surfaces publish-guard failures, #364) */}
+      {feedback && (
+        <div
+          role={feedback.ok ? "status" : "alert"}
+          aria-live="polite"
+          className={`flex items-start justify-between gap-3 rounded-lg border p-3 text-sm ${
+            feedback.ok
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-amber-300 bg-amber-50 text-amber-900"
+          }`}
+        >
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            aria-label="Masquer le message"
+            className="shrink-0 opacity-60 hover:opacity-100"
+          >
+            Fermer
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div

@@ -16,6 +16,7 @@ import {
   PUBLICATION_STATUS_OPTIONS,
 } from "@/config/labels";
 import { LinkedAffairSelect } from "@/components/admin/LinkedAffairSelect";
+import { formatAffairFormError } from "@/lib/admin/moderation-payload";
 import type { AffairStatus, AffairCategory, Involvement, SourceType } from "@/types";
 import type { PublicationStatus } from "@/generated/prisma";
 
@@ -170,19 +171,9 @@ export function AffairForm({ politicians, initialData }: AffairFormProps) {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        // Handle Zod flattened errors (object) vs simple string errors
-        if (data.error && typeof data.error === "object") {
-          const flat = data.error;
-          const messages: string[] = [...(flat.formErrors || [])];
-          if (flat.fieldErrors) {
-            for (const [field, errs] of Object.entries(flat.fieldErrors)) {
-              if (Array.isArray(errs)) messages.push(`${field}: ${errs.join(", ")}`);
-            }
-          }
-          throw new Error(messages.join(" | ") || "Erreur de validation");
-        }
-        throw new Error(data.error || "Erreur lors de la sauvegarde");
+        const data = await response.json().catch(() => ({}));
+        // Surfaces publish-guard reasons (422), Zod errors, and plain messages.
+        throw new Error(formatAffairFormError(data));
       }
 
       router.push("/admin/affaires");

@@ -12,16 +12,16 @@ import {
   DOSSIER_STATUS_DESCRIPTIONS,
 } from "@/config/labels";
 import type { DossierStatus, ThemeCategory } from "@/generated/prisma";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 300; // ISR: re-check feature flag every 5 minutes
 
 export const metadata: Metadata = {
-  title: "En direct de l'Assemblée",
+  title: "Dossiers législatifs suivis",
   description:
-    "Suivez les textes en discussion à l'Assemblée nationale : projets de loi, propositions, résumés simplifiés",
+    "Suivez les dossiers législatifs à l'Assemblée nationale : textes déposés, en commission, en séance ou adoptés. Résumés simplifiés à partir des données publiques.",
   alternates: { canonical: "/parlement/dossiers" },
 };
 
@@ -121,13 +121,19 @@ export default async function AssembleePage({ searchParams }: PageProps) {
   ]);
 
   const totalDossiers = Object.values(statusCounts).reduce((a, b) => a + b, 0);
-  const activeStatuses: DossierStatus[] = [
+  // "Open" = not yet at a terminal status (adopté / rejeté / retiré / caduc).
+  // A DEPOSE dossier is open but not necessarily examined, so it is counted as
+  // "ouvert", not as "en discussion".
+  const openStatuses: DossierStatus[] = [
     "DEPOSE",
     "EN_COMMISSION",
     "EN_COURS",
     "CONSEIL_CONSTITUTIONNEL",
   ];
-  const activeCount = activeStatuses.reduce((sum, s) => sum + (statusCounts[s] || 0), 0);
+  const openCount = openStatuses.reduce((sum, s) => sum + (statusCounts[s] || 0), 0);
+  // "En discussion active" is reserved for the EN_COURS status only (séance,
+  // navette, CMP), never the broader open aggregate.
+  const discussionCount = statusCounts.EN_COURS || 0;
 
   return (
     <>
@@ -136,22 +142,25 @@ export default async function AssembleePage({ searchParams }: PageProps) {
           items={[{ label: "Parlement", href: "/parlement" }, { label: "Dossiers législatifs" }]}
         />
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <span className="text-3xl">🏛️</span>
             <h1 className="text-3xl font-display font-extrabold tracking-tight">
-              En direct de l&apos;Assemblée
+              Les lois en construction
             </h1>
           </div>
           <p className="text-muted-foreground text-lg">
-            Comprendre simplement ce qui se vote à l&apos;Assemblée nationale
+            Comprendre les textes déposés, discutés, amendés ou adoptés au Parlement.
           </p>
-          <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-4 text-sm text-muted-foreground">
             <span>
-              <strong className="text-foreground">{totalDossiers}</strong> dossiers
+              <strong className="text-foreground">{totalDossiers}</strong> dossiers suivis
             </span>
             <span>
-              <strong className="text-primary">{activeCount}</strong> en cours
+              <strong className="text-foreground">{openCount}</strong> ouverts
+            </span>
+            <span>
+              <strong className="text-primary">{discussionCount}</strong> en discussion active
             </span>
             <a
               href="https://www.assemblee-nationale.fr/dyn/17/dossiers"
@@ -164,9 +173,33 @@ export default async function AssembleePage({ searchParams }: PageProps) {
             </a>
           </div>
           <SeoIntro
-            text={`${totalDossiers.toLocaleString("fr-FR")} dossiers législatifs suivis à l'Assemblée nationale, dont ${activeCount} en discussion. Résumés simplifiés et suivi en temps réel.`}
+            text={`${totalDossiers.toLocaleString("fr-FR")} dossiers législatifs suivis à l'Assemblée nationale à partir des données publiques (Open Data). Résumés simplifiés, mis à jour régulièrement.`}
           />
         </div>
+
+        {/* Pedagogical callout: what a legislative dossier is, and is not */}
+        <Card className="mb-8 bg-muted/40">
+          <CardContent className="pt-6">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" aria-hidden="true" />
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  Un dossier législatif retrace le parcours d&apos;un texte : dépôt, examen en
+                  commission, séance publique, navette entre l&apos;Assemblée et le Sénat,
+                  amendements, votes et éventuelle adoption.
+                </p>
+                <p>
+                  <strong className="text-foreground">
+                    Tous les textes déposés ne deviennent pas des lois.
+                  </strong>{" "}
+                  Un dossier n&apos;est pas forcément une loi adoptée : beaucoup sont amendés,
+                  rejetés, retirés ou restent sans suite. Poligraph reprend les données publiques de
+                  l&apos;Assemblée nationale et les rend plus lisibles.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* PPL Stats */}
         <DossierPPLStats stats={pplStats} />

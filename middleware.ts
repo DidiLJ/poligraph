@@ -1,6 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, type NextFetchEvent } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import * as Sentry from "@sentry/nextjs";
+import {
+  resolveRateLimitMode,
+  degradedActionForTier,
+  isProductionRuntime,
+  shouldEmitDegradedAlert,
+  type RateLimitMode,
+} from "@/lib/ratelimit/degraded-mode";
 
 // ─── Rate limit tiers ────────────────────────────────────────────
 
@@ -46,6 +54,83 @@ function getLimiter(tier: RateLimitTier): Ratelimit | null {
 
   limiters.set(tier, limiter);
   return limiter;
+}
+
+// ─── Degraded-mode alerting (Lot 3A) ─────────────────────────────
+
+const DEGRADED_ALERT_THROTTLE_MS = 5 * 60 * 1000; // 5 min
+let lastDegradedAlertAt: number | null = null;
+
+/**
+ * Surface that rate limiting is degraded (Upstash unconfigured or unreachable).
+ * Throttled so it fires at most once per window per edge instance, never per
+ * request. In production the signal is a console error (visible in Vercel logs)
+ * plus a Sentry warning; outside production a single light log. The Sentry event
+ * is flushed via `event.waitUntil` because an edge isolate can freeze right after
+ * the response, which would otherwise drop the in-flight event. No public header
+ * is emitted, to avoid telling clients that throttling is off.
+ */
+function reportDegradedMode(
+  mode: RateLimitMode,
+  tier: RateLimitTier,
+  pathname: string,
+  event: NextFetchEvent
+): void {
+  if (mode === "enforced") return;
+  const now = Date.now();
+  if (!shouldEmitDegradedAlert(lastDegradedAlertAt, now, DEGRADED_ALERT_THROTTLE_MS)) {
+    return;
+  }
+  lastDegradedAlertAt = now;
+
+  const detail = `Upstash indisponible, limitation de débit désactivée (tier=${tier}, route=${pathname})`;
+  if (mode === "degraded-prod") {
+    // eslint-disable-next-line no-console -- deliberate ops signal (Vercel logs)
+    console.error(`[ratelimit] PRODUCTION ${detail}`);
+    Sentry.captureMessage(`Rate limiting dégradé : ${detail}`, "warning");
+    event.waitUntil(Sentry.flush(2000));
+  } else {
+    // eslint-disable-next-line no-console -- deliberate ops signal (dev)
+    console.warn(`[ratelimit] ${detail} (hors production, fallback autorisé)`);
+  }
+}
+
+/**
+ * Build the response for the degraded path (Upstash unavailable): throttled
+ * alert, then fail the export tier closed (503) in production while letting
+ * everything else through. Shared by the unconfigured and the runtime-outage
+ * branches so both follow the same explicit policy.
+ */
+function degradedResponse(
+  tier: RateLimitTier,
+  pathname: string,
+  request: NextRequest,
+  event: NextFetchEvent
+): NextResponse {
+  const mode = resolveRateLimitMode(false, isProductionRuntime(process.env));
+  reportDegradedMode(mode, tier, pathname, event);
+
+  if (degradedActionForTier(mode, tier) === "block") {
+    const blocked = NextResponse.json(
+      { error: "Limitation de débit indisponible. Réessayez plus tard." },
+      {
+        status: 503,
+        headers: {
+          "Retry-After": "60",
+          ...(isV1Route(pathname) ? CORS_HEADERS : {}),
+        },
+      }
+    );
+    applySubscribeCors(request, blocked);
+    return blocked;
+  }
+
+  const response = NextResponse.next();
+  if (isV1Route(pathname)) {
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => response.headers.set(k, v));
+  }
+  applySubscribeCors(request, response);
+  return response;
 }
 
 // ─── Route → tier mapping ────────────────────────────────────────
@@ -113,7 +198,7 @@ function applySubscribeCors(request: NextRequest, response: NextResponse): void 
 
 // ─── Middleware ───────────────────────────────────────────────────
 
-export async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const pathname = request.nextUrl.pathname;
 
   // CORS preflight for v1 API
@@ -130,17 +215,23 @@ export async function middleware(request: NextRequest) {
 
   const limiter = getLimiter(tier);
   if (!limiter) {
-    // Upstash not configured — allow through
-    const response = NextResponse.next();
-    if (isV1Route(pathname)) {
-      Object.entries(CORS_HEADERS).forEach(([k, v]) => response.headers.set(k, v));
-    }
-    applySubscribeCors(request, response);
-    return response;
+    // Upstash not configured: explicit degraded mode instead of a silent
+    // fallback (Lot 3A).
+    return degradedResponse(tier, pathname, request, event);
   }
 
   const ip = getClientIp(request);
-  const { success, limit, remaining, reset } = await limiter.limit(ip);
+  let success: boolean;
+  let limit: number;
+  let remaining: number;
+  let reset: number;
+  try {
+    ({ success, limit, remaining, reset } = await limiter.limit(ip));
+  } catch {
+    // Upstash configured but unreachable at runtime: degrade gracefully through
+    // the same explicit policy instead of throwing a 500 on every API tier.
+    return degradedResponse(tier, pathname, request, event);
+  }
 
   if (!success) {
     const retryAfter = Math.ceil((reset - Date.now()) / 1000);

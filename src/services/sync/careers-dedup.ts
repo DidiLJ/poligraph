@@ -33,6 +33,14 @@ export interface MandateCandidateForGuard {
  * any active same-type mandate regardless of source or start date. Authoritative
  * SENAT/AN data also always wins over Wikidata. Other types fall back to a
  * 30-day start-date tolerance.
+ *
+ * NOTE: this guard and the partial unique index Mandate_current_type_uq enforce
+ * related but different invariants. The index is the AUTHORITATIVE guarantee: it
+ * rejects any second active same-type parliamentary mandate at write time,
+ * regardless of source or dates. This guard is a best-effort pre-check whose main
+ * job is to skip the create so the sync does not hit that index (no P2002 noise);
+ * it also defers to authoritative SENAT/AN data and a 30-day tolerance for
+ * non-parliamentary types.
  */
 export function isDuplicateMandateCandidate(
   existingMandates: ExistingMandateForGuard[],

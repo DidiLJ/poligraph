@@ -4,7 +4,12 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { Card, CardContent } from "@/components/ui/card";
-import { DossierCard, DossierFilterBar, DossierPPLStats } from "@/components/legislation";
+import {
+  DossierCard,
+  DossierFilterBar,
+  DossierPPLStats,
+  LegislativeJourney,
+} from "@/components/legislation";
 import { getPPLStats } from "@/lib/data/legislation";
 import {
   DOSSIER_STATUS_LABELS,
@@ -201,8 +206,36 @@ export default async function AssembleePage({ searchParams }: PageProps) {
           </CardContent>
         </Card>
 
+        {/* How a bill moves through Parliament */}
+        <LegislativeJourney />
+
         {/* PPL Stats */}
         <DossierPPLStats stats={pplStats} />
+
+        {/* Status legend — placed before the list so badges are understood upfront */}
+        <Card className="mb-8">
+          <CardContent className="pt-6">
+            <h2 className="font-semibold mb-3">Comprendre les statuts</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+              {(Object.keys(DOSSIER_STATUS_LABELS) as DossierStatus[]).map((status) => (
+                <div key={status} className="flex items-start gap-2">
+                  <span className="shrink-0">{DOSSIER_STATUS_ICONS[status]}</span>
+                  <div>
+                    <span className="font-medium">{DOSSIER_STATUS_LABELS[status]}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      &mdash; {DOSSIER_STATUS_DESCRIPTIONS[status]}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Les statuts sont simplifiés à partir des données disponibles. Le détail officiel reste
+              accessible via le lien Assemblée nationale sur chaque dossier.
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Filter bar */}
         <DossierFilterBar
@@ -291,29 +324,8 @@ export default async function AssembleePage({ searchParams }: PageProps) {
           </Card>
         )}
 
-        {/* Status legend */}
-        <Card className="mt-8">
-          <CardContent className="pt-6">
-            <h2 className="font-semibold mb-3">Comprendre les statuts</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              {(Object.keys(DOSSIER_STATUS_LABELS) as DossierStatus[]).map((status) => (
-                <div key={status} className="flex items-start gap-2">
-                  <span className="shrink-0">{DOSSIER_STATUS_ICONS[status]}</span>
-                  <div>
-                    <span className="font-medium">{DOSSIER_STATUS_LABELS[status]}</span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      &mdash; {DOSSIER_STATUS_DESCRIPTIONS[status]}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Info box */}
-        <Card className="mt-4 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+        <Card className="mt-8 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
           <CardContent className="pt-6">
             <h2 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
               À propos des données

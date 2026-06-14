@@ -721,7 +721,7 @@ export const DOSSIER_STATUS_DESCRIPTIONS: Record<DossierStatus, string> = {
   EN_COMMISSION: "Rapport de commission rendu, en attente de passage en séance.",
   EN_COURS: "Texte en discussion active : séance publique, navette ou CMP.",
   CONSEIL_CONSTITUTIONNEL: "Texte soumis au Conseil constitutionnel.",
-  ADOPTE: "Texte adopté définitivement et promulgué.",
+  ADOPTE: "Texte adopté définitivement par le Parlement, lorsque cette information est disponible.",
   REJETE: "Texte rejeté par le Parlement.",
   RETIRE: "Texte retiré par son auteur.",
   CADUQUE: "Texte devenu caduc à la fin de la législature précédente.",

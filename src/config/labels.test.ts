@@ -12,6 +12,7 @@ import {
   DOSSIER_STATUS_COLORS,
   DOSSIER_STATUS_ICONS,
   DOSSIER_STATUS_DESCRIPTIONS,
+  DOSSIER_STATUS_SITUATIONS,
 } from "./labels";
 
 describe("AFFAIR_STATUS_LABELS", () => {
@@ -201,5 +202,25 @@ describe("DOSSIER_STATUS_LABELS", () => {
     expect(DOSSIER_STATUS_LABELS.EN_COMMISSION).toBe("En commission");
     expect(DOSSIER_STATUS_LABELS.CONSEIL_CONSTITUTIONNEL).toBe("Conseil constitutionnel");
     expect(DOSSIER_STATUS_LABELS.CADUQUE).toBe("Caduc");
+  });
+
+  it("should have a situation sentence for all dossier statuses", () => {
+    Object.keys(DOSSIER_STATUS_LABELS).forEach((status) => {
+      expect(DOSSIER_STATUS_SITUATIONS).toHaveProperty(status);
+      expect(
+        typeof DOSSIER_STATUS_SITUATIONS[status as keyof typeof DOSSIER_STATUS_SITUATIONS]
+      ).toBe("string");
+    });
+  });
+
+  it("should keep EN_COURS situation generic (no séance/navette/CMP sub-step)", () => {
+    const situation = DOSSIER_STATUS_SITUATIONS.EN_COURS.toLowerCase();
+    expect(situation).not.toContain("séance");
+    expect(situation).not.toContain("navette");
+    expect(situation).not.toContain("cmp");
+  });
+
+  it("should not conflate ADOPTE with promulgation", () => {
+    expect(DOSSIER_STATUS_SITUATIONS.ADOPTE.toLowerCase()).not.toContain("promulgu");
   });
 });

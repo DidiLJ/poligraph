@@ -16,21 +16,22 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
     <div className="mb-8">
       <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
         <Users className="h-5 w-5 text-muted-foreground" />
-        Activité législative en chiffres
+        Initiatives et signatures suivies
       </h2>
       <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
-        Ces classements comptent les dépôts et co-signatures de propositions de loi. Ils reflètent
-        un volume d&apos;activité parlementaire, pas une mesure d&apos;efficacité, de qualité ou
-        d&apos;influence politique.
+        Ces chiffres comptent des dépôts et cosignatures dans les données suivies par Poligraph. Ils
+        ne mesurent ni l&apos;efficacité législative, ni la qualité des textes, ni leur probabilité
+        d&apos;adoption. Le rattachement à un parti reflète le parti actuel du signataire, pas son
+        groupe au moment du dépôt.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Top auteurs */}
+        {/* Parlementaires les plus présents dans les signatures */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Top auteurs de PPL
+              Parlementaires les plus présents dans les signatures
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -65,7 +66,7 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
                         </p>
                       )}
                     </div>
-                    <span className="text-sm font-semibold tabular-nums shrink-0">
+                    <span className="text-sm tabular-nums text-muted-foreground shrink-0">
                       {author.count}
                     </span>
                   </Link>
@@ -75,12 +76,12 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
           </CardContent>
         </Card>
 
-        {/* Top partis */}
+        {/* Partis actuels des signataires */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              Top partis
+              Partis actuels des signataires
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -108,7 +109,7 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
                       <span className="text-sm font-medium group-hover:underline flex-1">
                         {party.shortName}
                       </span>
-                      <span className="text-sm font-semibold tabular-nums shrink-0">
+                      <span className="text-sm tabular-nums text-muted-foreground shrink-0">
                         {party.count.toLocaleString("fr-FR")}
                       </span>
                     </div>
@@ -128,12 +129,12 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
           </CardContent>
         </Card>
 
-        {/* Top dossiers co-signes */}
+        {/* Textes les plus co-signés */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Dossiers les plus co-signés
+              Textes les plus co-signés
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -156,7 +157,7 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
                       <div className="flex items-center gap-2 mt-1">
                         <StatusBadge status={dossier.status as DossierStatus} />
                         <span className="text-xs text-muted-foreground">
-                          {dossier.authorCount} auteurs
+                          {dossier.authorCount} signataires
                         </span>
                       </div>
                     </div>

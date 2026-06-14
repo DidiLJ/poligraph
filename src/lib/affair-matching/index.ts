@@ -20,3 +20,10 @@ export type {
   AffairSignalContext,
 } from "./signals/types";
 export { AffairSignalTier } from "./signals/types";
+export {
+  assessPressAttribution,
+  type AttributionGuardInput,
+  type AttributionGuardResult,
+  type AttributionVerdict,
+  type GuardInvolvement,
+} from "./attribution-guard";

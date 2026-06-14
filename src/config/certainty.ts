@@ -1,6 +1,19 @@
-import type { AffairStatus } from "@/generated/prisma";
+import type { AffairStatus, Involvement } from "@/generated/prisma";
 
 export type CertaintyLevel = "ETABLI" | "PRONONCE" | "EN_COURS" | "CLOS_FAVORABLE";
+
+/**
+ * Whether a certainty/status badge describes the tracked politician themselves.
+ *
+ * An affair's `status` (and the certainty derived from it) describes the outcome
+ * for the person prosecuted. Only DIRECT/INDIRECT make the tracked politician
+ * that person; for PLAINTIFF, VICTIM or MENTIONED_ONLY the status refers to a
+ * third party, so a charging certainty badge ("Condamnation définitive") would
+ * misrepresent them (issue #383). Mirrors the guard in `AffairStatusNotice`.
+ */
+export function isAccusedInvolvement(involvement: Involvement): boolean {
+  return involvement === "DIRECT" || involvement === "INDIRECT";
+}
 
 const STATUS_TO_CERTAINTY: Record<AffairStatus, CertaintyLevel> = {
   CONDAMNATION_DEFINITIVE: "ETABLI",

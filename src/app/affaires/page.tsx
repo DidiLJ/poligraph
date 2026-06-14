@@ -31,6 +31,7 @@ import {
   getCertaintyLevel,
   CERTAINTY_LABELS,
   CERTAINTY_COLORS,
+  isAccusedInvolvement,
   type CertaintyLevel,
 } from "@/config/certainty";
 import { AffairModeToggle } from "@/components/affairs/AffairModeToggle";
@@ -343,6 +344,9 @@ export default async function AffairesPage({ searchParams }: PageProps) {
               {affairs.map((affair) => {
                 const superCat = CATEGORY_TO_SUPER[affair.category];
                 const certainty = getCertaintyLevel(affair.status);
+                // Charging certainty badge only for the accused; otherwise the
+                // involvement badge below carries the politician's role (#383).
+                const accused = isAccusedInvolvement(affair.involvement);
                 // Get the most relevant date for display
                 const relevantDate = affair.verdictDate || affair.startDate || affair.factsDate;
                 const dateLabel = affair.verdictDate
@@ -373,9 +377,11 @@ export default async function AffairesPage({ searchParams }: PageProps) {
                             <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCat]}>
                               {AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
                             </Badge>
-                            <Badge className={CERTAINTY_COLORS[certainty]}>
-                              {CERTAINTY_LABELS[certainty]}
-                            </Badge>
+                            {accused && (
+                              <Badge className={CERTAINTY_COLORS[certainty]}>
+                                {CERTAINTY_LABELS[certainty]}
+                              </Badge>
+                            )}
                             <Badge variant="outline">
                               {AFFAIR_CATEGORY_LABELS[affair.category]}
                             </Badge>

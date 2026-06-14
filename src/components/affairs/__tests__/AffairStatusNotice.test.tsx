@@ -4,6 +4,7 @@ import {
   AffairStatusNotice,
   getAffairNoticeVariant,
 } from "@/components/affairs/AffairStatusNotice";
+import { isAccusedInvolvement } from "@/config/certainty";
 
 describe("getAffairNoticeVariant — sélection par statut et involvement", () => {
   it("PRESCRIPTION a sa variante propre, jamais assimilée à une relaxe", () => {
@@ -78,5 +79,25 @@ describe("AffairStatusNotice — wordings validés (RGPD art. 10)", () => {
   it("rien ne s'affiche pour une victime", () => {
     const { container } = render(<AffairStatusNotice status="RELAXE" involvement="VICTIM" />);
     expect(container.firstChild).toBeNull();
+  });
+});
+
+describe("régression #383 — plaignant/victime dans une affaire de condamnation", () => {
+  // Affaire « Plainte de X contre Y » : c'est Y qui est jugé. Ni le badge de
+  // certitude (piloté par isAccusedInvolvement) ni l'encart de prudence
+  // (getAffairNoticeVariant) ne doivent présenter X comme condamné.
+  it("un plaignant n'est pas considéré comme mis en cause", () => {
+    expect(isAccusedInvolvement("PLAINTIFF")).toBe(false);
+    expect(getAffairNoticeVariant("CONDAMNATION_DEFINITIVE", "PLAINTIFF")).toBeNull();
+  });
+
+  it("une victime n'est pas considérée comme mise en cause", () => {
+    expect(isAccusedInvolvement("VICTIM")).toBe(false);
+    expect(getAffairNoticeVariant("CONDAMNATION_DEFINITIVE", "VICTIM")).toBeNull();
+  });
+
+  it("un mis en cause direct conserve son badge de certitude", () => {
+    expect(isAccusedInvolvement("DIRECT")).toBe(true);
+    expect(getAffairNoticeVariant("CONDAMNATION_DEFINITIVE", "DIRECT")).toBe("definitive");
   });
 });

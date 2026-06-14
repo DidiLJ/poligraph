@@ -1,4 +1,5 @@
 import type { AffairStatus, Involvement } from "@/types";
+import { isAccusedInvolvement } from "@/config/certainty";
 
 /**
  * Encart de prudence juridique affiché avec chaque affaire publique
@@ -44,7 +45,7 @@ export function getAffairNoticeVariant(
   // Les encarts qualifient la situation d'une personne mise en cause :
   // pas d'encart quand le politicien est victime, plaignant ou simplement
   // mentionné (ces affaires sont présentées dans des sections dédiées).
-  if (involvement !== "DIRECT" && involvement !== "INDIRECT") return null;
+  if (!isAccusedInvolvement(involvement)) return null;
   if (status === "PRESCRIPTION") return "prescription";
   if (FAVORABLE_STATUSES.includes(status)) return "favorable";
   if (status === "CONDAMNATION_DEFINITIVE") return "definitive";

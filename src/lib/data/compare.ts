@@ -4,7 +4,7 @@ import { MANDATE_TYPE_LABELS } from "@/config/labels";
 import { getPoliticianVotingStats } from "@/services/voteStats";
 import { CATEGORY_MANDATE_TYPES } from "@/types/compare";
 import type { CompareCategory } from "@/types/compare";
-import type { MandateType } from "@/types";
+import type { MandateType, Involvement } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -280,7 +280,12 @@ const POLITICIAN_COMPARISON_SELECT = {
     },
   },
   affairs: {
-    where: { publicationStatus: "PUBLISHED" as const },
+    // Only affairs where the politician is the accused feed the comparison
+    // counts; victim/plaintiff/mentioned affairs are not their condamnations (#383).
+    where: {
+      publicationStatus: "PUBLISHED" as const,
+      involvement: { in: ["DIRECT", "INDIRECT"] as Involvement[] },
+    },
     select: { id: true, status: true, severity: true },
   },
   declarations: {
@@ -416,7 +421,10 @@ async function getMinistreForComparison(slug: string) {
         },
       },
       affairs: {
-        where: { publicationStatus: "PUBLISHED" },
+        where: {
+          publicationStatus: "PUBLISHED",
+          involvement: { in: ["DIRECT", "INDIRECT"] },
+        },
         select: { id: true, status: true, severity: true },
       },
       declarations: {
@@ -500,6 +508,7 @@ async function getPartyForComparison(slugOrId: string) {
   const affairs = await db.affair.findMany({
     where: {
       publicationStatus: "PUBLISHED",
+      involvement: { in: ["DIRECT", "INDIRECT"] },
       politician: { currentPartyId: party.id },
     },
     select: { id: true, status: true, severity: true },
@@ -732,6 +741,7 @@ async function getGroupForComparison(idOrCode: string) {
   const affairs = await db.affair.findMany({
     where: {
       publicationStatus: "PUBLISHED",
+      involvement: { in: ["DIRECT", "INDIRECT"] },
       politician: {
         mandates: {
           some: {

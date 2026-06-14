@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   AFFAIR_STATUS_LABELS,
-  AFFAIR_STATUS_COLORS,
   INVOLVEMENT_LABELS,
   INVOLVEMENT_COLORS,
   AFFAIR_CATEGORY_LABELS,
@@ -241,9 +240,10 @@ export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
                           <Badge className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700 whitespace-nowrap">
                             {INVOLVEMENT_LABELS[affair.involvement as Involvement]}
                           </Badge>
-                          <Badge
-                            className={`whitespace-nowrap ${AFFAIR_STATUS_COLORS[affair.status as AffairStatus]}`}
-                          >
+                          {/* Neutral colour: in the victim section the status
+                              describes the defendant's outcome, not the tracked
+                              politician's own conviction (#383). */}
+                          <Badge variant="outline" className="whitespace-nowrap">
                             {AFFAIR_STATUS_LABELS[affair.status as AffairStatus]}
                           </Badge>
                         </div>

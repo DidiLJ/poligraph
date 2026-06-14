@@ -272,13 +272,21 @@ async function computeThemeDistributionPerPolitician(
       COUNT(*)::int as total
     FROM "Vote" v
     JOIN "Scrutin" s ON s.id = v."scrutinId"
-    JOIN "Mandate" m ON m."politicianId" = v."politicianId"
-      AND m."isCurrent" = true
-      AND m.type IN ('DEPUTE'::"MandateType", 'SENATEUR'::"MandateType")
     WHERE s.theme IS NOT NULL
       AND v.position IN ('POUR', 'CONTRE', 'ABSTENTION')
-      AND v."votingDate" >= m."startDate"
-      AND (m."endDate" IS NULL OR v."votingDate" <= m."endDate")
+      -- Scope votes to a current parliamentary mandate period. EXISTS (semi-join)
+      -- counts each vote ONCE even when a politician has several isCurrent mandate
+      -- rows whose periods both contain votingDate (e.g. an import duplicate). A
+      -- plain JOIN would emit one row per matching mandate and double the counts.
+      AND EXISTS (
+        SELECT 1
+        FROM "Mandate" m
+        WHERE m."politicianId" = v."politicianId"
+          AND m."isCurrent" = true
+          AND m.type IN ('DEPUTE'::"MandateType", 'SENATEUR'::"MandateType")
+          AND v."votingDate" >= m."startDate"
+          AND (m."endDate" IS NULL OR v."votingDate" <= m."endDate")
+      )
     GROUP BY v."politicianId", s.theme
   `;
 

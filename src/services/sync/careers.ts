@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { MandateType, DataSource, PartyRole } from "@/generated/prisma";
 import { setCurrentParty, setPartyRole } from "@/services/politician";
 import { WIKIDATA_SPARQL_RATE_LIMIT_MS } from "@/config/rate-limits";
+import { isDuplicateMandateCandidate } from "./careers-dedup";
 
 export interface CareersSyncResult {
   processed: number;
@@ -257,31 +258,16 @@ export async function syncCareers(options?: {
           continue;
         }
 
-        // Check if mandate already exists:
-        // 1. For DEPUTE/SENATEUR: skip if an authoritative source (SENAT/AN) mandate
-        //    already exists — Wikidata is lower priority for parliamentary mandates
-        // 2. For other types: check within 30-day tolerance
-        const isParliamentary =
-          mandateInfo.type === MandateType.DEPUTE || mandateInfo.type === MandateType.SENATEUR;
-        const authoritativeSources: DataSource[] = [
-          DataSource.SENAT,
-          DataSource.ASSEMBLEE_NATIONALE,
-        ];
-
-        const existingMandate = politician.mandates.find((m) => {
-          if (m.type !== mandateInfo.type) return false;
-          // For parliamentary mandates, any authoritative-source mandate wins
-          if (isParliamentary && m.source && authoritativeSources.includes(m.source)) {
-            return true;
-          }
-          // Date-based check (30-day tolerance)
-          if (!m.startDate) return false;
-          const existingStart = new Date(m.startDate);
-          const diff = Math.abs(existingStart.getTime() - startDate.getTime());
-          return diff / (1000 * 60 * 60 * 24) < 30;
-        });
-
-        if (existingMandate) {
+        // Skip if this candidate duplicates an existing mandate (see
+        // careers-dedup.ts). For DEPUTE/SENATEUR a politician can hold only one
+        // active mandate of a given type; other types use a 30-day tolerance.
+        if (
+          isDuplicateMandateCandidate(politician.mandates, {
+            type: mandateInfo.type,
+            startDate,
+            isCurrent: !endDate,
+          })
+        ) {
           stats.mandatesSkipped++;
           continue;
         }

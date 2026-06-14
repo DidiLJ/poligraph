@@ -363,6 +363,12 @@ model Mandate {
   @@index([isCurrent, type, departmentCode])
   @@index([departmentCode])
   @@index([partyId])
+  // NOTE: a partial UNIQUE index "Mandate_current_type_uq" on
+  // (politicianId, type) WHERE isCurrent = true AND type IN (DEPUTE, SENATEUR)
+  // is applied manually (see
+  // prisma/migrations/manual/add-mandate-current-type-unique.sql). Scoped to
+  // parliamentary types on purpose. Not declared here because partial indexes
+  // require the `partialIndexes` preview feature. db push leaves it untouched.
 }
 
 // Local mandate extension — 1:1 with Mandate for local-specific fields

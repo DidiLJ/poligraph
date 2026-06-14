@@ -3,8 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MarkdownText } from "@/components/ui/markdown";
 import { StatusBadge } from "./StatusBadge";
 import { CategoryBadge } from "./CategoryBadge";
+import { DOSSIER_STATUS_SITUATIONS } from "@/config/labels";
 import type { DossierStatus, ThemeCategory } from "@/generated/prisma";
-import { ExternalLink, FileText, Scale } from "lucide-react";
+import { ExternalLink, FileText, Milestone, Scale } from "lucide-react";
 
 interface DossierCardProps {
   id: string;
@@ -114,10 +115,22 @@ export function DossierCard({
             )}
           </div>
 
+          {/* Où ça en est — situation derived solely from DossierStatus */}
+          <div className="flex items-start gap-2 text-sm">
+            <Milestone
+              className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <p className="text-muted-foreground">{DOSSIER_STATUS_SITUATIONS[status]}</p>
+          </div>
+
           {/* Summary */}
           {summary && (
-            <div className="text-sm text-muted-foreground line-clamp-4">
-              <MarkdownText>{summary}</MarkdownText>
+            <div className="text-sm text-muted-foreground">
+              <p className="mb-1 text-xs font-medium text-foreground">En bref</p>
+              <div className="line-clamp-4">
+                <MarkdownText>{summary}</MarkdownText>
+              </div>
             </div>
           )}
 
@@ -137,14 +150,15 @@ export function DossierCard({
               {amendmentCount > 0 && (
                 <span className="flex items-center gap-1">
                   <FileText className="h-4 w-4" />
-                  {amendmentCount} amendement{amendmentCount > 1 ? "s" : ""}
+                  {amendmentCount} amendement{amendmentCount > 1 ? "s" : ""} lié
+                  {amendmentCount > 1 ? "s" : ""}
                 </span>
               )}
             </div>
 
             <div className="flex items-center gap-2">
               <Link href={href} prefetch={false} className="text-sm text-primary hover:underline">
-                Détails
+                Comprendre ce dossier
               </Link>
               {sourceUrl && (
                 <a

@@ -727,6 +727,21 @@ export const DOSSIER_STATUS_DESCRIPTIONS: Record<DossierStatus, string> = {
   CADUQUE: "Texte devenu caduc à la fin de la législature précédente.",
 };
 
+// Plain-language "where it stands" sentences for dossier cards. Derived solely
+// from DossierStatus: never asserts a sub-step (séance, navette, CMP) or an
+// outcome (promulgation) that the data does not actually carry.
+export const DOSSIER_STATUS_SITUATIONS: Record<DossierStatus, string> = {
+  DEPOSE: "Déposé : le texte est enregistré, mais pas forcément encore examiné.",
+  EN_COMMISSION: "En commission : le texte est préparé ou examiné avant un éventuel débat public.",
+  EN_COURS: "En discussion active : le texte poursuit son parcours parlementaire.",
+  CONSEIL_CONSTITUTIONNEL:
+    "Au Conseil constitutionnel : le texte fait l'objet d'un contrôle avant promulgation éventuelle.",
+  ADOPTE: "Adopté : les données indiquent que le Parlement a terminé l'examen du texte.",
+  REJETE: "Rejeté : le texte n'a pas été adopté.",
+  RETIRE: "Retiré : le texte a été retiré par son auteur ou son initiateur.",
+  CADUQUE: "Caduc : le texte n'est plus poursuivi dans la procédure actuelle.",
+};
+
 export const AMENDMENT_STATUS_LABELS: Record<AmendmentStatus, string> = {
   DEPOSE: "Déposé",
   ADOPTE: "Adopté",

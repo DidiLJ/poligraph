@@ -24,6 +24,7 @@ import {
   CERTAINTY_LABELS,
   CERTAINTY_COLORS,
   CERTAINTY_DESCRIPTIONS,
+  isAccusedInvolvement,
 } from "@/config/certainty";
 import { AffairStatusNotice } from "@/components/affairs/AffairStatusNotice";
 import { LinkedAffairBanner } from "@/components/affairs/LinkedAffairBanner";
@@ -179,6 +180,10 @@ export default async function AffairDetailPage({ params }: PageProps) {
 
   const superCategory = CATEGORY_TO_SUPER[affair.category as AffairCategory];
   const certainty = getCertaintyLevel(affair.status);
+  // The certainty/status describes the outcome for the person prosecuted. When
+  // the tracked politician is a plaintiff, victim or merely mentioned, a
+  // charging badge ("Condamnation définitive") would misrepresent them (#383).
+  const accused = isAccusedInvolvement(affair.involvement);
   const partyDisplay = getAffairPartyDisplay({
     factsDate: affair.factsDate,
     partyAtTime: affair.partyAtTime,
@@ -213,9 +218,19 @@ export default async function AffairDetailPage({ params }: PageProps) {
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Badge className={`${CERTAINTY_COLORS[certainty]} text-sm px-3 py-1`}>
-              {CERTAINTY_LABELS[certainty]}
-            </Badge>
+            {/* For a plaintiff/victim/mentioned politician the charging certainty
+                badge is suppressed: the involvement badge leads and the status is
+                shown with a neutral colour, so the affair is not read as their
+                own conviction (#383). */}
+            {accused ? (
+              <Badge className={`${CERTAINTY_COLORS[certainty]} text-sm px-3 py-1`}>
+                {CERTAINTY_LABELS[certainty]}
+              </Badge>
+            ) : (
+              <Badge className={INVOLVEMENT_COLORS[affair.involvement as Involvement]}>
+                {INVOLVEMENT_LABELS[affair.involvement as Involvement]}
+              </Badge>
+            )}
             <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCategory]}>
               {AFFAIR_SUPER_CATEGORY_LABELS[superCategory]}
             </Badge>
@@ -224,9 +239,13 @@ export default async function AffairDetailPage({ params }: PageProps) {
               status={affair.status}
               label={AFFAIR_STATUS_LABELS[affair.status]}
               description={AFFAIR_STATUS_DESCRIPTIONS[affair.status]}
-              colorClass={AFFAIR_STATUS_COLORS[affair.status]}
+              colorClass={
+                accused
+                  ? AFFAIR_STATUS_COLORS[affair.status]
+                  : "bg-muted text-muted-foreground border-transparent"
+              }
             />
-            {affair.involvement !== "DIRECT" && (
+            {accused && affair.involvement !== "DIRECT" && (
               <Badge className={INVOLVEMENT_COLORS[affair.involvement as Involvement]}>
                 {INVOLVEMENT_LABELS[affair.involvement as Involvement]}
               </Badge>
@@ -240,7 +259,11 @@ export default async function AffairDetailPage({ params }: PageProps) {
               />
             ) : null}
           </div>
-          <p className="text-sm text-muted-foreground mb-4">{CERTAINTY_DESCRIPTIONS[certainty]}</p>
+          {accused && (
+            <p className="text-sm text-muted-foreground mb-4">
+              {CERTAINTY_DESCRIPTIONS[certainty]}
+            </p>
+          )}
 
           <h1 className="text-3xl font-display font-extrabold tracking-tight mb-4">
             {affair.title}

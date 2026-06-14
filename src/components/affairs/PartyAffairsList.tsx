@@ -17,6 +17,7 @@ import {
 } from "@/config/labels";
 import { AffairStatusNotice } from "@/components/affairs/AffairStatusNotice";
 import { getJudicialMaturity } from "@/config/judicial-maturity";
+import { isAccusedInvolvement } from "@/config/certainty";
 import type { AffairCategory, AffairStatus, Involvement } from "@/types";
 
 const MATURITY_TAB_LABELS: Record<string, string> = {
@@ -171,7 +172,13 @@ export function PartyAffairsList({ affairs }: PartyAffairsListProps) {
                     <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCat]}>
                       {AFFAIR_SUPER_CATEGORY_LABELS[superCat]}
                     </Badge>
-                    <Badge className={AFFAIR_STATUS_COLORS[affair.status as AffairStatus]}>
+                    <Badge
+                      className={
+                        isAccusedInvolvement(affair.involvement as Involvement)
+                          ? AFFAIR_STATUS_COLORS[affair.status as AffairStatus]
+                          : "bg-muted text-muted-foreground border-transparent"
+                      }
+                    >
                       {AFFAIR_STATUS_LABELS[affair.status as AffairStatus]}
                     </Badge>
                     <Badge className={INVOLVEMENT_COLORS[affair.involvement as Involvement]}>

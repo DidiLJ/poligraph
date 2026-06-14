@@ -21,6 +21,7 @@ import {
   CERTAINTY_LABELS,
   CERTAINTY_COLORS,
   CERTAINTY_SORT_ORDER,
+  isAccusedInvolvement,
   type CertaintyLevel,
 } from "@/config/certainty";
 import { getJudicialMaturity } from "@/config/judicial-maturity";
@@ -457,10 +458,13 @@ export default async function PartyPage({ params }: PageProps) {
             {/* Affairs */}
             {party.affairsAtTime.length > 0 &&
               (() => {
-                const directAffairs = party.affairsAtTime.filter(
-                  (a) => a.involvement === "DIRECT" || a.involvement === "INDIRECT"
+                // Certainty badges only describe affairs where the member is the
+                // accused; victim/plaintiff/mentioned affairs must not be counted
+                // as the party's condamnations (#383).
+                const directAffairs = party.affairsAtTime.filter((a) =>
+                  isAccusedInvolvement(a.involvement)
                 );
-                const affairsWithCertainty = party.affairsAtTime.map((a) => ({
+                const affairsWithCertainty = directAffairs.map((a) => ({
                   ...a,
                   certainty: getCertaintyLevel(a.status as AffairStatus),
                 }));

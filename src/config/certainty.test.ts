@@ -6,6 +6,7 @@ import {
   CERTAINTY_SORT_ORDER,
   CERTAINTY_DESCRIPTIONS,
   isActiveCertainty,
+  isAccusedInvolvement,
   ACTIVE_AFFAIR_STATUSES,
 } from "@/config/certainty";
 
@@ -78,6 +79,31 @@ describe("isActiveCertainty", () => {
 
   it("returns false for CLOS_FAVORABLE", () => {
     expect(isActiveCertainty("CLOS_FAVORABLE")).toBe(false);
+  });
+});
+
+describe("isAccusedInvolvement (issue #383)", () => {
+  // The certainty/status of an affair describes the outcome for the person
+  // prosecuted. Only DIRECT/INDIRECT make the tracked politician that person, so
+  // only those may carry a charging certainty badge ("Condamnation définitive").
+  it("returns true for DIRECT", () => {
+    expect(isAccusedInvolvement("DIRECT")).toBe(true);
+  });
+
+  it("returns true for INDIRECT", () => {
+    expect(isAccusedInvolvement("INDIRECT")).toBe(true);
+  });
+
+  it("returns false for PLAINTIFF (the politician filed the complaint)", () => {
+    expect(isAccusedInvolvement("PLAINTIFF")).toBe(false);
+  });
+
+  it("returns false for VICTIM", () => {
+    expect(isAccusedInvolvement("VICTIM")).toBe(false);
+  });
+
+  it("returns false for MENTIONED_ONLY", () => {
+    expect(isAccusedInvolvement("MENTIONED_ONLY")).toBe(false);
   });
 });
 

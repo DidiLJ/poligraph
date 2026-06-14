@@ -31,6 +31,19 @@ Une seule issue ouverte à la fois par label : si la précédente n'est pas ferm
 
 Pour recevoir un email à chaque nouvelle issue, activer les notifications GitHub sur `ironlam/poligraph` (Settings → Notifications → Watching → Custom → Issues) ou s'abonner uniquement aux labels ci-dessus via GitHub Mobile ou RSS (`https://github.com/ironlam/poligraph/labels/sync-daily-failure`).
 
+### 1.3 Limitation de débit et mode dégradé
+
+- **Produit** : Upstash Redis (`@upstash/ratelimit`), piloté par `middleware.ts`. Cinq tiers : `general` 60/min, `search` 30/min, `export` 5/min, `admin` 30/min, `subscribe` 8/min. Décision pure et testée dans `src/lib/ratelimit/degraded-mode.ts`.
+- **Activation** : la limitation ne fonctionne que si `UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN` sont définis côté Vercel.
+- **Mode dégradé (Upstash absent)** : le middleware ne retombe plus en silence. Comportement explicite :
+  - **hors production** (dev, preview, `VERCEL_ENV` ≠ `production`) : les requêtes passent, un log léger throttlé est émis. Pas d'alerte Sentry, pas de blocage.
+  - **en production** (`VERCEL_ENV=production`) :
+    - détection explicite et **alerte throttlée** (au plus une fois toutes les 5 minutes par instance) : `console.error` visible dans les logs Vercel, plus `Sentry.captureMessage(..., "warning")` ;
+    - le tier **`export` échoue fermé** (HTTP 503, `Retry-After: 60`) : c'est le seul endpoint lourd et vecteur de scraping sans dépendance opérateur, donc le bloquer pendant une panne est sûr et borné ;
+    - les autres tiers (`general`, `search`, `admin`, `subscribe`) **passent** : on évite de verrouiller l'admin et de casser le site public pendant une panne Upstash ;
+    - aucun en-tête public ne révèle l'état dégradé (ne pas signaler aux clients que la limitation est désactivée).
+- **Réaction à l'alerte** : restaurer `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (Vercel → Settings → Environment Variables), puis redéployer ou attendre le prochain cold start. Vérifier l'état d'Upstash (https://status.upstash.com). Tant que la configuration manque, les exports restent en 503 ; le reste du site fonctionne sans limitation.
+
 ---
 
 ## 2. Variables d'environnement Sentry

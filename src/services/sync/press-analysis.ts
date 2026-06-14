@@ -26,7 +26,7 @@ import { findMatchingAffairs } from "@/services/affairs/matching";
 import { syncMetadata } from "@/lib/sync";
 import { classifyArticleTier, type ArticleTier } from "@/config/press-keywords";
 import { MIN_CONFIDENCE_THRESHOLD } from "@/config/press-analysis";
-import { resolveAffairPolitician } from "@/lib/affair-matching";
+import { resolveAffairPolitician, assessPressAttribution } from "@/lib/affair-matching";
 
 // ============================================
 // TYPES
@@ -254,6 +254,40 @@ export async function syncPressAnalysis(
         }
 
         const politicianId = resolveResult.topCandidateId;
+
+        // Attribution guard (issue #376): the resolver only confirms the name is
+        // in the article, not that this politician is a party to the procedure.
+        // Block attachments to commenters, the local mayor, reacting ministers
+        // and homonyms before any DB write, independently of the LLM-reported
+        // involvement.
+        const resolvedPolitician = await db.politician.findUnique({
+          where: { id: politicianId },
+          select: { firstName: true, lastName: true, fullName: true },
+        });
+        if (resolvedPolitician) {
+          const attribution = assessPressAttribution({
+            text: analysisContent,
+            firstName: resolvedPolitician.firstName,
+            lastName: resolvedPolitician.lastName,
+            involvement: detected.involvement,
+          });
+          if (!attribution.attach) {
+            if (verbose) {
+              console.log(
+                `  - Attribution bloquée (${attribution.verdict}) : ${resolvedPolitician.fullName} → "${detected.title}" ignoré`
+              );
+            }
+            await rejectWeakAttribution(
+              article.id,
+              politicianId,
+              detected,
+              attribution.verdict,
+              dryRun
+            );
+            stats.affairsRejected++;
+            continue;
+          }
+        }
 
         // Try to match with existing affairs
         const matches = await findMatchingAffairs({
@@ -613,6 +647,32 @@ async function rejectLowConfidenceAffair(
       politicianId,
       politicianName: detected.politicianName,
       detectedAffair: JSON.parse(JSON.stringify(detected)),
+      confidenceScore: detected.confidenceScore,
+    },
+  });
+}
+
+/**
+ * Log an affair detection rejected by the attribution guard (issue #376):
+ * the resolved politician is only commenting, locally in charge, reacting, or a
+ * homonym, so the affair is not attached to their profile. The guard verdict is
+ * stored alongside the detection for moderation audit.
+ */
+async function rejectWeakAttribution(
+  articleId: string,
+  politicianId: string | null,
+  detected: DetectedAffair,
+  verdict: string,
+  dryRun: boolean
+): Promise<void> {
+  if (dryRun) return;
+
+  await db.pressAnalysisRejection.create({
+    data: {
+      articleId,
+      politicianId,
+      politicianName: detected.politicianName,
+      detectedAffair: JSON.parse(JSON.stringify({ ...detected, attributionVerdict: verdict })),
       confidenceScore: detected.confidenceScore,
     },
   });

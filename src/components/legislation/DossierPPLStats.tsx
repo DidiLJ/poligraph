@@ -14,10 +14,15 @@ export function DossierPPLStats({ stats }: { stats: PPLStats }) {
 
   return (
     <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+      <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
         <Users className="h-5 w-5 text-muted-foreground" />
         Activité législative en chiffres
       </h2>
+      <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
+        Ces classements comptent les dépôts et co-signatures de propositions de loi. Ils reflètent
+        un volume d&apos;activité parlementaire, pas une mesure d&apos;efficacité, de qualité ou
+        d&apos;influence politique.
+      </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Top auteurs */}

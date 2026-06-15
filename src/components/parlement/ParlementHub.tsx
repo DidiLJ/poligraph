@@ -3,7 +3,6 @@ import { HeroSpotlight } from "@/components/votes/HeroSpotlight";
 import { KeyVoteCard } from "@/components/votes/KeyVoteCard";
 import { DossierCard } from "@/components/legislation";
 import { CompositionHemicycle } from "./CompositionHemicycle";
-import { SeoIntro } from "@/components/seo/SeoIntro";
 import { FAQJsonLd } from "@/components/seo/JsonLd";
 import { getFeatureValue } from "@/lib/feature-flags";
 import {
@@ -88,11 +87,37 @@ export async function ParlementHub() {
     <div className="container mx-auto px-4">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-1">Parlement</h1>
-        <div className="sr-only">
-          <SeoIntro
-            text={`Portail parlementaire : ${hubStats.totalScrutins.toLocaleString("fr-FR")} scrutins de l'Assemblée nationale et du Sénat, ${hubStats.totalDossiers.toLocaleString("fr-FR")} dossiers législatifs suivis.`}
-          />
+        <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
+          Le Parlement en données
+        </h1>
+        <p className="text-muted-foreground text-lg max-w-3xl">
+          Suivez les scrutins de l&apos;Assemblée nationale et du Sénat, les lois en construction et
+          la composition des deux chambres. Poligraph remet en forme les données parlementaires
+          publiques pour rendre lisible ce qui est débattu, voté ou encore en préparation.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <span>
+            <strong className="text-foreground">
+              {hubStats.totalScrutins.toLocaleString("fr-FR")}
+            </strong>{" "}
+            scrutins suivis
+          </span>
+          <span>
+            <strong className="text-foreground">
+              {hubStats.totalDossiers.toLocaleString("fr-FR")}
+            </strong>{" "}
+            dossiers législatifs suivis
+          </span>
+          {lastDate && (
+            <span>
+              Dernier scrutin le{" "}
+              {new Date(lastDate).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          )}
         </div>
       </div>
 

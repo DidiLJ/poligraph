@@ -53,8 +53,8 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 
   const stats = await getHubStats();
   return {
-    title: "Parlement - Scrutins et travail législatif",
-    description: `Suivez le travail parlementaire : ${stats.totalScrutins.toLocaleString("fr-FR")} scrutins et ${stats.totalDossiers.toLocaleString("fr-FR")} dossiers législatifs. Assemblée nationale et Sénat.`,
+    title: "Le Parlement en données : scrutins et lois en construction",
+    description: `Suivez les scrutins de l'Assemblée et du Sénat et les lois en construction : ${stats.totalScrutins.toLocaleString("fr-FR")} scrutins et ${stats.totalDossiers.toLocaleString("fr-FR")} dossiers législatifs suivis, à partir des données publiques.`,
     alternates: { canonical: "/parlement" },
   };
 }

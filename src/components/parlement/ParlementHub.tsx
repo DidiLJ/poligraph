@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/scrutins";
 import { getLatestDossiers } from "@/lib/data/legislation";
 import { getGroupesListing } from "@/lib/data/groupes";
+import { LEGISLATIVE_JOURNEY_STEPS } from "@/config/legislative-journey";
 import { Info, ArrowRight, Building2, AlertTriangle, Calendar } from "lucide-react";
 import {
   resolveParliamentaryPeriod,
@@ -163,24 +164,16 @@ export async function ParlementHub() {
           </p>
           <p className="font-medium">Parcours d{"'"}un texte de loi :</p>
           <ol className="list-decimal list-inside space-y-1 ml-2">
-            <li>
-              <strong>Dépôt</strong> : un projet (gouvernement) ou une proposition (parlementaire)
-              est déposé
-            </li>
-            <li>
-              <strong>Commission</strong> : examen en commission spécialisée, amendements
-            </li>
-            <li>
-              <strong>Hémicycle</strong> : débat et vote en séance publique
-            </li>
-            <li>
-              <strong>Navette</strong> : le texte fait la navette entre les deux chambres jusqu{"'"}
-              à accord
-            </li>
-            <li>
-              <strong>Promulgation</strong> : le Président de la République promulgue la loi
-            </li>
+            {LEGISLATIVE_JOURNEY_STEPS.map((step) => (
+              <li key={step.label}>
+                <strong>{step.label}</strong> : {step.description}
+              </li>
+            ))}
           </ol>
+          <p>
+            Tous les textes ne franchissent pas toutes ces étapes : ils peuvent être rejetés,
+            retirés ou rester sans suite.
+          </p>
         </div>
       </details>
 

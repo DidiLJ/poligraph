@@ -14,7 +14,8 @@ import {
 import { getLatestDossiers } from "@/lib/data/legislation";
 import { getGroupesListing } from "@/lib/data/groupes";
 import { LEGISLATIVE_JOURNEY_STEPS } from "@/config/legislative-journey";
-import { Info, ArrowRight, Building2, AlertTriangle, Calendar } from "lucide-react";
+import { ROUTES } from "@/config/routes";
+import { Info, ArrowRight, Building2, AlertTriangle, Calendar, Tag, BarChart3 } from "lucide-react";
 import {
   resolveParliamentaryPeriod,
   PARLIAMENTARY_PERIOD_FLAG,
@@ -197,10 +198,23 @@ export async function ParlementHub() {
         </section>
       )}
 
-      {/* Key Votes Grid */}
-      {keyVotes.grid.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-3">Votes clés récents</h2>
+      {/* Votes clés + exploration des scrutins */}
+      <section className="mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mb-1">
+          <h2 className="text-lg font-semibold">Votes clés récents</h2>
+          <Link
+            href={ROUTES.votes}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors shrink-0"
+          >
+            Explorer tous les scrutins
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        </div>
+        <p className="text-sm text-muted-foreground mb-3 max-w-3xl">
+          Sélection de scrutins mis en avant pour leur portée politique, institutionnelle ou
+          citoyenne. Ce n{"'"}est ni un classement exhaustif, ni un palmarès.
+        </p>
+        {keyVotes.grid.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {keyVotes.grid.map((s) => (
               <KeyVoteCard
@@ -221,15 +235,35 @@ export async function ParlementHub() {
               />
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Aucun vote clé mis en avant pour le moment.
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href={ROUTES.voteThemes}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors"
+          >
+            <Tag className="h-3.5 w-3.5" aria-hidden="true" />
+            Par thèmes
+          </Link>
+          <Link
+            href={ROUTES.voteStats}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors"
+          >
+            <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
+            Statistiques des votes
+          </Link>
+        </div>
+      </section>
 
       {/* Aujourd'hui au Parlement */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold mb-3">Aujourd{"'"}hui au Parlement</h2>
         {today.total > 0 ? (
           <Link
-            href="/parlement/votes/aujourd-hui"
+            href={ROUTES.votesToday}
             className="block p-4 bg-muted/50 rounded-lg border hover:bg-muted/80 transition-colors"
           >
             <div className="flex items-center gap-6">
@@ -255,7 +289,12 @@ export async function ParlementHub() {
             </div>
           </Link>
         ) : (
-          <p className="text-sm text-muted-foreground">Pas de scrutin aujourd{"'"}hui</p>
+          <p className="text-sm text-muted-foreground">
+            Pas de scrutin recensé aujourd{"'"}hui.{" "}
+            <Link href={ROUTES.votes} className="text-primary hover:underline">
+              Explorer les scrutins récents
+            </Link>
+          </p>
         )}
       </section>
 

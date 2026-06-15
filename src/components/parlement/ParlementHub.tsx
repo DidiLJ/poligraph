@@ -3,6 +3,7 @@ import { HeroSpotlight } from "@/components/votes/HeroSpotlight";
 import { KeyVoteCard } from "@/components/votes/KeyVoteCard";
 import { DossierCard } from "@/components/legislation";
 import { CompositionHemicycle } from "./CompositionHemicycle";
+import { ParlementEntryCards } from "./ParlementEntryCards";
 import { FAQJsonLd } from "@/components/seo/JsonLd";
 import { getFeatureValue } from "@/lib/feature-flags";
 import {
@@ -137,6 +138,9 @@ export async function ParlementHub() {
             </div>
           );
         })()}
+
+      {/* Orientation: entry cards to the three pillars */}
+      <ParlementEntryCards />
 
       <FAQJsonLd
         questions={[

@@ -1,56 +1,15 @@
 import { Metadata } from "next";
-import { ParlementHub, ScrutinsListing } from "@/components/parlement";
+import { ParlementHub } from "@/components/parlement";
 import { getHubStats } from "@/lib/data/scrutins";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 
 export const revalidate = 300;
 
-interface PageProps {
-  searchParams: Promise<{
-    page?: string;
-    result?: string;
-    legislature?: string;
-    chamber?: string;
-    theme?: string;
-    type?: string;
-    search?: string;
-  }>;
-}
-
-export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const params = await searchParams;
-  const hasFilters =
-    params.search ||
-    params.result ||
-    params.legislature ||
-    params.chamber ||
-    params.theme ||
-    params.type ||
-    params.page;
-
-  if (hasFilters) {
-    const canonicalParams = new URLSearchParams();
-    if (params.type) canonicalParams.set("type", params.type);
-    if (params.theme) canonicalParams.set("theme", params.theme);
-    if (params.legislature) canonicalParams.set("legislature", params.legislature);
-    if (params.chamber) canonicalParams.set("chamber", params.chamber);
-    if (params.result) canonicalParams.set("result", params.result);
-    const qs = canonicalParams.toString();
-    const chamberTitle =
-      params.chamber === "AN"
-        ? "Votes de l'Assemblée nationale"
-        : params.chamber === "SENAT"
-          ? "Votes du Sénat"
-          : "Votes parlementaires";
-    return {
-      title: chamberTitle,
-      description:
-        "Suivez les votes de l'Assemblée nationale et du Sénat. Consultez les scrutins et découvrez comment votent vos représentants.",
-      alternates: { canonical: `/parlement${qs ? `?${qs}` : ""}` },
-    };
-  }
-
+// /parlement is a pure hub. The legacy /parlement?<filters> listing is
+// canonicalized to /parlement/votes by middleware (HTTP 308), so this page never
+// renders the scrutins listing and no longer reads searchParams.
+export async function generateMetadata(): Promise<Metadata> {
   const stats = await getHubStats();
   return {
     title: "Le Parlement en données : scrutins et lois en construction",
@@ -59,33 +18,8 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   };
 }
 
-export default async function ParlementPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const hasFilters =
-    params.search ||
-    params.result ||
-    params.legislature ||
-    params.chamber ||
-    params.theme ||
-    params.type ||
-    params.page;
-
+export default async function ParlementPage() {
   const stats = await getHubStats();
-
-  if (hasFilters) {
-    return (
-      <>
-        <CollectionPageJsonLd
-          name="Travail parlementaire"
-          description="Suivez les scrutins et l'activité de l'Assemblée nationale et du Sénat."
-          url="https://poligraph.fr/parlement"
-          numberOfItems={stats.totalScrutins}
-        />
-        <Breadcrumb items={[{ label: "Parlement" }]} />
-        <ScrutinsListing searchParams={params} />
-      </>
-    );
-  }
 
   return (
     <>

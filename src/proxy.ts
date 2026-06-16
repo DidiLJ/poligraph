@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { buildVotesListingRedirect } from "@/lib/parlement-votes-redirect";
 
 export function proxy(request: NextRequest) {
+  // Canonicalize the legacy /parlement?<filters> listing to /parlement/votes (HTTP 308).
+  // This must live in the active proxy (src/proxy.ts): in this src/ project, Next 16
+  // ignores the deprecated root middleware.ts where the redirect was first added.
+  if (request.nextUrl.pathname === "/parlement") {
+    const target = buildVotesListingRedirect(request.nextUrl.searchParams);
+    if (target) {
+      return NextResponse.redirect(new URL(target, request.url), 308);
+    }
+  }
+
   const vercelEnv = process.env.VERCEL_ENV;
 
   // Protect non-production environments (preview, staging) with Basic Auth

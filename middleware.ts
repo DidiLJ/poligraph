@@ -9,6 +9,7 @@ import {
   shouldEmitDegradedAlert,
   type RateLimitMode,
 } from "@/lib/ratelimit/degraded-mode";
+import { buildVotesListingRedirect } from "@/lib/parlement-votes-redirect";
 
 // ─── Rate limit tiers ────────────────────────────────────────────
 
@@ -201,6 +202,16 @@ function applySubscribeCors(request: NextRequest, response: NextResponse): void 
 export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const pathname = request.nextUrl.pathname;
 
+  // Canonicalize the legacy /parlement?<filters> listing to /parlement/votes.
+  // Real HTTP 308 issued before any rendering; the bare /parlement hub (no
+  // listing param) falls through to the rate-limit logic below as a passthrough.
+  if (pathname === "/parlement") {
+    const target = buildVotesListingRedirect(request.nextUrl.searchParams);
+    if (target) {
+      return NextResponse.redirect(new URL(target, request.url), 308);
+    }
+  }
+
   // CORS preflight for v1 API
   if (isV1Route(pathname) && request.method === "OPTIONS") {
     return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
@@ -262,5 +273,5 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: "/api/:path*",
+  matcher: ["/api/:path*", "/parlement"],
 };

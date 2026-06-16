@@ -11,7 +11,7 @@ export function ParlementSearch() {
       value=""
       onSearch={(v) => {
         if (v.trim()) {
-          router.push(`/parlement?search=${encodeURIComponent(v.trim())}`);
+          router.push(`/parlement/votes?search=${encodeURIComponent(v.trim())}`);
         }
       }}
       placeholder="Rechercher un scrutin, un sujet, un thème..."

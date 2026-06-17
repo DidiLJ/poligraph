@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { VOTE_POSITION_LABELS, VOTE_POSITION_DOT_COLORS } from "@/config/labels";
 import { VoteComparisonFilters } from "@/components/compare/VoteComparisonFilters";
 import { COMPARE_CATEGORIES, COMPARE_CATEGORY_LABELS, type CompareCategory } from "@/types/compare";
+import { buildComparerVotesCanonical } from "@/lib/seo/comparer-votes-metadata";
 import type { VotePosition } from "@/types";
 
 interface PageProps {
@@ -33,11 +34,12 @@ export async function generateMetadata({ searchParams }: PageProps) {
   const params = await searchParams;
   const cat = parseCategory(params.cat);
   const label = COMPARE_CATEGORY_LABELS[cat];
+  const canonical = buildComparerVotesCanonical(cat, params.a, params.b);
 
   return {
     title: `Concordance des votes — ${label}`,
     description: `Détail de la concordance des votes entre deux ${label.toLowerCase()}.`,
-    alternates: { canonical: "/comparer/votes" },
+    ...(canonical ? { alternates: { canonical } } : {}),
   };
 }
 

@@ -36,20 +36,20 @@ describe("AffairesFilterBar", () => {
     render(<AffairesFilterBar {...baseProps} />);
     expect(screen.queryByLabelText("Parti")).toBeNull();
     // The editorial axes remain
-    expect(screen.getByLabelText("Famille")).toBeInTheDocument();
-    expect(screen.getByLabelText("Infraction")).toBeInTheDocument();
+    expect(screen.getByLabelText("Catégorie d'infraction")).toBeInTheDocument();
+    expect(screen.getByLabelText("Infraction précise")).toBeInTheDocument();
   });
 
   it("disables the Infraction select until a Famille is chosen", () => {
     render(<AffairesFilterBar {...baseProps} />);
-    expect(screen.getByLabelText("Infraction")).toBeDisabled();
+    expect(screen.getByLabelText("Infraction précise")).toBeDisabled();
   });
 
   it("enables the Infraction select when a Famille is selected", () => {
     render(
       <AffairesFilterBar {...baseProps} currentFilters={{ ...emptyFilters, supercat: "PROBITE" }} />
     );
-    expect(screen.getByLabelText("Infraction")).toBeEnabled();
+    expect(screen.getByLabelText("Infraction précise")).toBeEnabled();
   });
 
   it("keeps a legacy ?category= (no supercat) infraction visible and removable", () => {
@@ -60,7 +60,7 @@ describe("AffairesFilterBar", () => {
       />
     );
     // Family inferred from the category -> infraction select is usable
-    expect(screen.getByLabelText("Infraction")).toBeEnabled();
+    expect(screen.getByLabelText("Infraction précise")).toBeEnabled();
     // The infraction chip is present and removable
     fireEvent.click(screen.getByRole("button", { name: /^Retirer le filtre/ }));
     expect(updateParams).toHaveBeenCalledWith({ category: "" }, { mode: "replace" });

@@ -1,11 +1,13 @@
 "use client";
 
 import { useFilterParams } from "@/hooks/useFilterParams";
-import { DebouncedSearchInput, SelectFilter } from "@/components/filters";
+import { DebouncedSearchInput, SelectFilter, ActiveFilterChips } from "@/components/filters";
+import type { ActiveFilter } from "@/components/filters";
 import { FilterBarShell } from "@/components/filters/FilterBarShell";
 import {
   AFFAIR_CATEGORY_LABELS,
   AFFAIR_SUPER_CATEGORY_LABELS,
+  CATEGORY_TO_SUPER,
   getCategoriesForSuper,
   type AffairSuperCategory,
 } from "@/config/labels";
@@ -54,6 +56,15 @@ export function AffairesFilterBar({
   superCounts,
 }: AffairesFilterBarProps) {
   const { isPending, updateParams } = useFilterParams();
+  // Utility filters use replace so they do not stack browser history.
+  const set = (updates: Record<string, string>) => updateParams(updates, { mode: "replace" });
+
+  // Category-first: the displayed family is the family of the selected
+  // infraction when one is set. This keeps a legacy ?category= URL (no supercat)
+  // coherent and never hides the active infraction.
+  const effectiveSupercat = ((currentFilters.category
+    ? CATEGORY_TO_SUPER[currentFilters.category as AffairCategory]
+    : currentFilters.supercat) || "") as AffairSuperCategory | "";
 
   const certaintyOptions = [
     { value: "", label: "Toutes les certitudes" },
@@ -71,53 +82,94 @@ export function AffairesFilterBar({
     })),
   ];
 
-  const categoryOptions = [
-    { value: "", label: "Toutes les infractions" },
-    ...SUPER_CATEGORIES.flatMap((superCat) => {
-      const cats = getCategoriesForSuper(superCat);
-      if (cats.length === 0) return [];
-      return [
-        {
-          value: `sep-${superCat}`,
-          label: `── ${AFFAIR_SUPER_CATEGORY_LABELS[superCat]} ──`,
-          disabled: true,
-        },
-        ...cats.map((cat: AffairCategory) => ({
+  // Infraction options are scoped to the effective family (no separators).
+  const categoryOptions = effectiveSupercat
+    ? [
+        { value: "", label: "Toutes les infractions" },
+        ...getCategoriesForSuper(effectiveSupercat).map((cat) => ({
           value: cat,
           label: AFFAIR_CATEGORY_LABELS[cat],
         })),
-      ];
-    }),
-  ];
-
-  const partyOptions = [
-    { value: "", label: "Tous les partis" },
-    ...parties.map((p) => ({
-      value: p.slug,
-      label: `${p.shortName} — ${p.name} (${p.count})`,
-    })),
-  ];
+      ]
+    : [{ value: "", label: "Choisir d'abord une famille" }];
 
   const sortOptions = Object.entries(SORT_OPTIONS).map(([value, label]) => ({ value, label }));
 
+  // Active filter chips. `mode` is a perimeter tab (not a chip); `sort` IS shown
+  // so that "Tout effacer" never resets an invisible state.
+  const activeFilters: ActiveFilter[] = [];
+  if (currentFilters.search) {
+    activeFilters.push({ key: "search", label: `Recherche : ${currentFilters.search}` });
+  }
+  if (currentFilters.parti) {
+    const party = parties.find((p) => p.slug === currentFilters.parti);
+    activeFilters.push({
+      key: "parti",
+      label: `Parti : ${party?.shortName ?? currentFilters.parti}`,
+    });
+  }
+  if (currentFilters.supercat) {
+    // Suppress a stale family chip that would contradict the selected infraction
+    // (incoherent ?supercat=A&category=B URL). Category prevails in the UI.
+    const consistent =
+      !currentFilters.category ||
+      CATEGORY_TO_SUPER[currentFilters.category as AffairCategory] === currentFilters.supercat;
+    if (consistent) {
+      activeFilters.push({
+        key: "supercat",
+        label:
+          AFFAIR_SUPER_CATEGORY_LABELS[currentFilters.supercat as AffairSuperCategory] ??
+          currentFilters.supercat,
+      });
+    }
+  }
+  if (currentFilters.certainty) {
+    activeFilters.push({
+      key: "certainty",
+      label:
+        CERTAINTY_LABELS[currentFilters.certainty as CertaintyLevel] ?? currentFilters.certainty,
+    });
+  }
+  if (currentFilters.category) {
+    activeFilters.push({
+      key: "category",
+      label:
+        AFFAIR_CATEGORY_LABELS[currentFilters.category as AffairCategory] ??
+        currentFilters.category,
+    });
+  }
+  if (currentFilters.sort) {
+    activeFilters.push({
+      key: "sort",
+      label: `Tri : ${SORT_OPTIONS[currentFilters.sort] ?? currentFilters.sort}`,
+    });
+  }
+
+  const removeFilter = (key: string) =>
+    key === "supercat" ? set({ supercat: "", category: "" }) : set({ [key]: "" });
+
+  const clearAll = () =>
+    set({ search: "", supercat: "", category: "", certainty: "", parti: "", sort: "" });
+
   return (
     <FilterBarShell isPending={isPending} className="space-y-3">
-      {/* Search input */}
+      {/* Search input — manual: applies on submit (button/Enter), not while typing */}
       <DebouncedSearchInput
         id="search-affairs"
         value={currentFilters.search}
-        onSearch={(v) => updateParams({ search: v })}
+        onSearch={(v) => set({ search: v })}
+        manual
         placeholder="Rechercher une affaire..."
         label="Recherche"
       />
 
-      {/* Dropdowns grid: 2 cols mobile, 5 cols desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      {/* Dropdowns grid: 2 cols mobile, 4 cols desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SelectFilter
           id="supercat-affairs"
           label="Famille"
-          value={currentFilters.supercat}
-          onChange={(v) => updateParams({ supercat: v, category: "" })}
+          value={effectiveSupercat}
+          onChange={(v) => set({ supercat: v, category: "" })}
           options={superCatOptions}
         />
 
@@ -125,34 +177,29 @@ export function AffairesFilterBar({
           id="category-affairs"
           label="Infraction"
           value={currentFilters.category}
-          onChange={(v) => updateParams({ category: v })}
+          onChange={(v) => set({ supercat: effectiveSupercat, category: v })}
           options={categoryOptions}
+          disabled={!effectiveSupercat}
         />
 
         <SelectFilter
           id="certainty-affairs"
           label="Certitude"
           value={currentFilters.certainty}
-          onChange={(v) => updateParams({ certainty: v })}
+          onChange={(v) => set({ certainty: v })}
           options={certaintyOptions}
-        />
-
-        <SelectFilter
-          id="parti-affairs"
-          label="Parti"
-          value={currentFilters.parti}
-          onChange={(v) => updateParams({ parti: v })}
-          options={partyOptions}
         />
 
         <SelectFilter
           id="sort-affairs"
           label="Trier par"
           value={currentFilters.sort}
-          onChange={(v) => updateParams({ sort: v })}
+          onChange={(v) => set({ sort: v })}
           options={sortOptions}
         />
       </div>
+
+      <ActiveFilterChips filters={activeFilters} onRemove={removeFilter} onClearAll={clearAll} />
     </FilterBarShell>
   );
 }

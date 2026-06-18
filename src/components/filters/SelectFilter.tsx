@@ -16,6 +16,7 @@ interface SelectFilterProps {
   className?: string;
   id?: string;
   label?: string;
+  disabled?: boolean;
 }
 
 export function SelectFilter({
@@ -26,6 +27,7 @@ export function SelectFilter({
   className,
   id,
   label,
+  disabled,
 }: SelectFilterProps) {
   return (
     <div className={className}>
@@ -38,8 +40,9 @@ export function SelectFilter({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
         className={cn(
-          "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer hover:border-primary/50 transition-colors"
+          "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer hover:border-primary/50 transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-input"
         )}
       >
         {placeholder && <option value="">{placeholder}</option>}

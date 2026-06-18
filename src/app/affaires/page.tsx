@@ -218,7 +218,7 @@ export default async function AffairesPage({ searchParams }: PageProps) {
         {/* Party quick-links */}
         {partiesWithAffairs.length > 0 && (
           <div className="mb-4">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Par parti</p>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Explorer par parti</p>
             <div className="flex flex-wrap gap-2">
               {partiesWithAffairs
                 .sort((a, b) => b._count.affairsAtTime - a._count.affairsAtTime)
@@ -292,42 +292,6 @@ export default async function AffairesPage({ searchParams }: PageProps) {
               prefetch={false}
             >
               Voir le hub Condamnations →
-            </Link>
-          </div>
-        )}
-
-        {/* Active filters summary */}
-        {(searchFilter || superCatFilter || certaintyFilter || categoryFilter || partiFilter) && (
-          <div className="mb-6 flex items-center gap-2 text-sm flex-wrap">
-            <span className="text-muted-foreground">Filtres actifs :</span>
-            {searchFilter && <Badge variant="outline">Recherche : {searchFilter}</Badge>}
-            {partiFilter && (
-              <Badge variant="outline">
-                Parti :{" "}
-                {partiesWithAffairs.find((p) => p.slug === partiFilter)?.shortName || partiFilter}
-              </Badge>
-            )}
-            {superCatFilter && (
-              <Badge className={AFFAIR_SUPER_CATEGORY_COLORS[superCatFilter]}>
-                {AFFAIR_SUPER_CATEGORY_LABELS[superCatFilter]}
-              </Badge>
-            )}
-            {certaintyFilter && (
-              <Badge className={CERTAINTY_COLORS[certaintyFilter as CertaintyLevel]}>
-                {CERTAINTY_LABELS[certaintyFilter as CertaintyLevel]}
-              </Badge>
-            )}
-            {categoryFilter && (
-              <Badge variant="outline">
-                {AFFAIR_CATEGORY_LABELS[categoryFilter as keyof typeof AFFAIR_CATEGORY_LABELS]}
-              </Badge>
-            )}
-            <Link
-              href={mode === "victime" ? "/affaires?mode=victime" : "/affaires"}
-              scroll={false}
-              className="text-primary hover:underline ml-2"
-            >
-              Effacer les filtres
             </Link>
           </div>
         )}

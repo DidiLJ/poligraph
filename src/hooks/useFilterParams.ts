@@ -10,7 +10,7 @@ export function useFilterParams() {
   const [isPending, startTransition] = useTransition();
 
   const updateParams = useCallback(
-    (updates: Record<string, string>) => {
+    (updates: Record<string, string>, options?: { mode?: "push" | "replace" }) => {
       const params = new URLSearchParams(searchParams.toString());
       for (const [key, value] of Object.entries(updates)) {
         if (value) {
@@ -22,7 +22,14 @@ export function useFilterParams() {
       params.delete("page");
       startTransition(() => {
         const qs = params.toString();
-        router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+        const url = qs ? `${pathname}?${qs}` : pathname;
+        // Default "push" preserves existing behavior for every current caller.
+        // Opt into "replace" for utility filters that should not stack history.
+        if (options?.mode === "replace") {
+          router.replace(url, { scroll: false });
+        } else {
+          router.push(url, { scroll: false });
+        }
       });
     },
     [router, pathname, searchParams, startTransition]

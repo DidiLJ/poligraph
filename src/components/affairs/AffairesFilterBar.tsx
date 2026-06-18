@@ -75,7 +75,7 @@ export function AffairesFilterBar({
   ];
 
   const superCatOptions = [
-    { value: "", label: "Toutes les familles" },
+    { value: "", label: "Toutes les catégories" },
     ...SUPER_CATEGORIES.map((superCat) => ({
       value: superCat,
       label: `${AFFAIR_SUPER_CATEGORY_LABELS[superCat]} (${superCounts[superCat] || 0})`,
@@ -91,7 +91,7 @@ export function AffairesFilterBar({
           label: AFFAIR_CATEGORY_LABELS[cat],
         })),
       ]
-    : [{ value: "", label: "Choisir d'abord une famille" }];
+    : [{ value: "", label: "Choisir d'abord une catégorie" }];
 
   const sortOptions = Object.entries(SORT_OPTIONS).map(([value, label]) => ({ value, label }));
 
@@ -167,7 +167,7 @@ export function AffairesFilterBar({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SelectFilter
           id="supercat-affairs"
-          label="Famille"
+          label="Catégorie d'infraction"
           value={effectiveSupercat}
           onChange={(v) => set({ supercat: v, category: "" })}
           options={superCatOptions}
@@ -175,7 +175,7 @@ export function AffairesFilterBar({
 
         <SelectFilter
           id="category-affairs"
-          label="Infraction"
+          label="Infraction précise"
           value={currentFilters.category}
           onChange={(v) => set({ supercat: effectiveSupercat, category: v })}
           options={categoryOptions}

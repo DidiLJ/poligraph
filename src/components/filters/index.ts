@@ -4,3 +4,6 @@ export type { ComboboxOption } from "./ComboboxFilter";
 export { SelectFilter } from "./SelectFilter";
 export type { SelectOption } from "./SelectFilter";
 export { FilterBarShell } from "./FilterBarShell";
+export { ActiveFilterChips } from "./ActiveFilterChips";
+export type { ActiveFilter } from "./ActiveFilterChips";
+export { UrlSearchInput } from "./UrlSearchInput";

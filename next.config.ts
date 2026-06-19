@@ -178,19 +178,39 @@ const nextConfig: NextConfig = {
 };
 
 const sentryEnabled = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN);
+// Attempt source map upload / release creation only when fully configured
+// (token + org + project). A partial or invalid config must never pollute the
+// build log nor risk failing the build; runtime DSN reporting is independent.
+const sentryUploadEnabled = Boolean(
+  process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
+);
+// Visible-but-short heads-up when Sentry is on (DSN set) but the upload creds
+// are incomplete: not silent, not spammy, never blocking. (Only fires when a DSN
+// is present, so local dev without a DSN stays quiet.)
+if (sentryEnabled && !sentryUploadEnabled) {
+  // eslint-disable-next-line no-console -- intentional build-time diagnostic
+  console.warn(
+    "[sentry] source map upload disabled: set SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT."
+  );
+}
 
 export default sentryEnabled
   ? withSentryConfig(nextConfig, {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
       silent: !process.env.CI,
-      // Upload source maps only when an auth token is provided (build-time secret)
-      sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+      // Upload source maps only when token + org + project are all set
+      sourcemaps: { disable: !sentryUploadEnabled },
       widenClientFileUpload: true,
       // Route Sentry events through our domain to bypass ad blockers
       tunnelRoute: "/monitoring",
       disableLogger: true,
       // Instruments Vercel Cron jobs defined in vercel.json automatically
       automaticVercelMonitors: true,
+      // A bad/partial upload config must not break or spam the build log
+      errorHandler: (err) => {
+        // eslint-disable-next-line no-console -- intentional build-time diagnostic
+        console.warn("[sentry] source map upload failed (non-blocking):", err.message);
+      },
     })
   : nextConfig;

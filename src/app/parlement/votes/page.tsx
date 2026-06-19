@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { ScrutinsListing } from "@/components/parlement";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { hasActiveListingFilter, listingRobotsMetadata } from "@/lib/seo/listing-robots";
 
 export const revalidate = 300;
 
@@ -26,6 +27,17 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   if (params.result) canonicalParams.set("result", params.result);
   const qs = canonicalParams.toString();
 
+  // Lot 3a: de-index utility-filtered/paginated variants (noindex,follow); the
+  // bare /parlement/votes stays indexable. GSC: these facet URLs get 0 clicks.
+  const noindex = hasActiveListingFilter(params, [
+    "search",
+    "result",
+    "legislature",
+    "chamber",
+    "theme",
+    "type",
+  ]);
+
   const chamberTitle =
     params.chamber === "AN"
       ? "Votes de l'Assemblée nationale"
@@ -36,6 +48,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     title: chamberTitle,
     description:
       "Suivez les votes de l'Assemblée nationale et du Sénat. Consultez les scrutins et découvrez comment votent vos représentants.",
+    ...listingRobotsMetadata(noindex),
     alternates: { canonical: `/parlement/votes${qs ? `?${qs}` : ""}` },
   };
 }

@@ -39,6 +39,7 @@ import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { AffairStatus, Involvement } from "@/types";
+import { hasActiveListingFilter, listingRobotsMetadata } from "@/lib/seo/listing-robots";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 
@@ -96,6 +97,22 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     description = `${AFFAIR_SUPER_CATEGORY_DESCRIPTIONS[superCatKey]}. Liste des responsables politiques concernés.`;
   }
 
+  // Lot 3b: de-index utility-filtered/paginated/perimeter variants (noindex,follow);
+  // bare /affaires (default "mise-en-cause" perimeter) stays indexable. GSC: these
+  // /affaires facet URLs get ~0 clicks (the condamnations hub captures the intent).
+  const hasNonDefaultMode = params.mode !== undefined && params.mode !== "mise-en-cause";
+
+  const noindex =
+    hasActiveListingFilter(params, [
+      "search",
+      "sort",
+      "status",
+      "supercat",
+      "category",
+      "certainty",
+      "parti",
+    ]) || hasNonDefaultMode;
+
   return {
     title,
     description,
@@ -103,6 +120,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
       title: `${title} | Poligraph`,
       description,
     },
+    ...listingRobotsMetadata(noindex),
     alternates: {
       canonical: (() => {
         const cp = new URLSearchParams();

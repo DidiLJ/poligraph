@@ -9,6 +9,7 @@ import { PoliticiansGrid } from "@/components/politicians/PoliticiansGrid";
 
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { hasActiveListingFilter, listingRobotsMetadata } from "@/lib/seo/listing-robots";
 import { SITE_URL } from "@/config/site";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
@@ -38,9 +39,17 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   if (params.sort && params.sort !== "prominence") cp.set("sort", params.sort);
   const qs = cp.toString();
 
+  const hasNonDefaultSort = params.sort !== undefined && params.sort !== "prominence";
+  const hasConvictionFilter = params.conviction === "true";
+  const noindex =
+    hasActiveListingFilter(params, ["search", "party", "mandate", "status"]) ||
+    hasConvictionFilter ||
+    hasNonDefaultSort;
+
   return {
     title: "Représentants politiques",
     description: "Liste des représentants politiques français - députés, sénateurs, ministres",
+    ...listingRobotsMetadata(noindex),
     alternates: { canonical: `/politiques${qs ? `?${qs}` : ""}` },
   };
 }

@@ -1,10 +1,28 @@
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import type { NormalizedAmendment } from "./types";
+import { diffAmendmentRow } from "./change-detection";
 
 export interface BatchResult {
   created: number;
+  /** Existing rows actually written this batch (substanceChanged + metadataOnly). */
   updated: number;
+  /** Existing rows whose `content` (dispositif) really changed; may overlap summaryChanged. */
+  contentChanged: number;
+  /** Existing rows whose `summary` (exposé sommaire) really changed; may overlap contentChanged. */
+  summaryChanged: number;
+  /** Existing rows where content OR summary changed, each counted once. */
+  substanceChanged: number;
+  /** Existing rows where only non-substance fields changed (subset of `updated`). */
+  metadataOnly: number;
+  /** Existing rows that were identical to the parse: no write issued. */
+  unchanged: number;
+  /**
+   * cuid ids of existing amendments whose substance (content OR summary) really
+   * changed this batch. The read-only signal a later stage (PR B) will consume to
+   * flag the linked ScrutinPolicyTitle rows for regeneration. PR A only produces it.
+   */
+  changedSubstanceAmendmentIds: string[];
   dossiersResolved: number;
   dossiersUnresolved: number;
 }
@@ -82,34 +100,94 @@ export async function writeAmendmentBatch(batch: NormalizedAmendment[]): Promise
     });
   }
 
-  if (rows.length === 0) return { created: 0, updated: 0, dossiersResolved, dossiersUnresolved };
+  if (rows.length === 0)
+    return {
+      created: 0,
+      updated: 0,
+      contentChanged: 0,
+      summaryChanged: 0,
+      substanceChanged: 0,
+      metadataOnly: 0,
+      unchanged: 0,
+      changedSubstanceAmendmentIds: [],
+      dossiersResolved,
+      dossiersUnresolved,
+    };
 
-  // 1. Bulk-fetch which externalIds already exist in the batch's externalId set.
+  // 1. Bulk-fetch the existing rows for this batch with the fields we compare,
+  //    so we can decide per-row whether anything actually changed.
   const externalIds = rows.map((r) => r.externalId);
   const existing = await db.amendment.findMany({
     where: { externalId: { in: externalIds } },
-    select: { externalId: true },
+    select: {
+      id: true,
+      externalId: true,
+      number: true,
+      texteRef: true,
+      article: true,
+      content: true,
+      summary: true,
+      status: true,
+      authorType: true,
+      authorName: true,
+      legislature: true,
+      chamber: true,
+      dossierId: true,
+    },
   });
-  const existingSet = new Set(existing.map((e) => e.externalId));
+  const existingByExternalId = new Map(existing.map((e) => [e.externalId, e]));
 
   // 2. Partition.
-  const newRows = rows.filter((r) => !existingSet.has(r.externalId));
-  const updateRows = rows.filter((r) => existingSet.has(r.externalId));
+  const newRows = rows.filter((r) => !existingByExternalId.has(r.externalId));
+  const updateRows = rows.filter((r) => existingByExternalId.has(r.externalId));
 
   // 3a. Bulk insert all new rows in a single createMany.
   if (newRows.length > 0) {
     await db.amendment.createMany({ data: newRows });
   }
 
-  // 3b. Per-row update for the (usually small) existing set.
+  // 3b. Per-row diff + conditional update for the existing set. We only write the
+  //     fields that really changed (no blind overwrite), and record which rows had
+  //     a genuine substance change (content OR summary) as the regeneration signal
+  //     for a later stage.
+  let contentChanged = 0;
+  let summaryChanged = 0;
+  let substanceChanged = 0;
+  let metadataOnly = 0;
+  let unchanged = 0;
+  const changedSubstanceAmendmentIds: string[] = [];
+
   for (const r of updateRows) {
-    const { externalId, ...data } = r;
-    await db.amendment.update({ where: { externalId }, data });
+    const prev = existingByExternalId.get(r.externalId);
+    if (!prev) continue; // unreachable: filtered above, narrows the type
+    const { externalId, ...incoming } = r;
+    const diff = diffAmendmentRow(prev, incoming);
+
+    if (diff.contentChanged) contentChanged++;
+    if (diff.summaryChanged) summaryChanged++;
+
+    if (diff.substanceChanged) {
+      substanceChanged++;
+      changedSubstanceAmendmentIds.push(prev.id);
+    } else if (diff.metadataChanged) {
+      metadataOnly++;
+    } else {
+      unchanged++;
+      continue; // nothing to write
+    }
+
+    await db.amendment.update({ where: { externalId }, data: diff.data });
   }
 
   return {
     created: newRows.length,
-    updated: updateRows.length,
+    updated: substanceChanged + metadataOnly,
+    contentChanged,
+    summaryChanged,
+    substanceChanged,
+    metadataOnly,
+    unchanged,
+    changedSubstanceAmendmentIds,
     dossiersResolved,
     dossiersUnresolved,
   };

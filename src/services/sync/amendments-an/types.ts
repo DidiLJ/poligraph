@@ -33,6 +33,18 @@ export interface SyncWarning {
   externalId?: string;
 }
 
+/**
+ * Outcome of consuming `changedSubstanceAmendmentIds` (PR B): policy titles whose
+ * linked amendment substance changed, flagged for regeneration. No generation here.
+ */
+export interface PolicyTitleSubstanceDriftResult {
+  changedSubstanceAmendmentIds: number;
+  linkedScrutins: number;
+  policyTitlesMarkedStale: number; // APPROVED -> STALE
+  policyTitlesQueuedOrFlagged: number; // NEEDS_REVIEW / DRAFT -> regenerationStatus "queued"
+  policyTitlesIgnored: number; // REJECTED / STALE -> untouched
+}
+
 export interface SyncAmendmentsANStats {
   notModified?: boolean; // true when feed-state returned 304 and the run short-circuited
   downloadedBytes?: number; // bytes written to disk this run (0 when notModified or zipPath used)
@@ -51,6 +63,7 @@ export interface SyncAmendmentsANStats {
   identicalGroupsResolved: number;
   dossiersResolved: number;
   dossiersUnresolved: number;
+  substanceDrift?: PolicyTitleSubstanceDriftResult; // PR B: set on non-dryRun runs
   warnings: SyncWarning[];
   durationMs: number;
 }

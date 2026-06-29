@@ -19,7 +19,7 @@ export async function markPolicyTitlesForSubstanceDrift(
   changedSubstanceAmendmentIds: string[]
 ): Promise<PolicyTitleSubstanceDriftResult> {
   const result: PolicyTitleSubstanceDriftResult = {
-    changedSubstanceAmendmentIds: changedSubstanceAmendmentIds.length,
+    changedSubstanceAmendmentCount: changedSubstanceAmendmentIds.length,
     linkedScrutins: 0,
     policyTitlesMarkedStale: 0,
     policyTitlesQueuedOrFlagged: 0,

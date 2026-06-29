@@ -38,7 +38,7 @@ export interface SyncWarning {
  * linked amendment substance changed, flagged for regeneration. No generation here.
  */
 export interface PolicyTitleSubstanceDriftResult {
-  changedSubstanceAmendmentIds: number;
+  changedSubstanceAmendmentCount: number;
   linkedScrutins: number;
   policyTitlesMarkedStale: number; // APPROVED -> STALE
   policyTitlesQueuedOrFlagged: number; // NEEDS_REVIEW / DRAFT -> regenerationStatus "queued"

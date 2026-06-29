@@ -73,7 +73,7 @@ describeIfDb("markPolicyTitlesForSubstanceDrift", () => {
   it("empty signal -> no-op, all zeros", async () => {
     const r = await markPolicyTitlesForSubstanceDrift([]);
     expect(r).toEqual({
-      changedSubstanceAmendmentIds: 0,
+      changedSubstanceAmendmentCount: 0,
       linkedScrutins: 0,
       policyTitlesMarkedStale: 0,
       policyTitlesQueuedOrFlagged: 0,
@@ -84,7 +84,7 @@ describeIfDb("markPolicyTitlesForSubstanceDrift", () => {
   it("amendment with no ScrutinAmendment -> no-op", async () => {
     const a = await seedAmendment("orphan");
     const r = await markPolicyTitlesForSubstanceDrift([a.id]);
-    expect(r.changedSubstanceAmendmentIds).toBe(1);
+    expect(r.changedSubstanceAmendmentCount).toBe(1);
     expect(r.linkedScrutins).toBe(0);
     expect(r.policyTitlesMarkedStale).toBe(0);
     expect(r.policyTitlesQueuedOrFlagged).toBe(0);
@@ -113,7 +113,7 @@ describeIfDb("markPolicyTitlesForSubstanceDrift", () => {
     const t = await seedTitle(sc.id, "APPROVED");
 
     const r = await markPolicyTitlesForSubstanceDrift([a1.id, a2.id]);
-    expect(r.changedSubstanceAmendmentIds).toBe(2);
+    expect(r.changedSubstanceAmendmentCount).toBe(2);
     expect(r.linkedScrutins).toBe(1); // deduped
     expect(r.policyTitlesMarkedStale).toBe(1); // one title, one update
 

@@ -26,6 +26,12 @@ function emptyStats(warnings: SyncWarning[]): SyncAmendmentsANStats {
     amendmentsSeen: 0,
     amendmentsCreated: 0,
     amendmentsUpdated: 0,
+    amendmentsContentChanged: 0,
+    amendmentsSummaryChanged: 0,
+    amendmentsSubstanceChanged: 0,
+    amendmentsMetadataOnly: 0,
+    amendmentsUnchanged: 0,
+    changedSubstanceAmendmentIds: [],
     amendmentsSkipped: 0,
     parentLinksResolved: 0,
     parentLinksDeferred: 0,
@@ -96,6 +102,12 @@ export async function syncAmendmentsAN(
       const r = await writeAmendmentBatch(batch);
       stats.amendmentsCreated += r.created;
       stats.amendmentsUpdated += r.updated;
+      stats.amendmentsContentChanged += r.contentChanged;
+      stats.amendmentsSummaryChanged += r.summaryChanged;
+      stats.amendmentsSubstanceChanged += r.substanceChanged;
+      stats.amendmentsMetadataOnly += r.metadataOnly;
+      stats.amendmentsUnchanged += r.unchanged;
+      stats.changedSubstanceAmendmentIds.push(...r.changedSubstanceAmendmentIds);
       stats.dossiersResolved += r.dossiersResolved;
       stats.dossiersUnresolved += r.dossiersUnresolved;
     }

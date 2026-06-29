@@ -38,7 +38,13 @@ export interface SyncAmendmentsANStats {
   downloadedBytes?: number; // bytes written to disk this run (0 when notModified or zipPath used)
   amendmentsSeen: number;
   amendmentsCreated: number;
-  amendmentsUpdated: number;
+  amendmentsUpdated: number; // amendmentsSubstanceChanged + amendmentsMetadataOnly
+  amendmentsContentChanged: number; // existing rows whose `content` (dispositif) really changed
+  amendmentsSummaryChanged: number; // existing rows whose `summary` (exposé sommaire) really changed
+  amendmentsSubstanceChanged: number; // existing rows where content OR summary changed (once each)
+  amendmentsMetadataOnly: number; // existing rows where only non-substance fields changed
+  amendmentsUnchanged: number; // existing rows identical to the parse (no write)
+  changedSubstanceAmendmentIds: string[]; // signal for PR B: titles to regenerate
   amendmentsSkipped: number;
   parentLinksResolved: number;
   parentLinksDeferred: number;

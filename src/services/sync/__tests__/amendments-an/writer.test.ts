@@ -40,7 +40,7 @@ describeIfDb("amendments-an writer", () => {
   });
 
   describe("writeAmendmentBatch", () => {
-    it("upserts idempotently by externalId (2nd run = 0 created)", async () => {
+    it("upserts idempotently by externalId (2nd identical run writes nothing)", async () => {
       const batch = [
         base({ externalId: "TEST_AMW_a", number: "CL8" }),
         base({ externalId: "TEST_AMW_b", number: "I-390" }),
@@ -49,12 +49,112 @@ describeIfDb("amendments-an writer", () => {
       expect(r1.created).toBe(2);
       expect(r1.updated).toBe(0);
 
+      // Identical re-import is now a no-op: classified unchanged, no update issued.
       const r2 = await writeAmendmentBatch(batch);
       expect(r2.created).toBe(0);
-      expect(r2.updated).toBe(2);
+      expect(r2.updated).toBe(0);
+      expect(r2.unchanged).toBe(2);
+      expect(r2.changedSubstanceAmendmentIds).toEqual([]);
 
       const a = await db.amendment.findUnique({ where: { externalId: "TEST_AMW_a" } });
       expect(a?.number).toBe("CL8");
+    });
+
+    it("classifies created / unchanged / metadata-only / content / summary and signals substance once", async () => {
+      // Seed five existing rows.
+      await writeAmendmentBatch([
+        base({
+          externalId: "TEST_AMW_m_same",
+          content: "le dispositif inchange",
+          summary: "expose stable",
+          status: "DEPOSE",
+        }),
+        base({
+          externalId: "TEST_AMW_m_meta",
+          content: "le dispositif stable",
+          summary: "expose stable",
+          status: "DEPOSE",
+        }),
+        base({
+          externalId: "TEST_AMW_m_content",
+          content: "ancien dispositif",
+          summary: "expose stable",
+        }),
+        base({
+          externalId: "TEST_AMW_m_summary",
+          content: "dispositif stable",
+          summary: "ancien expose",
+        }),
+        base({
+          externalId: "TEST_AMW_m_both",
+          content: "ancien dispositif",
+          summary: "ancien expose",
+        }),
+      ]);
+
+      const r = await writeAmendmentBatch([
+        // identical -> unchanged
+        base({
+          externalId: "TEST_AMW_m_same",
+          content: "le dispositif inchange",
+          summary: "expose stable",
+          status: "DEPOSE",
+        }),
+        // only status changed -> metadata only, no substance signal
+        base({
+          externalId: "TEST_AMW_m_meta",
+          content: "le dispositif stable",
+          summary: "expose stable",
+          status: "ADOPTE",
+        }),
+        // content changed, summary same -> substance
+        base({
+          externalId: "TEST_AMW_m_content",
+          content: "nouveau dispositif complete",
+          summary: "expose stable",
+        }),
+        // summary changed, content same -> substance
+        base({
+          externalId: "TEST_AMW_m_summary",
+          content: "dispositif stable",
+          summary: "expose reecrit",
+        }),
+        // both changed -> substance, signalled ONCE
+        base({
+          externalId: "TEST_AMW_m_both",
+          content: "nouveau dispositif",
+          summary: "nouvel expose",
+        }),
+        // brand new -> created
+        base({ externalId: "TEST_AMW_m_new", content: "tout neuf" }),
+      ]);
+
+      expect(r.created).toBe(1);
+      expect(r.unchanged).toBe(1);
+      expect(r.metadataOnly).toBe(1);
+      expect(r.contentChanged).toBe(2); // m_content + m_both
+      expect(r.summaryChanged).toBe(2); // m_summary + m_both
+      expect(r.substanceChanged).toBe(3); // m_content + m_summary + m_both (m_both once)
+      expect(r.updated).toBe(4); // substanceChanged (3) + metadataOnly (1)
+
+      // Signal carries exactly the three substance-changed cuids, m_both only once.
+      const substanceRows = await db.amendment.findMany({
+        where: {
+          externalId: { in: ["TEST_AMW_m_content", "TEST_AMW_m_summary", "TEST_AMW_m_both"] },
+        },
+        select: { id: true },
+      });
+      const expectedIds = substanceRows.map((row) => row.id).sort();
+      expect(r.changedSubstanceAmendmentIds).toHaveLength(3);
+      expect([...r.changedSubstanceAmendmentIds].sort()).toEqual(expectedIds);
+
+      // Metadata-only row got its status updated but kept its substance.
+      const metaRow = await db.amendment.findUnique({
+        where: { externalId: "TEST_AMW_m_meta" },
+      });
+      expect(metaRow?.status).toBe("ADOPTE");
+      expect(metaRow?.content).toBe("le dispositif stable");
+      expect(metaRow?.summary).toBe("expose stable");
     });
 
     it("reports dossier-resolved vs unresolved counts", async () => {

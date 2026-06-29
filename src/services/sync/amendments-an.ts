@@ -14,6 +14,7 @@ import {
   resolveIdenticalGroups,
 } from "./amendments-an/writer";
 import { loadFeedState, saveFeedState } from "./amendments-an/feed-state";
+import { markPolicyTitlesForSubstanceDrift } from "./mark-policy-titles-substance-drift";
 import type {
   NormalizedAmendment,
   SyncAmendmentsANOptions,
@@ -149,6 +150,13 @@ export async function syncAmendmentsAN(
       stats.parentLinksDeferred = p.deferred;
       const g = await resolveIdenticalGroups(all);
       stats.identicalGroupsResolved = g.groups;
+
+      // Consume the substance-drift signal: flag policy titles linked to amendments
+      // whose content/summary really changed. Marks only (STALE / queued); never
+      // generates, approves, publishes, or calls a model.
+      stats.substanceDrift = await markPolicyTitlesForSubstanceDrift(
+        stats.changedSubstanceAmendmentIds
+      );
     }
 
     if (!usingProvidedZip && !opts.dryRun && freshEtag !== undefined) {

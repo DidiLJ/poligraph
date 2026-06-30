@@ -522,7 +522,7 @@ async function syncLegislation(
         const dp = data.dossierParlementaire;
 
         // Skip non-legislative dossiers (missions, rapports, etc.)
-        const type = dp["@xsi:type"];
+        const type = dp["@xsi:type"] ?? ""; // malformed dossiers lack @xsi:type → skip cleanly, don't crash
         if (
           !type.includes("Legislatif") &&
           !type.includes("Loi") &&

@@ -340,7 +340,7 @@ export async function syncLegislation(options?: {
         const data: ANDossier = JSON.parse(content);
         const dp = data.dossierParlementaire;
 
-        const type = dp["@xsi:type"];
+        const type = dp["@xsi:type"] ?? ""; // malformed dossiers lack @xsi:type → skip cleanly, don't crash
         if (
           !type.includes("Legislatif") &&
           !type.includes("Loi") &&

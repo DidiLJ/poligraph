@@ -1,14 +1,22 @@
 /**
  * Theme classification for legislative dossiers and scrutins.
  *
- * Uses Claude Haiku to categorize legislative texts into one of 13
- * controlled theme values. This is taxonomic classification over
- * existing text, not content generation.
+ * Taxonomic classification over existing text (not content generation) into one
+ * of 13 controlled theme values. Anthropic (Claude Haiku, tool-use) is the
+ * primary provider; when it fails (quota/rate-limit/server/network), the call
+ * falls back to Mistral so a single-provider outage doesn't break the daily sync.
+ * The returned theme is always validated against THEME_VALUES, so a bad answer
+ * from either provider degrades to null rather than corrupting data.
+ *
+ * NOTE: this is the only call site using a Mistral fallback for now. A shadow
+ * eval on a sample is planned before deciding whether Mistral becomes primary.
  */
 
 import { callAnthropic, extractToolUse } from "@/lib/api/anthropic";
+import { callMistral, extractMistralText, parseMistralJSON } from "@/lib/api/mistral";
 
-const MODEL = "claude-haiku-4-5-20251001";
+const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
+const MISTRAL_MODEL = "mistral-small-latest";
 
 const THEME_VALUES = [
   "ECONOMIE_BUDGET",
@@ -28,23 +36,21 @@ const THEME_VALUES = [
 
 export type ThemeCategoryValue = (typeof THEME_VALUES)[number];
 
-/**
- * Classify a legislative text or scrutin into a theme category using AI
- */
-export async function classifyTheme(
-  title: string,
-  summary?: string | null,
-  context?: string | null
-): Promise<ThemeCategoryValue | null> {
-  let input = `Titre : ${title}`;
-  if (summary) input += `\nRésumé : ${summary}`;
-  if (context) input += `\nContexte : ${context}`;
+// AI may still rarely return inverted names despite the enum constraint.
+const THEME_ALIASES: Record<string, ThemeCategoryValue> = {
+  CULTURE_EDUCATION: "EDUCATION_CULTURE",
+  JUSTICE_SECURITE: "SECURITE_JUSTICE",
+  CULTURE_PATRIMOINE: "EDUCATION_CULTURE",
+  BUDGET_ECONOMIE: "ECONOMIE_BUDGET",
+  TRAVAIL_SOCIAL: "SOCIAL_TRAVAIL",
+  ENERGIE_ENVIRONNEMENT: "ENVIRONNEMENT_ENERGIE",
+  DEFENSE_AFFAIRES_ETRANGERES: "AFFAIRES_ETRANGERES_DEFENSE",
+  TECH_NUMERIQUE: "NUMERIQUE_TECH",
+  ALIMENTATION_AGRICULTURE: "AGRICULTURE_ALIMENTATION",
+  URBANISME_LOGEMENT: "LOGEMENT_URBANISME",
+};
 
-  const prompt = `Tu es un classificateur thématique pour des textes législatifs français. Classe le texte suivant dans une catégorie en utilisant l'outil classify_theme.
-
-${input}
-
-Guide des catégories :
+const CATEGORY_GUIDE = `Guide des catégories :
 - ECONOMIE_BUDGET : fiscalité, budget de l'État, finances publiques, commerce, entreprises
 - SOCIAL_TRAVAIL : emploi, droit du travail, retraites, protection sociale, handicap
 - SECURITE_JUSTICE : police, justice, pénal, prisons, terrorisme, ordre public
@@ -58,6 +64,43 @@ Guide des catégories :
 - AGRICULTURE_ALIMENTATION : agriculture, pêche, alimentation, ruralité
 - LOGEMENT_URBANISME : logement, urbanisme, construction, copropriété
 - TRANSPORTS : transports, mobilité, routes, ferroviaire, aérien, maritime`;
+
+function buildInput(title: string, summary?: string | null, context?: string | null): string {
+  let input = `Titre : ${title}`;
+  if (summary) input += `\nRésumé : ${summary}`;
+  if (context) input += `\nContexte : ${context}`;
+  return input;
+}
+
+/**
+ * Normalize a raw theme string (from either provider) into a controlled value:
+ * apply known aliases, then validate against THEME_VALUES. Returns null (never
+ * throws) for an unknown value, logging the raw answer and its source.
+ */
+function normalizeTheme(
+  raw: string | undefined,
+  source: "anthropic" | "mistral"
+): ThemeCategoryValue | null {
+  if (!raw) {
+    console.warn(`[classify-theme] no theme returned from ${source}`);
+    return null;
+  }
+  const theme = THEME_ALIASES[raw] ?? raw;
+  if (THEME_VALUES.includes(theme as ThemeCategoryValue)) {
+    return theme as ThemeCategoryValue;
+  }
+  console.warn(`[classify-theme] invalid theme from ${source} (raw="${raw}")`);
+  return null;
+}
+
+/** Primary path: Claude Haiku with a forced tool call. Throws on API failure or
+ *  an empty (no tool_use) response, so the caller can fall back. */
+async function classifyViaAnthropic(input: string): Promise<string> {
+  const prompt = `Tu es un classificateur thématique pour des textes législatifs français. Classe le texte suivant dans une catégorie en utilisant l'outil classify_theme.
+
+${input}
+
+${CATEGORY_GUIDE}`;
 
   const tools = [
     {
@@ -78,7 +121,7 @@ Guide des catégories :
   ];
 
   const data = await callAnthropic([{ role: "user", content: prompt }], {
-    model: MODEL,
+    model: ANTHROPIC_MODEL,
     maxTokens: 100,
     tools,
     toolChoice: { type: "tool", name: "classify_theme" },
@@ -86,33 +129,71 @@ Guide des catégories :
 
   const toolInput = extractToolUse(data) as { theme?: string } | null;
   if (!toolInput?.theme) {
-    throw new Error("No tool_use content in API response");
+    throw new Error("No tool_use content in Anthropic response");
+  }
+  return toolInput.theme;
+}
+
+/** Fallback path: Mistral JSON mode. Returns the raw theme string (validated by
+ *  the caller). Throws on API/parse failure.
+ *  TODO: upgrade to response_format json_schema with a strict enum on
+ *  THEME_VALUES once verified against mistral-small-latest. json_object is used
+ *  here because it's robust and the output is validated downstream (null-safe). */
+async function classifyViaMistral(input: string): Promise<string | undefined> {
+  const prompt = `Tu es un classificateur thématique pour des textes législatifs français. Classe le texte suivant dans une seule catégorie.
+
+${input}
+
+${CATEGORY_GUIDE}
+
+Réponds UNIQUEMENT avec un objet JSON de la forme {"theme": "<CATEGORIE>"} où <CATEGORIE> est exactement l'une de ces valeurs : ${THEME_VALUES.join(", ")}.`;
+
+  const res = await callMistral([{ role: "user", content: prompt }], {
+    model: MISTRAL_MODEL,
+    maxTokens: 100,
+    responseFormat: { type: "json_object" },
+  });
+
+  const parsed = parseMistralJSON<{ theme?: string }>(extractMistralText(res));
+  return parsed?.theme;
+}
+
+/**
+ * Classify a legislative text or scrutin into a theme category.
+ * Anthropic primary, Mistral fallback. Returns null when neither produces a
+ * valid theme value; throws only when BOTH providers fail outright.
+ */
+export async function classifyTheme(
+  title: string,
+  summary?: string | null,
+  context?: string | null
+): Promise<ThemeCategoryValue | null> {
+  const input = buildInput(title, summary, context);
+
+  let anthropicError: string;
+  try {
+    const raw = await classifyViaAnthropic(input);
+    return normalizeTheme(raw, "anthropic");
+  } catch (err) {
+    anthropicError = err instanceof Error ? err.message : String(err);
+    // Fall back on ANY Anthropic error. Detecting provider/quota/rate-limit vs.
+    // a genuine bad request precisely is brittle and the output is validated
+    // (degrades to null), so for this single, low-stakes classifier we accept a
+    // broad fallback rather than masking an outage. The error is logged loudly.
+    console.warn(
+      `[classify-theme] primary=anthropic failed (${anthropicError}); falling back to provider=mistral`
+    );
   }
 
-  let theme = toolInput.theme;
-
-  // Fallback: AI may still rarely return inverted names despite enum constraint
-  const THEME_ALIASES: Record<string, ThemeCategoryValue> = {
-    CULTURE_EDUCATION: "EDUCATION_CULTURE",
-    JUSTICE_SECURITE: "SECURITE_JUSTICE",
-    CULTURE_PATRIMOINE: "EDUCATION_CULTURE",
-    BUDGET_ECONOMIE: "ECONOMIE_BUDGET",
-    TRAVAIL_SOCIAL: "SOCIAL_TRAVAIL",
-    ENERGIE_ENVIRONNEMENT: "ENVIRONNEMENT_ENERGIE",
-    DEFENSE_AFFAIRES_ETRANGERES: "AFFAIRES_ETRANGERES_DEFENSE",
-    TECH_NUMERIQUE: "NUMERIQUE_TECH",
-    ALIMENTATION_AGRICULTURE: "AGRICULTURE_ALIMENTATION",
-    URBANISME_LOGEMENT: "LOGEMENT_URBANISME",
-  };
-
-  if (theme && THEME_ALIASES[theme]) {
-    theme = THEME_ALIASES[theme]!;
+  try {
+    const raw = await classifyViaMistral(input);
+    return normalizeTheme(raw, "mistral");
+  } catch (err) {
+    const mistralError = err instanceof Error ? err.message : String(err);
+    // Both providers failed: surface an explicit error (never swallow silently),
+    // including the missing-MISTRAL_API_KEY case which throws here.
+    throw new Error(
+      `Theme classification failed — anthropic: ${anthropicError}; mistral fallback: ${mistralError}`
+    );
   }
-
-  if (THEME_VALUES.includes(theme as ThemeCategoryValue)) {
-    return theme as ThemeCategoryValue;
-  }
-
-  console.warn(`Invalid theme value: ${theme}`);
-  return null;
 }

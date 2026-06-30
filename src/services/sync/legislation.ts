@@ -9,9 +9,9 @@ import { DataSource, DossierStatus, Prisma } from "@/generated/prisma";
 import type { DossierTimelineEntry } from "@/types/legislation";
 import * as fs from "fs";
 import * as path from "path";
-import * as https from "https";
-import { createWriteStream, mkdirSync, rmSync, readdirSync, readFileSync } from "fs";
+import { mkdirSync, rmSync, readdirSync, readFileSync } from "fs";
 import { extractZip } from "@/lib/parsing/unzip";
+import { downloadFileWithRetry } from "@/lib/download-file";
 
 const DEFAULT_LEGISLATURE = 17;
 const TEMP_DIR = "/tmp/dossiers-legislatifs-an";
@@ -272,45 +272,18 @@ async function generateUniqueDossierSlug(date: Date | null, title: string): Prom
   );
 }
 
-async function downloadFile(url: string, dest: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const file = createWriteStream(dest);
-    https
-      .get(url, (response) => {
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          const redirectUrl = response.headers.location;
-          if (redirectUrl) {
-            downloadFile(redirectUrl, dest).then(resolve).catch(reject);
-            return;
-          }
-        }
-        if (response.statusCode !== 200) {
-          reject(new Error(`HTTP ${response.statusCode} for ${url}`));
-          return;
-        }
-        response.pipe(file);
-        file.on("finish", () => {
-          file.close();
-          resolve();
-        });
-      })
-      .on("error", (err) => {
-        fs.unlinkSync(dest);
-        reject(err);
-      });
-  });
-}
-
 export async function syncLegislation(options?: {
   legislature?: number;
   activeOnly?: boolean;
   todayOnly?: boolean;
+  sinceDays?: number;
   limit?: number;
 }): Promise<LegislationSyncResult> {
   const {
     legislature = DEFAULT_LEGISLATURE,
     activeOnly = false,
     todayOnly = false,
+    sinceDays,
     limit,
   } = options ?? {};
 
@@ -333,7 +306,7 @@ export async function syncLegislation(options?: {
     }
     mkdirSync(TEMP_DIR, { recursive: true });
 
-    await downloadFile(zipUrl, zipPath);
+    await downloadFileWithRetry(zipUrl, zipPath);
     console.log("Downloaded ZIP file");
 
     // Extract ZIP (system tool, not Node.js script spawn)
@@ -403,6 +376,14 @@ export async function syncLegislation(options?: {
         const allDates = findAllDates(dp.actesLegislatifs?.acteLegislatif).sort(
           (a, b) => a.getTime() - b.getTime()
         );
+
+        if (sinceDays !== undefined && allDates.length > 0) {
+          const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+          if (allDates[allDates.length - 1]!.getTime() < cutoff) {
+            stats.dossiersSkipped++;
+            continue;
+          }
+        }
 
         if (todayOnly && allDates.length > 0) {
           const today = new Date().toISOString().split("T")[0];
@@ -479,11 +460,15 @@ export async function syncLegislation(options?: {
         stats.errors.push(`${file}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
-
-    // Cleanup
-    rmSync(TEMP_DIR, { recursive: true });
   } catch (err) {
     stats.errors.push(`Fatal: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    // Always clean the temp dir, even on a fatal error mid-run.
+    try {
+      if (fs.existsSync(TEMP_DIR)) rmSync(TEMP_DIR, { recursive: true });
+    } catch {
+      // best-effort cleanup
+    }
   }
 
   return stats;

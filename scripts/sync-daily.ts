@@ -45,8 +45,8 @@ const steps: SyncStep[] = [
     command: `npx tsx scripts/sync-scrutins-senat.ts --today${dryRunFlag}`,
   },
   {
-    name: "Législation (active)",
-    command: `npx tsx scripts/sync-legislation.ts --active${dryRunFlag}`,
+    name: "Législation (active, 3j)",
+    command: `npx tsx scripts/sync-legislation.ts --active --since-days=3${dryRunFlag}`,
     allowFailure: true,
   },
   {

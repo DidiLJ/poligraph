@@ -19,9 +19,9 @@ import { DataSource, DossierStatus, Prisma } from "../src/generated/prisma";
 import type { DossierTimelineEntry } from "../src/types/legislation";
 import * as fs from "fs";
 import * as path from "path";
-import * as https from "https";
-import { createWriteStream, mkdirSync, rmSync, readdirSync, readFileSync } from "fs";
+import { mkdirSync, rmSync, readdirSync, readFileSync } from "fs";
 import { execSync } from "child_process";
+import { downloadFileWithRetry } from "../src/lib/download-file";
 
 // Configuration
 const DEFAULT_LEGISLATURE = 17;
@@ -64,89 +64,6 @@ function renderProgressBar(current: number, total: number, width: number = 30): 
   const empty = width - filled;
   const bar = "█".repeat(filled) + "░".repeat(empty);
   return `[${bar}] ${percent}%`;
-}
-
-/**
- * Download a file from URL with a per-request timeout.
- *
- * AN Open Data is regularly slow or unresponsive on dossier endpoints. Without
- * an explicit timeout, https.get() hangs indefinitely and only the orchestrator
- * timeout (10 min) kills it, leaving ETIMEDOUT at a very coarse granularity.
- */
-const DOWNLOAD_TIMEOUT_MS = 120_000; // 120s per attempt
-const DOWNLOAD_MAX_ATTEMPTS = 3;
-
-async function downloadFileOnce(url: string, dest: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const file = createWriteStream(dest);
-    let settled = false;
-
-    const cleanup = (err: Error) => {
-      if (settled) return;
-      settled = true;
-      file.close();
-      try {
-        fs.unlinkSync(dest);
-      } catch {
-        // file may not exist yet
-      }
-      reject(err);
-    };
-
-    const req = https.get(url, (response) => {
-      if (response.statusCode === 302 || response.statusCode === 301) {
-        const redirectUrl = response.headers.location;
-        if (redirectUrl) {
-          file.close();
-          try {
-            fs.unlinkSync(dest);
-          } catch {
-            // ignore
-          }
-          downloadFileOnce(redirectUrl, dest).then(resolve).catch(reject);
-          return;
-        }
-      }
-      if (response.statusCode !== 200) {
-        cleanup(new Error(`HTTP ${response.statusCode} for ${url}`));
-        return;
-      }
-      response.pipe(file);
-      file.on("finish", () => {
-        if (settled) return;
-        settled = true;
-        file.close();
-        resolve();
-      });
-    });
-
-    req.setTimeout(DOWNLOAD_TIMEOUT_MS, () => {
-      req.destroy(new Error(`Request timeout after ${DOWNLOAD_TIMEOUT_MS}ms for ${url}`));
-    });
-    req.on("error", cleanup);
-  });
-}
-
-async function downloadFile(url: string, dest: string): Promise<void> {
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= DOWNLOAD_MAX_ATTEMPTS; attempt++) {
-    try {
-      await downloadFileOnce(url, dest);
-      return;
-    } catch (err) {
-      lastError = err;
-      if (attempt < DOWNLOAD_MAX_ATTEMPTS) {
-        const backoffMs = 2_000 * attempt;
-        console.warn(
-          `Download attempt ${attempt}/${DOWNLOAD_MAX_ATTEMPTS} failed (${err instanceof Error ? err.message : String(err)}), retrying in ${backoffMs}ms...`
-        );
-        await new Promise((r) => setTimeout(r, backoffMs));
-      }
-    }
-  }
-  throw lastError instanceof Error
-    ? lastError
-    : new Error(`Download failed after ${DOWNLOAD_MAX_ATTEMPTS} attempts`);
 }
 
 /**
@@ -503,14 +420,16 @@ async function syncLegislation(
     limit?: number;
     activeOnly?: boolean;
     todayOnly?: boolean;
+    sinceDays?: number;
   } = {}
 ) {
-  const { dryRun = false, limit, activeOnly = false, todayOnly = false } = options;
+  const { dryRun = false, limit, activeOnly = false, todayOnly = false, sinceDays } = options;
   const stats = {
     dossiersProcessed: 0,
     dossiersCreated: 0,
     dossiersUpdated: 0,
     dossiersSkipped: 0,
+    dossiersActive: 0,
     byStatus: {
       DEPOSE: 0,
       EN_COMMISSION: 0,
@@ -525,6 +444,11 @@ async function syncLegislation(
     errors: [] as string[],
   };
 
+  // Phase timings (ms) + file counts, surfaced in the final summary line.
+  const timings: Record<string, number> = {};
+  let totalJsonFiles = 0;
+  let legFilteredFiles = 0;
+
   try {
     // Step 1: Download ZIP
     updateLine("Downloading dossiers ZIP from data.assemblee-nationale.fr...");
@@ -537,13 +461,17 @@ async function syncLegislation(
     }
     mkdirSync(TEMP_DIR, { recursive: true });
 
-    await downloadFile(zipUrl, zipPath);
-    console.log("\n✓ Downloaded ZIP file");
+    let t = Date.now();
+    await downloadFileWithRetry(zipUrl, zipPath);
+    timings.download = Date.now() - t;
+    console.log(`\n✓ Downloaded ZIP file (${timings.download}ms)`);
 
     // Step 2: Extract ZIP
     updateLine("Extracting ZIP...");
+    t = Date.now();
     execSync(`unzip -o "${zipPath}" -d "${TEMP_DIR}"`, { stdio: "pipe" });
-    console.log("✓ Extracted ZIP file");
+    timings.unzip = Date.now() - t;
+    console.log(`✓ Extracted ZIP file (${timings.unzip}ms)`);
 
     // Step 3: List JSON files
     const jsonDir = path.join(TEMP_DIR, "json", "dossierParlementaire");
@@ -551,17 +479,25 @@ async function syncLegislation(
       throw new Error(`Directory not found: ${jsonDir}`);
     }
 
+    t = Date.now();
     let jsonFiles = readdirSync(jsonDir).filter((f) => f.endsWith(".json"));
+    totalJsonFiles = jsonFiles.length;
 
     // Filter by legislature if needed (some ZIPs contain multiple legislatures)
     jsonFiles = jsonFiles.filter((f) => f.includes(`L${legislature}`));
+    legFilteredFiles = jsonFiles.length;
 
     if (limit) {
       jsonFiles = jsonFiles.slice(0, limit);
     }
+    timings.listing = Date.now() - t;
 
     const total = jsonFiles.length;
-    console.log(`Found ${total} dossiers to process\n`);
+    console.log(
+      `Found ${totalJsonFiles} JSON, ${legFilteredFiles} for L${legislature}, processing ${total}\n`
+    );
+
+    const processStart = Date.now();
 
     // Step 4: Process each dossier
     for (let i = 0; i < jsonFiles.length; i++) {
@@ -622,11 +558,22 @@ async function syncLegislation(
           stats.dossiersSkipped++;
           continue;
         }
+        stats.dossiersActive++;
 
-        // Find dates (needed for todayOnly filter and filingDate/adoptionDate)
+        // Find dates (needed for date filters and filingDate/adoptionDate)
         const allDates = findAllDates(dp.actesLegislatifs?.acteLegislatif).sort(
           (a, b) => a.getTime() - b.getTime()
         );
+        // Incremental window: skip dossiers whose most recent act date is older
+        // than `sinceDays` days. Cheap, robust way to keep the daily run short
+        // (only re-touch dossiers that actually moved recently).
+        if (sinceDays !== undefined && allDates.length > 0) {
+          const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+          if (allDates[allDates.length - 1]!.getTime() < cutoff) {
+            stats.dossiersSkipped++;
+            continue;
+          }
+        }
         // Filter by today: only process dossiers whose most recent date is today
         if (todayOnly && allDates.length > 0) {
           const today = new Date().toISOString().split("T")[0];
@@ -718,11 +665,31 @@ async function syncLegislation(
       }
     }
 
-    // Cleanup
-    rmSync(TEMP_DIR, { recursive: true });
+    timings.process = Date.now() - processStart;
   } catch (err) {
     stats.errors.push(`Fatal error: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    // Always clean the temp dir, even on a fatal error mid-run.
+    const cleanupStart = Date.now();
+    try {
+      if (fs.existsSync(TEMP_DIR)) rmSync(TEMP_DIR, { recursive: true });
+    } catch {
+      // best-effort cleanup
+    }
+    timings.cleanup = Date.now() - cleanupStart;
   }
+
+  // Observability summary — two structured lines for log scraping.
+  console.log(
+    `\n[legislation] phases(ms): download=${timings.download ?? 0} unzip=${timings.unzip ?? 0} ` +
+      `listing=${timings.listing ?? 0} process=${timings.process ?? 0} cleanup=${timings.cleanup ?? 0}`
+  );
+  console.log(
+    `[legislation] counts: totalJson=${totalJsonFiles} legFiltered=${legFilteredFiles} ` +
+      `active=${stats.dossiersActive} processed=${stats.dossiersProcessed} ` +
+      `created=${stats.dossiersCreated} updated=${stats.dossiersUpdated} ` +
+      `skipped=${stats.dossiersSkipped} errors=${stats.errors.length}`
+  );
 
   return stats;
 }
@@ -746,6 +713,11 @@ const handler: SyncHandler = {
       name: "--today",
       type: "boolean",
       description: "Only process dossiers modified today",
+    },
+    {
+      name: "--since-days",
+      type: "number",
+      description: "Only process dossiers whose most recent act date is within N days",
     },
   ],
 
@@ -820,12 +792,14 @@ Features:
       leg,
       active = false,
       today = false,
+      sinceDays,
     } = options as {
       dryRun?: boolean;
       limit?: number;
       leg?: string;
       active?: boolean;
       today?: boolean;
+      sinceDays?: number;
     };
 
     const legislature = leg ? parseInt(leg, 10) : DEFAULT_LEGISLATURE;
@@ -841,12 +815,14 @@ Features:
     console.log(`Legislature: ${legislature}e`);
     if (active) console.log("Filter: Active dossiers only");
     if (today) console.log("Filter: Dossiers modified today only");
+    if (sinceDays !== undefined) console.log(`Filter: Dossiers modified within ${sinceDays} days`);
 
     const result = await syncLegislation(legislature, {
       dryRun,
       limit,
       activeOnly: active,
       todayOnly: today,
+      sinceDays,
     });
 
     return {

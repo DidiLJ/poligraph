@@ -136,7 +136,10 @@ async function queryFactchecks(params: {
   const [factChecks, total] = await Promise.all([
     db.factCheck.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      // Sort by the source's publication date so visitors see the most
+      // recently published fact-checks first. createdAt is only a tie-breaker
+      // for stable pagination when several share the same publication day.
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       skip,
       take: limit,
       include: {

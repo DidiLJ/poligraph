@@ -80,7 +80,7 @@ export function FactCheckCard({
       </p>
 
       {/* Date */}
-      <p className="text-xs text-muted-foreground mt-2">{formatDate(publishedAt)}</p>
+      <p className="text-xs text-muted-foreground mt-2">Vérifié le {formatDate(publishedAt)}</p>
 
       {/* Politicians mentioned */}
       {mentions.length > 0 && (

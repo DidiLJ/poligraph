@@ -21,6 +21,12 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
               },
             },
           },
+          // Commune population feeds the SEO richness predicate (politician-robots).
+          localData: {
+            select: {
+              commune: { select: { population: true } },
+            },
+          },
         },
       },
       affairs: {

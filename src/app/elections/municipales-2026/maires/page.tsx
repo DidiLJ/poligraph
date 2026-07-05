@@ -8,20 +8,9 @@ import { MaireCard } from "@/components/elections/municipales/MaireCard";
 import { MairesFilterBar } from "@/components/elections/municipales/MairesFilterBar";
 import { getMaireStats, getMaires, getMaireParties } from "@/lib/data/municipales";
 import { DEPARTMENTS } from "@/config/departments";
+import { listingRobotsMetadata, hasActiveListingFilter } from "@/lib/seo/listing-robots";
 
 export const revalidate = 300; // ISR: 5 minutes
-
-export const metadata: Metadata = {
-  title: "Maires de France — Annuaire des 35 000 maires | Poligraph",
-  description:
-    "Explorez l'annuaire des maires de France : parité, couleur politique, ancienneté. Données issues du Répertoire National des Élus.",
-  openGraph: {
-    title: "Les maires de France en un coup d'œil",
-    description:
-      "35 000 maires passés au crible : parité, étiquette politique, ancienneté dans le poste.",
-  },
-  alternates: { canonical: "/elections/municipales-2026/maires" },
-};
 
 interface PageProps {
   searchParams: Promise<{
@@ -31,6 +20,23 @@ interface PageProps {
     gender?: string;
     page?: string;
   }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  return {
+    title: "Maires de France — Annuaire des 35 000 maires | Poligraph",
+    description:
+      "Explorez l'annuaire des maires de France : parité, couleur politique, ancienneté. Données issues du Répertoire National des Élus.",
+    // Filtered/paginated variants: noindex,follow, canonical consolidates on the bare listing.
+    ...listingRobotsMetadata(hasActiveListingFilter(params, ["search", "dept", "party", "gender"])),
+    openGraph: {
+      title: "Les maires de France en un coup d'œil",
+      description:
+        "35 000 maires passés au crible : parité, étiquette politique, ancienneté dans le poste.",
+    },
+    alternates: { canonical: "/elections/municipales-2026/maires" },
+  };
 }
 
 export default async function MairesPage({ searchParams }: PageProps) {

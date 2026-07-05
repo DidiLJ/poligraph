@@ -35,6 +35,7 @@ import {
   voteStatsService,
 } from "@/services/voteStats";
 import { getPolitician } from "@/lib/data/politicians";
+import { politicianRobotsMetadata } from "@/lib/seo/politician-robots";
 import { FollowButton } from "@/components/politicians/FollowButton";
 import { CopyableId } from "@/components/politicians/CopyableId";
 import { SITE_URL } from "@/config/site";
@@ -129,9 +130,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const description = `${role} ${politician.currentParty ? `(${politician.currentParty.shortName})` : ""} - Consultez ses mandats, déclarations d'intérêts et affaires judiciaires.${hatvpDescription}`;
 
+  // Bare profiles (RNE-imported mayors with no content) get noindex,follow (issue #385).
+  const robots = politicianRobotsMetadata({
+    mandates: politician.mandates.map((m) => ({
+      type: m.type,
+      communePopulation: m.localData?.commune?.population ?? null,
+    })),
+    publishedAffairsCount: politician.affairs.length,
+    factCheckMentionsCount: politician.factCheckMentions.length,
+    declarationsCount: politician.declarations.length,
+    biography: politician.biography,
+  });
+
   return {
     title: politician.fullName,
     description,
+    ...robots,
     alternates: { canonical: `/politiques/${slug}` },
     openGraph: {
       title: `${politician.fullName} | Poligraph`,

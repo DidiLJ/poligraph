@@ -23,20 +23,9 @@ import {
 } from "@/lib/data/declarations";
 import { SITE_URL } from "@/config/site";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { listingRobotsMetadata, hasActiveListingFilter } from "@/lib/seo/listing-robots";
 
 export const revalidate = 300;
-
-export const metadata: Metadata = {
-  title: "Patrimoine et déclarations d'intérêts des élus — HATVP",
-  description:
-    "Explorez le patrimoine et les déclarations d'intérêts des députés, sénateurs et ministres français. Portefeuilles financiers, participations, revenus et activités — données officielles HATVP.",
-  openGraph: {
-    title: "Patrimoine et déclarations d'intérêts des élus — Poligraph",
-    description:
-      "Classement des élus par patrimoine déclaré, entreprises détenues et revenus. Source officielle : HATVP.",
-  },
-  alternates: { canonical: "/declarations-et-patrimoine" },
-};
 
 interface PageProps {
   searchParams: Promise<{
@@ -45,6 +34,23 @@ interface PageProps {
     sort?: string;
     page?: string;
   }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  return {
+    title: "Patrimoine et déclarations d'intérêts des élus — HATVP",
+    description:
+      "Explorez le patrimoine et les déclarations d'intérêts des députés, sénateurs et ministres français. Portefeuilles financiers, participations, revenus et activités — données officielles HATVP.",
+    // Filtered/paginated variants: noindex,follow, canonical consolidates on the bare listing.
+    ...listingRobotsMetadata(hasActiveListingFilter(params, ["search", "party", "sort"])),
+    openGraph: {
+      title: "Patrimoine et déclarations d'intérêts des élus — Poligraph",
+      description:
+        "Classement des élus par patrimoine déclaré, entreprises détenues et revenus. Source officielle : HATVP.",
+    },
+    alternates: { canonical: "/declarations-et-patrimoine" },
+  };
 }
 
 // ─── Page component ───────────────────────────────────────────

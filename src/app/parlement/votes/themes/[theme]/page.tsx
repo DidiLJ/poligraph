@@ -11,6 +11,7 @@ import { THEME_CATEGORY_LABELS, THEME_CATEGORY_ICONS } from "@/config/labels";
 import { formatDate } from "@/lib/utils";
 import type { ScrutinType } from "@/generated/prisma";
 import type { Prisma } from "@/generated/prisma";
+import { listingRobotsMetadata, hasActiveListingFilter } from "@/lib/seo/listing-robots";
 
 export const revalidate = 3600;
 
@@ -30,23 +31,22 @@ export async function generateMetadata({
   searchParams,
 }: {
   params: Promise<{ theme: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; page?: string }>;
 }): Promise<Metadata> {
   const { theme: slug } = await params;
-  const { type: typeTab } = await searchParams;
+  const sp = await searchParams;
   const theme = themeFromSlug(slug);
   if (!theme) return { title: "Thème introuvable" };
 
   const label = THEME_CATEGORY_LABELS[theme];
-  const canonical =
-    typeTab && typeTab !== "votes"
-      ? `/parlement/votes/themes/${slug}?type=${typeTab}`
-      : `/parlement/votes/themes/${slug}`;
 
   return {
     title: `Votes ${label}`,
     description: `Tous les scrutins parlementaires sur le thème ${label}. Résultats des votes de l'Assemblée nationale et du Sénat.`,
-    alternates: { canonical },
+    // Tab/paginated variants: noindex,follow, canonical consolidates on the
+    // bare theme page (which stays indexable).
+    ...listingRobotsMetadata(hasActiveListingFilter(sp, ["type"])),
+    alternates: { canonical: `/parlement/votes/themes/${slug}` },
   };
 }
 

@@ -1,9 +1,15 @@
 import { MetadataRoute } from "next";
+import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { DEPARTMENTS, getDepartmentSlug } from "@/config/departments";
 import { getAllThemeSlugs } from "@/lib/theme-utils";
 import { SITE_URL } from "@/config/site";
 import { getWeekStart, getISOWeekString } from "@/lib/data/recap";
+import {
+  SIGNIFICANT_MANDATE_TYPES,
+  MAIRE_MIN_COMMUNE_POPULATION,
+  MIN_BIOGRAPHY_LENGTH,
+} from "@/lib/seo/politician-robots";
 
 export async function generateSitemaps() {
   return [{ id: 0 }, { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
@@ -29,13 +35,47 @@ export default async function sitemap(props: {
   }
 }
 
-// Sitemap 0: Static pages + PUBLISHED politicians (priority 0.8-1.0)
+// Sitemap 0: Static pages + rich PUBLISHED politicians (priority 0.8-1.0).
+// Bare profiles (RNE-imported mayors: no significant mandate, no affair, no
+// fact-check, no declaration, no bio) are excluded to fight index bloat
+// (issue #385). This SQL mirrors isIndexablePolitician() from
+// src/lib/seo/politician-robots.ts — keep both in sync.
 async function buildStaticAndPoliticiansSitemap(): Promise<MetadataRoute.Sitemap> {
-  const politicians = await db.politician.findMany({
-    where: { publicationStatus: "PUBLISHED" },
-    select: { slug: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-  });
+  const politicians = await db.$queryRaw<Array<{ slug: string; updatedAt: Date }>>(Prisma.sql`
+    SELECT p."slug", p."updatedAt"
+    FROM "Politician" p
+    WHERE p."publicationStatus" = 'PUBLISHED'
+      AND (
+        EXISTS (
+          SELECT 1 FROM "Mandate" m
+          WHERE m."politicianId" = p."id"
+            AND m."type"::text IN (${Prisma.join([...SIGNIFICANT_MANDATE_TYPES])})
+        )
+        OR EXISTS (
+          -- LEFT JOINs: a MAIRE mandate without commune link (or without
+          -- population) is fail-open, like isIndexablePolitician().
+          SELECT 1 FROM "Mandate" m
+          LEFT JOIN "MandateLocal" ml ON ml."mandateId" = m."id"
+          LEFT JOIN "Commune" c ON c."id" = ml."communeId"
+          WHERE m."politicianId" = p."id"
+            AND m."type" = 'MAIRE'
+            AND (c."population" IS NULL OR c."population" >= ${MAIRE_MIN_COMMUNE_POPULATION})
+        )
+        OR EXISTS (
+          SELECT 1 FROM "Affair" a
+          WHERE a."politicianId" = p."id" AND a."publicationStatus" = 'PUBLISHED'
+        )
+        OR EXISTS (
+          SELECT 1 FROM "FactCheckMention" f WHERE f."politicianId" = p."id"
+        )
+        OR EXISTS (
+          SELECT 1 FROM "Declaration" d WHERE d."politicianId" = p."id"
+        )
+        OR (p."biography" IS NOT NULL
+            AND length(btrim(p."biography", E' \t\n\r')) >= ${MIN_BIOGRAPHY_LENGTH})
+      )
+    ORDER BY p."updatedAt" DESC
+  `);
 
   const staticPages: MetadataRoute.Sitemap = [
     {

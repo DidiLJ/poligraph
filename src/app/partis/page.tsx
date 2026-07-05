@@ -9,17 +9,12 @@ import { SeoIntro } from "@/components/seo/SeoIntro";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import { getParties, getPartiesStats } from "@/lib/data/partis";
+import { listingRobotsMetadata, hasActiveListingFilter } from "@/lib/seo/listing-robots";
 import type { SortOption, StatusFilter } from "@/lib/data/partis";
 import type { PoliticalPosition } from "@/types";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 export const revalidate = 300; // 5 minutes, cohérent avec l'API
-
-export const metadata: Metadata = {
-  title: "Partis politiques",
-  description: "Liste des partis politiques français avec leurs membres et historique",
-  alternates: { canonical: "/partis" },
-};
 
 interface PageProps {
   searchParams: Promise<{
@@ -28,6 +23,19 @@ interface PageProps {
     status?: string;
     sort?: string;
   }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  return {
+    title: "Partis politiques",
+    description: "Liste des partis politiques français avec leurs membres et historique",
+    // Filtered variants: noindex,follow, canonical consolidates on the bare listing.
+    ...listingRobotsMetadata(
+      hasActiveListingFilter(params, ["search", "position", "status", "sort"])
+    ),
+    alternates: { canonical: "/partis" },
+  };
 }
 
 export default async function PartiesPage({ searchParams }: PageProps) {

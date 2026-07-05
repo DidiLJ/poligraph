@@ -18,6 +18,7 @@ import { EventJsonLd } from "@/components/seo/JsonLd";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { db } from "@/lib/db";
+import { communeRobotsMetadata } from "@/lib/seo/commune-robots";
 
 export const revalidate = 3600; // ISR: revalidate every hour
 
@@ -49,6 +50,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
+    // Panachage communes (<1000 hab) are thin candidate rosters: noindex,follow (issue #385).
+    ...communeRobotsMetadata(commune.population),
     openGraph: {
       title,
       description,

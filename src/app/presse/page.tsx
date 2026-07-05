@@ -9,15 +9,9 @@ import { ensureContrast } from "@/lib/contrast";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getPress, getPressStats, getPartiesWithPressMentions } from "@/lib/data/press";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { listingRobotsMetadata, hasActiveListingFilter } from "@/lib/seo/listing-robots";
 
 export const revalidate = 300; // ISR: re-check feature flag every 5 minutes
-
-export const metadata: Metadata = {
-  title: "Revue de presse",
-  description:
-    "Suivez l'actualité politique française. Articles du Monde, Politico et Mediapart mentionnant les responsables politiques.",
-  alternates: { canonical: "/presse" },
-};
 
 interface PageProps {
   searchParams: Promise<{
@@ -27,6 +21,18 @@ interface PageProps {
     search?: string;
     sort?: string;
   }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  return {
+    title: "Revue de presse",
+    description:
+      "Suivez l'actualité politique française. Articles du Monde, Politico et Mediapart mentionnant les responsables politiques.",
+    // Filtered/paginated variants: noindex,follow, canonical consolidates on the bare listing.
+    ...listingRobotsMetadata(hasActiveListingFilter(params, ["search", "source", "party", "sort"])),
+    alternates: { canonical: "/presse" },
+  };
 }
 
 const SOURCE_OPTIONS = [

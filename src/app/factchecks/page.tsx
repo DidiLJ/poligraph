@@ -20,6 +20,7 @@ import {
 } from "@/lib/data/factchecks";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { listingRobotsMetadata, hasActiveListingFilter } from "@/lib/seo/listing-robots";
 import type { FactCheckRating } from "@/types";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
@@ -35,13 +36,10 @@ interface PageProps {
   }>;
 }
 
+const FACTCHECK_FILTER_KEYS = ["source", "verdict", "search", "directOnly"] as const;
+
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const params = await searchParams;
-  const cp = new URLSearchParams();
-  if (params.source) cp.set("source", params.source);
-  if (params.verdict) cp.set("verdict", params.verdict);
-  if (params.politician) cp.set("politician", params.politician);
-  const qs = cp.toString();
 
   if (params.politician) {
     const name = await getPoliticianNameBySlug(params.politician);
@@ -49,6 +47,9 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
       return {
         title: `Fact-checks de ${name}`,
         description: `Vérifications des déclarations de ${name}. Fact-checks issus de sources reconnues : AFP Factuel, Les Décodeurs et autres.`,
+        // The bare ?politician= view stays indexable (nominative intent);
+        // extra facets/pagination on top of it are noindex,follow.
+        ...listingRobotsMetadata(hasActiveListingFilter(params, FACTCHECK_FILTER_KEYS)),
         alternates: { canonical: `/factchecks?politician=${params.politician}` },
       };
     }
@@ -58,7 +59,12 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     title: "Fact-checks",
     description:
       "Vérification des déclarations des responsables politiques français. Fact-checks d'AFP Factuel, Les Décodeurs et autres sources reconnues.",
-    alternates: { canonical: `/factchecks${qs ? `?${qs}` : ""}` },
+    // Weak facets and unresolved ?politician= slugs: noindex,follow,
+    // canonical consolidates on the bare listing.
+    ...listingRobotsMetadata(
+      hasActiveListingFilter(params, [...FACTCHECK_FILTER_KEYS, "politician"])
+    ),
+    alternates: { canonical: "/factchecks" },
   };
 }
 

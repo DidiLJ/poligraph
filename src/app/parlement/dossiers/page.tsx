@@ -20,15 +20,9 @@ import type { DossierStatus, ThemeCategory } from "@/generated/prisma";
 import { ExternalLink, Info } from "lucide-react";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { listingRobotsMetadata, hasActiveListingFilter } from "@/lib/seo/listing-robots";
 
 export const revalidate = 300; // ISR: re-check feature flag every 5 minutes
-
-export const metadata: Metadata = {
-  title: "Dossiers législatifs suivis",
-  description:
-    "Suivez les dossiers législatifs à l'Assemblée nationale : textes déposés, en commission, en séance ou adoptés. Résumés simplifiés à partir des données publiques.",
-  alternates: { canonical: "/parlement/dossiers" },
-};
 
 interface PageProps {
   searchParams: Promise<{
@@ -37,6 +31,18 @@ interface PageProps {
     sort?: string;
     page?: string;
   }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  return {
+    title: "Dossiers législatifs suivis",
+    description:
+      "Suivez les dossiers législatifs à l'Assemblée nationale : textes déposés, en commission, en séance ou adoptés. Résumés simplifiés à partir des données publiques.",
+    // Filtered/paginated variants: noindex,follow, canonical consolidates on the hub.
+    ...listingRobotsMetadata(hasActiveListingFilter(params, ["status", "theme", "sort"])),
+    alternates: { canonical: "/parlement/dossiers" },
+  };
 }
 
 const ITEMS_PER_PAGE = 15;

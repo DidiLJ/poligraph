@@ -33,6 +33,12 @@ interface SyncStep {
    * otherwise page every cron.
    */
   allowFailure?: boolean;
+  /**
+   * Extra attempts after a failure (default 0). For blocking steps that hit
+   * transient infra errors (Supabase dropping a connection mid-query, issue
+   * #442) where a plain re-run succeeds.
+   */
+  retries?: number;
 }
 
 const steps: SyncStep[] = [
@@ -110,6 +116,9 @@ const steps: SyncStep[] = [
   {
     name: "Compute participation stats",
     command: `npx tsx scripts/compute-stats.ts${dryRunFlag}`,
+    // Blocking step killed once by a transient Supabase connection drop (#442);
+    // the very next run succeeded without any change. One retry absorbs the blip.
+    retries: 1,
   },
   {
     name: "IndexNow",
@@ -155,14 +164,42 @@ async function main() {
     console.log(`  ${step.command}`);
     console.log("─".repeat(50));
 
-    try {
-      execSync(step.command, {
-        stdio: "inherit",
-        env: { ...process.env },
-        timeout: 10 * 60 * 1000, // 10 minutes max per step
-      });
+    const maxAttempts = 1 + (step.retries ?? 0);
+    // Only retry fast failures (transient blips like a dropped DB connection).
+    // A slow failure (hang killed by the 10 min timeout) would just burn
+    // another 10 min of the 30 min job budget on the same non-transient cause.
+    const retryIfFailedUnderMs = 5 * 60 * 1000;
+    let lastError: string | undefined;
+    let success = false;
 
-      const duration = (Date.now() - stepStart) / 1000;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (attempt > 1) {
+        console.log(`\n↻ ${step.name}: retry ${attempt - 1}/${maxAttempts - 1}`);
+      }
+      const attemptStart = Date.now();
+      try {
+        execSync(step.command, {
+          stdio: "inherit",
+          env: { ...process.env },
+          timeout: 10 * 60 * 1000, // 10 minutes max per step
+        });
+        success = true;
+        break;
+      } catch (err) {
+        const attemptDuration = Date.now() - attemptStart;
+        lastError = err instanceof Error ? err.message : String(err);
+        console.error(`\n✗ ${step.name} attempt ${attempt}/${maxAttempts} failed: ${lastError}`);
+        if (attempt < maxAttempts && attemptDuration >= retryIfFailedUnderMs) {
+          console.error(
+            `  skipping retry: attempt ran ${(attemptDuration / 1000).toFixed(0)}s (not a transient blip)`
+          );
+          break;
+        }
+      }
+    }
+
+    const duration = (Date.now() - stepStart) / 1000;
+    if (success) {
       results.push({
         name: step.name,
         success: true,
@@ -170,20 +207,18 @@ async function main() {
         allowFailure: step.allowFailure === true,
       });
       console.log(`\n✓ ${step.name} completed in ${duration.toFixed(1)}s`);
-    } catch (err) {
-      const duration = (Date.now() - stepStart) / 1000;
-      const errorMsg = err instanceof Error ? err.message : String(err);
+    } else {
       results.push({
         name: step.name,
         success: false,
         duration,
-        error: errorMsg,
+        error: lastError,
         allowFailure: step.allowFailure === true,
       });
       const icon = step.allowFailure ? "⚠" : "✗";
       const suffix = step.allowFailure ? " (non-blocking)" : "";
       console.error(
-        `\n${icon} ${step.name} failed after ${duration.toFixed(1)}s${suffix}: ${errorMsg}`
+        `\n${icon} ${step.name} failed after ${duration.toFixed(1)}s${suffix}: ${lastError}`
       );
       // Continue to next step even on failure
     }

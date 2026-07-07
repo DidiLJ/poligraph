@@ -5,6 +5,7 @@ import { AffairCard } from "@/components/politicians/AffairCard";
 function makeAffair(overrides: Record<string, unknown> = {}) {
   return {
     id: "a1",
+    slug: "affaire-de-test",
     title: "Affaire de test",
     description: "Description factuelle des faits.",
     status: "RELAXE",
@@ -84,5 +85,21 @@ describe("AffairCard — issues favorables dominantes (RGPD art. 10)", () => {
       />
     );
     expect(container.querySelector('[role="note"]')).toBeNull();
+  });
+});
+
+describe("AffairCard — navigation vers la fiche de l'affaire", () => {
+  it("le titre renvoie vers /affaires/<slug>", () => {
+    const { container } = render(<AffairCard affair={makeAffair()} variant="critique" />);
+    const link = container.querySelector('a[href="/affaires/affaire-de-test"]');
+    expect(link).toBeTruthy();
+    expect(link?.textContent).toContain("Affaire de test");
+  });
+
+  it("retombe sur l'id quand le slug est absent", () => {
+    const { container } = render(
+      <AffairCard affair={makeAffair({ slug: null })} variant="other" />
+    );
+    expect(container.querySelector('a[href="/affaires/a1"]')).toBeTruthy();
   });
 });

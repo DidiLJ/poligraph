@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, stripMarkdown } from "@/lib/utils";
 import {
@@ -45,7 +46,15 @@ export function AffairCard({ affair, variant }: AffairCardProps) {
                   ).getFullYear()}
                 </Badge>
               )}
-              <h3 className="font-semibold text-lg">{affair.title}</h3>
+              <h3 className="font-semibold text-lg">
+                <Link
+                  href={`/affaires/${affair.slug || affair.id}`}
+                  className="hover:underline focus-visible:underline"
+                  prefetch={false}
+                >
+                  {affair.title}
+                </Link>
+              </h3>
             </div>
           </div>
           <Badge

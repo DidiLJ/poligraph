@@ -233,7 +233,15 @@ export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
                                 ).getFullYear()}
                               </Badge>
                             )}
-                            <h3 className="font-semibold text-lg">{affair.title}</h3>
+                            <h3 className="font-semibold text-lg">
+                              <Link
+                                href={`/affaires/${affair.slug || affair.id}`}
+                                className="hover:underline focus-visible:underline"
+                                prefetch={false}
+                              >
+                                {affair.title}
+                              </Link>
+                            </h3>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 self-start">

@@ -61,13 +61,13 @@ jobs:
       # careerCheckedAt / photoCheckedAt columns). Full scans blew the timeout.
       - name: Sync Careers (Wikidata P39/P488/P112)
         id: sync-careers
-        run: npm run sync:careers -- --limit 3000
+        run: npm run sync:careers -- --limit=3000
         timeout-minutes: 10
         continue-on-error: true
 
       - name: Sync Photos
         id: sync-photos
-        run: npm run sync:photos -- --limit 2000
+        run: npm run sync:photos -- --limit=2000
         timeout-minutes: 10
         continue-on-error: true
 

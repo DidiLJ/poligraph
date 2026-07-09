@@ -52,7 +52,15 @@ Photo sources (priority order):
   },
 
   async sync(options): Promise<SyncResult> {
-    const { dryRun = false, validate = false } = options;
+    const {
+      dryRun = false,
+      validate = false,
+      limit,
+    } = options as {
+      dryRun?: boolean;
+      validate?: boolean;
+      limit?: number;
+    };
 
     if (dryRun) {
       console.log(`[DRY-RUN] Would sync photos ${validate ? "with validation" : ""}`);
@@ -61,7 +69,7 @@ Photo sources (priority order):
 
     console.log(`Mode: ${validate ? "Validate existing + sync missing" : "Sync missing only"}`);
 
-    const result = await syncPhotos({ validateExisting: validate as boolean });
+    const result = await syncPhotos({ validateExisting: validate as boolean, limit });
 
     const stats: Record<string, number> = {
       checked: result.checked,

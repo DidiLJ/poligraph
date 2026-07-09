@@ -19,6 +19,8 @@ const mockPolitician = {
   officialId: null,
   biography: null,
   biographyGeneratedAt: null,
+  photoCheckedAt: null,
+  careerCheckedAt: null,
   publicationStatus: "PUBLISHED" as const,
   statusOverride: false,
   source: "MANUAL" as const,

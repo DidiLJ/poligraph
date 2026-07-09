@@ -165,9 +165,9 @@ async function getPotentialPhotoUrls(politician: {
  * Sync photos for all politicians without photos or with invalid photos
  */
 export async function syncPhotos(
-  options: { validateExisting?: boolean } = {}
+  options: { validateExisting?: boolean; limit?: number } = {}
 ): Promise<PhotoSyncResult> {
-  const { validateExisting = false } = options;
+  const { validateExisting = false, limit } = options;
 
   const result: PhotoSyncResult = {
     success: false,
@@ -186,6 +186,10 @@ export async function syncPhotos(
       where: validateExisting
         ? {} // Check all
         : { OR: [{ photoUrl: null }, { photoUrl: "" }] }, // Only those without photos
+      // Rotation cursor: process the least-recently-checked first so a bounded
+      // (--limit) run eventually covers everyone across successive syncs.
+      orderBy: { photoCheckedAt: { sort: "asc", nulls: "first" } },
+      take: limit,
       select: {
         id: true,
         slug: true,
@@ -203,7 +207,7 @@ export async function syncPhotos(
       },
     });
 
-    console.log(`Checking ${politicians.length} politicians...`);
+    console.log(`Checking ${politicians.length} politicians${limit ? ` (limit ${limit})` : ""}...`);
 
     for (const politician of politicians) {
       result.checked++;
@@ -230,6 +234,7 @@ export async function syncPhotos(
       });
 
       // Try each URL until one works
+      let stamped = false;
       for (const { url, source } of potentialUrls) {
         const isValid = await isPhotoUrlValid(url);
         if (isValid) {
@@ -241,13 +246,25 @@ export async function syncPhotos(
                 photoUrl: url,
                 photoSource: source,
                 blobPhotoUrl: null, // Force re-download on next access
+                photoCheckedAt: new Date(),
               },
             });
+            stamped = true;
             result.updated++;
             console.log(`Updated photo for ${politician.fullName} (${source})`);
           }
           break;
         }
+      }
+
+      // Stamp the rotation cursor even when no photo was found, so the next
+      // bounded run advances past this politician instead of retrying it.
+      // Done per-row (not in one final batch) so progress survives a timeout.
+      if (!stamped) {
+        await db.politician.update({
+          where: { id: politician.id },
+          data: { photoCheckedAt: new Date() },
+        });
       }
 
       // Progress logging every 100 politicians

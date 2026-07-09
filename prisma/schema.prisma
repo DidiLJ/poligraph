@@ -52,6 +52,12 @@ model Politician {
   biography            String?   @db.Text
   biographyGeneratedAt DateTime?
 
+  // Rotation cursors for bounded weekly syncs (see sync-politicians workflow).
+  // Each run processes the oldest-checked N politicians, then stamps these so
+  // the next run picks up where it left off (NULLS FIRST = never checked yet).
+  photoCheckedAt  DateTime? // Last time sync:photos evaluated this politician
+  careerCheckedAt DateTime? // Last time sync:careers evaluated this politician
+
   // Visibility & ranking
   publicationStatus PublicationStatus @default(DRAFT)
   statusOverride    Boolean           @default(false) // true = don't auto-reassign status
@@ -95,6 +101,8 @@ model Politician {
   @@index([publicationStatus, prominenceScore])
   @@index([publicationStatus, lastName]) // filter PUBLISHED + alpha sort
   @@index([publicationStatus, createdAt]) // filter PUBLISHED + recent sort
+  @@index([photoCheckedAt]) // rotation cursor for sync:photos
+  @@index([careerCheckedAt]) // rotation cursor for sync:careers
 }
 
 // External IDs from various data sources - enables multi-source matching

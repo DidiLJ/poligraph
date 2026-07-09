@@ -197,6 +197,9 @@ Features:
             },
           },
         },
+        // Rotation cursor: least-recently-checked first so a bounded (--limit)
+        // run eventually covers everyone across successive weekly syncs.
+        orderBy: { politician: { careerCheckedAt: { sort: "asc", nulls: "first" } } },
         take: limit,
       });
 
@@ -244,6 +247,10 @@ Features:
       });
       console.log(`Fetched ${labels.size} labels\n`);
 
+      // Track which politicians we processed so we can stamp their rotation
+      // cursor (careerCheckedAt) after the loop.
+      const processedPoliticianIds: string[] = [];
+
       // Process each politician
       for (let i = startIndex; i < externalIds.length; i++) {
         const extId = externalIds[i];
@@ -254,6 +261,7 @@ Features:
         }
 
         stats.processed++;
+        processedPoliticianIds.push(politician.id);
 
         const positions = positionsMap.get(extId!.externalId) || [];
 
@@ -397,6 +405,16 @@ Features:
       }
 
       progress.finish();
+
+      // Stamp the rotation cursor for the batch we just processed so the next
+      // bounded run advances to the next slice of politicians.
+      if (!dryRun && processedPoliticianIds.length > 0) {
+        await db.politician.updateMany({
+          where: { id: { in: processedPoliticianIds } },
+          data: { careerCheckedAt: new Date() },
+        });
+      }
+
       checkpoint.complete();
     } // end if (!foundersOnly) — Phase 1
 

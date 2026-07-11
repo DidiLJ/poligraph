@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 export async function getFeatureFlags() {
   "use cache";
   cacheTag("feature-flags");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const flags = await db.featureFlag.findMany({
     select: { name: true, enabled: true, value: true, startDate: true, endDate: true },

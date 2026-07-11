@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { RelationsClient } from "./RelationsClient";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const revalidate = 86400; // ISR: 24h backstop; real changes propagate on-demand via revalidateTag
 
 export async function generateStaticParams() {
   const politicians = await db.politician.findMany({

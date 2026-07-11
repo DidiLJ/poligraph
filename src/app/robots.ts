@@ -10,7 +10,19 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: isProduction ? "/" : undefined,
-        disallow: isProduction ? ["/admin/", "/api/admin/"] : ["/"],
+        disallow: isProduction
+          ? [
+              "/admin/",
+              "/api/admin/",
+              // Historical municipal elections never change: block crawl so bots
+              // stop triggering ISR regenerations on ~70K dead commune pages.
+              "/elections/municipales-2014/",
+              "/elections/municipales-2020/",
+              // Paginated listings are duplicate content (canonical points to
+              // page 1): block crawl to avoid regenerating every ?page= variant.
+              "/*?*page=",
+            ]
+          : ["/"],
       },
     ],
     sitemap: isProduction

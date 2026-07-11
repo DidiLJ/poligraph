@@ -29,7 +29,7 @@ export interface DeclarationRow {
 export async function getDeclarationStats() {
   "use cache";
   cacheTag("declarations");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [totalDeclarations, politiciansWithDeclarations] = await Promise.all([
     db.declaration.count(),
@@ -69,7 +69,7 @@ export async function getDeclarationStats() {
 export async function getTopPortfolios(limit = 10) {
   "use cache";
   cacheTag("declarations");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const politicians = await db.politician.findMany({
     where: {
@@ -116,7 +116,7 @@ export async function getTopPortfolios(limit = 10) {
 export async function getTopCompanies(limit = 10) {
   "use cache";
   cacheTag("declarations");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const declarations = await db.declaration.findMany({
     where: { details: { not: Prisma.DbNull } },
@@ -255,7 +255,7 @@ async function getDeclarationsFiltered(
 ) {
   "use cache";
   cacheTag("declarations");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryDeclarationsList(undefined, partyId, sortOption, page);
 }
 
@@ -290,7 +290,7 @@ export async function getDeclarations(
 export async function getParties() {
   "use cache";
   cacheTag("declarations", "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.party.findMany({
     where: {
@@ -312,7 +312,7 @@ export async function getParties() {
 export async function getPartyTransparency() {
   "use cache";
   cacheTag("declarations", "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const parties = await db.party.findMany({
     where: {

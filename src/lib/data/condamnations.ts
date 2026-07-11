@@ -50,7 +50,7 @@ const PAGE_SIZE = 30;
 export async function getCondamnations(filters: CondamnationsFilters) {
   "use cache";
   cacheTag("affairs");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const { mandat, certainty = "tous", partiSlug, page = 1, sort = "date" } = filters;
 

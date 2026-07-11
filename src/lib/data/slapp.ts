@@ -10,7 +10,7 @@ export type SlappAffairFilters = {
 export async function getSlappAffairs(filters: SlappAffairFilters) {
   "use cache";
   cacheTag("affairs", "slapp");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.affair.findMany({
     where: {
@@ -38,7 +38,7 @@ export async function getSlappAffairs(filters: SlappAffairFilters) {
 export async function getSlappStats() {
   "use cache";
   cacheTag("affairs", "slapp");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [total, byStatusRaw] = await Promise.all([
     db.affair.count({

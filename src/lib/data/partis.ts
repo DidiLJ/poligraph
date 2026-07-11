@@ -8,7 +8,7 @@ import type { PoliticalPosition } from "@/types";
 export const getParty = cache(async function getParty(slug: string) {
   "use cache";
   cacheTag(`party:${slug}`, "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const party = await db.party.findUnique({
     where: { slug },
@@ -80,7 +80,7 @@ export const getParty = cache(async function getParty(slug: string) {
 export async function getPartyLeadership(partyId: string, partyName: string) {
   "use cache";
   cacheTag(`party-leadership:${partyId}`, "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.mandate.findMany({
     where: {
@@ -100,7 +100,7 @@ export async function getPartyLeadership(partyId: string, partyName: string) {
 export async function getPartyRoles(partyId: string) {
   "use cache";
   cacheTag(`party-roles:${partyId}`, "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.partyMembership.findMany({
     where: {
@@ -217,7 +217,7 @@ async function getPartiesFiltered(
 ) {
   "use cache";
   cacheTag("parties");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryParties(undefined, position, status, sort);
 }
 
@@ -247,7 +247,7 @@ export async function getParties(
 export async function getPartiesStats() {
   "use cache";
   cacheTag("parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [counts] = await db.$queryRaw<
     [{ actifs: bigint; gauche: bigint; centre: bigint; droite: bigint; affaires: bigint }]

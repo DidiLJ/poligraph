@@ -708,7 +708,7 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
 export async function getWeeklyRecap(weekStart: Date): Promise<WeeklyRecapData> {
   "use cache";
   cacheTag("weekly-recap", "votes", "affairs", "politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const weekEnd = getWeekEnd(weekStart);
   return queryWeeklyRecap(weekStart, weekEnd);

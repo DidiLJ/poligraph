@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 async function getDepartmentStats() {
   "use cache";
   cacheTag("departments", "politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   // Aggregate counts directly in the database using groupBy
   const grouped = await db.mandate.groupBy({

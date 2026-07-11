@@ -35,7 +35,7 @@ export interface HemicycleGroup {
 export async function getHemicycleData(): Promise<HemicycleGroup[]> {
   "use cache";
   cacheTag("statistics", "affairs", "politicians");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const groups = await db.parliamentaryGroup.findMany({
     where: {

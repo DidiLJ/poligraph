@@ -121,7 +121,7 @@ async function getPoliticianPreview(
 ): Promise<ComparePreview | null> {
   "use cache";
   cacheTag(`politician:${slug}`);
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const politician = await db.politician.findUnique({
     where: { slug },
@@ -163,7 +163,7 @@ async function getPoliticianPreview(
 async function getPartyPreview(slugOrId: string): Promise<ComparePreview | null> {
   "use cache";
   cacheTag(`party:${slugOrId}`);
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const party = await db.party.findFirst({
     where: { OR: [{ slug: slugOrId }, { id: slugOrId }] },
@@ -191,7 +191,7 @@ async function getPartyPreview(slugOrId: string): Promise<ComparePreview | null>
 async function getGroupPreview(idOrCode: string): Promise<ComparePreview | null> {
   "use cache";
   cacheTag("groups");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const group = await db.parliamentaryGroup.findFirst({
     where: { OR: [{ id: idOrCode }, { code: idOrCode }] },
@@ -325,7 +325,7 @@ export type PoliticianComparisonData = NonNullable<
 async function getPoliticianForComparison(slug: string, mandateType: string) {
   "use cache";
   cacheTag(`politician:${slug}`, "votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const politician = await db.politician.findUnique({
     where: { slug },
@@ -379,7 +379,7 @@ export type MinistreComparisonData = NonNullable<
 async function getMinistreForComparison(slug: string) {
   "use cache";
   cacheTag(`politician:${slug}`);
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const politician = await db.politician.findUnique({
     where: { slug },
@@ -474,7 +474,7 @@ export type PartyComparisonData = NonNullable<Awaited<ReturnType<typeof getParty
 async function getPartyForComparison(slugOrId: string) {
   "use cache";
   cacheTag(`party:${slugOrId}`);
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const party = await db.party.findFirst({
     where: { OR: [{ slug: slugOrId }, { id: slugOrId }] },
@@ -555,7 +555,7 @@ interface PartyMajorityVoteRow {
 export async function getPartyVoteComparison(leftPartyId: string, rightPartyId: string) {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [leftRows, rightRows] = await Promise.all([
     db.$queryRaw<PartyMajorityVoteRow[]>`
@@ -654,7 +654,7 @@ export type GroupComparisonData = NonNullable<Awaited<ReturnType<typeof getGroup
 async function getGroupForComparison(idOrCode: string) {
   "use cache";
   cacheTag("groups", "votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const group = await db.parliamentaryGroup.findFirst({
     where: { OR: [{ id: idOrCode }, { code: idOrCode }] },

@@ -20,7 +20,7 @@ export interface HomepageKPIs {
 export async function getHomepageKPIs(): Promise<HomepageKPIs> {
   "use cache";
   cacheTag("politicians", "affairs", "votes", "factchecks");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [
     politiciansCount,

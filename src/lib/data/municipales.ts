@@ -168,7 +168,7 @@ export async function getResultatsListing(options: {
 }) {
   "use cache";
   cacheTag("elections");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const page = options.page ?? 1;
   const pageSize = options.pageSize ?? 50;
@@ -432,7 +432,7 @@ export const getCommune = cache(async function getCommune(inseeCode: string) {
 export async function getDepartmentPartyData() {
   "use cache";
   cacheTag("elections-municipales-2026");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const snapshot = await db.statsSnapshot.findUnique({
     where: { key: MUNICIPALES_SNAPSHOT_KEYS.deptParty },
@@ -453,7 +453,7 @@ export async function getDepartmentPartyData() {
 export const getParityBySize = cache(async function getParityBySize() {
   "use cache";
   cacheTag("elections-municipales-2026");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const snapshot = await db.statsSnapshot.findUnique({
     where: { key: MUNICIPALES_SNAPSHOT_KEYS.parityBySize },
@@ -473,7 +473,7 @@ export const getParityBySize = cache(async function getParityBySize() {
 export const getCumulCandidates = cache(async function getCumulCandidates() {
   "use cache";
   cacheTag("elections-municipales-2026");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
@@ -576,7 +576,7 @@ export const getMissingMaires = cache(async function getMissingMaires() {
 export const getParityOutliers = cache(async function getParityOutliers() {
   "use cache";
   cacheTag("elections-municipales-2026");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const snapshot = await db.statsSnapshot.findUnique({
     where: { key: MUNICIPALES_SNAPSHOT_KEYS.parityOutliers },
@@ -604,7 +604,7 @@ export async function getDepartmentMunicipales(
 ) {
   "use cache";
   cacheTag("elections");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const election = await db.election.findUnique({
     where: { slug: "municipales-2026" },
@@ -756,7 +756,7 @@ export interface MaireStats {
 export async function getMaireStats(): Promise<MaireStats> {
   "use cache";
   cacheTag("maires-stats", "elections");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [counts] = await db.$queryRaw<
     [{ total: number; female: number; with_party: number; with_national_mandate: number }]
@@ -913,7 +913,7 @@ export async function getMairesFiltered(
 ) {
   "use cache";
   cacheTag("maires-listing", "elections");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryMaires(undefined, departmentCode, partyId, gender, page);
 }
 
@@ -946,7 +946,7 @@ export async function getMaires(
 export async function getMaireParties() {
   "use cache";
   cacheTag("maires-listing", "elections");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.$queryRaw<Array<{ id: string; shortName: string; color: string | null }>>(
     Prisma.sql`

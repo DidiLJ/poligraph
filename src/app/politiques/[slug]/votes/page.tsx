@@ -18,7 +18,7 @@ import { getPoliticianVotingStats, getPoliticianVoteTabCounts } from "@/services
 import type { ScrutinType } from "@/generated/prisma";
 import type { Prisma } from "@/generated/prisma";
 
-export const revalidate = 300; // ISR: revalidate every 5 minutes (paginated content)
+export const revalidate = 86400; // ISR: 24h backstop; real changes propagate on-demand via revalidateTag (pagination is client-side)
 
 const TYPE_TAB_MAP: Record<string, { type?: ScrutinType; excludeType?: ScrutinType }> = {
   votes: { excludeType: "AMENDEMENT" },

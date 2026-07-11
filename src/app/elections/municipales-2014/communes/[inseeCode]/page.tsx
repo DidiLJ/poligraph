@@ -7,7 +7,7 @@ import { getCommuneResults2014 } from "@/lib/data/elections";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { CheckCircle2, Info } from "lucide-react";
 
-export const revalidate = 3600;
+export const revalidate = 86400; // ISR: 24h backstop; historical data changes on-demand only
 
 // ISR only — too many communes for SSG
 export async function generateStaticParams() {

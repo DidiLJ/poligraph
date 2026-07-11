@@ -20,7 +20,7 @@ import { SITE_URL } from "@/config/site";
 import { db } from "@/lib/db";
 import { communeRobotsMetadata } from "@/lib/seo/commune-robots";
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const revalidate = 86400; // ISR: 24h backstop; real changes propagate on-demand via revalidateTag
 
 export async function generateStaticParams() {
   const communes = await db.commune.findMany({

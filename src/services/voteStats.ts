@@ -357,7 +357,7 @@ export async function getPoliticianVotingStats(
   // (this groupBy was ~15% of total DB time). Invalidated by the votes/politicians
   // cache tags after a sync.
   cacheTag("votes", "politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   // Find current parliamentary mandate first — we need it to scope vote counts
   const mandate = await db.mandate.findFirst({
@@ -460,7 +460,7 @@ export async function getPoliticianVoteTabCounts(
 ): Promise<{ totalAll: number; amendmentCount: number; nonAmendmentCount: number }> {
   "use cache";
   cacheTag("votes", "politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   // Filters the denormalized Vote.scrutinType directly (Issue #377) to drop the
   // forced JOIN on Scrutin. nonAmendmentCount uses the same `{ not: "AMENDEMENT" }`

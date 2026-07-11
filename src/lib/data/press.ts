@@ -62,7 +62,7 @@ async function queryPress(params: PressQueryParams) {
 export async function getPressFiltered(params: Omit<PressQueryParams, "search">) {
   "use cache";
   cacheTag("press");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryPress(params);
 }
 
@@ -84,7 +84,7 @@ export async function getPress(params: PressQueryParams) {
 export async function getPressStats() {
   "use cache";
   cacheTag("press");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const linkedFilter = {
     OR: [{ mentions: { some: {} } }, { partyMentions: { some: {} } }],
@@ -120,7 +120,7 @@ export async function getPressStats() {
 export async function getPartiesWithPressMentions() {
   "use cache";
   cacheTag("press", "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.party.findMany({
     where: { pressMentions: { some: {} } },

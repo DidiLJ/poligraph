@@ -70,7 +70,7 @@ function getAgreement(left: VotePosition, right: VotePosition): AgreementType {
 async function getPoliticianVoteComparison(leftSlug: string, rightSlug: string) {
   "use cache";
   cacheTag(`politician:${leftSlug}`, `politician:${rightSlug}`, "votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [leftPol, rightPol] = await Promise.all([
     db.politician.findUnique({
@@ -171,7 +171,7 @@ function getPartyAgreement(leftPosition: string, rightPosition: string): Agreeme
 async function getPartyVoteComparisonData(leftSlug: string, rightSlug: string) {
   "use cache";
   cacheTag(`party:${leftSlug}`, `party:${rightSlug}`, "votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [leftParty, rightParty] = await Promise.all([
     db.party.findFirst({

@@ -27,7 +27,7 @@ const VICTIMS: Involvement[] = ["VICTIM", "PLAINTIFF"];
 async function getPartyAffairsData(slug: string) {
   "use cache";
   cacheTag("affairs", "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const party = await db.party.findUnique({
     where: { slug },

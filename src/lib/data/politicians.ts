@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 export const getPolitician = cache(async function getPolitician(slug: string) {
   "use cache";
   cacheTag(`politician:${slug}`, "politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const politician = await db.politician.findUnique({
     where: { slug },
@@ -127,7 +127,7 @@ export const getPolitician = cache(async function getPolitician(slug: string) {
 export async function getPoliticianForComparison(slug: string) {
   "use cache";
   cacheTag(`politician:${slug}`, "votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const politician = await db.politician.findUnique({
     where: { slug },

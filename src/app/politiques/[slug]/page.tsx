@@ -42,7 +42,7 @@ import { SITE_URL } from "@/config/site";
 import { ShareBar } from "@/components/ui/ShareBar";
 import { isJudiciallyValidated, getJudicialMaturity } from "@/config/judicial-maturity";
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const revalidate = 86400; // ISR: 24h backstop; real changes propagate on-demand via revalidateTag
 
 export async function generateStaticParams() {
   const politicians = await db.politician.findMany({
@@ -60,7 +60,7 @@ interface PageProps {
 async function getVoteStats(politicianId: string) {
   "use cache";
   cacheTag("votes", "politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [stats, recentVotes, themeDistribution] = await Promise.all([
     getPoliticianVotingStats(politicianId),

@@ -230,7 +230,7 @@ export async function getElusFiltered(opts: {
 }) {
   "use cache";
   cacheTag("elections", "maires-listing");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryElus(opts);
 }
 
@@ -272,7 +272,7 @@ export async function getElus(opts: {
 export async function getEluById(id: string) {
   "use cache";
   cacheTag("elections");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   // Legacy: id may be a mandate id or a politician id
   const mandate = await db.mandate.findFirst({
@@ -308,7 +308,7 @@ export async function getEluById(id: string) {
 export async function getCommuneWithElus(inseeCode: string) {
   "use cache";
   cacheTag("elections");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const commune = await db.commune.findUnique({
     where: { id: inseeCode },

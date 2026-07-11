@@ -303,7 +303,7 @@ async function getPoliticiansFiltered(
 ) {
   "use cache";
   cacheTag("politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryPoliticians(undefined, partyId, withConviction, mandateFilter, sortOption, page);
 }
 
@@ -337,7 +337,7 @@ async function getPoliticians(
 async function getParties() {
   "use cache";
   cacheTag("politicians", "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const parties = await db.party.findMany({
     where: {
@@ -357,7 +357,7 @@ async function getFilterCounts() {
   "use cache";
   cacheTag("politicians");
   cacheTag("filter-counts");
-  cacheLife("hours");
+  cacheLife("synced");
 
   // Single SQL query replaces 9 parallel Prisma count queries (1 connection instead of 9)
   const [counts] = await db.$queryRaw<

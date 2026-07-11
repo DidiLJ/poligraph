@@ -15,7 +15,7 @@ import type { AffairStatus, AffairCategory, AffairSeverity, Involvement } from "
 export async function getPartiesWithAffairs() {
   "use cache";
   cacheTag("affairs", "parties");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const parties = await db.party.findMany({
     where: {
@@ -177,7 +177,7 @@ export async function getAffairsFiltered(
 ) {
   "use cache";
   cacheTag("affairs");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryAffairs(
     undefined,
     status,
@@ -262,7 +262,7 @@ export async function getAffairs(
 export async function getSuperCategoryCounts() {
   "use cache";
   cacheTag("affairs");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const categoryCounts = await db.affair.groupBy({
     by: ["category"],
@@ -292,7 +292,7 @@ export async function getSuperCategoryCounts() {
 export async function getStatusCounts() {
   "use cache";
   cacheTag("affairs");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const statusCounts = await db.affair.groupBy({
     by: ["status"],
@@ -306,7 +306,7 @@ export async function getStatusCounts() {
 export async function getSeverityCounts() {
   "use cache";
   cacheTag("affairs");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const severityCounts = await db.affair.groupBy({
     by: ["severity"],
@@ -323,7 +323,7 @@ export async function getSeverityCounts() {
 export async function getCertaintyCounts() {
   "use cache";
   cacheTag("affairs");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const statusCounts = await db.affair.groupBy({
     by: ["status"],
@@ -370,7 +370,7 @@ const VIOLENCE_CATEGORIES: AffairCategory[] = [
 export async function getVictimStats() {
   "use cache";
   cacheTag("affairs");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const victimWhere = {
     publicationStatus: "PUBLISHED" as const,

@@ -50,7 +50,7 @@ function extractScrutinNumber(externalId: string): string | null {
   return null;
 }
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const revalidate = 86400; // ISR: 24h backstop; real changes propagate on-demand via revalidateTag
 
 // ISR-only: return [] so no page is prerendered at build (too many scrutins to
 // prerender, and it would OOM on Vercel), but the presence of generateStaticParams

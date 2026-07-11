@@ -88,7 +88,7 @@ async function getFactchecksFiltered(
 ) {
   "use cache";
   cacheTag("factchecks");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryFactchecks({
     page,
     limit,
@@ -174,7 +174,7 @@ async function queryFactchecks(params: {
 export async function getFactcheckStats() {
   "use cache";
   cacheTag("factchecks");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return factcheckStatsService.getPageStats();
 }
@@ -185,7 +185,7 @@ export async function getFactcheckStats() {
 export async function getFactcheckSources() {
   "use cache";
   cacheTag("factchecks");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const sources = await db.factCheck.groupBy({
     by: ["source"],
@@ -205,7 +205,7 @@ export async function getFactcheckSources() {
 export async function getPoliticianNameBySlug(slug: string): Promise<string | null> {
   "use cache";
   cacheTag(`politician:${slug}`, "politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const p = await db.politician.findUnique({
     where: { slug },
@@ -220,7 +220,7 @@ export async function getPoliticianNameBySlug(slug: string): Promise<string | nu
 export async function getPoliticianFactcheckContext(slug: string) {
   "use cache";
   cacheTag("factchecks", "politicians");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const politician = await db.politician.findUnique({
     where: { slug },

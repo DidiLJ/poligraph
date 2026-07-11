@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 
 export async function getDeputesByDepartment(departmentCode: string) {
   "use cache";
-  cacheLife("minutes");
+  cacheLife("synced");
   cacheTag("politicians", "departments");
 
   return db.politician.findMany({
@@ -40,7 +40,7 @@ export async function getDeputesByDepartment(departmentCode: string) {
 
 export async function getSenateursByDepartment(departmentCode: string) {
   "use cache";
-  cacheLife("minutes");
+  cacheLife("synced");
   cacheTag("politicians", "departments");
 
   return db.politician.findMany({

@@ -5,6 +5,14 @@ import { SITE_URL, SITE_HOSTNAME } from "./src/config/site";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["jsdom"],
   staticPageGenerationTimeout: 120,
+  // Content syncs at most once a day and is invalidated on-demand via
+  // revalidateTag (daily sync + admin edits), so the time-based ISR window is a
+  // 24h backstop rather than the driver of freshness. The built-in "minutes"
+  // profile (revalidate 60s) was regenerating the whole long-tail every minute
+  // on crawler traffic, which dominated ISR write cost.
+  cacheLife: {
+    synced: { stale: 3600, revalidate: 86400, expire: 604800 },
+  },
   outputFileTracingIncludes: {
     "/departements/[slug]/opengraph-image": ["./public/data/departements.geojson"],
     "/elections/municipales-2026/communes/[inseeCode]/opengraph-image": [

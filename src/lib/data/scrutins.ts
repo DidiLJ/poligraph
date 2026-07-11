@@ -93,7 +93,7 @@ const DAILY_SELECT = {
 export async function getScrutinsByDate(dateStr: string): Promise<DailyVotesData> {
   "use cache";
   cacheTag("votes", "votes-daily");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const { start, end } = parseDateRange(dateStr);
 
@@ -125,7 +125,7 @@ export async function getAdjacentVoteDates(
 ): Promise<{ prevDate: string | null; nextDate: string | null }> {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const { start, end } = parseDateRange(dateStr);
 
@@ -159,7 +159,7 @@ export async function getTodayVotesSummary(): Promise<{
 }> {
   "use cache";
   cacheTag("votes", "homepage");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const dateStr = getParisToday();
   const { start, end } = parseDateRange(dateStr);
@@ -262,7 +262,7 @@ async function getScrutinsFiltered(params: {
 }) {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryScrutins(params);
 }
 
@@ -287,7 +287,7 @@ export async function getScrutins(params: {
 export async function getLegislatures() {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.scrutin.groupBy({
     by: ["legislature"],
@@ -299,7 +299,7 @@ export async function getLegislatures() {
 export async function getChambers() {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.scrutin.groupBy({
     by: ["chamber"],
@@ -310,7 +310,7 @@ export async function getChambers() {
 export async function getThemeCounts() {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const counts = await db.scrutin.groupBy({
     by: ["theme"],
@@ -323,7 +323,7 @@ export async function getThemeCounts() {
 export async function getTypeCounts() {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.scrutin.groupBy({
     by: ["type"],
@@ -335,7 +335,7 @@ export async function getTypeCounts() {
 export async function getThemeCountsWithKeyVotes() {
   "use cache";
   cacheTag("votes", "votes-key");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [allCounts, keyCounts] = await Promise.all([
     db.scrutin.groupBy({
@@ -369,7 +369,7 @@ export async function getThemeCountsWithKeyVotes() {
 export async function getLastScrutinDate(): Promise<Date | null> {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const last = await db.scrutin.findFirst({
     orderBy: { votingDate: "desc" },
@@ -382,7 +382,7 @@ export async function getLastScrutinDate(): Promise<Date | null> {
 export async function getLatestScrutins() {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.scrutin.findMany({
     orderBy: { votingDate: "desc" },
@@ -400,7 +400,7 @@ export async function getTodayVotesByChamber(): Promise<{
 }> {
   "use cache";
   cacheTag("votes", "votes-daily");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const dateStr = getParisToday();
   const { start, end } = parseDateRange(dateStr);
@@ -424,7 +424,7 @@ export async function getHubStats(): Promise<{
 }> {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [totalScrutins, totalDossiers] = await Promise.all([
     db.scrutin.count(),
@@ -445,7 +445,7 @@ export async function getChamberAdoptionRates(): Promise<
 > {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const results = await db.scrutin.groupBy({
     by: ["chamber", "result"],
@@ -480,7 +480,7 @@ export async function getKeyVotes(): Promise<{
 }> {
   "use cache";
   cacheTag("votes", "votes-key");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const windowStart = new Date();
   windowStart.setDate(windowStart.getDate() - KEY_VOTES_HUB_WINDOW_DAYS);

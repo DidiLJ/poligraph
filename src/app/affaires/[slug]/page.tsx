@@ -44,7 +44,7 @@ import { SlappBadge } from "@/components/slapp/SlappBadge";
 import { CriteriaList } from "@/components/slapp/CriteriaList";
 import type { SlappCriteriaPayload } from "@/config/slapp";
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const revalidate = 86400; // ISR: 24h backstop; real changes propagate on-demand via revalidateTag
 
 export async function generateStaticParams() {
   const affairs = await db.affair.findMany({

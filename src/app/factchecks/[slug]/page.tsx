@@ -12,7 +12,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { ShareBar } from "@/components/ui/ShareBar";
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const revalidate = 86400; // ISR: 24h backstop; real changes propagate on-demand via revalidateTag
 
 export async function generateStaticParams() {
   const factChecks = await db.factCheck.findMany({
@@ -31,7 +31,7 @@ interface PageProps {
 async function getFactCheck(slug: string) {
   "use cache";
   cacheTag(`factcheck:${slug}`, "factchecks");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.factCheck.findUnique({
     where: { slug },

@@ -11,7 +11,7 @@ export const getPartyPlatform = cache(async function getPartyPlatform(
 ) {
   "use cache";
   cacheTag(`party:${partySlug}`, "platforms");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const where: Record<string, unknown> = {
     party: { slug: partySlug },
@@ -50,7 +50,7 @@ export const getPartyPlatform = cache(async function getPartyPlatform(
 export async function getPlatformsByElection(electionId: string) {
   "use cache";
   cacheTag("platforms");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.platform.findMany({
     where: {
@@ -97,7 +97,7 @@ async function queryPlatforms(status?: PublicationStatus) {
 export async function getPlatformsListing() {
   "use cache";
   cacheTag("platforms");
-  cacheLife("minutes");
+  cacheLife("synced");
   return queryPlatforms();
 }
 
@@ -108,7 +108,7 @@ export async function getPlatformsListing() {
 export async function getLatestPlatformsPerParty() {
   "use cache";
   cacheTag("platforms");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   // Get all published platforms with party info
   const allPlatforms = await db.platform.findMany({
@@ -154,7 +154,7 @@ export async function getLatestPlatformsPerParty() {
 export async function getPartyPositionsForMatching(electionId: string) {
   "use cache";
   cacheTag("platforms");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const platforms = await db.platform.findMany({
     where: {
@@ -192,7 +192,7 @@ export async function getPartyPositionsForMatching(electionId: string) {
 export async function getQuizQuestions(scope?: "COMMON" | "NATIONAL" | "MUNICIPAL") {
   "use cache";
   cacheTag("quiz-questions");
-  cacheLife("hours");
+  cacheLife("synced");
 
   return db.quizQuestion.findMany({
     where: {

@@ -24,7 +24,7 @@ export async function getScrutinGroupPositions(
 ): Promise<ScrutinGroupPositionData[]> {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.scrutinGroupPosition.findMany({
     where: { scrutinId },
@@ -54,7 +54,7 @@ export interface ScrutinAnalysisData {
 export async function getScrutinAnalysis(scrutinId: string): Promise<ScrutinAnalysisData | null> {
   "use cache";
   cacheTag("votes");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.scrutinAnalysis.findUnique({
     where: { scrutinId },
@@ -92,7 +92,7 @@ export async function getGroupesListing(
 ): Promise<GroupListingItem[]> {
   "use cache";
   cacheTag("votes", "groupes");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const { chamber, legislature = 17 } = options;
 
@@ -144,7 +144,7 @@ export async function getGroupesListing(
 export async function getGroupKeyVotes(groupId: string, limit = 5) {
   "use cache";
   cacheTag("votes", "groupes");
-  cacheLife("hours");
+  cacheLife("synced");
 
   return db.scrutinGroupPosition.findMany({
     where: { groupId },
@@ -181,7 +181,7 @@ export async function getGroupKeyVotes(groupId: string, limit = 5) {
 export async function getGroupeDetail(slug: string) {
   "use cache";
   cacheTag("votes", "groupes");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const group = await db.parliamentaryGroup.findUnique({
     where: { slug },

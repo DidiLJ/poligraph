@@ -496,7 +496,7 @@ export const getCommuneResults2014 = cache(async function getCommuneResults2014(
 export async function getUpcomingElections() {
   "use cache";
   cacheTag("elections", "homepage");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const now = new Date();
   return db.election.findMany({
@@ -516,7 +516,7 @@ export async function getUpcomingElections() {
 export async function getFeaturedElection() {
   "use cache";
   cacheTag("elections", "homepage");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const election = await db.election.findFirst({
     where: { featured: true, status: { not: "COMPLETED" } },
@@ -552,7 +552,7 @@ export async function getFeaturedElection() {
 export async function getElections(typeFilter?: ElectionType) {
   "use cache";
   cacheTag("elections");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const where = typeFilter ? { type: typeFilter } : {};
 
@@ -569,7 +569,7 @@ export async function getElections(typeFilter?: ElectionType) {
 export async function getTypeCounts() {
   "use cache";
   cacheTag("elections");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.election.groupBy({
     by: ["type"],

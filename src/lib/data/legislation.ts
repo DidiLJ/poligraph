@@ -40,7 +40,7 @@ export interface PPLStats {
 export async function getLatestDossiers(limit = 6) {
   "use cache";
   cacheTag("legislation");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return db.legislativeDossier.findMany({
     orderBy: { updatedAt: "desc" },
@@ -68,7 +68,7 @@ export async function getLatestDossiers(limit = 6) {
 export async function getPPLStats(): Promise<PPLStats> {
   "use cache";
   cacheTag("legislation");
-  cacheLife("minutes");
+  cacheLife("synced");
   const [topAuthors, topParties, topDossiers] = await Promise.all([
     db.$queryRaw<TopAuthor[]>(Prisma.sql`
       SELECT

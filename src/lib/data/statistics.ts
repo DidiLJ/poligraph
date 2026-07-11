@@ -17,7 +17,7 @@ import type { Chamber } from "@/generated/prisma";
 export async function getJudicialData() {
   "use cache";
   cacheTag("statistics", "affairs");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const directFilter = {
     publicationStatus: "PUBLISHED" as const,
@@ -155,7 +155,7 @@ export async function getJudicialData() {
 export async function getFactCheckData() {
   "use cache";
   cacheTag("statistics", "factchecks");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return factcheckStatsService.getStatisticsData();
 }
@@ -165,7 +165,7 @@ export async function getFactCheckData() {
 export async function getLegislativeData() {
   "use cache";
   cacheTag("statistics", "votes", "legislation");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   return voteStatsService.getLegislativeStats();
 }
@@ -175,7 +175,7 @@ export async function getLegislativeData() {
 export async function getGroupDynamicsData() {
   "use cache";
   cacheTag("statistics", "votes", "groupes");
-  cacheLife("hours");
+  cacheLife("synced");
 
   const [dynamicsAN, dynamicsSENAT] = await Promise.all([
     voteStatsService.getGroupDynamicsStats("AN"),
@@ -194,7 +194,7 @@ export async function getParticipationData(
 ) {
   "use cache";
   cacheTag("statistics", "participation");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [ranking, groupStatsAN, groupStatsSENAT, groupDissidenceAN, groupDissidenceSENAT] =
     await Promise.all([

@@ -11,7 +11,7 @@ import { withPublicRoute } from "@/lib/api/with-public-route";
 async function getSearchIndex() {
   "use cache";
   cacheTag("politicians", "parties", "groups");
-  cacheLife("minutes");
+  cacheLife("synced");
 
   const [politicians, parties, groups] = await Promise.all([
     db.politician.findMany({

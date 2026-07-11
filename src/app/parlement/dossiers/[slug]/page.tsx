@@ -23,7 +23,7 @@ import { SITE_URL } from "@/config/site";
 import { formatDate } from "@/lib/utils";
 import type { MandateType } from "@/generated/prisma";
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const revalidate = 86400; // ISR: 24h backstop; real changes propagate on-demand via revalidateTag
 
 export async function generateStaticParams() {
   const dossiers = await db.legislativeDossier.findMany({

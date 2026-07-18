@@ -26,9 +26,7 @@ import type { VotePosition } from "@/types";
 import { SITE_URL } from "@/config/site";
 import { ShareBar } from "@/components/ui/ShareBar";
 import { toPublicTitleView } from "@/lib/votes/to-public-title-view";
-
-// Matches bare YYYY-MM-DD (never collides with scrutin slugs which are YYYY-MM-DD-title)
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+import { isVoteDateArchiveSlug, voteDateArchiveRobotsMetadata } from "@/lib/seo/parliament-robots";
 
 /** Parse externalId into human-readable label: "VTANR5L17V5729" → "Vote n°5729" */
 function formatExternalId(externalId: string, chamber: string): string {
@@ -169,7 +167,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
 
   // Date archive page (e.g., /votes/2026-03-04)
-  if (DATE_REGEX.test(slug)) {
+  if (isVoteDateArchiveSlug(slug)) {
     const date = new Date(slug + "T00:00:00Z");
     if (!isNaN(date.getTime())) {
       const formatted = date.toLocaleDateString("fr-FR", {
@@ -182,6 +180,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         title: `Votes du ${formatted}`,
         description: `Scrutins de l'Assemblée nationale et du Sénat du ${formatted}. Résultats, résumés et détails des votes parlementaires.`,
         alternates: { canonical: `/parlement/votes/${slug}` },
+        ...voteDateArchiveRobotsMetadata(slug),
       };
     }
   }
@@ -228,7 +227,7 @@ export default async function ScrutinPage({ params }: PageProps) {
 
   // Date archive page (e.g., /votes/2026-03-04). The `type` tab is handled
   // client-side in DailyVotesList, so this route never reads searchParams.
-  if (DATE_REGEX.test(slug)) {
+  if (isVoteDateArchiveSlug(slug)) {
     const date = new Date(slug + "T00:00:00Z");
     if (!isNaN(date.getTime())) {
       return <DailyVotesPage date={slug} />;

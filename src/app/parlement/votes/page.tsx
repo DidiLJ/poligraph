@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { ScrutinsListing } from "@/components/parlement";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { hasActiveListingFilter, listingRobotsMetadata } from "@/lib/seo/listing-robots";
+import { VOTES_LISTING_FILTER_KEYS } from "@/lib/seo/listing-filters";
 
 export const revalidate = 300;
 
@@ -29,14 +30,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 
   // Lot 3a: de-index utility-filtered/paginated variants (noindex,follow); the
   // bare /parlement/votes stays indexable. GSC: these facet URLs get 0 clicks.
-  const noindex = hasActiveListingFilter(params, [
-    "search",
-    "result",
-    "legislature",
-    "chamber",
-    "theme",
-    "type",
-  ]);
+  const noindex = hasActiveListingFilter(params, VOTES_LISTING_FILTER_KEYS);
 
   const chamberTitle =
     params.chamber === "AN"

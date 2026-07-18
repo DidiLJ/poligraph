@@ -10,6 +10,7 @@ import { PoliticiansGrid } from "@/components/politicians/PoliticiansGrid";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { hasActiveListingFilter, listingRobotsMetadata } from "@/lib/seo/listing-robots";
+import { POLITIQUES_LISTING_FILTER_KEYS } from "@/lib/seo/listing-filters";
 import { SITE_URL } from "@/config/site";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
@@ -42,7 +43,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const hasNonDefaultSort = params.sort !== undefined && params.sort !== "prominence";
   const hasConvictionFilter = params.conviction === "true";
   const noindex =
-    hasActiveListingFilter(params, ["search", "party", "mandate", "status"]) ||
+    hasActiveListingFilter(params, POLITIQUES_LISTING_FILTER_KEYS) ||
     hasConvictionFilter ||
     hasNonDefaultSort;
 

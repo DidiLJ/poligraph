@@ -41,6 +41,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { AffairStatus, Involvement } from "@/types";
 import { hasActiveListingFilter, listingRobotsMetadata } from "@/lib/seo/listing-robots";
 import { AFFAIRES_DEFAULT_TITLE, AFFAIRES_DEFAULT_DESCRIPTION } from "@/lib/seo/affaires-metadata";
+import { AFFAIRES_LISTING_FILTER_KEYS } from "@/lib/seo/listing-filters";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 
@@ -102,16 +103,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   // /affaires facet URLs get ~0 clicks (the condamnations hub captures the intent).
   const hasNonDefaultMode = params.mode !== undefined && params.mode !== "mise-en-cause";
 
-  const noindex =
-    hasActiveListingFilter(params, [
-      "search",
-      "sort",
-      "status",
-      "supercat",
-      "category",
-      "certainty",
-      "parti",
-    ]) || hasNonDefaultMode;
+  const noindex = hasActiveListingFilter(params, AFFAIRES_LISTING_FILTER_KEYS) || hasNonDefaultMode;
 
   return {
     title,

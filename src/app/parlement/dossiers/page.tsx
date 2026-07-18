@@ -21,6 +21,7 @@ import { ExternalLink, Info } from "lucide-react";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { listingRobotsMetadata, hasActiveListingFilter } from "@/lib/seo/listing-robots";
+import { DOSSIERS_LISTING_FILTER_KEYS } from "@/lib/seo/listing-filters";
 
 export const revalidate = 300; // ISR: re-check feature flag every 5 minutes
 
@@ -40,7 +41,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     description:
       "Suivez les dossiers législatifs à l'Assemblée nationale : textes déposés, en commission, en séance ou adoptés. Résumés simplifiés à partir des données publiques.",
     // Filtered/paginated variants: noindex,follow, canonical consolidates on the hub.
-    ...listingRobotsMetadata(hasActiveListingFilter(params, ["status", "theme", "sort"])),
+    ...listingRobotsMetadata(hasActiveListingFilter(params, DOSSIERS_LISTING_FILTER_KEYS)),
     alternates: { canonical: "/parlement/dossiers" },
   };
 }

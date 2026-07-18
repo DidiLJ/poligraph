@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import { SITE_URL, SITE_HOSTNAME } from "./src/config/site";
+import { OG_IMAGE_NOINDEX_HEADERS } from "./src/lib/seo/og-image-robots";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["jsdom"],
@@ -104,6 +105,9 @@ const nextConfig: NextConfig = {
           { key: "Access-Control-Allow-Headers", value: "Content-Type" },
         ],
       },
+      // Keep auto-generated opengraph-image URLs out of the search index (they are
+      // assets, not pages) while staying fetchable for social link previews.
+      ...OG_IMAGE_NOINDEX_HEADERS,
     ];
   },
   async redirects() {

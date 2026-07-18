@@ -40,6 +40,7 @@ import { SITE_URL } from "@/config/site";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import type { AffairStatus, Involvement } from "@/types";
 import { hasActiveListingFilter, listingRobotsMetadata } from "@/lib/seo/listing-robots";
+import { AFFAIRES_DEFAULT_TITLE, AFFAIRES_DEFAULT_DESCRIPTION } from "@/lib/seo/affaires-metadata";
 
 export const revalidate = 300; // 5 minutes — CDN edge cache with ISR
 
@@ -73,9 +74,8 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const superCatKey = (params.supercat || "") as AffairSuperCategory | "";
   const certaintyKey = (params.certainty || "") as CertaintyLevel | "";
 
-  let title = "Affaires judiciaires des responsables politiques français";
-  let description =
-    "Liste des affaires judiciaires impliquant des responsables politiques français. Sources vérifiées, présomption d'innocence respectée.";
+  let title = AFFAIRES_DEFAULT_TITLE;
+  let description = AFFAIRES_DEFAULT_DESCRIPTION;
 
   if (partiSlug) {
     const party = await db.party.findUnique({
@@ -211,6 +211,23 @@ export default async function AffairesPage({ searchParams }: PageProps) {
               <SeoIntro
                 text={`${totalAffairs} affaires judiciaires impliquant des responsables politiques, documentées avec sources vérifiables. Mises en examen, procès, condamnations et relaxes.`}
               />
+            </div>
+            {/* Route the strong judicial/statistics intents from the bare listing */}
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <Link
+                href="/affaires/condamnations"
+                className="font-medium text-primary hover:underline"
+                prefetch={false}
+              >
+                Condamnations définitives et en cours →
+              </Link>
+              <Link
+                href="/statistiques"
+                className="font-medium text-primary hover:underline"
+                prefetch={false}
+              >
+                Statistiques : taux de condamnation par parti →
+              </Link>
             </div>
           </div>
         </div>

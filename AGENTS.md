@@ -179,6 +179,17 @@ Two distinct resolver systems:
 - `React.cache()` to deduplicate between `generateMetadata()` and `page()`.
 - **Never combine `generateStaticParams` with `searchParams`** on a page with `useCache: true` — it crashes with `DYNAMIC_SERVER_USAGE`. Use `revalidate = N` alone.
 
+### Indexation / SEO doctrine
+
+Index the pages that carry real content; keep thin, duplicate, or utility surfaces out of the index without blocking discovery (`noindex,follow`). The rules are pure and centralised so they stay testable and the sitemap cannot drift from them.
+
+- **Indexable**: bare listings (`/affaires`, `/politiques`, `/parlement/votes`, `/parlement/dossiers`), rich politician profiles, significant communes, real vote and dossier detail pages.
+- **`noindex,follow`**: utility-filtered or paginated listing variants; thin politician profiles (no significant mandate, affair, fact-check, declaration, or biography); small communes; vote date-archive pages (`/parlement/votes/{YYYY-MM-DD}`).
+- **Single sources of truth**: filter-key perimeters in `listing-filters.ts`; thin-profile thresholds (`SIGNIFICANT_MANDATE_TYPES`, `MAIRE_MIN_COMMUNE_POPULATION`, `MIN_BIOGRAPHY_LENGTH`) in `politician-robots.ts`; commune threshold in `commune-robots.ts`; date-archive rule in `parliament-robots.ts`. `src/app/sitemap.ts` imports those constants, never hardcodes them.
+- **Assets**: `opengraph-image` responses carry `X-Robots-Tag: noindex` (`next.config.ts` + `og-image-robots.ts`). Never `robots.txt` Disallow them: social crawlers respect it and it would break link previews, and it stops Google reading the noindex.
+- **Enforcement**: `src/lib/seo/__tests__/indexation-doctrine.test.ts` fails in CI if a strong page turns noindex, a thin one turns indexable, a filter key disappears, or the sitemap stops sharing the thresholds. Ship every SEO change with a code comment and a case in that test.
+- **Private data stays private**: Search Console figures, query strings, and per-entity analysis live in `docs/search-console/` (gitignored) or Notion, never in the repo.
+
 ---
 
 ## 6. Code conventions

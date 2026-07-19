@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import { CondamnationsStatsTable } from "@/components/affairs/CondamnationsStatsTable";
+import {
+  CondamnationsStatsTable,
+  SEUIL_SUIVIS_TAUX,
+} from "@/components/affairs/CondamnationsStatsTable";
 import type { CondamnationsPartyStats } from "@/lib/data/condamnations";
 
 const rows: CondamnationsPartyStats[] = [
@@ -24,13 +27,36 @@ const rows: CondamnationsPartyStats[] = [
     nCondamnesPrononces: 1,
     tauxDefinitif: 1 / 5,
   },
+  // Effectif exactement au seuil : le taux doit s'afficher (comparaison >=).
+  {
+    partyId: "3",
+    partySlug: "parti-fictif",
+    partyShortName: "PF",
+    partyName: "Parti fictif",
+    nSuivis: SEUIL_SUIVIS_TAUX,
+    nCondamnesDefinitifs: 1,
+    nCondamnesPrononces: 0,
+    tauxDefinitif: 1 / SEUIL_SUIVIS_TAUX,
+  },
 ];
 
 describe("CondamnationsStatsTable", () => {
-  it("affiche le taux en texte pour chaque parti", () => {
+  it("affiche le taux quand l'effectif atteint le seuil", () => {
     render(<CondamnationsStatsTable rows={rows} />);
-    expect(screen.getByText("1.6%")).toBeInTheDocument();
-    expect(screen.getByText("20.0%")).toBeInTheDocument();
+    expect(screen.getByText("1.6%")).toBeInTheDocument(); // LR, 309 suivis
+    expect(screen.getByText("10.0%")).toBeInTheDocument(); // seuil, 10 suivis
+  });
+
+  it("masque le taux (n.s.) sous le seuil d'effectif", () => {
+    render(<CondamnationsStatsTable rows={rows} />);
+    // PRG (5 suivis) ne doit pas afficher son taux brut trompeur de 20%
+    expect(screen.queryByText("20.0%")).not.toBeInTheDocument();
+    expect(screen.getByTitle("Effectif trop faible pour un taux significatif")).toBeInTheDocument();
+  });
+
+  it("explique comment lire le tableau (brut vs taux)", () => {
+    render(<CondamnationsStatsTable rows={rows} />);
+    expect(screen.getByText(/Comment lire ce tableau/)).toBeInTheDocument();
   });
 
   it("n'affiche plus de jauge SVG (régression jauge trompeuse)", () => {
@@ -55,7 +81,6 @@ describe("CondamnationsStatsTable", () => {
     const table = screen.getByRole("table");
     expect(within(table).getByRole("columnheader", { name: "Taux" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "Élus suivis" })).toBeInTheDocument();
-    // Le parti est un en-tête de ligne (scope="row")
     expect(within(table).getByRole("rowheader", { name: /Les Républicains/ })).toBeInTheDocument();
   });
 });

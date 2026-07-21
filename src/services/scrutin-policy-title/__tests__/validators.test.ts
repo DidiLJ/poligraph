@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runValidators } from "@/services/scrutin-policy-title/validators";
+import { runValidators, quoteAppearsInText } from "@/services/scrutin-policy-title/validators";
 import type { SubstanceTextBlock, EvidenceQuote } from "@/services/scrutin-policy-title/types";
 import { BAD_TITLES, GOOD_TITLES } from "./productExamples.fixture";
 
@@ -94,6 +94,47 @@ describe("runValidators — evidence + trust", () => {
       blocks: [editorial],
     });
     expect(flags.some((f) => f.severity === "blocker" && f.code === "EVIDENCE_TRUST")).toBe(true);
+  });
+});
+
+describe("quoteAppearsInText — ellipsis-stitched LLM quotes", () => {
+  // Mistral routinely emits a quote that bridges two non-adjacent spans with an
+  // "[...]" marker. The elided middle text still exists in the source, so a plain
+  // substring match can never succeed even though the quote is faithfully grounded.
+  const source =
+    "Cette exigence permet : de prévenir tout risque d'interprétation abusive, d'assurer que la personne visée puisse comprendre les motifs invoqués et préparer utilement sa défense.";
+
+  it("grounds a [...] quote when each fragment appears in order in the source", () => {
+    const q =
+      "Cette exigence permet : [...] d'assurer que la personne visée puisse comprendre les motifs invoqués";
+    expect(quoteAppearsInText(q, source)).toBe(true);
+  });
+
+  it("does not ground a [...] quote when a fragment is absent from the source", () => {
+    const q = "Cette exigence permet : [...] d'inventer une obligation qui n'existe pas";
+    expect(quoteAppearsInText(q, source)).toBe(false);
+  });
+
+  it("does not ground a [...] quote when fragments appear out of order", () => {
+    const q = "préparer utilement sa défense [...] Cette exigence permet";
+    expect(quoteAppearsInText(q, source)).toBe(false);
+  });
+
+  it("runValidators clears EVIDENCE_GROUNDING for a grounded [...] quote", () => {
+    const flags = runValidators({
+      policyTitle: "Exiger une motivation écrite des circonstances exceptionnelles",
+      policySubtitle: null,
+      evidenceQuotes: [
+        quote({
+          quote:
+            "Cette exigence permet : [...] d'assurer que la personne visée puisse comprendre les motifs invoqués",
+        }),
+      ],
+      blocks: [officialBlock({ text: source })],
+    });
+    expect(flags.some((f) => f.severity === "blocker" && f.code === "EVIDENCE_GROUNDING")).toBe(
+      false
+    );
   });
 });
 

@@ -110,12 +110,33 @@ const POLICY_VERBS = [
   "control",
 ] as const;
 
+/** Matches an ellipsis marker an LLM inserts to bridge two non-adjacent spans:
+ *  "[...]", "[ ... ]", "[…]", or a bare "…". */
+const ELLIPSIS_MARKER = /\s*\[\s*(?:\.\.\.|…)\s*\]\s*|\s*…\s*/;
+
 /** Verbatim-or-fuzzy quote match: exact substring first, else normalized
- *  (diacritics/punctuation/whitespace-insensitive) substring. Shared by the
- *  EvidenceGrounding validator and the evidence-drift helper. */
+ *  (diacritics/punctuation/whitespace-insensitive) substring. A quote that
+ *  stitches non-adjacent spans with an ellipsis marker (common in LLM-emitted
+ *  quotes) can never be a single substring, so it grounds only if every fragment
+ *  appears, in order, in the source. Shared by the EvidenceGrounding validator
+ *  and the evidence-drift helper. */
 export function quoteAppearsInText(quote: string, text: string): boolean {
   if (text.includes(quote)) return true;
-  return normalizeForMatch(text).includes(normalizeForMatch(quote));
+  const normText = normalizeForMatch(text);
+  if (normText.includes(normalizeForMatch(quote))) return true;
+  if (!ELLIPSIS_MARKER.test(quote)) return false;
+  const fragments = quote
+    .split(ELLIPSIS_MARKER)
+    .map(normalizeForMatch)
+    .filter((f) => f.length > 0);
+  if (fragments.length < 2) return false;
+  let cursor = 0;
+  for (const fragment of fragments) {
+    const at = normText.indexOf(fragment, cursor);
+    if (at < 0) return false;
+    cursor = at + fragment.length;
+  }
+  return true;
 }
 
 function tokenize(title: string): string[] {

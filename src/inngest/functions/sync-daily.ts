@@ -3,6 +3,7 @@ import { POLICY_TITLE_CRON } from "@/config/policy-titles";
 import { syncMetadata } from "@/lib/sync/sync-metadata";
 import { revalidateTags } from "@/lib/cache";
 import { isIngestionAnomaly } from "@/lib/monitoring/amendment-link-freshness";
+import { linkableUnlinkedVoteWhere } from "@/lib/monitoring/amendment-link-query";
 
 interface DailyStep {
   name: string;
@@ -102,6 +103,7 @@ const DAILY_STEPS: DailyStep[] = [
     run: async () => {
       const { syncAmendmentsAN } = await import("@/services/sync/amendments-an");
       const stats = await syncAmendmentsAN({
+        mode: "incremental",
         force: false,
         safetyCap: POLICY_TITLE_CRON.amendmentsSafetyCap,
       });
@@ -110,15 +112,14 @@ const DAILY_STEPS: DailyStep[] = [
       // normal, but a fully-processed feed that ingests nothing while linkable
       // recent votes remain unlinked means the pipeline is failing silently.
       const { db } = await import("@/lib/db");
+      // Same shared where-fragment as the freshness monitor and the backfill
+      // loop: confirmed-unresolvable votes are excluded from the blocking count.
       const recentLinkableUnlinked = await db.scrutin.count({
-        where: {
+        where: linkableUnlinkedVoteWhere({
           legislature: 17,
           chamber: "AN",
-          type: "AMENDEMENT",
-          dossierLegislatifId: { not: null },
           votingDate: { gte: new Date(Date.now() - 14 * 24 * 3_600_000) },
-          amendmentLinks: { none: {} },
-        },
+        }),
       });
       const anomaly = isIngestionAnomaly({
         notModified: stats.notModified ?? false,
@@ -137,6 +138,8 @@ const DAILY_STEPS: DailyStep[] = [
         itemCount: stats.amendmentsCreated,
         durationS: stats.durationMs / 1000,
         extra: {
+          dossiersInspected: stats.dossiersInspected,
+          dossiersChanged: stats.dossiersChanged,
           seen: stats.amendmentsSeen,
           created: stats.amendmentsCreated,
           updated: stats.amendmentsUpdated,

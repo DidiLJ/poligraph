@@ -17,10 +17,23 @@ export interface NormalizedAmendment {
   chamber: Chamber;
 }
 
+/**
+ * Minimal projection kept for the whole run so `resolveParents` /
+ * `resolveIdenticalGroups` can run after all batches are flushed. Only these
+ * three fields are read downstream, so we deliberately do NOT retain the heavy
+ * `content`/`summary` HTML across the ~123k-entry full pass (that array would
+ * otherwise dominate memory).
+ */
+export type AmendmentResolveRef = Pick<
+  NormalizedAmendment,
+  "externalId" | "parentExternalId" | "identicalDiscussionId"
+>;
+
 export interface SyncAmendmentsANOptions {
   legislature?: number; // default 17
   dryRun?: boolean; // parse + report, no DB writes
-  limit?: number; // cap records processed (debug/sample)
+  limit?: number; // debug/sample only: truncates silently — not for production runs
+  safetyCap?: number; // hard ceiling: throw (do NOT truncate) if entries exceed this
   force?: boolean; // ignore etag, force re-download
   zipPath?: string; // use a local ZIP instead of downloading (debug/tests)
   batchSize?: number; // default 500
@@ -66,4 +79,7 @@ export interface SyncAmendmentsANStats {
   substanceDrift?: PolicyTitleSubstanceDriftResult; // PR B: set on non-dryRun runs
   warnings: SyncWarning[];
   durationMs: number;
+  writeMs?: number; // ms spent in writeAmendmentBatch
+  resolveMs?: number; // ms spent in resolveParents + resolveIdenticalGroups
+  peakRssMb?: number; // peak process RSS during the run
 }

@@ -2,6 +2,7 @@ import { inngest } from "../client";
 import { POLICY_TITLE_CRON } from "@/config/policy-titles";
 import { syncMetadata } from "@/lib/sync/sync-metadata";
 import { revalidateTags } from "@/lib/cache";
+import { isIngestionAnomaly } from "@/lib/monitoring/amendment-link-freshness";
 
 interface DailyStep {
   name: string;
@@ -102,8 +103,36 @@ const DAILY_STEPS: DailyStep[] = [
       const { syncAmendmentsAN } = await import("@/services/sync/amendments-an");
       const stats = await syncAmendmentsAN({
         force: false,
-        limit: POLICY_TITLE_CRON.amendmentsImportLimit,
+        safetyCap: POLICY_TITLE_CRON.amendmentsSafetyCap,
       });
+
+      // In-sync anomaly guard: a 304/unchanged feed or any ingested row is
+      // normal, but a fully-processed feed that ingests nothing while linkable
+      // recent votes remain unlinked means the pipeline is failing silently.
+      const { db } = await import("@/lib/db");
+      const recentLinkableUnlinked = await db.scrutin.count({
+        where: {
+          legislature: 17,
+          chamber: "AN",
+          type: "AMENDEMENT",
+          dossierLegislatifId: { not: null },
+          votingDate: { gte: new Date(Date.now() - 14 * 24 * 3_600_000) },
+          amendmentLinks: { none: {} },
+        },
+      });
+      const anomaly = isIngestionAnomaly({
+        notModified: stats.notModified ?? false,
+        created: stats.amendmentsCreated,
+        updated: stats.amendmentsUpdated,
+        recentLinkableUnlinked,
+      });
+      if (anomaly) {
+        console.warn(
+          "[sync-daily] amendments-an ANOMALY: feed processed but nothing ingested while linkable recent votes remain unlinked",
+          { seen: stats.amendmentsSeen, recentLinkableUnlinked }
+        );
+      }
+
       await syncMetadata.markCompleted("policy-titles:amendments", {
         itemCount: stats.amendmentsCreated,
         durationS: stats.durationMs / 1000,
@@ -112,6 +141,10 @@ const DAILY_STEPS: DailyStep[] = [
           created: stats.amendmentsCreated,
           updated: stats.amendmentsUpdated,
           skipped: stats.amendmentsSkipped,
+          writeMs: stats.writeMs,
+          resolveMs: stats.resolveMs,
+          peakRssMb: stats.peakRssMb,
+          anomaly,
         },
       });
       console.info("[sync-daily] amendments-an", stats);

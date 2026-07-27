@@ -5,6 +5,7 @@ import {
   CERTAINTY_COLORS,
   CERTAINTY_SORT_ORDER,
   CERTAINTY_DESCRIPTIONS,
+  CERTAINTY_SCORE,
   isActiveCertainty,
   isAccusedInvolvement,
   ACTIVE_AFFAIR_STATUSES,
@@ -137,15 +138,31 @@ describe("ACTIVE_AFFAIR_STATUSES", () => {
 });
 
 describe("exports are complete", () => {
-  it("has labels for all 4 levels", () => {
-    expect(Object.keys(CERTAINTY_LABELS)).toHaveLength(4);
+  it("has labels for all 5 levels", () => {
+    expect(Object.keys(CERTAINTY_LABELS)).toHaveLength(5);
   });
 
-  it("has colors for all 4 levels", () => {
-    expect(Object.keys(CERTAINTY_COLORS)).toHaveLength(4);
+  it("has colors for all 5 levels", () => {
+    expect(Object.keys(CERTAINTY_COLORS)).toHaveLength(5);
   });
 
-  it("has descriptions for all 4 levels", () => {
-    expect(Object.keys(CERTAINTY_DESCRIPTIONS)).toHaveLength(4);
+  it("has descriptions for all 5 levels", () => {
+    expect(Object.keys(CERTAINTY_DESCRIPTIONS)).toHaveLength(5);
+  });
+});
+
+describe("niveau CLOS_SANS_CHARGE", () => {
+  it("n'est pas une procédure active", () => {
+    expect(isActiveCertainty("CLOS_SANS_CHARGE")).toBe(false);
+  });
+
+  it("pèse moins qu'une procédure en cours et plus qu'une issue favorable", () => {
+    expect(CERTAINTY_SCORE.CLOS_SANS_CHARGE).toBeLessThan(CERTAINTY_SCORE.EN_COURS);
+    expect(CERTAINTY_SCORE.CLOS_SANS_CHARGE).toBeGreaterThan(CERTAINTY_SCORE.CLOS_FAVORABLE);
+  });
+
+  it("se trie entre les deux", () => {
+    expect(CERTAINTY_SORT_ORDER.CLOS_SANS_CHARGE).toBeGreaterThan(CERTAINTY_SORT_ORDER.EN_COURS);
+    expect(CERTAINTY_SORT_ORDER.CLOS_SANS_CHARGE).toBeLessThan(CERTAINTY_SORT_ORDER.CLOS_FAVORABLE);
   });
 });

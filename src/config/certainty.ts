@@ -1,6 +1,11 @@
 import type { AffairStatus, Involvement } from "@/generated/prisma";
 
-export type CertaintyLevel = "ETABLI" | "PRONONCE" | "EN_COURS" | "CLOS_FAVORABLE";
+export type CertaintyLevel =
+  | "ETABLI"
+  | "PRONONCE"
+  | "EN_COURS"
+  | "CLOS_SANS_CHARGE"
+  | "CLOS_FAVORABLE";
 
 /**
  * Whether a certainty/status badge describes the tracked politician themselves.
@@ -36,14 +41,20 @@ export function getCertaintyLevel(status: AffairStatus): CertaintyLevel {
   return STATUS_TO_CERTAINTY[status];
 }
 
+const INACTIVE_LEVELS: ReadonlySet<CertaintyLevel> = new Set([
+  "CLOS_SANS_CHARGE",
+  "CLOS_FAVORABLE",
+]);
+
 export function isActiveCertainty(level: CertaintyLevel): boolean {
-  return level !== "CLOS_FAVORABLE";
+  return !INACTIVE_LEVELS.has(level);
 }
 
 export const CERTAINTY_LABELS: Record<CertaintyLevel, string> = {
   ETABLI: "Condamnation définitive",
   PRONONCE: "Condamnation non définitive",
   EN_COURS: "Procédure en cours",
+  CLOS_SANS_CHARGE: "Instruction close, sans mise en examen",
   CLOS_FAVORABLE: "Procédure close sans condamnation",
 };
 
@@ -51,6 +62,7 @@ export const CERTAINTY_COLORS: Record<CertaintyLevel, string> = {
   ETABLI: "text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/40",
   PRONONCE: "text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900/40",
   EN_COURS: "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40",
+  CLOS_SANS_CHARGE: "text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-800/60",
   CLOS_FAVORABLE: "text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-800",
 };
 
@@ -58,7 +70,8 @@ export const CERTAINTY_SORT_ORDER: Record<CertaintyLevel, number> = {
   ETABLI: 0,
   PRONONCE: 1,
   EN_COURS: 2,
-  CLOS_FAVORABLE: 3,
+  CLOS_SANS_CHARGE: 3,
+  CLOS_FAVORABLE: 4,
 };
 
 export const CERTAINTY_DESCRIPTIONS: Record<CertaintyLevel, string> = {
@@ -67,6 +80,8 @@ export const CERTAINTY_DESCRIPTIONS: Record<CertaintyLevel, string> = {
     "Verdict rendu en première instance, appel possible ou en cours. La présomption d'innocence s'applique.",
   EN_COURS:
     "Procédure judiciaire active. Aucun jugement n'a été rendu. La présomption d'innocence s'applique.",
+  CLOS_SANS_CHARGE:
+    "L'instruction est terminée sans qu'aucune mise en examen ait été prononcée. Le règlement du dossier, non-lieu ou renvoi, reste à venir. Aucune condamnation n'a été prononcée et la présomption d'innocence s'applique.",
   CLOS_FAVORABLE:
     "Procédure terminée sans condamnation (relaxe, acquittement, non-lieu, prescription ou classement sans suite).",
 };
@@ -75,6 +90,7 @@ export const CERTAINTY_SCORE: Record<CertaintyLevel, number> = {
   ETABLI: 4,
   PRONONCE: 3,
   EN_COURS: 2,
+  CLOS_SANS_CHARGE: 1,
   CLOS_FAVORABLE: 0,
 };
 
@@ -87,7 +103,7 @@ export function getStatusesForCertainty(level: CertaintyLevel): AffairStatus[] {
 
 /** All AffairStatus values that are NOT clos favorable (for DB where clauses) */
 export const ACTIVE_AFFAIR_STATUSES: AffairStatus[] = Object.entries(STATUS_TO_CERTAINTY)
-  .filter(([, level]) => level !== "CLOS_FAVORABLE")
+  .filter(([, level]) => isActiveCertainty(level))
   .map(([status]) => status as AffairStatus);
 
 /** All AffairStatus values that are clos favorable */

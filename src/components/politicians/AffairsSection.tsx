@@ -44,6 +44,9 @@ export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
     ETABLI: [],
     PRONONCE: [],
     EN_COURS: [],
+    // No status maps to this level yet; kept out of CERTAINTY_LEVELS below so
+    // it never renders on the public profile until a real status exists.
+    CLOS_SANS_CHARGE: [],
     CLOS_FAVORABLE: [],
   };
 

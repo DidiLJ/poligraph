@@ -4,6 +4,10 @@ export type JudicialMaturity =
   | "CONDAMNATION"
   | "PROCEDURE_VALIDEE"
   | "ENQUETE"
+  /** Instruction terminée sans mise en examen: no charge was retained, and the
+   *  ordonnance de règlement has not been issued yet. Deliberately outside
+   *  isJudiciallyValidated: the judge validated nothing against this person. */
+  | "INSTRUCTION_CLOSE"
   | "CLOSE_SANS_CONDAMNATION";
 
 const STATUS_TO_MATURITY: Record<AffairStatus, JudicialMaturity> = {
@@ -46,6 +50,7 @@ export const MATURITY_LABELS: Record<JudicialMaturity, string> = {
   CONDAMNATION: "Condamnation",
   PROCEDURE_VALIDEE: "Procédure validée par un juge",
   ENQUETE: "Enquête préliminaire",
+  INSTRUCTION_CLOSE: "Instruction close sans mise en examen",
   CLOSE_SANS_CONDAMNATION: "Procédure close sans condamnation",
 };
 

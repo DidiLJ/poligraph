@@ -3,6 +3,7 @@ export interface ProbityStats {
   etabli: number;
   prononce: number;
   enCours: number;
+  closSansCharge: number;
   closFavorable: number;
 }
 
@@ -12,6 +13,10 @@ export function formatProbityBreakdown(stats: ProbityStats): string {
   if (stats.etabli > 0) parts.push(`${stats.etabli} établie${stats.etabli > 1 ? "s" : ""}`);
   if (stats.prononce > 0) parts.push(`${stats.prononce} prononcée${stats.prononce > 1 ? "s" : ""}`);
   if (stats.enCours > 0) parts.push(`${stats.enCours} en cours`);
+  if (stats.closSansCharge > 0)
+    parts.push(
+      `${stats.closSansCharge} close${stats.closSansCharge > 1 ? "s" : ""} sans mise en examen`
+    );
   if (stats.closFavorable > 0)
     parts.push(`${stats.closFavorable} close${stats.closFavorable > 1 ? "s" : ""}`);
   return parts.join(", ");

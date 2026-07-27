@@ -338,6 +338,7 @@ export async function getCertaintyCounts() {
     ETABLI: 0,
     PRONONCE: 0,
     EN_COURS: 0,
+    CLOS_SANS_CHARGE: 0,
     CLOS_FAVORABLE: 0,
   };
 

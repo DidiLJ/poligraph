@@ -28,6 +28,9 @@ const CERTAINTY_STATUSES: Record<CertaintyLevel, string[]> = {
     "Renvoi devant le tribunal",
     "Procès en cours",
   ],
+  // No status maps to this level yet; kept out of CERTAINTY_ORDER so nothing
+  // renders on the public page until a real status exists.
+  CLOS_SANS_CHARGE: [],
   CLOS_FAVORABLE: [
     "Relaxe",
     "Acquittement",

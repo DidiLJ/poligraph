@@ -27,4 +27,12 @@ describe("cohérence croisée entre les deux taxonomies", () => {
       }
     }
   });
+
+  it("aucun statut clos sans charge n'est classé dans un autre palier de maturité", () => {
+    for (const status of Object.keys(AffairStatus) as (keyof typeof AffairStatus)[]) {
+      if (getCertaintyLevel(status) === "CLOS_SANS_CHARGE") {
+        expect(getJudicialMaturity(status)).toBe("INSTRUCTION_CLOSE");
+      }
+    }
+  });
 });

@@ -56,7 +56,14 @@ interface JudicialSectionProps {
   victimStats: ViolenceStats;
 }
 
-const CLOSE_SANS_CONDAMNATION_SET = new Set<AffairStatus>(CLOSE_STATUSES);
+/** Statuses painted in neutral grey on the status chart: neither an ongoing
+ *  procedure (amber) nor a conviction (blue). Instruction closed without any
+ *  mise en examen belongs here even though it is not a closed-without-conviction
+ *  outcome, because the blue fallback is reserved for convictions. */
+const NEUTRAL_STATUS_SET = new Set<AffairStatus>([
+  ...CLOSE_STATUSES,
+  "INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN",
+]);
 
 const ONGOING_STATUSES = new Set<AffairStatus>([
   "ENQUETE_PRELIMINAIRE",
@@ -236,7 +243,7 @@ export function JudicialSection({
                   value: s.count,
                   color: ONGOING_STATUSES.has(s.status)
                     ? "#d97706"
-                    : CLOSE_SANS_CONDAMNATION_SET.has(s.status)
+                    : NEUTRAL_STATUS_SET.has(s.status)
                       ? "#6b7280"
                       : "#2563eb",
                 }))}

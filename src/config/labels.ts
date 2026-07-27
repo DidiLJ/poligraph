@@ -35,6 +35,7 @@ export const AN_SEAT_COUNT = 577;
 export const AFFAIR_STATUS_LABELS: Record<AffairStatus, string> = {
   ENQUETE_PRELIMINAIRE: "Enquête préliminaire",
   INSTRUCTION: "Instruction en cours",
+  INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN: "Instruction close, sans mise en examen",
   MISE_EN_EXAMEN: "Mise en examen",
   RENVOI_TRIBUNAL: "Renvoi devant le tribunal",
   PROCES_EN_COURS: "Procès en cours",
@@ -52,6 +53,8 @@ export const AFFAIR_STATUS_LABELS: Record<AffairStatus, string> = {
 export const AFFAIR_STATUS_COLORS: Record<AffairStatus, string> = {
   ENQUETE_PRELIMINAIRE: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
   INSTRUCTION: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
+  INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN:
+    "bg-slate-100 text-slate-800 dark:bg-slate-800/50 dark:text-slate-300",
   MISE_EN_EXAMEN: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
   RENVOI_TRIBUNAL: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
   PROCES_EN_COURS: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
@@ -73,6 +76,8 @@ export const AFFAIR_STATUS_DESCRIPTIONS: Record<AffairStatus, string> = {
     "Le parquet a ordonné une enquête pour vérifier les faits. Aucune mise en cause formelle.",
   INSTRUCTION:
     "Un juge d'instruction mène des investigations approfondies pour établir les responsabilités.",
+  INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN:
+    "L'instruction est terminée sans qu'aucune mise en examen ait été prononcée. Le parquet doit encore rendre ses réquisitions et aucune ordonnance n'a été rendue.",
   MISE_EN_EXAMEN:
     "Le juge considère qu'il existe des indices graves contre la personne. Ce n'est pas une condamnation.",
   RENVOI_TRIBUNAL: "Le juge a considéré les charges suffisantes pour un procès devant le tribunal.",
@@ -96,6 +101,7 @@ export const AFFAIR_STATUS_DESCRIPTIONS: Record<AffairStatus, string> = {
 export const AFFAIR_STATUS_NEEDS_PRESUMPTION: Record<AffairStatus, boolean> = {
   ENQUETE_PRELIMINAIRE: true,
   INSTRUCTION: true,
+  INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN: true,
   MISE_EN_EXAMEN: true,
   RENVOI_TRIBUNAL: true,
   PROCES_EN_COURS: true,

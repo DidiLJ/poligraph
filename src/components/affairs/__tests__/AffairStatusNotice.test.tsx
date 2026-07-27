@@ -37,6 +37,14 @@ describe("getAffairNoticeVariant — sélection par statut et involvement", () =
     }
   });
 
+  it("instruction close sans mise en examen : présomption d'innocence, pas de silence", () => {
+    // Aucune ordonnance n'a été rendue : le statut doit rester dans les
+    // procédures en cours, sinon l'encart ne s'affiche plus du tout.
+    expect(getAffairNoticeVariant("INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN", "DIRECT")).toBe(
+      "presumption"
+    );
+  });
+
   it("aucun encart à charge pour les victimes, plaignants et simples mentions", () => {
     for (const inv of ["VICTIM", "PLAINTIFF", "MENTIONED_ONLY"] as const) {
       expect(getAffairNoticeVariant("RELAXE", inv)).toBeNull();

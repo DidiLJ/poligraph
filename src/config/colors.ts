@@ -29,6 +29,11 @@ export const COLORS = {
   affairStatus: {
     ENQUETE_PRELIMINAIRE: { light: "#88a4c6", dark: "#5a7eaa", tailwind: "bg-blue-300" },
     INSTRUCTION: { light: "#7090b8", dark: "#5a7eaa", tailwind: "bg-blue-400" },
+    INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN: {
+      light: "#9498a0",
+      dark: "#6a6e78",
+      tailwind: "bg-gray-400",
+    },
     MISE_EN_EXAMEN: { light: "#5a7aaa", dark: "#6a90ba", tailwind: "bg-blue-500" },
     RENVOI_TRIBUNAL: { light: "#4a6a9c", dark: "#7a9ec6", tailwind: "bg-blue-600" },
     PROCES_EN_COURS: { light: "#3a5a8e", dark: "#7a9ec6", tailwind: "bg-blue-700" },

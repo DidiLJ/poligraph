@@ -13,6 +13,7 @@ function statusToEventType(status: AffairStatus): AffairEventType {
   const map: Record<AffairStatus, AffairEventType> = {
     ENQUETE_PRELIMINAIRE: "ENQUETE_PRELIMINAIRE",
     INSTRUCTION: "INFORMATION_JUDICIAIRE",
+    INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN: "AUTRE",
     MISE_EN_EXAMEN: "MISE_EN_EXAMEN",
     RENVOI_TRIBUNAL: "RENVOI_TRIBUNAL",
     PROCES_EN_COURS: "PROCES",
@@ -34,6 +35,7 @@ function statusLabel(status: AffairStatus): string {
   const labels: Record<AffairStatus, string> = {
     ENQUETE_PRELIMINAIRE: "Enquête préliminaire",
     INSTRUCTION: "Instruction",
+    INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN: "Instruction close, sans mise en examen",
     MISE_EN_EXAMEN: "Mise en examen",
     RENVOI_TRIBUNAL: "Renvoi devant le tribunal",
     PROCES_EN_COURS: "Procès en cours",

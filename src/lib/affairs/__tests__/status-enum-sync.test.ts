@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { AffairStatus } from "@/generated/prisma";
 import { COLORS } from "@/config/colors";
 import { VALID_STATUSES } from "@/lib/security/schemas/affair";
+import { getJudicialMaturity } from "@/config/judicial-maturity";
+import { getCertaintyLevel } from "@/config/certainty";
 
 const prismaValues = Object.keys(AffairStatus).sort();
 
@@ -14,5 +16,15 @@ describe("les listes de statuts recopiées suivent l'enum Prisma", () => {
 
   it("VALID_STATUSES couvre tous les statuts", () => {
     expect([...VALID_STATUSES].sort()).toEqual(prismaValues);
+  });
+});
+
+describe("cohérence croisée entre les deux taxonomies", () => {
+  it("aucun statut validé judiciairement n'est classé instruction close", () => {
+    for (const status of Object.keys(AffairStatus) as (keyof typeof AffairStatus)[]) {
+      if (getJudicialMaturity(status) === "INSTRUCTION_CLOSE") {
+        expect(getCertaintyLevel(status)).toBe("CLOS_SANS_CHARGE");
+      }
+    }
   });
 });

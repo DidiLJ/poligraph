@@ -22,6 +22,7 @@ const STATUS_LABELS: Partial<Record<AffairStatus, string>> = {
   NON_LIEU: "Non-lieu",
   PRESCRIPTION: "Action publique éteinte par prescription",
   CLASSEMENT_SANS_SUITE: "Classement sans suite",
+  INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN: "Instruction close, sans MEE",
 };
 
 const STATUS_COLORS: Partial<Record<AffairStatus, string>> = {

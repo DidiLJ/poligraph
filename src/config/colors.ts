@@ -33,6 +33,8 @@ export const COLORS = {
     RENVOI_TRIBUNAL: { light: "#4a6a9c", dark: "#7a9ec6", tailwind: "bg-blue-600" },
     PROCES_EN_COURS: { light: "#3a5a8e", dark: "#7a9ec6", tailwind: "bg-blue-700" },
     APPEL_EN_COURS: { light: "#2d4a7c", dark: "#7a9ec6", tailwind: "bg-blue-800" },
+    CONDAMNATION_PREMIERE_INSTANCE: { light: "#b06a6a", dark: "#c88a8a", tailwind: "bg-red-600" },
+    POURVOI_EN_CASSATION: { light: "#b06a6a", dark: "#c88a8a", tailwind: "bg-red-600" },
     CONDAMNATION_DEFINITIVE: { light: "#9e5454", dark: "#c88a8a", tailwind: "bg-red-800" },
     RELAXE: { light: "#88a4c6", dark: "#9ab6d6", tailwind: "bg-blue-300" },
     ACQUITTEMENT: { light: "#88a4c6", dark: "#9ab6d6", tailwind: "bg-blue-300" },

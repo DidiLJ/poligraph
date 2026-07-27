@@ -19,7 +19,8 @@ export type AffairNoticeVariant =
   | "definitive"
   | "favorable"
   | "prescription"
-  | "third_party";
+  | "third_party"
+  | "instruction_close";
 
 const FAVORABLE_STATUSES: readonly AffairStatus[] = [
   "RELAXE",
@@ -58,6 +59,7 @@ export function getAffairNoticeVariant(
   // Checked before the generic non-definitive wording: "en cours d'appel" would be
   // wrong here, the appeal is over and it is cassation that is pending (#511).
   if (status === "POURVOI_EN_CASSATION") return "pourvoi";
+  if (status === "INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN") return "instruction_close";
   if (NON_DEFINITIVE_STATUSES.includes(status)) return "non_definitive";
   if (EN_COURS_STATUSES.includes(status)) return "presumption";
   return null;
@@ -105,6 +107,12 @@ const NOTICES: Record<AffairNoticeVariant, { title: string; body: string; classN
     body: "la procédure est close sans condamnation. La prescription ne constitue pas une décision sur le fond.",
     className:
       "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300",
+  },
+  instruction_close: {
+    title: "Instruction close, sans mise en examen",
+    body: "l'instruction est terminée sans qu'aucune mise en examen ait été prononcée. Le parquet doit encore rendre ses réquisitions. Aucune condamnation n'a été prononcée.",
+    className:
+      "border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200",
   },
 };
 

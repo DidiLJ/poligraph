@@ -84,6 +84,20 @@ describe("AffairStatusNotice — wordings validés (RGPD art. 10)", () => {
   });
 });
 
+describe("instruction close sans mise en examen", () => {
+  it("rend une variante dédiée pour une personne mise en cause", () => {
+    expect(getAffairNoticeVariant("INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN", "DIRECT")).toBe(
+      "instruction_close"
+    );
+  });
+
+  it("ne rend aucun encart quand la personne est seulement mentionnée", () => {
+    expect(
+      getAffairNoticeVariant("INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN", "MENTIONED_ONLY")
+    ).toBeNull();
+  });
+});
+
 describe("régression #383 — plaignant/victime dans une affaire de condamnation", () => {
   // Affaire « Plainte de X contre Y » : c'est Y qui est jugé. Ni le badge de
   // certitude (piloté par isAccusedInvolvement) ni l'encart de prudence

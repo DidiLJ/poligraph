@@ -1,24 +1,8 @@
 import { z } from "zod";
+import { VALID_STATUSES } from "@/lib/security/schemas/affair";
 
-// ─── Enum values matching Prisma schema ────────────────────────────────
-// Defined inline to avoid importing runtime Prisma client in validation layer.
-
-const AFFAIR_STATUSES = [
-  "ENQUETE_PRELIMINAIRE",
-  "INSTRUCTION",
-  "MISE_EN_EXAMEN",
-  "RENVOI_TRIBUNAL",
-  "PROCES_EN_COURS",
-  "CONDAMNATION_PREMIERE_INSTANCE",
-  "APPEL_EN_COURS",
-  "POURVOI_EN_CASSATION",
-  "CONDAMNATION_DEFINITIVE",
-  "RELAXE",
-  "ACQUITTEMENT",
-  "NON_LIEU",
-  "PRESCRIPTION",
-  "CLASSEMENT_SANS_SUITE",
-] as const;
+// Derived, never re-typed: a hand-copied duplicate had no guard and would drift.
+const AFFAIR_STATUSES = VALID_STATUSES;
 
 const AFFAIR_CATEGORIES = [
   "CORRUPTION",

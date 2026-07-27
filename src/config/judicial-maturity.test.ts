@@ -127,3 +127,13 @@ describe("MATURITY_LABELS", () => {
     expect(MATURITY_LABELS.CLOSE_SANS_CONDAMNATION).toBeDefined();
   });
 });
+
+describe("palier INSTRUCTION_CLOSE", () => {
+  it("n'est pas une validation judiciaire", () => {
+    expect(AGGREGATE_STATUSES).not.toContain("INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN");
+  });
+
+  it("a un libellé", () => {
+    expect(MATURITY_LABELS.INSTRUCTION_CLOSE).toBe("Instruction close sans mise en examen");
+  });
+});

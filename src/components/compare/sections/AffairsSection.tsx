@@ -6,6 +6,7 @@ const MATURITY_COLORS: Record<JudicialMaturity, string> = {
   CONDAMNATION: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   PROCEDURE_VALIDEE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   ENQUETE: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  INSTRUCTION_CLOSE: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
   CLOSE_SANS_CONDAMNATION: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 };
 

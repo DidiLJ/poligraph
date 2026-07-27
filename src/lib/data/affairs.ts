@@ -338,6 +338,7 @@ export async function getCertaintyCounts() {
     ETABLI: 0,
     PRONONCE: 0,
     EN_COURS: 0,
+    CLOS_SANS_CHARGE: 0,
     CLOS_FAVORABLE: 0,
   };
 
@@ -356,6 +357,7 @@ const TERMINAL_STATUSES: AffairStatus[] = [
   "PRESCRIPTION",
   "CLASSEMENT_SANS_SUITE",
   "CONDAMNATION_DEFINITIVE",
+  "INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN",
 ];
 
 const VICTIM_INVOLVEMENTS: Involvement[] = ["VICTIM", "PLAINTIFF"];

@@ -397,6 +397,7 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
           WHEN 'PROCES_EN_COURS' THEN 'EN_COURS'
           WHEN 'ENQUETE_PRELIMINAIRE' THEN 'EN_COURS'
           WHEN 'INSTRUCTION' THEN 'EN_COURS'
+          WHEN 'INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN' THEN 'CLOS_SANS_CHARGE'
           ELSE 'CLOS_FAVORABLE'
         END as "certaintyLevel",
         p."fullName" as "politicianName",
@@ -417,7 +418,8 @@ async function queryWeeklyRecap(weekStart: Date, weekEnd: Date): Promise<WeeklyR
         WHEN 'PROCES_EN_COURS' THEN 2
         WHEN 'ENQUETE_PRELIMINAIRE' THEN 2
         WHEN 'INSTRUCTION' THEN 2
-        ELSE 3
+        WHEN 'INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN' THEN 3
+        ELSE 4
       END ASC
       LIMIT 10
     `,

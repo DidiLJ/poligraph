@@ -26,6 +26,7 @@ const MATURITY_TAB_LABELS: Record<string, string> = {
   PROCEDURE_VALIDEE: "Procédures validées",
   ENQUETE: "Enquêtes",
   CLOSE_SANS_CONDAMNATION: "Closes",
+  INSTRUCTION_CLOSE: "Instructions closes",
 };
 
 const MATURITY_TAB_COLORS: Record<string, string> = {
@@ -35,6 +36,8 @@ const MATURITY_TAB_COLORS: Record<string, string> = {
   ENQUETE: "border-gray-400 bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   CLOSE_SANS_CONDAMNATION:
     "border-green-500 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  INSTRUCTION_CLOSE:
+    "border-slate-400 bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 };
 
 export interface PartyAffair {

@@ -72,6 +72,7 @@ export async function getJudicialData() {
     CONDAMNATION: 0,
     PROCEDURE_VALIDEE: 0,
     ENQUETE: 0,
+    INSTRUCTION_CLOSE: 0,
     CLOSE_SANS_CONDAMNATION: 0,
   };
   const byStatus = byStatusRaw.map((a) => {

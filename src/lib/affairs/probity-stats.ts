@@ -10,6 +10,7 @@ const EMPTY_STATS: ProbityStats = {
   etabli: 0,
   prononce: 0,
   enCours: 0,
+  closSansCharge: 0,
   closFavorable: 0,
 };
 
@@ -17,6 +18,7 @@ const BUCKET_FIELD: Record<CertaintyLevel, keyof Omit<ProbityStats, "total">> = 
   ETABLI: "etabli",
   PRONONCE: "prononce",
   EN_COURS: "enCours",
+  CLOS_SANS_CHARGE: "closSansCharge",
   CLOS_FAVORABLE: "closFavorable",
 };
 

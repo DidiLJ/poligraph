@@ -63,3 +63,29 @@ describe("computeJudicialCounts", () => {
     expect(counts.badgeCount).toBe(2);
   });
 });
+
+describe("instruction close sans mise en examen", () => {
+  it("ne compte ni en procédure en cours ni dans le badge", () => {
+    const counts = computeJudicialCounts([
+      { involvement: "DIRECT", status: "INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN" },
+    ]);
+    expect(counts.proceduresEnCours).toBe(0);
+    expect(counts.badgeCount).toBe(0);
+    expect(counts.condamnationsDefinitives).toBe(0);
+    expect(counts.condamnationsNonDefinitives).toBe(0);
+  });
+
+  it("laisse les condamnations de la même personne intactes", () => {
+    const counts = computeJudicialCounts([
+      { involvement: "DIRECT", status: "INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN" },
+      { involvement: "DIRECT", status: "CONDAMNATION_DEFINITIVE" },
+      { involvement: "DIRECT", status: "CONDAMNATION_DEFINITIVE" },
+      { involvement: "DIRECT", status: "CONDAMNATION_PREMIERE_INSTANCE" },
+      { involvement: "DIRECT", status: "APPEL_EN_COURS" },
+    ]);
+    expect(counts.condamnationsDefinitives).toBe(2);
+    expect(counts.condamnationsNonDefinitives).toBe(2);
+    expect(counts.proceduresEnCours).toBe(0);
+    expect(counts.badgeCount).toBe(4);
+  });
+});

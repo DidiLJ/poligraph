@@ -16,7 +16,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/methodologie" },
 };
 
-const CERTAINTY_ORDER: CertaintyLevel[] = ["ETABLI", "PRONONCE", "EN_COURS", "CLOS_FAVORABLE"];
+const CERTAINTY_ORDER: CertaintyLevel[] = [
+  "ETABLI",
+  "PRONONCE",
+  "EN_COURS",
+  "CLOS_SANS_CHARGE",
+  "CLOS_FAVORABLE",
+];
 
 const CERTAINTY_STATUSES: Record<CertaintyLevel, string[]> = {
   ETABLI: ["Condamnation définitive"],
@@ -28,6 +34,7 @@ const CERTAINTY_STATUSES: Record<CertaintyLevel, string[]> = {
     "Renvoi devant le tribunal",
     "Procès en cours",
   ],
+  CLOS_SANS_CHARGE: ["Instruction close, sans mise en examen"],
   CLOS_FAVORABLE: [
     "Relaxe",
     "Acquittement",

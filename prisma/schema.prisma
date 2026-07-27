@@ -689,6 +689,10 @@ enum AffairEventType {
 enum AffairStatus {
   ENQUETE_PRELIMINAIRE
   INSTRUCTION
+  // Instruction closed with no mise en examen: article 175 CPP avis de fin
+  // d'information issued, réquisitions pending. Article 179 CPP forecloses a
+  // renvoi without a prior mise en examen, so this is not a pending charge.
+  INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN
   MISE_EN_EXAMEN
   RENVOI_TRIBUNAL
   PROCES_EN_COURS

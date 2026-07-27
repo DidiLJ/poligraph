@@ -76,6 +76,7 @@ export const AFFAIR_STATUS_MARKER_COLORS: Record<AffairStatus, string> = {
   NON_LIEU: "#6b7280",
   PRESCRIPTION: "#6b7280",
   CLASSEMENT_SANS_SUITE: "#6b7280",
+  INSTRUCTION_CLOTUREE_SANS_MISE_EN_EXAMEN: "#6b7280",
 };
 
 // Configuration de la timeline

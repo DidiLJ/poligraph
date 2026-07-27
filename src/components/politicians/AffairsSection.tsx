@@ -27,7 +27,15 @@ interface AffairsSectionProps {
   civility: string | null;
 }
 
-const CERTAINTY_LEVELS: CertaintyLevel[] = ["ETABLI", "PRONONCE", "EN_COURS", "CLOS_FAVORABLE"];
+// Every CertaintyLevel must appear here: the render loop below iterates on this
+// array, so a missing level silently drops the affairs grouped under it.
+const CERTAINTY_LEVELS: CertaintyLevel[] = [
+  "ETABLI",
+  "PRONONCE",
+  "EN_COURS",
+  "CLOS_SANS_CHARGE",
+  "CLOS_FAVORABLE",
+];
 
 export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
   // Split affairs by involvement: direct (mis en cause) vs mentions vs victim
@@ -44,8 +52,6 @@ export function AffairsSection({ affairs, civility }: AffairsSectionProps) {
     ETABLI: [],
     PRONONCE: [],
     EN_COURS: [],
-    // No status maps to this level yet; kept out of CERTAINTY_LEVELS below so
-    // it never renders on the public profile until a real status exists.
     CLOS_SANS_CHARGE: [],
     CLOS_FAVORABLE: [],
   };

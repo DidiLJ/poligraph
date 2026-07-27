@@ -68,10 +68,12 @@ export function AffairesFilterBar({
 
   const certaintyOptions = [
     { value: "", label: "Toutes les certitudes" },
-    ...(Object.keys(CERTAINTY_LABELS) as CertaintyLevel[]).map((level) => ({
-      value: level,
-      label: `${CERTAINTY_LABELS[level]} (${certaintyCounts[level] || 0})`,
-    })),
+    ...(Object.keys(CERTAINTY_LABELS) as CertaintyLevel[])
+      .filter((level) => (certaintyCounts[level] || 0) > 0)
+      .map((level) => ({
+        value: level,
+        label: `${CERTAINTY_LABELS[level]} (${certaintyCounts[level] || 0})`,
+      })),
   ];
 
   const superCatOptions = [

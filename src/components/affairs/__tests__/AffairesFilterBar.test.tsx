@@ -114,4 +114,13 @@ describe("AffairesFilterBar", () => {
     );
     expect(screen.queryByText("Infractions financières")).toBeNull();
   });
+
+  it("does not offer a certainty option with a zero count", () => {
+    render(<AffairesFilterBar {...baseProps} certaintyCounts={{ ETABLI: 3 }} />);
+    expect(screen.getByText("Condamnation définitive (3)")).toBeInTheDocument();
+    // EN_COURS, CLOS_SANS_CHARGE etc. all have a zero count here and must not
+    // appear as selectable options, whatever level they belong to.
+    expect(screen.queryByText(/Procédure en cours \(0\)/)).toBeNull();
+    expect(screen.queryByText(/Instruction close, sans mise en examen \(0\)/)).toBeNull();
+  });
 });

@@ -44,6 +44,7 @@ const CERTAINTY_EMAIL_COLORS: Record<string, string> = {
   ETABLI: "#b91c1c",
   PRONONCE: "#c2410c",
   EN_COURS: "#b45309",
+  CLOS_SANS_CHARGE: "#64748b",
   CLOS_FAVORABLE: "#6b7280",
 };
 
@@ -51,6 +52,7 @@ const CERTAINTY_EMAIL_LABELS: Record<string, string> = {
   ETABLI: "Condamnation definitive",
   PRONONCE: "Condamnation non definitive",
   EN_COURS: "Procedure en cours",
+  CLOS_SANS_CHARGE: "Instruction close, sans mise en examen",
   CLOS_FAVORABLE: "Procedure close",
 };
 

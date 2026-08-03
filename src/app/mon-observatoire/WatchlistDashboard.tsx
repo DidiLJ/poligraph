@@ -3,17 +3,13 @@
 import { useMemo } from "react";
 import { X } from "lucide-react";
 import { StatCard } from "@/components/ui/StatCard";
+import { STAT_ACCENTS } from "@/config/colors";
 import type {
   ActivityItem,
   ActivityStats,
   WatchlistPolitician,
   WatchlistParty,
 } from "@/types/activity";
-
-const STAT_ACCENTS = {
-  votes: { border: "#2563eb", bg: "#2563eb0a" },
-  affairs: { border: "#d97706", bg: "#d9770610" },
-};
 
 const FILTERS = [
   { key: "all", label: "Tous" },
@@ -79,11 +75,11 @@ export function WatchlistDashboard({
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">30 derniers jours</p>
           <div className="grid grid-cols-2 gap-3">
-            <StatCard count={displayStats.votesCount} label="Votes" accent={STAT_ACCENTS.votes} />
+            <StatCard count={displayStats.votesCount} label="Votes" accent={STAT_ACCENTS.primary} />
             <StatCard
               count={displayStats.activeAffairsCount}
               label="Affaires"
-              accent={STAT_ACCENTS.affairs}
+              accent={STAT_ACCENTS.warning}
             />
           </div>
         </div>

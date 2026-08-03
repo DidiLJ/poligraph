@@ -37,9 +37,7 @@ export function StatCard({ count, label, description, accent, href, isActive }: 
         </div>
         <div className="text-sm font-medium mt-1 leading-tight">{label}</div>
         {description && (
-          <div className="text-xs text-muted-foreground mt-1 leading-snug line-clamp-2">
-            {description}
-          </div>
+          <div className="text-xs text-muted-foreground mt-1 leading-snug">{description}</div>
         )}
       </CardContent>
     </Card>

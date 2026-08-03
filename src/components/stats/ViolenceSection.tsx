@@ -1,13 +1,12 @@
 import { StatCard } from "@/components/ui/StatCard";
 import Link from "next/link";
+import { STAT_ACCENTS } from "@/config/colors";
 
 interface ViolenceStats {
   totalAffairs: number;
   totalPoliticians: number;
   ongoingProcedures: number;
 }
-
-const BLUE_ACCENT = { border: "#2563eb", bg: "#dbeafe" };
 
 export function ViolenceSection({ stats }: { stats: ViolenceStats }) {
   if (stats.totalAffairs === 0) return null;
@@ -19,14 +18,18 @@ export function ViolenceSection({ stats }: { stats: ViolenceStats }) {
         <StatCard
           count={stats.totalPoliticians}
           label="Élus concernés"
-          accent={BLUE_ACCENT}
+          accent={STAT_ACCENTS.primary}
           href="/affaires?mode=victime"
         />
-        <StatCard count={stats.totalAffairs} label="Affaires documentées" accent={BLUE_ACCENT} />
+        <StatCard
+          count={stats.totalAffairs}
+          label="Affaires documentées"
+          accent={STAT_ACCENTS.primary}
+        />
         <StatCard
           count={stats.ongoingProcedures}
           label="Procédures en cours"
-          accent={BLUE_ACCENT}
+          accent={STAT_ACCENTS.primary}
         />
       </div>
       <p className="text-xs text-muted-foreground">

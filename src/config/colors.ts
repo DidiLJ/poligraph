@@ -94,6 +94,22 @@ export const COLORS = {
   },
 } as const;
 
+/**
+ * Accents for the shared `StatCard`. `border` doubles as the count text color
+ * and `bg` only shows when the card is active, hence the low-alpha overlays.
+ *
+ * Unlike `COLORS` these carry no dark variant: `StatCard` applies them inline,
+ * so the same value is used in both themes. Making the card theme-aware is a
+ * separate change; centralizing here at least stops each page from inventing
+ * its own accent.
+ */
+export const STAT_ACCENTS = {
+  primary: { border: "#2563eb", bg: "#2563eb0a" },
+  warning: { border: "#d97706", bg: "#d9770610" },
+} as const;
+
+export type StatAccent = keyof typeof STAT_ACCENTS;
+
 // Tailwind text color classes (light + dark mode)
 export const TEXT_COLORS = {
   vote: {

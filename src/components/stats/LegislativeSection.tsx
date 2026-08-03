@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/StatCard";
 import { HorizontalBars } from "./HorizontalBars";
 import { GroupDynamics } from "./GroupDynamics";
 import { MethodologyDisclaimer } from "./MethodologyDisclaimer";
 import { formatDate } from "@/lib/utils";
+import { STAT_ACCENTS } from "@/config/colors";
+import { ROUTES } from "@/config/routes";
+import { themeToSlug, themeFromSlug } from "@/lib/theme-utils";
+import type { ThemeCategory } from "@/generated/prisma";
 import type {
   LegislativeStatsResult,
   ThemeDistribution,
@@ -27,11 +32,18 @@ function ThemeBars({ themes, title }: { themes: ThemeDistribution[]; title: stri
     <HorizontalBars
       title={title}
       maxValue={maxCount}
-      bars={themes.slice(0, 10).map((t) => ({
-        label: `${t.icon} ${t.label}`,
-        value: t.count,
-        suffix: " scrutins",
-      }))}
+      bars={themes.slice(0, 10).map((t) => {
+        // Themes come from a StatsSnapshot JSON blob, so the key is not
+        // guaranteed to still be a live category. Round-trip through the slug
+        // table and only link the ones the theme route can actually serve.
+        const slug = themeToSlug(t.theme as ThemeCategory);
+        return {
+          label: `${t.icon} ${t.label}`,
+          value: t.count,
+          suffix: " scrutins",
+          href: themeFromSlug(slug) ? ROUTES.voteTheme(slug) : undefined,
+        };
+      })}
     />
   );
 }
@@ -54,7 +66,7 @@ function KeyVotesList({ votes }: { votes: KeyVote[] }) {
             <Link
               href={`/parlement/votes/${v.slug || v.id}`}
               prefetch={false}
-              className="text-sm font-medium hover:underline leading-snug line-clamp-2"
+              className="text-sm font-medium hover:underline leading-snug"
             >
               {capitalizeFirst(v.title)}
             </Link>
@@ -85,30 +97,17 @@ export function LegislativeSection({ stats, dynamicsAN, dynamicsSENAT }: Legisla
     <section aria-labelledby="legislative-heading" className="py-8">
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <div className="text-3xl font-bold tabular-nums">
-              {kpi.scrutinsAnalyses.toLocaleString("fr-FR")}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">Scrutins analysés</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <div className="text-3xl font-bold tabular-nums">
-              {kpi.textesAdoptes.toLocaleString("fr-FR")}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">Textes adoptés</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <div className="text-3xl font-bold tabular-nums">
-              {kpi.dossiersEnDiscussion.toLocaleString("fr-FR")}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">Dossiers en discussion</div>
-          </CardContent>
-        </Card>
+        <StatCard
+          count={kpi.scrutinsAnalyses}
+          label="Scrutins analysés"
+          accent={STAT_ACCENTS.primary}
+        />
+        <StatCard count={kpi.textesAdoptes} label="Textes adoptés" accent={STAT_ACCENTS.primary} />
+        <StatCard
+          count={kpi.dossiersEnDiscussion}
+          label="Dossiers en discussion"
+          accent={STAT_ACCENTS.primary}
+        />
       </div>
       <p className="text-xs text-muted-foreground mb-8 text-center">
         XVIIe législature · Données mises à jour quotidiennement

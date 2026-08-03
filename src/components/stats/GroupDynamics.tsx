@@ -135,9 +135,7 @@ function MetricsList({
                 aria-hidden="true"
               />
               <span className="font-medium shrink-0">{g.groupCode}</span>
-              <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                {g.groupName}
-              </span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">{g.groupName}</span>
             </Link>
             <span
               className={`tabular-nums shrink-0 ${alignmentColor(g.governmentAlignmentPct)}`}

@@ -86,3 +86,30 @@ describe("AffairForm — part ferme (#576)", () => {
     );
   });
 });
+
+/**
+ * La note d'implication n'est obligatoire que pour une simple mention ou un lien indirect.
+ * Pour une victime ou un plaignant, le rôle s'explique de lui-même : le formulaire ne doit
+ * pas la présenter comme obligatoire, sinon il contredit le garde-fou de publication.
+ */
+describe("AffairForm — note d'implication selon l'implication", () => {
+  it("marque la note obligatoire pour une simple mention", () => {
+    render(
+      <AffairForm
+        politicians={POLITICIANS}
+        initialData={{ ...BASE, involvement: "MENTIONED_ONLY" } as never}
+      />
+    );
+    expect(screen.getByText(/obligatoire à la publication/)).toBeInTheDocument();
+  });
+
+  it("n'impose pas la note pour une victime", () => {
+    render(
+      <AffairForm
+        politicians={POLITICIANS}
+        initialData={{ ...BASE, involvement: "VICTIM" } as never}
+      />
+    );
+    expect(screen.queryByText(/obligatoire à la publication/)).not.toBeInTheDocument();
+  });
+});

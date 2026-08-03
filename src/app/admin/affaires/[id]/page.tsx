@@ -15,6 +15,7 @@ import {
 import { AffairStatusNotice } from "@/components/affairs/AffairStatusNotice";
 import { formatDate } from "@/lib/utils";
 import { AffairPublishControl } from "@/components/admin/AffairPublishControl";
+import { involvementRequiresNote } from "@/lib/affairs/involvement-note";
 import { AffairMergePanel } from "@/components/admin/AffairMergePanel";
 import type { BlockingDecision as BlockingDecisionPayload } from "@/lib/affairs/blocking-decisions";
 import { PublicationStatus } from "@/generated/prisma";
@@ -240,10 +241,14 @@ export default async function AdminAffairDetailPage({ params }: PageProps) {
               <p className="text-sm text-muted-foreground mb-1">Rôle dans l{"'"}affaire</p>
               {affair.involvementNote?.trim() ? (
                 <p className="whitespace-pre-wrap">{affair.involvementNote}</p>
-              ) : (
+              ) : involvementRequiresNote(affair.involvement) ? (
                 <p className="text-sm text-amber-800 dark:text-amber-300">
-                  Aucune note d{"'"}implication. Elle est obligatoire hors « mis en cause », et son
-                  absence empêche la publication.
+                  Aucune note d{"'"}implication. Elle est obligatoire pour une mention ou un lien
+                  indirect, et son absence empêche la publication.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Aucune note d{"'"}implication (facultative pour ce rôle).
                 </p>
               )}
             </div>

@@ -16,6 +16,7 @@ import {
   PUBLICATION_STATUS_OPTIONS,
 } from "@/config/labels";
 import { LinkedAffairSelect } from "@/components/admin/LinkedAffairSelect";
+import { involvementRequiresNote } from "@/lib/affairs/involvement-note";
 import { formatAffairFormError } from "@/lib/admin/moderation-payload";
 import type { AffairStatus, AffairCategory, Involvement, SourceType } from "@/types";
 import type { PublicationStatus } from "@/generated/prisma";
@@ -314,9 +315,13 @@ export function AffairForm({ politicians, initialData }: AffairFormProps) {
               <p className="text-sm text-muted-foreground">
                 Personne non mise en cause : énoncer son rôle et, s&apos;il y a lieu, qui est
                 réellement visé.{" "}
-                <strong className="text-foreground">
-                  La note d&apos;implication est obligatoire à la publication.
-                </strong>
+                {formData.involvement && involvementRequiresNote(formData.involvement) ? (
+                  <strong className="text-foreground">
+                    La note d&apos;implication est obligatoire à la publication.
+                  </strong>
+                ) : (
+                  <span>La note est facultative pour ce rôle.</span>
+                )}
               </p>
               <div>
                 <Label htmlFor="involvementNote">

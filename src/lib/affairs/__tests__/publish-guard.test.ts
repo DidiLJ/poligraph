@@ -134,32 +134,42 @@ describe("checkPublishable — invariant I2 (RGPD art. 10)", () => {
   });
 });
 
-describe("checkPublishable — note d'implication obligatoire hors DIRECT (I3, I5)", () => {
-  it("refuse un non mis en cause sans note", async () => {
+describe("checkPublishable — note d'implication (I3, I5)", () => {
+  it("refuse une simple mention sans note", async () => {
     tx.affair.findUnique.mockResolvedValue({
       ...AFFAIR,
-      involvement: "VICTIM",
+      involvement: "MENTIONED_ONLY",
       involvementNote: null,
     });
     const reasons = await checkPublishable("aff_1");
     expect(reasons.map((r) => r.code)).toContain("MISSING_INVOLVEMENT_NOTE");
   });
 
-  it("refuse une note vide ou en espaces", async () => {
+  it("refuse un lien indirect avec une note vide ou en espaces", async () => {
     tx.affair.findUnique.mockResolvedValue({
       ...AFFAIR,
-      involvement: "MENTIONED_ONLY",
+      involvement: "INDIRECT",
       involvementNote: "   ",
     });
     const reasons = await checkPublishable("aff_1");
     expect(reasons.map((r) => r.code)).toContain("MISSING_INVOLVEMENT_NOTE");
   });
 
-  it("accepte un non mis en cause avec note renseignée", async () => {
+  it("n'exige pas de note pour une victime : le rôle s'explique de lui-même", async () => {
+    tx.affair.findUnique.mockResolvedValue({
+      ...AFFAIR,
+      involvement: "VICTIM",
+      involvementNote: null,
+    });
+    const reasons = await checkPublishable("aff_1");
+    expect(reasons.map((r) => r.code)).not.toContain("MISSING_INVOLVEMENT_NOTE");
+  });
+
+  it("n'exige pas de note pour un plaignant", async () => {
     tx.affair.findUnique.mockResolvedValue({
       ...AFFAIR,
       involvement: "PLAINTIFF",
-      involvementNote: "À l'origine de la plainte pour violation du secret de l'enquête.",
+      involvementNote: null,
     });
     const reasons = await checkPublishable("aff_1");
     expect(reasons.map((r) => r.code)).not.toContain("MISSING_INVOLVEMENT_NOTE");
@@ -170,10 +180,10 @@ describe("checkPublishable — note d'implication obligatoire hors DIRECT (I3, I
     expect(reasons.map((r) => r.code)).not.toContain("MISSING_INVOLVEMENT_NOTE");
   });
 
-  it("assertPublishable refuse et n'écrit rien sans note (non mis en cause)", async () => {
+  it("assertPublishable refuse et n'écrit rien sans note (simple mention)", async () => {
     tx.affair.findUnique.mockResolvedValue({
       ...AFFAIR,
-      involvement: "VICTIM",
+      involvement: "MENTIONED_ONLY",
       involvementNote: null,
     });
     await expect(

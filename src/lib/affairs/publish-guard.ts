@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma";
 import type { Involvement } from "@/types";
 import { isHumanReview } from "@/lib/affairs/review-provenance";
+import { involvementRequiresNote } from "@/lib/affairs/involvement-note";
 
 /**
  * Garde de publication des affaires judiciaires (RGPD article 10,
@@ -149,12 +150,12 @@ export async function checkPublishable(
     });
   }
 
-  // A non-accused person can no longer be published without stating why they
-  // appear in the affair: the sourced nature of the link (I3, I5).
-  if (affair.involvement !== "DIRECT" && !affair.involvementNote?.trim()) {
+  // A bare mention or an indirect link must state why the person appears (RGPD art. 10,
+  // I3/I5). A victim or a plaintiff is exempt: the involvement type already says it.
+  if (involvementRequiresNote(affair.involvement) && !affair.involvementNote?.trim()) {
     reasons.push({
       code: "MISSING_INVOLVEMENT_NOTE",
-      message: "note d'implication manquante (obligatoire hors « mis en cause »)",
+      message: "note d'implication manquante (obligatoire pour une mention ou un lien indirect)",
     });
   }
 

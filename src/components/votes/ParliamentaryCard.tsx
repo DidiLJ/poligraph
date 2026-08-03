@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Info } from "lucide-react";
 import type { PoliticianParliamentaryCardData } from "@/services/voteStats";
+import { statsHref } from "@/config/routes";
 
 interface ParliamentaryCardProps {
   data: PoliticianParliamentaryCardData;
@@ -193,7 +194,7 @@ export function ParliamentaryCard({
 
               {/* CTA */}
               <Link
-                href="/statistiques#participation"
+                href={statsHref("participation")}
                 prefetch={false}
                 className="inline-flex items-center text-xs text-primary hover:underline"
               >

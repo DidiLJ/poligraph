@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatCompactCurrency } from "@/lib/utils";
 import { MANDATE_TYPE_LABELS, PARTY_ROLE_LABELS, feminizePartyRole } from "@/config/labels";
+import { statsHref, DEFAULT_STATS_TAB } from "@/config/routes";
 import { ensureContrast } from "@/lib/contrast";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { MandateTimeline } from "@/components/politicians/MandateTimeline";
@@ -669,11 +670,11 @@ export default async function PoliticianPage({ params }: PageProps) {
         {(() => {
           const isDepute = currentMandate?.type === "DEPUTE";
           const isSenateur = currentMandate?.type === "SENATEUR";
-          const statsHref = isDepute
-            ? "/statistiques?chamber=AN"
+          const statsUrl = isDepute
+            ? statsHref("participation", { chamber: "AN" })
             : isSenateur
-              ? "/statistiques?chamber=SENAT"
-              : "/statistiques";
+              ? statsHref("participation", { chamber: "SENAT" })
+              : statsHref(DEFAULT_STATS_TAB);
           const statsLabel = isDepute
             ? "les statistiques de l'Assemblée nationale"
             : isSenateur
@@ -686,7 +687,7 @@ export default async function PoliticianPage({ params }: PageProps) {
                 Comparez {politician.firstName} {politician.lastName} avec les autres représentants
                 dans{" "}
                 <Link
-                  href={statsHref}
+                  href={statsUrl}
                   aria-label={statsAria}
                   className="text-primary hover:underline"
                   prefetch={false}

@@ -15,6 +15,7 @@ import {
 import { getScrutinGroupPositionsBatch } from "@/lib/data/groupes";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
+import { statsHref } from "@/config/routes";
 import type { VotingResult, Chamber, ThemeCategory, ScrutinType } from "@/types";
 
 // Map URL param values to data layer params
@@ -160,7 +161,7 @@ export async function ScrutinsListing({ searchParams: params, sort }: ScrutinsLi
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Link
-              href="/statistiques?tab=votes"
+              href={statsHref("legislatif")}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation } from "@/lib/security/validate";
 import { getRequestMeta } from "@/lib/security/audit";
+import { isHumanReview } from "@/lib/affairs/review-provenance";
 
 const confirmSchema = z.object({
   decisionId: z.string().cuid(),
@@ -16,15 +17,18 @@ export const POST = withAdminAuth(
 
     const decision = await db.affairPoliticianDecision.findUnique({
       where: { id: decisionId },
-      select: { id: true, judgment: true, reviewedAt: true, source: true, sourceRef: true },
+      select: { id: true, judgment: true, reviewedBy: true, source: true, sourceRef: true },
     });
 
     if (!decision) {
-      return NextResponse.json({ error: "Decision not found" }, { status: 404 });
+      return NextResponse.json({ error: "Décision introuvable" }, { status: 404 });
     }
 
-    if (decision.reviewedAt !== null) {
-      return NextResponse.json({ error: "Decision already reviewed" }, { status: 400 });
+    // Un humain peut reprendre une confirmation assistée (auto-triage) : c'est ce qui
+    // rend un rattachement assisté résoluble depuis la fiche. Seule la revue d'un autre
+    // humain est intouchable ici.
+    if (isHumanReview(decision.reviewedBy)) {
+      return NextResponse.json({ error: "Déjà validée par un humain" }, { status: 400 });
     }
 
     const updated = await db.affairPoliticianDecision.update({

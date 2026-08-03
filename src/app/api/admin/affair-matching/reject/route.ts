@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation } from "@/lib/security/validate";
 import { getRequestMeta } from "@/lib/security/audit";
+import { isHumanReview } from "@/lib/affairs/review-provenance";
 import { Prisma, type AffairPoliticianJudgment, type SourceType } from "@/generated/prisma";
 
 const rejectSchema = z.object({
@@ -21,7 +22,7 @@ export const POST = withAdminAuth(
       select: {
         id: true,
         judgment: true,
-        reviewedAt: true,
+        reviewedBy: true,
         textHash: true,
         source: true,
         sourceRef: true,
@@ -34,11 +35,13 @@ export const POST = withAdminAuth(
     });
 
     if (!decision) {
-      return NextResponse.json({ error: "Decision not found" }, { status: 404 });
+      return NextResponse.json({ error: "Décision introuvable" }, { status: 404 });
     }
 
-    if (decision.reviewedAt !== null) {
-      return NextResponse.json({ error: "Decision already reviewed" }, { status: 400 });
+    // Un humain peut reprendre une revue assistée (auto-triage), pas celle d'un autre
+    // humain : symétrique de la route confirm.
+    if (isHumanReview(decision.reviewedBy)) {
+      return NextResponse.json({ error: "Déjà validée par un humain" }, { status: 400 });
     }
 
     const newJudgment: AffairPoliticianJudgment =

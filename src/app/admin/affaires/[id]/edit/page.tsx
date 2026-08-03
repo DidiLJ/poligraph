@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { AffairForm } from "@/components/admin/AffairForm";
+import { AffairEditMatchingPanel } from "@/components/admin/AffairEditMatchingPanel";
+import { loadBlockingDecisionsForAffair } from "@/lib/affairs/affair-blocking";
 import { Button } from "@/components/ui/button";
 
 interface PageProps {
@@ -32,6 +34,10 @@ export default async function EditAffairPage({ params }: PageProps) {
   if (!affair) {
     notFound();
   }
+
+  // Surfaced before any publish attempt: a press link left unvalidated blocks publication,
+  // and until now that was only resolvable from the read-only detail page.
+  const blocking = await loadBlockingDecisionsForAffair(affair.id);
 
   // Format data for the form
   const initialData = {
@@ -89,6 +95,15 @@ export default async function EditAffairPage({ params }: PageProps) {
         </div>
         <DeleteButton id={id} />
       </div>
+      {blocking.length > 0 && (
+        <div className="mb-6">
+          <AffairEditMatchingPanel
+            politicianId={affair.politicianId}
+            politicianName={affair.politician.fullName}
+            decisions={blocking}
+          />
+        </div>
+      )}
       <AffairForm politicians={politicians} initialData={initialData} />
     </div>
   );

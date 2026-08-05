@@ -31,6 +31,15 @@ for v in DATABASE_URL DIRECT_URL; do
   esac
 done
 
+# Note for AI agents, not a check. Since prisma 7.9, the `db push` below aborts when
+# Prisma detects an AI coding agent, and asks for PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION
+# to carry the human's own words of consent. Prisma's own message says what to do, and it
+# is the single source of truth on which callers are concerned: an earlier check here only
+# duplicated the policy approximately, refusing runs Prisma would have allowed.
+#
+# The variable is deliberately absent from this repository: it is a human's consent.
+# Running the harness by hand needs nothing.
+
 cleanup() {
   echo "[test:db:search] teardown: destroying container + volume (down -v)"
   "${COMPOSE[@]}" down -v --remove-orphans || true
@@ -73,6 +82,12 @@ if [ "$#" -gt 0 ]; then
   echo "[test:db:search] running requested test files: $*"
   npx vitest run --no-file-parallelism "$@"
 else
-  echo "[test:db:search] running the lot 1B integration test files"
-  npx vitest run --no-file-parallelism src/lib/search
+  # db-guard is in the default set even though it is a unit test: its
+  # assertDisposableTestDb "does not throw" branch only executes when DATABASE_URL IS
+  # the disposable container, so running it outside this harness proves half the guard.
+  echo "[test:db:search] running the suites that need the disposable container"
+  npx vitest run --no-file-parallelism \
+    src/lib/search \
+    src/lib/measures \
+    src/test/__tests__/db-guard.test.ts
 fi

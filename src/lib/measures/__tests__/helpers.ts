@@ -9,6 +9,17 @@
  */
 
 import { assertDisposableTestDb } from "@/test/db-guard";
+// TYPE-ONLY, and that matters: `../transitions` imports `@/lib/db` as a value, which
+// throws at module load without DATABASE_URL. A value import here would fail every test
+// file that imports these fixtures, before any gate could skip a block. A type import is
+// erased at compile time, so it costs nothing.
+import type { DraftMeasureRevisionInput } from "../transitions";
+
+/** Deferred, for the same reason as client(): the module must not load at import time. */
+async function transitions(): Promise<typeof import("../transitions")> {
+  assertDisposableTestDb();
+  return import("../transitions");
+}
 
 /**
  * Deferred client. `@/lib/db` throws `DATABASE_URL environment variable is not set` at
@@ -89,3 +100,105 @@ export async function seedCandidacy(politicianId: string, electionId: string): P
   });
   return row.id;
 }
+
+// The three fixtures below are shared by every task from the editorial cycle onwards, so
+// they live here rather than in one test file. Duplicating them means two definitions
+// that drift, and a test that then passes for a reason nobody intended.
+
+/** A measure with a single, never-published draft. The starting point of most scenarios. */
+export async function seedMeasureWithDraft(): Promise<{ measureId: string; revisionId: string }> {
+  const { createMeasure } = await transitions();
+  const politicianId = await seedPolitician();
+  const electionId = await seedElection();
+  return createMeasure({
+    politicianId,
+    electionId,
+    candidacyId: null,
+    programEditionId: null,
+    attribution: "PERSONAL",
+    theme: "LOGEMENT_URBANISME",
+    precedingMeasureId: null,
+    revision: {
+      text: "Encadrer les loyers dans les zones tendues.",
+      precision: "OBJECTIF_SANS_CHIFFRE",
+      validFrom: new Date("2027-01-01T00:00:00Z"),
+      extractionMethod: "MANUAL",
+      extractionConfidence: null,
+      extractorVersion: null,
+    },
+    sources: [
+      {
+        sourceKind: "DISCOURS_CAMPAGNE",
+        tier: "PRIMARY",
+        url: "https://example.org/meeting",
+        page: null,
+        publishedAt: new Date("2027-01-01T00:00:00Z"),
+      },
+    ],
+  });
+}
+
+export function draftInput(measureId: string, text: string): DraftMeasureRevisionInput {
+  return {
+    measureId,
+    revision: {
+      text,
+      precision: null,
+      validFrom: new Date("2027-02-01T00:00:00Z"),
+      extractionMethod: "MANUAL",
+      extractionConfidence: null,
+      extractorVersion: null,
+    },
+    sources: [
+      {
+        sourceKind: "ARTICLE_PRESSE",
+        tier: "SECONDARY",
+        url: "https://example.org/article",
+        page: null,
+        publishedAt: new Date("2027-02-01T00:00:00Z"),
+      },
+    ],
+  };
+}
+
+/** A measure published through the real path: created, reviewed, then published. */
+export async function publishSeededMeasure(): Promise<{ measureId: string; revisionId: string }> {
+  const { publishMeasureRevision, reviewMeasureRevision } = await transitions();
+  const seeded = await seedMeasureWithDraft();
+  await reviewMeasureRevision({ ...seeded, reviewedBy: "relecteur" });
+  await publishMeasureRevision(seeded);
+  return seeded;
+}
+
+const REJECT_CONSTRAINT = "reject_measure_search_document_test";
+
+/**
+ * Runs `fn` while the database rejects every write to a MEASURE SearchDocument.
+ *
+ * The only way to observe atomicity. A test that reads the final state stays green if the
+ * indexing is moved after the commit, because the rows would still be there; making the
+ * indexing FAIL is what shows whether the rest of the transition rolled back with it.
+ *
+ * NOT VALID is required, not cosmetic: earlier tests of the same run have already written
+ * MEASURE documents, and without it the ALTER TABLE would fail on them instead of arming
+ * the guard.
+ */
+export async function withIndexingRejected<T>(fn: () => Promise<T>): Promise<T> {
+  const db = await client();
+  await db.$executeRaw`
+    ALTER TABLE "SearchDocument"
+    ADD CONSTRAINT "reject_measure_search_document_test"
+    CHECK ("entityType" <> 'MEASURE'::"SearchEntityType") NOT VALID
+  `;
+  try {
+    return await fn();
+  } finally {
+    await db.$executeRaw`
+      ALTER TABLE "SearchDocument" DROP CONSTRAINT IF EXISTS "reject_measure_search_document_test"
+    `;
+  }
+}
+
+// Named export of the constraint name so a failing test can be diagnosed without
+// searching for the string.
+export const INDEXING_REJECT_CONSTRAINT = REJECT_CONSTRAINT;

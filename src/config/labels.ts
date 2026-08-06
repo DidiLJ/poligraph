@@ -34,6 +34,8 @@ import type {
   MeasureExtractionMethod,
   MeasurePrecision,
   MeasureSourceKind,
+  MeasureVoteLinkKind,
+  MeasureVoteRelation,
   QualificationKind,
   SimilarityConclusion,
   SourceTier,
@@ -43,6 +45,7 @@ import type {
   PublicationState,
   VisibilityBlocker,
 } from "@/lib/measures/moderation-state";
+import type { VoteRelation } from "@/lib/measures/vote-relation";
 
 // Nombre de sièges à l'Assemblée nationale (XVIIe législature)
 export const AN_SEAT_COUNT = 577;
@@ -645,6 +648,68 @@ export const VOTE_POSITION_DOT_COLORS: Record<VotePosition, string> = {
   ABSTENTION: "bg-yellow-500",
   NON_VOTANT: "bg-gray-500",
   ABSENT: "bg-gray-400",
+};
+
+// ============================================
+// MEASURE VOTE RELATION (VoteRelationBadge, spec §9.2)
+// ============================================
+
+// Two axes, one label each, per the nine states of deriveVoteRelation(). The position axis is short and
+// null when there is nothing to assert. The basis axis is always present.
+export const VOTE_RELATION_POSITION_LABELS: Record<VoteRelation, string | null> = {
+  FAVORABLE_SAME_OBJECT: "Pour",
+  DEFAVORABLE_SAME_OBJECT: "Contre",
+  ABSTENTION_SAME_OBJECT: "Abstention",
+  ABSENCE_SAME_OBJECT: "Absence",
+  DIFFERENT_POSITIONS: "Positions différentes",
+  BROADER_TEXT: null,
+  NOT_RECHECKED_SINCE_REFORMULATION: null,
+  NO_VOTE_IN_SCOPE: null,
+  SEARCH_NOT_DONE: null,
+};
+
+export const VOTE_RELATION_BASIS_LABELS: Record<VoteRelation, string> = {
+  FAVORABLE_SAME_OBJECT: "même objet",
+  DEFAVORABLE_SAME_OBJECT: "même objet",
+  ABSTENTION_SAME_OBJECT: "même objet",
+  ABSENCE_SAME_OBJECT: "même objet",
+  DIFFERENT_POSITIONS: "même objet, plusieurs scrutins",
+  BROADER_TEXT: "texte plus large",
+  NOT_RECHECKED_SINCE_REFORMULATION: "reformulée depuis",
+  NO_VOTE_IN_SCOPE: "périmètre examiné sans résultat",
+  SEARCH_NOT_DONE: "périmètre non examiné",
+};
+
+// Solid pill, white text. Hex values are the AA-verified variants of spec §9.2 (ratios >= 4,5:1 on white
+// text): #3d7a4e (5,13), #9e5454 (5,45), #6b7078 (4,98). Empty for the states with no position pill.
+export const VOTE_RELATION_PILL_CLASS: Record<VoteRelation, string> = {
+  FAVORABLE_SAME_OBJECT: "bg-[#3d7a4e] text-white",
+  DEFAVORABLE_SAME_OBJECT: "bg-[#9e5454] text-white",
+  ABSTENTION_SAME_OBJECT: "bg-[#6b7078] text-white",
+  ABSENCE_SAME_OBJECT: "bg-[#6b7078] text-white",
+  DIFFERENT_POSITIONS: "bg-[#6b7078] text-white",
+  BROADER_TEXT: "",
+  NOT_RECHECKED_SINCE_REFORMULATION: "",
+  NO_VOTE_IN_SCOPE: "",
+  SEARCH_NOT_DONE: "",
+};
+
+// The reviewer-recorded relation of the candidate to the measure on an identified scrutin (raw
+// MeasureVoteRelation, spec §5.8), for the admin attachment screen. ABSENCE means "an existing scrutin
+// on the same object, in which the person did not take part": it is a relation on a chosen scrutin,
+// never "no scrutin found". That other case is a MeasureVoteLinkKind (NO_VOTE_IDENTIFIED), not a relation.
+export const MEASURE_VOTE_RELATION_LABELS: Record<MeasureVoteRelation, string> = {
+  FAVORABLE: "Favorable à la mesure",
+  DEFAVORABLE: "Défavorable à la mesure",
+  ABSTENTION: "Abstention",
+  ABSENCE: "Absent(e) au scrutin",
+};
+
+// The object relationship between a scrutin and the measure (MeasureVoteLinkKind, spec §5.8).
+export const MEASURE_VOTE_LINK_KIND_LABELS: Record<MeasureVoteLinkKind, string> = {
+  SAME_OBJECT: "Scrutin sur le même objet que la mesure",
+  BROADER_TEXT: "Scrutin sur un texte plus large contenant la mesure",
+  NO_VOTE_IDENTIFIED: "Aucun scrutin pertinent trouvé dans le périmètre",
 };
 
 export const VOTING_RESULT_LABELS: Record<VotingResult, string> = {

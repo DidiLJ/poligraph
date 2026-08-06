@@ -104,8 +104,16 @@ export default async function PresidentialHubPage() {
                 </p>
               )}
             </div>
+            {/* The shared AddToCalendar trigger is sized for a dense desktop sidebar (~20px tall)
+                and hides its label below 640px. Enlarging it here, rather than in the shared
+                component, gives the 44px touch target this page needs without resizing it
+                everywhere else. It sits inside the card so the icon is not orphaned in whitespace. */}
+            {calendarLink && (
+              <div className="shrink-0 [&>div>button]:min-h-11 [&>div>button]:min-w-11 [&>div>button]:justify-center [&>div>button]:px-3">
+                {calendarLink}
+              </div>
+            )}
           </Card>
-          {calendarLink && <div className="flex justify-end md:hidden">{calendarLink}</div>}
           <div className="rounded-xl border border-border p-4 md:hidden">{statsRow}</div>
 
           <div className="grid gap-8 md:grid-cols-[1.35fr_1fr] md:items-center">

@@ -2,23 +2,31 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { ThemeCategory } from "@/generated/prisma";
 import { db } from "@/lib/db";
-import { isSubjectPagePublishable } from "@/config/publication-gates";
+import { PUBLICATION_GATES, isSubjectPagePublishable } from "@/config/publication-gates";
 import { getPublicMeasureVoteRelations, type PublicVoteReference } from "@/lib/measures/vote-links";
 import type { VoteRelation } from "@/lib/measures/vote-relation";
-import { getPublicMeasuresByTheme, type PublicMeasure } from "./measures";
+import {
+  getLatestPublicReviewDate,
+  getPublicMeasuresByTheme,
+  type PublicMeasure,
+} from "./measures";
 import {
   getPublicPresidentialCandidates,
   type PublicPresidentialCandidate,
 } from "./presidential-candidates-public";
+import { loadThemesIndex } from "./themes-index";
 
 /**
  * The data of a public subject page: for one theme, each publicly visible candidacy and its published
  * measures on that theme, with the measure's relation to recorded votes.
  *
- * Every read goes through a public authority: `getPublicPresidentialCandidates` (drops DRAFT/missing
+ * Content reads go through a public authority: `getPublicPresidentialCandidates` (drops DRAFT/missing
  * extensions), `getPublicMeasuresByTheme` (the single measure authority), and `getPublicMeasureVoteRelation`
- * (which never selects `rationale`/`reviewedBy`). Nothing here reads `db.measure`/`db.candidacy` directly.
- * The only direct read is the election slug -> id resolution, which is not gated.
+ * (which never selects `rationale`/`reviewedBy`). Two direct reads bypass those authorities, but only to
+ * produce a number, never content: `db.candidacy.count` (sourced candidacies of the election, the coverage
+ * denominator) and `db.measure.count` (draft measures of the theme, for `pendingReviewMeasureCount`). The
+ * election slug -> id resolution is a third direct read, and is not gated. No unpublished text ever crosses
+ * this surface.
  *
  * `publishable` is the section 4 gate, not a rendering detail: below it the page shows an explicit state
  * and is noindex, never a silently degraded one-candidate "comparison".
@@ -44,6 +52,16 @@ export type SubjectPageData = {
   /** Candidacies with at least one currently-defended (non-withdrawn) published measure on the theme. */
   candidaciesWithVerifiedMeasure: number;
   publishable: boolean;
+  /** The publication gate this theme is measured against (spec §4, `PUBLICATION_GATES.pageSujet`). */
+  requiredCandidaciesWithVerifiedMeasure: number;
+  /** Candidacies of the election with a sourced editorial status, the denominator of the coverage rate. */
+  totalSourcedCandidacies: number;
+  /** Measures of the theme not yet published (count only: never the draft text itself). */
+  pendingReviewMeasureCount: number;
+  /** When the most recently reviewed public measure on this theme was reviewed, if any. */
+  lastReviewedAt: Date | null;
+  /** Another theme that already clears the gate, to redirect to when this one does not. */
+  fallbackPublishableTheme: { slug: string; label: string } | null;
 };
 
 /**
@@ -54,12 +72,38 @@ export async function loadSubjectPageData(
   electionSlug: string,
   theme: ThemeCategory
 ): Promise<SubjectPageData> {
-  const [candidates, measures] = await Promise.all([
+  const [
+    candidates,
+    measures,
+    totalSourcedCandidacies,
+    pendingReviewMeasureCount,
+    lastReviewedAt,
+    themesIndex,
+  ] = await Promise.all([
     getPublicPresidentialCandidates(electionSlug),
     // Withdrawn measures stay visible on a subject page (a dropped position is still information), so the
     // read includes them; the gate below counts only the ones still defended.
     getPublicMeasuresByTheme(electionId, theme, { includeWithdrawn: true }),
+    db.candidacy.count({
+      where: {
+        electionId,
+        status: { not: null },
+        sourceUrl: { not: null },
+        sourceLabel: { not: null },
+      },
+    }),
+    // Count only: never expose the text of an unpublished revision here. DRAFT and never
+    // depublished, not merely "not PUBLISHED": depublishMeasure() also sets publicationStatus
+    // back to DRAFT, and a measure we withdrew for cause is not "awaiting review".
+    db.measure.count({
+      where: { electionId, theme, publicationStatus: "DRAFT", depublishedAt: null },
+    }),
+    getLatestPublicReviewDate(electionId, theme),
+    loadThemesIndex(electionId, electionSlug),
   ]);
+
+  const fallback = themesIndex.themes.find((t) => t.publishable && t.theme !== theme) ?? null;
+  const fallbackPublishableTheme = fallback ? { slug: fallback.slug, label: fallback.label } : null;
 
   const measuresByCandidacy = new Map<string, PublicMeasure[]>();
   for (const measure of measures) {
@@ -103,6 +147,12 @@ export async function loadSubjectPageData(
     candidates: entries,
     candidaciesWithVerifiedMeasure,
     publishable: isSubjectPagePublishable(candidaciesWithVerifiedMeasure),
+    requiredCandidaciesWithVerifiedMeasure:
+      PUBLICATION_GATES.pageSujet.minCandidaciesWithVerifiedMeasure,
+    totalSourcedCandidacies,
+    pendingReviewMeasureCount,
+    lastReviewedAt,
+    fallbackPublishableTheme,
   };
 }
 

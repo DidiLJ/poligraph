@@ -11,19 +11,16 @@ import type { ThemeCategory } from "@/generated/prisma";
 import type { PublicMeasure } from "@/lib/data/measures";
 import type { PublicVoteReference } from "@/lib/measures/vote-links";
 import type { SubjectCandidateEntry, SubjectPageData } from "@/lib/data/subject-page";
+import { formatDate } from "@/lib/utils";
+import { SubjectGate } from "./SubjectGate";
 
 /**
  * A public subject page: for one theme, the candidates and their measures, side by side.
  *
- * No ranking and no proximity score: candidates come in the alphabetical order the authority returns, and
- * the page says so. A candidate with no published measure on the theme is not silent, it gets a qualified
- * absence. Below the publication gate the page renders an explicit state, never a one-candidate comparison
- * dressed up as a comparison.
+ * Candidates come in the alphabetical order the authority returns. A candidate with no published measure
+ * on the theme gets a qualified absence. Below the publication gate the page renders an explicit closed
+ * state.
  */
-
-function formatDateFr(date: Date): string {
-  return new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" }).format(date);
-}
 
 function composeVoteBasis(reference: PublicVoteReference): string {
   const parts: string[] = [];
@@ -36,7 +33,7 @@ function composeVoteBasis(reference: PublicVoteReference): string {
   if (reference.legislatureScope.length > 0) {
     parts.push(`législature ${reference.legislatureScope.join(", ")}`);
   }
-  parts.push(`vérifié le ${formatDateFr(reference.checkedAt)}`);
+  parts.push(`vérifié le ${formatDate(reference.checkedAt)}`);
   return parts.join(" · ");
 }
 
@@ -60,7 +57,7 @@ function MeasureSources({ sources }: { sources: PublicMeasure["sources"] }) {
           {" · "}
           {SOURCE_TIER_LABELS[source.tier]}
           {" · "}
-          {formatDateFr(source.publishedAt)}
+          {formatDate(source.publishedAt)}
         </li>
       ))}
     </ul>
@@ -98,7 +95,7 @@ function CandidateColumn({ entry, theme }: { entry: SubjectCandidateEntry; theme
               <MeasureSources sources={measure.sources} />
               {measure.withdrawal !== null && (
                 <p className="text-xs text-muted-foreground">
-                  Mesure retirée le {formatDateFr(measure.withdrawal.withdrawnAt)}
+                  Mesure retirée le {formatDate(measure.withdrawal.withdrawnAt)}
                   {measure.withdrawal.sourceUrl !== null &&
                     measure.withdrawal.sourceLabel !== null && (
                       <>
@@ -135,24 +132,12 @@ export function SubjectComparison({ data }: { data: SubjectPageData }) {
         <p className="text-sm text-muted-foreground">Présidentielle 2027</p>
         <h1 className="font-display text-2xl font-bold tracking-tight">{themeLabel}</h1>
         <p className="text-sm text-muted-foreground">
-          Candidats par ordre alphabétique, sans classement ni score de proximité.
+          Les candidatures sont présentées par ordre alphabétique.
         </p>
       </header>
 
       {!data.publishable ? (
-        <section
-          aria-labelledby="gate-heading"
-          className="rounded-lg border border-border bg-muted/40 p-4"
-        >
-          <h2 id="gate-heading" className="text-base font-semibold">
-            Comparaison pas encore disponible sur ce sujet
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Une comparaison n&apos;est publiée que lorsqu&apos;au moins deux candidatures portent
-            une mesure vérifiée sur ce sujet. Ce seuil n&apos;est pas encore atteint, la page reste
-            hors des index tant qu&apos;il ne l&apos;est pas.
-          </p>
-        </section>
+        <SubjectGate data={data} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.candidates.map((entry) => (

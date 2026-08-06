@@ -78,14 +78,19 @@ function data(over: Partial<SubjectPageData> = {}): SubjectPageData {
     candidates: [],
     candidaciesWithVerifiedMeasure: 2,
     publishable: true,
+    requiredCandidaciesWithVerifiedMeasure: 2,
+    totalSourcedCandidacies: 3,
+    pendingReviewMeasureCount: 0,
+    lastReviewedAt: null,
+    fallbackPublishableTheme: null,
     ...over,
   };
 }
 
 describe("SubjectComparison", () => {
-  it("annonce l'ordre alphabétique et l'absence de classement", () => {
+  it("annonce l'ordre alphabétique d'affichage", () => {
     render(<SubjectComparison data={data()} />);
-    expect(screen.getByText(/ordre alphabétique, sans classement/i)).toBeInTheDocument();
+    expect(screen.getByText(/présentées par ordre alphabétique/i)).toBeInTheDocument();
   });
 
   it("rend une absence qualifiée, jamais une cellule vide, pour un candidat sans mesure", () => {

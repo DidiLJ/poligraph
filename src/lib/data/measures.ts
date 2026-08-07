@@ -67,6 +67,12 @@ export type PublicMeasure = {
   attribution: MeasureRow["attribution"];
   politicianId: string;
   candidacyId: string | null;
+  /**
+   * The programme edition this measure was extracted from, when there is one. Null means the
+   * measure comes from a speech, an interview or an article, which the priorities page treats as
+   * a different KIND of corpus, not merely a different source tier.
+   */
+  programEditionId: string | null;
   withdrawal: MeasureWithdrawal | null;
   sources: PublishedRevision["sources"];
   qualifications: PublishedRevision["qualifications"];
@@ -87,6 +93,7 @@ function toPublicMeasure(row: MeasureRow): PublicMeasure | null {
     attribution: row.attribution,
     politicianId: row.politicianId,
     candidacyId: row.candidacyId,
+    programEditionId: row.programEditionId,
     withdrawal: row.withdrawnAt
       ? {
           withdrawnAt: row.withdrawnAt,

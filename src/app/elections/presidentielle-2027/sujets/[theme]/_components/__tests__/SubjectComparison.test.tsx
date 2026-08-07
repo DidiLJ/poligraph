@@ -15,6 +15,7 @@ function measure(over: Partial<PublicMeasure> = {}): PublicMeasure {
     attribution: "PERSONAL",
     politicianId: "p-1",
     candidacyId: "c-1",
+    programEditionId: null,
     withdrawal: null,
     sources: [],
     qualifications: [],

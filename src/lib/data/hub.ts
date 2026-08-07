@@ -4,8 +4,13 @@ import type { CandidacyStatus } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { isHubPublishable } from "@/config/publication-gates";
 import { sortPresidentialCandidatesBySurname } from "@/lib/presidentielle/candidate-order";
+import {
+  resolveProgrammeAbsence,
+  rollupMeasuresByCandidacy,
+} from "@/lib/presidentielle/candidacy-rollup";
+import { getPublicPresidentialCandidates } from "./presidential-candidates-public";
 import { loadThemesIndex } from "./themes-index";
-import { getLatestPresidentialReviewDate } from "./measures";
+import { getLatestPresidentialReviewDate, getPublicMeasuresByElection } from "./measures";
 
 /**
  * The two read authorities for the presidential hub page.
@@ -43,6 +48,21 @@ export type HubCandidacy = {
   partyColor: string | null;
   partyShortName: string | null;
   partyLogoUrl: string | null;
+  /** Currently defended public measures, withdrawals excluded. */
+  measureCount: number;
+  /** Distinct themes those measures cover, out of the thirteen. */
+  themesCoveredCount: number;
+  /**
+   * Why the measure count is zero, and never a bare zero.
+   *
+   * `aucun_programme` documents the CANDIDACY: nothing has been published for this election.
+   * `non_depouille` documents US: a programme exists and we have not extracted it yet. Presenting
+   * our own backlog as a candidate's silence would be a false claim about a person, so the two are
+   * distinct values and the display renders different sentences for them.
+   *
+   * Null when `measureCount > 0`, since there is then no absence to qualify.
+   */
+  programmeAbsence: "aucun_programme" | "non_depouille" | null;
 };
 
 export type HubMeasureContext = {
@@ -64,39 +84,84 @@ export type HubMeasureContext = {
  * that calls it is only as fresh as its ISR backstop.
  */
 export async function getHubCandidacyField(electionSlug: string): Promise<HubCandidacy[]> {
-  const rows = await db.candidacy.findMany({
-    // The field is the race, not the published fiches: sourced candidacies (status + both
-    // source fields non-null), no extension required. Alphabetical order.
-    where: {
-      election: { slug: electionSlug },
-      status: { not: null },
-      sourceUrl: { not: null },
-      sourceLabel: { not: null },
-    },
-    select: {
-      id: true,
-      candidateName: true,
-      status: true,
-      sourceUrl: true,
-      sourceLabel: true,
-      partyLabel: true,
-      politician: { select: { slug: true, lastName: true } },
-      party: { select: { color: true, shortName: true, logoUrl: true } },
-    },
+  const election = await db.election.findFirst({
+    where: { slug: electionSlug },
+    select: { id: true },
   });
+  if (election === null) return [];
 
-  return sortPresidentialCandidatesBySurname(rows).map((c) => ({
-    id: c.id,
-    candidateName: c.candidateName,
-    politicianSlug: c.politician?.slug ?? null,
-    status: c.status,
-    sourceUrl: c.sourceUrl,
-    sourceLabel: c.sourceLabel,
-    partyLabel: c.partyLabel,
-    partyColor: c.party?.color ?? null,
-    partyShortName: c.party?.shortName ?? null,
-    partyLogoUrl: c.party?.logoUrl ?? null,
-  }));
+  const [rows, measures, publicCandidates, editions] = await Promise.all([
+    db.candidacy.findMany({
+      // The field is the race, not the published fiches: sourced candidacies (status + both
+      // source fields non-null), no extension required. Alphabetical order.
+      where: {
+        electionId: election.id,
+        status: { not: null },
+        sourceUrl: { not: null },
+        sourceLabel: { not: null },
+      },
+      select: {
+        id: true,
+        candidateName: true,
+        status: true,
+        sourceUrl: true,
+        sourceLabel: true,
+        partyLabel: true,
+        partyId: true,
+        politician: { select: { slug: true, lastName: true } },
+        party: { select: { color: true, shortName: true, logoUrl: true } },
+      },
+    }),
+    // Defended measures only: `getPublicMeasuresByElection` drops withdrawals unless asked, and a
+    // proposal a candidate has dropped is not one they still carry.
+    getPublicMeasuresByElection(election.id),
+    // The subject-page population, used to intersect those measures. Same read and same reason as
+    // `loadThemesIndex`: a measure on a DRAFT-extension candidacy is rendered nowhere, so counting
+    // it on this row would advertise work the reader cannot reach (invariant I7).
+    getPublicPresidentialCandidates(electionSlug),
+    // A programme edition owned by the candidacy OR by its party. The party case is not a
+    // convenience: three socialist candidacies point at one Projet socialiste, and reading only
+    // `candidacyId` would report all three as having published nothing.
+    db.programEdition.findMany({
+      where: { electionId: election.id, publicationStatus: "PUBLISHED" },
+      select: { candidacyId: true, partyId: true },
+    }),
+  ]);
+
+  const byCandidacy = rollupMeasuresByCandidacy(
+    measures,
+    new Set(publicCandidates.map((c) => c.id))
+  );
+
+  const editionCandidacyIds = new Set(
+    editions.map((e) => e.candidacyId).filter((id): id is string => id !== null)
+  );
+  const editionPartyIds = new Set(
+    editions.map((e) => e.partyId).filter((id): id is string => id !== null)
+  );
+
+  return sortPresidentialCandidatesBySurname(rows).map((c) => {
+    const rollup = byCandidacy.get(c.id);
+    const measureCount = rollup?.measureCount ?? 0;
+    const hasProgramme =
+      editionCandidacyIds.has(c.id) || (c.partyId !== null && editionPartyIds.has(c.partyId));
+
+    return {
+      id: c.id,
+      candidateName: c.candidateName,
+      politicianSlug: c.politician?.slug ?? null,
+      status: c.status,
+      sourceUrl: c.sourceUrl,
+      sourceLabel: c.sourceLabel,
+      partyLabel: c.partyLabel,
+      partyColor: c.party?.color ?? null,
+      partyShortName: c.party?.shortName ?? null,
+      partyLogoUrl: c.party?.logoUrl ?? null,
+      measureCount,
+      themesCoveredCount: rollup?.themesCoveredCount ?? 0,
+      programmeAbsence: resolveProgrammeAbsence(measureCount, hasProgramme),
+    };
+  });
 }
 
 /**

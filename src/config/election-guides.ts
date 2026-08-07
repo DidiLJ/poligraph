@@ -137,8 +137,9 @@ export const ELECTION_GUIDES: Partial<Record<ElectionType, ElectionGuideSection[
       title: "Les grands électeurs",
       icon: "👥",
       content:
-        "Le collège électoral comprend environ 162 000 grands électeurs. " +
-        "Composé à 95% de délégués des conseils municipaux. " +
+        "Le collège électoral est constitué circonscription par circonscription : " +
+        "seuls votent les grands électeurs des départements renouvelés. " +
+        "Il est composé à 95 % de délégués des conseils municipaux. " +
         "Comprend aussi les députés, sénateurs sortants, " +
         "conseillers régionaux et départementaux. " +
         "Le vote est obligatoire pour les grands électeurs (amende en cas d'abstention).",

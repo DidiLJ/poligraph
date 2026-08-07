@@ -72,11 +72,22 @@ export async function getHubCandidacyField(electionSlug: string): Promise<HubCan
       sourceUrl: true,
       sourceLabel: true,
       partyLabel: true,
-      politician: { select: { slug: true } },
+      politician: { select: { slug: true, lastName: true } },
       party: { select: { color: true } },
     },
-    orderBy: { candidateName: "asc" },
   });
+
+  // Sorted by SURNAME, which is what the page announces. `candidateName` is "Prénom Nom", so ordering
+  // on it in SQL sorts by first name: "Édouard Philippe" would land under E, not P. The surname comes
+  // from the linked politician, which is where the database actually separates the two; a candidacy
+  // without a politician falls back to its full name rather than being dropped.
+  // localeCompare with "fr" so accents sort where a French reader expects (É with E, not after Z).
+  const collator = new Intl.Collator("fr", { sensitivity: "base" });
+  const sortKey = (c: (typeof rows)[number]) => c.politician?.lastName ?? c.candidateName;
+  rows.sort(
+    (a, b) =>
+      collator.compare(sortKey(a), sortKey(b)) || collator.compare(a.candidateName, b.candidateName)
+  );
 
   return rows.map((c) => ({
     id: c.id,

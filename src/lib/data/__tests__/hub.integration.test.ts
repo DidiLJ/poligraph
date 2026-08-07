@@ -52,6 +52,59 @@ describeIfDisposableDb("hub", () => {
       expect(charlie?.sourceUrl).toBe("https://example.org/rumeur");
       expect(charlie?.sourceLabel).toBe("Presse");
     });
+
+    it("trie sur le NOM DE FAMILLE, pas sur le prénom", async () => {
+      // Les trois candidatures de la fixture partagent le nom « Fixture », donc leur ordre est le
+      // même quel que soit le critère : elles ne peuvent pas attraper une régression de tri. Ces
+      // deux-ci se croisent volontairement, prénom contre nom, et c'est le seul cas qui mord.
+      const zoe = await db.politician.create({
+        data: {
+          slug: `${SLUG}-zoe-abbat`,
+          firstName: "Zoé",
+          lastName: "Abbat",
+          fullName: "Zoé Abbat",
+          source: "MANUAL",
+        },
+        select: { id: true },
+      });
+      const aaron = await db.politician.create({
+        data: {
+          slug: `${SLUG}-aaron-zurbain`,
+          firstName: "Aaron",
+          lastName: "Zurbain",
+          fullName: "Aaron Zurbain",
+          source: "MANUAL",
+        },
+        select: { id: true },
+      });
+      const created = [];
+      for (const [politicianId, name] of [
+        [zoe.id, "Zoé Abbat"],
+        [aaron.id, "Aaron Zurbain"],
+      ] as const) {
+        const c = await db.candidacy.create({
+          data: {
+            electionId,
+            politicianId,
+            candidateName: name,
+            status: "DECLARE",
+            sourceUrl: "https://example.org/declaration",
+            sourceLabel: "Déclaration",
+          },
+          select: { id: true },
+        });
+        created.push(c.id);
+      }
+
+      try {
+        const noms = (await getHubCandidacyField(SLUG)).map((c) => c.candidateName);
+        // Par nom : Abbat avant Zurbain. Par prénom, l'ordre serait inversé (Aaron avant Zoé).
+        expect(noms.indexOf("Zoé Abbat")).toBeLessThan(noms.indexOf("Aaron Zurbain"));
+      } finally {
+        await db.candidacy.deleteMany({ where: { id: { in: created } } });
+        await db.politician.deleteMany({ where: { id: { in: [zoe.id, aaron.id] } } });
+      }
+    });
   });
 
   describe("getHubMeasureContext / loadHubMeasureContext", () => {

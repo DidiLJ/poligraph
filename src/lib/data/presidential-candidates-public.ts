@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { sortPresidentialCandidatesBySurname } from "@/lib/presidentielle/candidate-order";
 import type { CandidacyStatus, Prisma } from "@/generated/prisma";
 
 /**
@@ -30,6 +31,9 @@ export type PublicPresidentialCandidate = {
   sourceLabel: string | null;
   slogan: string | null;
   accentColor: string | null;
+  /** Wording of the source for the party, and the linked entity's sigle when there is one. */
+  partyLabel: string | null;
+  partyShortName: string | null;
   declaredAt: Date | null;
 };
 
@@ -40,13 +44,15 @@ export async function getPublicPresidentialCandidates(
     where: { election: { slug: electionSlug }, ...PUBLIC_CANDIDACY_WHERE },
     include: {
       presidentialData: true,
-      politician: { select: { slug: true } },
+      politician: { select: { slug: true, lastName: true } },
+      party: { select: { shortName: true } },
     },
-    // Alphabetical by candidate name. No ranking, no proximity score.
-    orderBy: { candidateName: "asc" },
+    // No `orderBy`: the order is a presidential policy, not a column. Sorting here on
+    // `candidateName` would file "Édouard Philippe" under E, and would disagree with the hub field,
+    // which lists the same people by surname. No ranking, no proximity score.
   });
 
-  return rows.map((row) => ({
+  return sortPresidentialCandidatesBySurname(rows).map((row) => ({
     id: row.id,
     candidateName: row.candidateName,
     politicianSlug: row.politician?.slug ?? null,
@@ -55,6 +61,8 @@ export async function getPublicPresidentialCandidates(
     sourceLabel: row.sourceLabel,
     slogan: row.presidentialData?.slogan ?? null,
     accentColor: row.presidentialData?.accentColor ?? null,
+    partyLabel: row.partyLabel,
+    partyShortName: row.party?.shortName ?? null,
     declaredAt: row.presidentialData?.declaredAt ?? null,
   }));
 }

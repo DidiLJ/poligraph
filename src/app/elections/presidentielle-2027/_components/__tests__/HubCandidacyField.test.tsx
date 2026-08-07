@@ -13,6 +13,8 @@ function candidacy(over: Partial<HubCandidacy> = {}): HubCandidacy {
     sourceLabel: "Le Monde",
     partyLabel: "Parti Test",
     partyColor: "#ff0000",
+    partyShortName: "PT",
+    partyLogoUrl: null,
     ...over,
   };
 }

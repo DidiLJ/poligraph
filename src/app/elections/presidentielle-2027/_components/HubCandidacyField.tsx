@@ -19,7 +19,16 @@ function toCandidacyCardData(candidacy: HubCandidacy): CandidacyCardData {
     sourceUrl: candidacy.sourceUrl,
     sourceLabel: candidacy.sourceLabel,
     politician: candidacy.politicianSlug !== null ? { slug: candidacy.politicianSlug } : null,
-    party: candidacy.partyColor !== null ? { color: candidacy.partyColor } : null,
+    // Null when the candidacy is not linked to a party entity: the card then renders no mark at
+    // all rather than a grey placeholder that would look like a party we failed to identify.
+    party:
+      candidacy.partyColor !== null || candidacy.partyLogoUrl !== null
+        ? {
+            color: candidacy.partyColor,
+            shortName: candidacy.partyShortName,
+            logoUrl: candidacy.partyLogoUrl,
+          }
+        : null,
   };
 }
 

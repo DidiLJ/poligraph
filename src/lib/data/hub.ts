@@ -34,7 +34,14 @@ export type HubCandidacy = {
   sourceUrl: string | null;
   sourceLabel: string | null;
   partyLabel: string | null;
+  /**
+   * The party as an ENTITY, when the candidacy is linked to one. `partyLabel` is the wording of
+   * the source and stays authoritative for the text; these three carry the visual identity, and
+   * they are all null on a candidacy whose `partyId` was never resolved.
+   */
   partyColor: string | null;
+  partyShortName: string | null;
+  partyLogoUrl: string | null;
 };
 
 export type HubMeasureContext = {
@@ -73,7 +80,7 @@ export async function getHubCandidacyField(electionSlug: string): Promise<HubCan
       sourceLabel: true,
       partyLabel: true,
       politician: { select: { slug: true, lastName: true } },
-      party: { select: { color: true } },
+      party: { select: { color: true, shortName: true, logoUrl: true } },
     },
   });
 
@@ -98,6 +105,8 @@ export async function getHubCandidacyField(electionSlug: string): Promise<HubCan
     sourceLabel: c.sourceLabel,
     partyLabel: c.partyLabel,
     partyColor: c.party?.color ?? null,
+    partyShortName: c.party?.shortName ?? null,
+    partyLogoUrl: c.party?.logoUrl ?? null,
   }));
 }
 

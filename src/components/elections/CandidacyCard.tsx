@@ -1,8 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PoligraphBadge } from "@/components/elections/PoligraphBadge";
 import { CANDIDACY_STATUS_LABELS } from "@/config/labels";
+import { getAccessibleTextColor } from "@/lib/contrast";
 import type { CandidacyStatus } from "@/generated/prisma";
 
 export interface CandidacyCardData {
@@ -17,7 +19,46 @@ export interface CandidacyCardData {
   sourceUrl: string | null;
   sourceLabel: string | null;
   politician: { slug: string } | null;
-  party: { color: string | null } | null;
+  /**
+   * `shortName` and `logoUrl` are optional so that a caller selecting only the colour keeps
+   * compiling and simply renders the plain colour tile.
+   */
+  party: { color: string | null; shortName?: string | null; logoUrl?: string | null } | null;
+}
+
+/**
+ * The party mark: a 40px tile carrying the logo, or the colour with the party initials.
+ *
+ * Decorative on purpose (`alt=""`, `aria-hidden` on the fallback): the party name is already
+ * written next to it, so announcing it twice adds nothing for a screen reader.
+ *
+ * The initials are NOT hardcoded white. Two real colours of this palette are pale yellows
+ * (Renaissance `#FFD600`, Place publique `#FFF100`), on which white text falls near 1.1:1;
+ * `getAccessibleTextColor` picks whichever of black or white actually contrasts.
+ */
+function PartyMark({ party }: { party: NonNullable<CandidacyCardData["party"]> }) {
+  if (party.logoUrl) {
+    return (
+      <Image
+        src={party.logoUrl}
+        alt=""
+        width={40}
+        height={40}
+        className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain p-0.5 ring-1 ring-border"
+      />
+    );
+  }
+  if (!party.color) return null;
+
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+      style={{ backgroundColor: party.color, color: getAccessibleTextColor(party.color) }}
+    >
+      {party.shortName ? party.shortName.slice(0, 3) : ""}
+    </span>
+  );
 }
 
 export function CandidacyCard({ candidacy }: { candidacy: CandidacyCardData }) {
@@ -25,13 +66,7 @@ export function CandidacyCard({ candidacy }: { candidacy: CandidacyCardData }) {
     <Card className="hover:shadow-sm transition-shadow">
       <CardContent className="py-3 px-4">
         <div className="flex items-center gap-3">
-          {candidacy.party?.color && (
-            <span
-              className="w-3 h-3 rounded-full flex-shrink-0"
-              style={{ backgroundColor: candidacy.party.color }}
-              aria-hidden="true"
-            />
-          )}
+          {candidacy.party && <PartyMark party={candidacy.party} />}
           <div className="min-w-0">
             <p className="font-medium">
               {candidacy.politician ? (

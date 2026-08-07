@@ -47,8 +47,10 @@ describe("HubCandidacyField", () => {
     expect(link).toHaveAttribute("href", "/politiques/alix-dupont");
   });
 
-  it("annonce l'ordre alphabétique du champ", () => {
+  it("annonce le critère de tri réellement appliqué", () => {
+    // Le tri se fait sur `politician.lastName`, pas sur `candidateName` qui est « Prénom Nom ».
+    // La phrase doit dire le nom de famille, sinon elle décrit un tri que le code ne fait pas.
     render(<HubCandidacyField candidacies={[candidacy()]} />);
-    expect(screen.getByText(/ordre alphabétique/)).toBeInTheDocument();
+    expect(screen.getByText("Candidatures classées par nom de famille.")).toBeInTheDocument();
   });
 });

@@ -35,9 +35,7 @@ function toCandidacyCardData(candidacy: HubCandidacy): CandidacyCardData {
 export function HubCandidacyField({ candidacies }: { candidacies: HubCandidacy[] }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Candidatures classées par ordre alphabétique du nom.
-      </p>
+      <p className="text-sm text-muted-foreground">Candidatures classées par nom de famille.</p>
       <div className="space-y-2">
         {candidacies.map((candidacy) => (
           <CandidacyCard key={candidacy.id} candidacy={toCandidacyCardData(candidacy)} />

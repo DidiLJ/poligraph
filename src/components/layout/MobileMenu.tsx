@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCommandPalette } from "@/components/search";
 import { MobileThemeToggle } from "@/components/theme/MobileThemeToggle";
-import { NAV_PRIMARY, NAV_SECONDARY } from "@/config/navigation";
+import { NAV_ELECTIONS, NAV_PRIMARY, NAV_SECONDARY } from "@/config/navigation";
 import {
   BarChart3,
   Users,
@@ -53,9 +53,11 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 
 interface MobileMenuProps {
   enabledFlags: string[];
+  /** Slugs of the NAV_ELECTIONS whose ballot has been held, resolved server-side */
+  pastElectionSlugs: string[];
 }
 
-export function MobileMenu({ enabledFlags }: MobileMenuProps) {
+export function MobileMenu({ enabledFlags, pastElectionSlugs }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -69,6 +71,11 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
   const filteredSecondary = NAV_SECONDARY.filter(
     (item) => !item.featureFlag || flagSet.has(item.featureFlag)
   );
+  // Upcoming first, held ones after, each group keeping its NAV_ELECTIONS order
+  const pastSlugs = new Set(pastElectionSlugs);
+  const filteredElections = NAV_ELECTIONS.filter(
+    (item) => !item.featureFlag || flagSet.has(item.featureFlag)
+  ).sort((a, b) => Number(pastSlugs.has(a.slug)) - Number(pastSlugs.has(b.slug)));
 
   const close = useCallback(() => {
     setIsOpen(false);
@@ -192,6 +199,57 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
 
             {/* Primary links */}
             <nav className="flex-1 overflow-y-auto px-4 py-6" aria-label="Navigation principale">
+              {/* Elections surfaced above the rest: upcoming first, past last */}
+              {filteredElections.length > 0 && (
+                <section aria-labelledby="mobile-menu-elections" className="mb-6">
+                  <h2
+                    id="mobile-menu-elections"
+                    className="px-4 mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    Élections
+                  </h2>
+                  <ul className="space-y-1">
+                    {filteredElections.map((item) => {
+                      const Icon = item.icon ? ICON_MAP[item.icon] : null;
+                      const isActive =
+                        pathname === item.href || pathname.startsWith(item.href + "/");
+                      const isPast = pastSlugs.has(item.slug);
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={close}
+                            aria-current={isActive ? "page" : undefined}
+                            className={`flex items-center justify-between gap-2 px-4 py-3.5 rounded-xl text-lg font-display font-semibold transition-colors ${
+                              isPast
+                                ? "text-foreground/60 hover:bg-muted hover:text-foreground"
+                                : "border border-primary/40 text-primary hover:bg-primary/5"
+                            }`}
+                          >
+                            <span className="flex items-center gap-3 min-w-0">
+                              {Icon && <Icon className="h-5 w-5 shrink-0" />}
+                              {item.label}
+                              {/* `muted-foreground-strong`: at 12px on --muted in dark, the base
+                                  token measures 3.83:1, below AA. See globals.css. */}
+                              <span
+                                className={`shrink-0 whitespace-nowrap text-xs font-medium px-2 py-0.5 rounded-full ${
+                                  isPast
+                                    ? "bg-muted text-muted-foreground-strong"
+                                    : "bg-primary/15 text-primary"
+                                }`}
+                              >
+                                {isPast ? "Passée" : "À venir"}
+                              </span>
+                            </span>
+                            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              )}
+
               <ul className="space-y-1">
                 {filteredPrimary.map((item) => {
                   const Icon = item.icon ? ICON_MAP[item.icon] : null;
@@ -283,10 +341,12 @@ export function MobileMenu({ enabledFlags }: MobileMenuProps) {
               )}
             </nav>
 
-            {/* Bottom section: theme toggle + boussole + CTA */}
+            {/* Bottom section: theme toggle + boussole + CTA.
+                Wraps: the three pills measure 405px side by side, which overflows every viewport
+                narrower than that, 320px included (WCAG 1.4.10). */}
             <div className="px-4 py-6 border-t border-border">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <MobileThemeToggle />
                   {enabledFlags.includes("BOUSSOLE_ENABLED") && (
                     <a

@@ -9,121 +9,7 @@
 
 import "dotenv/config";
 import { db } from "../src/lib/db";
-import type { ElectionType, ElectionScope, SuffrageType } from "../src/generated/prisma";
-
-interface ElectionSeed {
-  slug: string;
-  type: ElectionType;
-  title: string;
-  shortTitle: string;
-  description?: string;
-  scope: ElectionScope;
-  round1Date: Date | null;
-  round2Date: Date | null;
-  dateConfirmed: boolean;
-  totalSeats: number | null;
-  suffrage: SuffrageType;
-  registrationDeadline?: Date;
-  candidacyDeadline?: Date;
-  campaignStartDate?: Date;
-  sourceUrl?: string;
-}
-
-const ELECTIONS: ElectionSeed[] = [
-  {
-    slug: "municipales-2026",
-    type: "MUNICIPALES",
-    title: "Élections municipales de 2026",
-    shortTitle: "Municipales 2026",
-    description:
-      "Les élections municipales de 2026 permettront de renouveler l'ensemble des " +
-      "conseils municipaux et intercommunaux en France. Avec la réforme de 2025, toutes les " +
-      "communes passeront au scrutin de liste paritaire, une première historique. " +
-      "Environ 460 000 conseillers municipaux seront élus les 15 et 22 mars 2026.",
-    scope: "MUNICIPAL",
-    round1Date: new Date("2026-03-15"),
-    round2Date: new Date("2026-03-22"),
-    dateConfirmed: true,
-    totalSeats: 460000,
-    suffrage: "DIRECT",
-    registrationDeadline: new Date("2026-02-07"),
-    candidacyDeadline: new Date("2026-02-26"),
-    campaignStartDate: new Date("2026-03-02"),
-    sourceUrl: "https://www.service-public.fr/particuliers/vosdroits/N47",
-  },
-  {
-    slug: "senatoriales-2026",
-    type: "SENATORIALES",
-    title: "Élections sénatoriales de 2026",
-    shortTitle: "Sénatoriales 2026",
-    scope: "NATIONAL",
-    round1Date: new Date("2026-09-28"),
-    round2Date: null,
-    dateConfirmed: false,
-    totalSeats: 178,
-    suffrage: "INDIRECT",
-  },
-  {
-    slug: "presidentielle-2027",
-    type: "PRESIDENTIELLE",
-    title: "Élection présidentielle de 2027",
-    shortTitle: "Présidentielle 2027",
-    scope: "NATIONAL",
-    round1Date: new Date("2027-04-11"),
-    round2Date: new Date("2027-04-25"),
-    dateConfirmed: false,
-    totalSeats: 1,
-    suffrage: "DIRECT",
-  },
-  {
-    slug: "legislatives-2029",
-    type: "LEGISLATIVES",
-    title: "Élections législatives de 2029",
-    shortTitle: "Législatives 2029",
-    scope: "NATIONAL",
-    round1Date: null,
-    round2Date: null,
-    dateConfirmed: false,
-    totalSeats: 577,
-    suffrage: "DIRECT",
-  },
-  {
-    slug: "departementales-2028",
-    type: "DEPARTEMENTALES",
-    title: "Élections départementales de 2028",
-    shortTitle: "Départementales 2028",
-    scope: "DEPARTMENTAL",
-    round1Date: null,
-    round2Date: null,
-    dateConfirmed: false,
-    totalSeats: 4056,
-    suffrage: "DIRECT",
-  },
-  {
-    slug: "regionales-2028",
-    type: "REGIONALES",
-    title: "Élections régionales de 2028",
-    shortTitle: "Régionales 2028",
-    scope: "REGIONAL",
-    round1Date: null,
-    round2Date: null,
-    dateConfirmed: false,
-    totalSeats: 1757,
-    suffrage: "DIRECT",
-  },
-  {
-    slug: "europeennes-2029",
-    type: "EUROPEENNES",
-    title: "Élections européennes de 2029",
-    shortTitle: "Européennes 2029",
-    scope: "EUROPEAN",
-    round1Date: null,
-    round2Date: null,
-    dateConfirmed: false,
-    totalSeats: 81,
-    suffrage: "DIRECT",
-  },
-];
+import { ELECTIONS } from "./lib/elections-seed";
 
 async function main() {
   console.log("=== Seed élections ===\n");
@@ -144,9 +30,11 @@ async function main() {
       totalSeats: election.totalSeats,
       suffrage: election.suffrage,
       ...(election.registrationDeadline && { registrationDeadline: election.registrationDeadline }),
+      ...(election.candidacyOpenDate && { candidacyOpenDate: election.candidacyOpenDate }),
       ...(election.candidacyDeadline && { candidacyDeadline: election.candidacyDeadline }),
       ...(election.campaignStartDate && { campaignStartDate: election.campaignStartDate }),
       ...(election.sourceUrl && { sourceUrl: election.sourceUrl }),
+      ...(election.decreeUrl && { decreeUrl: election.decreeUrl }),
     };
 
     const result = await db.election.upsert({

@@ -137,12 +137,12 @@ export const HUB_TITLE_PAST = "La composition du Sénat s'est jouée dans les co
 
 export const HUB_LEDE =
   "Vous ne voterez pas directement aux élections sénatoriales. Le 27 septembre 2026, " +
-  "93 469 grands électeurs participeront au renouvellement des 178 sièges de la série 2. " +
-  "Parmi eux, 95,2 % ont été désignés par les conseils municipaux des départements concernés.";
+  "93 469 grands électeurs sont appelés à renouveler les 178 sièges de la série 2. Parmi eux, " +
+  "95,2 % ont été désignés par les conseils municipaux concernés.";
 export const HUB_LEDE_PAST =
-  "Le 27 septembre 2026, 93 469 grands électeurs ont participé au renouvellement des 178 " +
-  "sièges de la série 2. Parmi eux, 95,2 % avaient été désignés par les conseils municipaux " +
-  "des départements concernés.";
+  "Le collège électoral convoqué pour renouveler les 178 sièges de la série 2 comptait " +
+  "93 469 grands électeurs. Parmi eux, 95,2 % avaient été désignés par les conseils " +
+  "municipaux concernés.";
 
 // ─── From your council to the Senate ────────────────────────────────
 

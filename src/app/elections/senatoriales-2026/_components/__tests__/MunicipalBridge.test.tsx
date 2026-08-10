@@ -15,8 +15,16 @@ describe("MunicipalBridge", () => {
   it("garde les ledes avant et après scrutin sur le même périmètre de série 2", () => {
     for (const lede of [HUB_LEDE, HUB_LEDE_PAST]) {
       expect(lede).toMatch(/178 sièges de la série 2/i);
-      expect(lede).toMatch(/conseils municipaux des départements concernés/i);
+      expect(lede).toMatch(/conseils municipaux concernés/i);
+      expect(lede).not.toMatch(/départements concernés/i);
     }
+  });
+
+  it("décrit 93 469 comme l'effectif du collège, jamais comme une participation", () => {
+    for (const lede of [HUB_LEDE, HUB_LEDE_PAST]) {
+      expect(lede).not.toMatch(/93 469[^.]{0,120}(?:particip|vot)/i);
+    }
+    expect(HUB_LEDE_PAST).toMatch(/collège électoral[^.]*comptait 93 469/i);
   });
 
   it("explique le calendrier propre à chaque série", () => {

@@ -4,8 +4,8 @@ import { BRIDGE_STEPS, SOURCE_DECREE, SOURCE_ELECTORAL_CODE, SOURCE_SENAT } from
 
 /**
  * The thesis of the page, and therefore its first block of content: the September
- * ballot does not create its electorate, it inherits it from the councils elected in
- * March.
+ * ballot does not create its electorate, it inherits it from municipal councils. Which
+ * renewal a council participates in depends on its department's series.
  *
  * Rendered as an ordered list because the four steps are a sequence, not a set of
  * statistics. The arrows are decorative on desktop and disappear on mobile, where the
@@ -16,12 +16,11 @@ export function MunicipalBridge() {
     <section aria-labelledby="pont-heading" className="space-y-4">
       <div className="space-y-2">
         <h2 id="pont-heading" className="font-display text-xl font-bold tracking-tight md:text-2xl">
-          De votre conseil municipal au Sénat
+          Des conseils municipaux au Sénat
         </h2>
         <p className="max-w-3xl text-sm text-muted-foreground md:text-base">
-          Le scrutin de septembre ne crée pas son électorat, il l{"'"}hérite. Le corps qui élit les
-          sénateurs a été composé par les conseils municipaux installés après les municipales, puis
-          désigné le 5 juin.
+          Les municipales déterminent les conseils municipaux. Selon la série de leur département,
+          ces conseils participent ensuite au renouvellement du Sénat en 2026 ou en 2029.
         </p>
       </div>
 

@@ -145,7 +145,7 @@ export function CommuneLookup({ phase }: { phase: BallotPhase }) {
           Votre commune, vos grands électeurs
         </h2>
         <p className="max-w-3xl text-sm text-muted-foreground md:text-base">
-          Combien de voix votre conseil municipal envoie-t-il au scrutin ?
+          Combien de grands électeurs le barème attribue-t-il à votre commune ?
         </p>
       </div>
 

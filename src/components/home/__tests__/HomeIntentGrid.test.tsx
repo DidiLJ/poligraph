@@ -3,10 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { HomeIntentGrid } from "@/components/home/HomeIntentGrid";
 
 describe("HomeIntentGrid", () => {
-  it("propose de comparer les candidats à 2027 en quatrième carte", () => {
+  it("propose de comparer les candidats à la présidentielle en quatrième carte", () => {
     render(<HomeIntentGrid enabledFlags={new Set<string>()} />);
 
-    const link = screen.getByRole("link", { name: /comparer les candidats à 2027/i });
+    const link = screen.getByRole("link", {
+      name: /comparer les candidats à la présidentielle 2027/i,
+    });
     expect(link).toHaveAttribute("href", "/elections/presidentielle-2027");
   });
 

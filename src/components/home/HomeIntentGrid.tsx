@@ -37,7 +37,7 @@ export function HomeIntentGrid({ enabledFlags }: HomeIntentGridProps) {
       icon: Scale,
     },
     {
-      title: "Je veux comparer les candidats à 2027",
+      title: "Je veux comparer les candidats à la présidentielle 2027",
       description: "Programmes, votes et bilans mis côte à côte, sujet par sujet.",
       href: "/elections/presidentielle-2027",
       icon: Landmark,

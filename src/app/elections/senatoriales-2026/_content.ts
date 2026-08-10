@@ -132,15 +132,16 @@ export const SOURCE_FEHF_POLL = {
 
 // ─── The thesis ─────────────────────────────────────────────────────
 
-export const HUB_TITLE = "Les sénatoriales commencent dans votre conseil municipal";
+export const HUB_TITLE = "Des municipales au renouvellement du Sénat";
 export const HUB_TITLE_PAST = "La composition du Sénat s'est jouée dans les conseils municipaux";
 
 export const HUB_LEDE =
-  "Vous ne voterez pas directement aux élections sénatoriales. Ce sont 93 469 grands électeurs qui éliront les sénateurs, " +
-  "et 95,2 % d'entre eux ont été désignés par les conseils municipaux issus des élections municipales.";
+  "Vous ne voterez pas directement aux élections sénatoriales. Le 27 septembre 2026, " +
+  "93 469 grands électeurs sont appelés à renouveler les 178 sièges de la série 2. Parmi eux, " +
+  "88 937, soit 95,2 %, sont des délégués des conseils municipaux.";
 export const HUB_LEDE_PAST =
-  "Le scrutin a eu lieu. 93 469 grands électeurs ont élu les sénateurs. " +
-  "Parmi eux, 95,2 % avaient été désignés par les conseils municipaux issus de votre vote.";
+  "Le renouvellement des 178 sièges de la série 2 concernait 93 469 grands électeurs. " +
+  "Parmi eux, 88 937, soit 95,2 %, étaient des délégués des conseils municipaux.";
 
 // ─── From your council to the Senate ────────────────────────────────
 
@@ -159,25 +160,25 @@ export const BRIDGE_STEPS: BridgeStep[] = [
       "moment de la chaîne où vous déposez un bulletin.",
   },
   {
-    when: "5 juin 2026",
-    headline: "Les conseils désignent leurs délégués",
+    when: "Selon la série",
+    headline: "Les délégués municipaux sont désignés",
     detail:
-      "93 469 grands électeurs, dont 95,2 % de délégués des conseils municipaux. Le nombre de " +
-      "délégués d'une commune découle d'un barème, pas d'une négociation.",
+      "Pour la série 2, cette étape a eu lieu le 5 juin 2026. Pour la série 1, elle aura lieu " +
+      "lors du renouvellement de 2029.",
   },
   {
-    when: "27 septembre 2026",
+    when: "2026 ou 2029",
     headline: "Les grands électeurs élisent les sénateurs",
     detail:
-      "178 sièges sur 348, dans 64 circonscriptions : 63 départements et collectivités, plus " +
-      "les Français établis hors de France. Le vote y est obligatoire.",
+      "Le 27 septembre 2026, 178 sièges de la série 2 sont renouvelés. Les départements de " +
+      "série 1 seront concernés en 2029.",
   },
   {
-    when: "Jusqu'en 2032",
+    when: "Mandat de six ans",
     headline: "Les sénateurs siègent six ans",
     detail:
-      "Le Sénat ne peut pas être dissous. Un conseil municipal élu en mars 2026 pèse donc sur " +
-      "la chambre haute jusqu'en 2032.",
+      "Les sénateurs de série 2 élus en 2026 siègent jusqu'en 2032. Ceux de série 1 élus en " +
+      "2029 siègent jusqu'en 2035.",
   },
 ];
 

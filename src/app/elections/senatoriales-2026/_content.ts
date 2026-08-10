@@ -140,9 +140,8 @@ export const HUB_LEDE =
   "93 469 grands électeurs sont appelés à renouveler les 178 sièges de la série 2. Parmi eux, " +
   "95,2 % ont été désignés par les conseils municipaux concernés.";
 export const HUB_LEDE_PAST =
-  "Le collège électoral convoqué pour renouveler les 178 sièges de la série 2 comptait " +
-  "93 469 grands électeurs. Parmi eux, 95,2 % avaient été désignés par les conseils " +
-  "municipaux concernés.";
+  "Le renouvellement des 178 sièges de la série 2 concernait 93 469 grands électeurs. " +
+  "Parmi eux, 95,2 % avaient été désignés par les conseils municipaux concernés.";
 
 // ─── From your council to the Senate ────────────────────────────────
 

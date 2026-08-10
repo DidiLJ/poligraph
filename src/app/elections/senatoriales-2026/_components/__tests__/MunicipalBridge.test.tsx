@@ -20,11 +20,12 @@ describe("MunicipalBridge", () => {
     }
   });
 
-  it("décrit 93 469 comme l'effectif du collège, jamais comme une participation", () => {
+  it("décrit 93 469 comme un effectif agrégé, jamais comme une participation", () => {
     for (const lede of [HUB_LEDE, HUB_LEDE_PAST]) {
       expect(lede).not.toMatch(/93 469[^.]{0,120}(?:particip|vot)/i);
     }
-    expect(HUB_LEDE_PAST).toMatch(/collège électoral[^.]*comptait 93 469/i);
+    expect(HUB_LEDE_PAST).not.toMatch(/le collège électoral/i);
+    expect(HUB_LEDE_PAST).toMatch(/renouvellement[^.]*concernait 93 469/i);
   });
 
   it("explique le calendrier propre à chaque série", () => {

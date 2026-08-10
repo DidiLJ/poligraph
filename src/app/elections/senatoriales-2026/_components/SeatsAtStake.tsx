@@ -5,6 +5,7 @@ import {
   SENATE_SEATS_AT_STAKE,
   SENATE_SEATS_TOTAL,
   SOURCE_SENAT,
+  SOURCE_TABLEAU_5,
   type BallotPhase,
 } from "../_content";
 
@@ -30,9 +31,17 @@ export function SeatsAtStake({ groups, phase }: { groups: GroupExposure[]; phase
    * bars would then show the *new* composition under the heading "remis en jeu",
    * turning a correct query into a false statement without anything failing.
    *
-   * The block therefore withdraws instead of relabelling: nothing captured the
-   * pre-ballot composition, so there is nothing honest to show yet. A snapshot taken
-   * before 27 September is the real fix, and it has a deadline.
+   * The block therefore withdraws instead of relabelling, because the live query stops
+   * describing what the heading claims.
+   *
+   * It does **not** say the outgoing composition was lost. It was captured before the
+   * ballot, on 10 August 2026, under the write-once `StatsSnapshot` key
+   * `senatoriales-2026-outgoing-composition`: 178 seats individually plus the aggregate of
+   * the nine groups. An earlier version of this block announced "composition sortante non
+   * conservée", which became false the day that capture ran, and would have shipped as a
+   * false statement about our own data visible from 28 September. Reading the snapshot back
+   * into a past-tense display is the next step; until then this says what is true, which is
+   * that the comparison is not published yet.
    */
   if (phase === "after") {
     return (
@@ -43,10 +52,12 @@ export function SeatsAtStake({ groups, phase }: { groups: GroupExposure[]; phase
         >
           Ce qui était remis en jeu
         </h2>
-        <MissingData title="Composition sortante non conservée">
+        <MissingData title="Comparaison avant et après non encore publiée">
           Le scrutin a eu lieu. La répartition par groupe que nous calculons décrit désormais le
-          Sénat renouvelé, pas celui qui se présentait devant les grands électeurs : nous préférons
-          ne rien afficher plutôt que de présenter l{"'"}une pour l{"'"}autre.
+          Sénat renouvelé, pas celui qui se présentait devant les grands électeurs, et nous
+          préférons ne rien afficher plutôt que de présenter l{"'"}une pour l{"'"}autre. La
+          composition sortante a été relevée avant le scrutin ; nous ne la republions pas tant que
+          la comparaison n{"'"}est pas en place.
         </MissingData>
         <SourceLine sources={[SOURCE_SENAT]} reportHref={null} />
       </section>
@@ -86,15 +97,25 @@ export function SeatsAtStake({ groups, phase }: { groups: GroupExposure[]; phase
                     <span> sur {group.held} sièges</span>
                   </p>
                 </div>
-                {/* Proportion of the group's own seats being renewed. Decorative:
-                    the figures above already state it for screen readers. */}
+                {/* Proportion of the group's own seats being renewed. Decorative: the
+                    figures above already state it for screen readers.
+
+                    Each group's own registered colour, which is the same rule for all nine
+                    and the convention already used for parties elsewhere on the site. A
+                    single colour for every bar made the nine rows read as one series, and
+                    left `ParliamentaryGroup.color` fetched and unused. Falls back to the
+                    brand colour when a group has none, rather than to a colour borrowed
+                    from another group. */}
                 <div
                   aria-hidden="true"
                   className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
                 >
                   <div
-                    className="h-full rounded-full bg-brand-on-surface"
-                    style={{ width: `${Math.round(share)}%` }}
+                    className={`h-full rounded-full ${group.color ? "" : "bg-brand-on-surface"}`}
+                    style={{
+                      width: `${Math.round(share)}%`,
+                      backgroundColor: group.color ?? undefined,
+                    }}
                   />
                 </div>
               </li>
@@ -103,9 +124,11 @@ export function SeatsAtStake({ groups, phase }: { groups: GroupExposure[]; phase
         </ul>
       )}
 
+      {/* Two sources because two kinds of number appear: the 178 sur 348 of the lede comes
+          from tableau n° 5, the per-group breakdown from our own count of sitting mandates. */}
       <SourceLine
-        sources={[SOURCE_SENAT]}
-        note="Sièges comptés par série sur les mandats sénatoriaux en cours"
+        sources={[SOURCE_TABLEAU_5, SOURCE_SENAT]}
+        note="Tableau n° 5 pour les 178 sièges de la série 2, répartition par groupe comptée sur les mandats sénatoriaux en cours"
       />
     </section>
   );

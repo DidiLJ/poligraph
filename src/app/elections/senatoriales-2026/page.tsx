@@ -4,6 +4,7 @@ import { Landmark } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { SourceLine } from "@/components/ui/SourceLine";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { EventJsonLd } from "@/components/seo/JsonLd";
 import { formatDate } from "@/lib/utils";
 import { SITE_URL } from "@/config/site";
@@ -12,6 +13,8 @@ import {
   getSenatorialesElection,
   SENATORIALES_2026_SLUG,
 } from "@/lib/data/senatoriales";
+import { BallotDay } from "./_components/BallotDay";
+import { CandidacyDeposit } from "./_components/CandidacyDeposit";
 import { CommuneLookup } from "./_components/CommuneLookup";
 import { MunicipalBridge } from "./_components/MunicipalBridge";
 import { ScrutinRules } from "./_components/ScrutinRules";
@@ -27,6 +30,7 @@ import {
   SENATE_SEATS_TOTAL,
   SOURCE_DECREE,
   SOURCE_SENAT,
+  SOURCE_TABLEAU_5,
   getBallotPhase,
 } from "./_content";
 
@@ -63,6 +67,9 @@ export default async function SenatorialesHubPage() {
   // 28 September.
   const phase = getBallotPhase(election.status);
   const isOver = phase === "after";
+  // Narrower than the phase on purpose: `isBallotDay` is the ballot's own Paris day, so
+  // the "aujourd'hui" wording cannot outlive it by the two hours the UTC window adds.
+  const isBallotDay = phase === "polling-day" && election.isBallotDay;
   const now = new Date();
   const daysUntil =
     election.round1Date && !isOver
@@ -108,14 +115,38 @@ export default async function SenatorialesHubPage() {
                     <Landmark className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold leading-tight">
+                    {/* First mention of "série" on the page. The tooltip is a shortcut,
+                        not the explanation: the full definition sits in `ScrutinRules`
+                        as text, because a hover is unreachable on touch.
+
+                        `min-h-11 min-w-11` because AGENTS.md requires 44 px and forbids
+                        shipping a bare icon as a standalone target; the shared
+                        `InfoTooltip` renders a 14 px icon with `p-0.5`, so it measures
+                        18 px on its own. The negative margin keeps the enlarged hit area
+                        from stretching this line: it overflows into the card's own padding
+                        and the non-interactive status line below, so it swallows no other
+                        control. */}
+                    <p className="flex items-center gap-1 text-sm font-semibold leading-tight">
                       Renouvellement de la série 2
+                      <InfoTooltip term="serieSenatoriale" className="-my-3 min-h-11 min-w-11" />
                     </p>
                     <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      {daysUntil !== null && daysUntil > 0 && (
+                      {/* "Jour du scrutin", not "Aujourd'hui": `isBallotDay` is the Paris
+                          calendar day, so a relative term here is false for a reader whose
+                          local day is still the 26th in Polynésie française or already the
+                          28th in Wallis-et-Futuna. Same defect as the heading of `BallotDay`,
+                          and it survived that fix because it lives in another file. */}
+                      {isBallotDay ? (
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
-                          J-{daysUntil}
+                          Jour du scrutin
                         </span>
+                      ) : (
+                        daysUntil !== null &&
+                        daysUntil > 0 && (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">
+                            J-{daysUntil}
+                          </span>
+                        )
                       )}
                       {election.round1Date && (
                         <span>
@@ -151,8 +182,10 @@ export default async function SenatorialesHubPage() {
                   </div>
                 </dl>
 
+                {/* Tableau n° 5 is what establishes the 178 of 348 shown above; the decree
+                    convenes the circonscriptions but states no seat total. */}
                 <SourceLine
-                  sources={[SOURCE_DECREE, SOURCE_SENAT]}
+                  sources={[SOURCE_TABLEAU_5, SOURCE_DECREE, SOURCE_SENAT]}
                   note="63 départements et collectivités, plus les Français établis hors de France"
                   reportHref={null}
                 />
@@ -164,9 +197,18 @@ export default async function SenatorialesHubPage() {
               seats: it is the answer to "why does this concern me". */}
           <MunicipalBridge />
 
+          {/* État 3, on the ballot's own day only. Placed after the bridge so the
+              "why this concerns you" block stays the first content of the page. */}
+          {isBallotDay && <BallotDay />}
+
           <CommuneLookup phase={phase} />
 
           <SeatsAtStake groups={groups} phase={phase} />
+
+          {/* État 2. Present in every phase: before the window it gives the dates, after
+              it says what is still possible, and throughout it says why no candidate is
+              listed. */}
+          <CandidacyDeposit phase={election.candidacyPhase} ballotPhase={phase} />
 
           <ScrutinRules />
 

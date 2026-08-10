@@ -20,7 +20,14 @@ import { Prisma } from "@/generated/prisma";
 import { resolveElectionStatus } from "@/lib/elections/status";
 import { getMisEnCauseWhere } from "@/lib/affairs/public-filters";
 import { COMMUNE_DATA_SYNC_KEY } from "@/config/communes";
+import { CANDIDACY_PERIOD } from "@/config/senatoriales";
+import { DEPARTMENTS } from "@/config/departments";
 import { computeCommuneCollege, type CommuneCollege } from "@/lib/senatoriales/college";
+import {
+  deriveCandidacyPhase,
+  isBallotDayInParis,
+  type CandidacyPhase,
+} from "@/lib/senatoriales/timing";
 import type { ElectionStatus } from "@/types";
 
 export const SENATORIALES_2026_SLUG = "senatoriales-2026";
@@ -44,6 +51,22 @@ export interface SenatorialesElection {
   sourceUrl: string | null;
   /** Phase derived at read time: the stored column never transitions on its own. */
   status: ElectionStatus;
+  /**
+   * Deposit period, compared as calendar dates against the same clock reading as
+   * `status`. Resolving both here rather than in the page keeps them from being computed
+   * a few milliseconds apart, which is the only way they could disagree.
+   *
+   * Derived from `CANDIDACY_PERIOD`, not from `candidacyDeadline`: article 2 fixes 18 h
+   * locally in each circonscription, and the decree convenes territories twenty-two hours
+   * apart, so no instant in that column could decide this for the whole country.
+   */
+  candidacyPhase: CandidacyPhase;
+  /**
+   * True only on the ballot's own calendar day in Paris. Narrows the polling-day phase,
+   * whose 24-hour UTC window would otherwise keep an "aujourd'hui" claim up until
+   * 02:00 Paris the next morning.
+   */
+  isBallotDay: boolean;
 }
 
 export const getSenatorialesElection = cache(
@@ -68,8 +91,16 @@ export const getSenatorialesElection = cache(
     });
     if (!election) return null;
 
+    // One clock reading for both phases: two `new Date()` calls could straddle a
+    // boundary and render a page whose two axes disagree.
+    const now = new Date();
     const { round2Date, ...rest } = election;
-    return { ...rest, status: resolveElectionStatus({ ...election, round2Date }) };
+    return {
+      ...rest,
+      status: resolveElectionStatus({ ...election, round2Date }, now),
+      candidacyPhase: deriveCandidacyPhase(CANDIDACY_PERIOD, now),
+      isBallotDay: isBallotDayInParis(election.round1Date, now),
+    };
   }
 );
 
@@ -164,10 +195,15 @@ export interface SittingSenator {
   /** Latest published HATVP declaration year, null when none is published. */
   declarationYear: number | null;
   /**
-   * Ongoing published proceedings where the person is mis en cause. A discreet signal
-   * on the card, never a filter, never a sort key, never an aggregate.
+   * Whether published proceedings are ongoing where the person is mis en cause.
+   *
+   * A boolean, not a count, and deliberately so. The editorial rule is that a judicial case
+   * may be a discreet signal and never a filter, a sort key, a score, an aggregate or a
+   * **counter**; "3 procédures en cours" is a counter, and ranks people by it in the reader's
+   * head whether or not the code sorts. The cardinality therefore never leaves this module:
+   * exposing a number here is what made rendering one possible.
    */
-  ongoingProceedings: number;
+  hasOngoingProceedings: boolean;
 }
 
 export const getSittingSenators = cache(async function getSittingSenators(
@@ -203,15 +239,16 @@ export const getSittingSenators = cache(async function getSittingSenators(
 
   if (mandates.length === 0) return [];
 
-  // One grouped count instead of one query per senator. The where-builder is the
-  // centralised one: no hand-rolled publicationStatus filter on a public surface.
+  // Existence, not cardinality: `distinct` on politicianId answers "are there any" without
+  // ever producing a number that a surface could render. The where-builder is the centralised
+  // one: no hand-rolled publicationStatus filter on a public surface.
   const politicianIds = mandates.map((m) => m.politician.id);
-  const proceedings = await db.affair.groupBy({
-    by: ["politicianId"],
+  const proceedings = await db.affair.findMany({
     where: { politicianId: { in: politicianIds }, ...getMisEnCauseWhere() },
-    _count: { _all: true },
+    select: { politicianId: true },
+    distinct: ["politicianId"],
   });
-  const byPolitician = new Map(proceedings.map((p) => [p.politicianId, p._count._all]));
+  const withProceedings = new Set(proceedings.map((p) => p.politicianId));
 
   return mandates.map((m) => ({
     slug: m.politician.slug,
@@ -224,11 +261,26 @@ export const getSittingSenators = cache(async function getSittingSenators(
     groupShortName: m.parliamentaryData?.parliamentaryGroup.shortName ?? null,
     groupColor: m.parliamentaryData?.parliamentaryGroup.color ?? null,
     declarationYear: m.politician.declarations[0]?.year ?? null,
-    ongoingProceedings: byPolitician.get(m.politician.id) ?? 0,
+    hasOngoingProceedings: withProceedings.has(m.politician.id),
   }));
 });
 
 // ─── Commune lookup ────────────────────────────────────────────────
+
+/**
+ * Department label for a code.
+ *
+ * `Commune.departmentName` is not read: it holds the *code* on all 34,969 rows, so a panel
+ * trusting it renders "93 (93)" and a sentence reading "dans le département 93". Resolved
+ * from `DEPARTMENTS` instead, which covers 107 of the 109 codes present in the table. The
+ * two it misses, 984 and 989, have no permanent population and designate no senatorial
+ * delegate, so falling back to the code there shows a code rather than inventing a name.
+ *
+ * What that column should hold is a separate question, and this hub does not settle it.
+ */
+function departmentLabel(code: string): string {
+  return DEPARTMENTS[code]?.name ?? code;
+}
 
 export interface CommuneCollegeView {
   id: string;
@@ -256,12 +308,16 @@ export async function findCommunesByPostalCode(
   postalCode: string
 ): Promise<Array<{ id: string; name: string; departmentCode: string; departmentName: string }>> {
   if (!/^[0-9]{5}$/.test(postalCode)) return [];
-  return db.commune.findMany({
+  const communes = await db.commune.findMany({
     where: { postalCodes: { has: postalCode } },
-    select: { id: true, name: true, departmentCode: true, departmentName: true },
+    select: { id: true, name: true, departmentCode: true },
     orderBy: [{ population: "desc" }, { name: "asc" }],
     take: 50,
   });
+  return communes.map((commune) => ({
+    ...commune,
+    departmentName: departmentLabel(commune.departmentCode),
+  }));
 }
 
 /** Seats up for renewal in a department, counted from the sitting senators. */
@@ -285,7 +341,6 @@ export const getCommuneCollege = cache(async function getCommuneCollege(
       id: true,
       name: true,
       departmentCode: true,
-      departmentName: true,
       population: true,
       totalSeats: true,
     },
@@ -301,7 +356,7 @@ export const getCommuneCollege = cache(async function getCommuneCollege(
     id: commune.id,
     name: commune.name,
     departmentCode: commune.departmentCode,
-    departmentName: commune.departmentName,
+    departmentName: departmentLabel(commune.departmentCode),
     college: computeCommuneCollege({
       communeId: commune.id,
       population: commune.population,

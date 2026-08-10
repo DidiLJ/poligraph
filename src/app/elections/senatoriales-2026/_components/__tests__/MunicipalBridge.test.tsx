@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { HUB_LEDE, HUB_LEDE_PAST, HUB_TITLE, HUB_TITLE_PAST } from "../../_content";
+import { BRIDGE_STEPS, HUB_LEDE, HUB_LEDE_PAST, HUB_TITLE, HUB_TITLE_PAST } from "../../_content";
 import { MunicipalBridge } from "../MunicipalBridge";
 
 const NATIONAL_HERO_VARIANTS = [HUB_TITLE, HUB_TITLE_PAST, HUB_LEDE, HUB_LEDE_PAST];
@@ -15,8 +15,10 @@ describe("MunicipalBridge", () => {
   it("garde les ledes avant et après scrutin sur le même périmètre de série 2", () => {
     for (const lede of [HUB_LEDE, HUB_LEDE_PAST]) {
       expect(lede).toMatch(/178 sièges de la série 2/i);
-      expect(lede).toMatch(/conseils municipaux concernés/i);
+      expect(lede).toMatch(/88 937, soit 95,2 %/i);
+      expect(lede).toMatch(/délégués des conseils municipaux/i);
       expect(lede).not.toMatch(/départements concernés/i);
+      expect(lede).not.toMatch(/désignés par les conseils municipaux/i);
     }
   });
 
@@ -28,11 +30,19 @@ describe("MunicipalBridge", () => {
     expect(HUB_LEDE_PAST).toMatch(/renouvellement[^.]*concernait 93 469/i);
   });
 
+  it("n'attribue pas la désignation de tous les délégués aux conseils municipaux", () => {
+    const bridgeCopy = BRIDGE_STEPS.flatMap(({ headline, detail }) => [headline, detail]).join(
+      ". "
+    );
+
+    expect(bridgeCopy).not.toMatch(/conseils?[^.]{0,80}désign/i);
+  });
+
   it("explique le calendrier propre à chaque série", () => {
     render(<MunicipalBridge />);
 
-    expect(screen.getByText(/série 2 les ont désignés le 5 juin 2026/i)).toBeInTheDocument();
-    expect(screen.getByText(/série 1, cette étape aura lieu.*2029/i)).toBeInTheDocument();
+    expect(screen.getByText(/série 2, cette étape a eu lieu le 5 juin 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/série 1, elle aura lieu.*2029/i)).toBeInTheDocument();
     expect(screen.getByText(/série 2 élus en 2026 siègent jusqu'en 2032/i)).toBeInTheDocument();
     expect(screen.getByText(/série 1 élus en 2029 siègent jusqu'en 2035/i)).toBeInTheDocument();
   });

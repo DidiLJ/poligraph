@@ -138,10 +138,10 @@ export const HUB_TITLE_PAST = "La composition du Sénat s'est jouée dans les co
 export const HUB_LEDE =
   "Vous ne voterez pas directement aux élections sénatoriales. Le 27 septembre 2026, " +
   "93 469 grands électeurs sont appelés à renouveler les 178 sièges de la série 2. Parmi eux, " +
-  "95,2 % ont été désignés par les conseils municipaux concernés.";
+  "88 937, soit 95,2 %, sont des délégués des conseils municipaux.";
 export const HUB_LEDE_PAST =
   "Le renouvellement des 178 sièges de la série 2 concernait 93 469 grands électeurs. " +
-  "Parmi eux, 95,2 % avaient été désignés par les conseils municipaux concernés.";
+  "Parmi eux, 88 937, soit 95,2 %, étaient des délégués des conseils municipaux.";
 
 // ─── From your council to the Senate ────────────────────────────────
 
@@ -161,10 +161,10 @@ export const BRIDGE_STEPS: BridgeStep[] = [
   },
   {
     when: "Selon la série",
-    headline: "Les conseils concernés désignent leurs délégués",
+    headline: "Les délégués municipaux sont désignés",
     detail:
-      "Ceux de la série 2 les ont désignés le 5 juin 2026. Pour la série 1, cette étape " +
-      "aura lieu lors du renouvellement de 2029.",
+      "Pour la série 2, cette étape a eu lieu le 5 juin 2026. Pour la série 1, elle aura lieu " +
+      "lors du renouvellement de 2029.",
   },
   {
     when: "2026 ou 2029",

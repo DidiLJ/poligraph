@@ -64,7 +64,6 @@ export const SERIES_EXPLAINER =
 export const CONSTITUENCY_COUNT = 64;
 
 export const GRANDS_ELECTEURS_TOTAL = 93469;
-export const MUNICIPAL_DELEGATE_SHARE = "95,2 %";
 
 export const DECREE_LABEL = "Décret n° 2026-301 du 21 avril 2026";
 export const DECREE_URL = "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000053925339";
@@ -133,15 +132,15 @@ export const SOURCE_FEHF_POLL = {
 
 // ─── The thesis ─────────────────────────────────────────────────────
 
-export const HUB_TITLE = "Le Sénat se joue dans les conseils municipaux";
-export const HUB_TITLE_PAST = "Le Sénat s'est joué dans les conseils municipaux";
+export const HUB_TITLE = "Les sénatoriales commencent dans votre conseil municipal";
+export const HUB_TITLE_PAST = "La composition du Sénat s'est jouée dans les conseils municipaux";
 
 export const HUB_LEDE =
-  "Vous n'aurez pas de bulletin à mettre. 93 469 grands électeurs voteront à votre place, " +
-  "et 95,2 % d'entre eux ont été désignés par les conseils municipaux que vous avez élus.";
+  "Vous ne voterez pas directement aux élections sénatoriales. Ce sont 93 469 grands électeurs qui éliront les sénateurs, " +
+  "et 95,2 % d'entre eux ont été désignés par les conseils municipaux issus des élections municipales.";
 export const HUB_LEDE_PAST =
-  "Le scrutin a eu lieu. 93 469 grands électeurs ont voté à votre place, et 95,2 % d'entre eux " +
-  "avaient été désignés par les conseils municipaux que vous avez élus.";
+  "Le scrutin a eu lieu. 93 469 grands électeurs ont élu les sénateurs. " +
+  "Parmi eux, 95,2 % avaient été désignés par les conseils municipaux issus de votre vote.";
 
 // ─── From your council to the Senate ────────────────────────────────
 

@@ -50,7 +50,8 @@ export async function generateMetadata(): Promise<Metadata> {
     return { title: "Sénatoriales 2026", robots: { index: false, follow: true } };
   }
   return {
-    title: "Sénatoriales 2026 : le Sénat se joue dans les conseils municipaux | Poligraph",
+    title:
+      "Sénatoriales 2026 : la composition du Sénat se joue dans les conseils municipaux | Poligraph",
     description:
       "Le 27 septembre 2026, 178 sièges du Sénat sont renouvelés par 93 469 grands électeurs. " +
       "Vos délégués, le barème du collège et les sénateurs sortants de votre département.",

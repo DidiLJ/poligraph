@@ -2,6 +2,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
 import { MANDATE_TYPE_LABELS } from "@/config/labels";
 import { getPoliticianVotingStats } from "@/services/voteStats";
+import { participationStatusFor } from "@/lib/votes/participation-publication";
 import { CATEGORY_MANDATE_TYPES } from "@/types/compare";
 import type { CompareCategory } from "@/types/compare";
 import type { MandateType, Involvement } from "@/types";
@@ -341,13 +342,15 @@ async function getPoliticianForComparison(slug: string, mandateType: string) {
   // Reuse the single source of truth for vote stats (same as politician profile page)
   const stats = await getPoliticianVotingStats(politician.id, mandateType as MandateType);
   const voteStats = {
-    total: stats.total + stats.absent, // eligible scrutins = votes cast + absent
+    total: stats.total,
     pour: stats.pour,
     contre: stats.contre,
     abstention: stats.abstention,
     nonVotant: stats.nonVotant,
-    absent: stats.absent,
+    eligibleScrutins: stats.eligibleScrutins,
+    scrutinsSansVoteEnregistre: stats.scrutinsSansVoteEnregistre,
     presenceRate: stats.participationRate,
+    participationStatus: stats.participationStatus,
   };
 
   return {
@@ -678,6 +681,7 @@ async function getGroupForComparison(idOrCode: string) {
         select: {
           id: true,
           votes: {
+            where: { chamber: group.chamber },
             take: 500,
             orderBy: { votingDate: "desc" },
             select: {
@@ -700,17 +704,6 @@ async function getGroupForComparison(idOrCode: string) {
 
   // Aggregate vote stats across all members
   const totalVotes = uniqueMembers.reduce((sum, m) => sum + m.politician.votes.length, 0);
-  const activeVotes = uniqueMembers.reduce(
-    (sum, m) =>
-      sum +
-      m.politician.votes.filter(
-        (v) => v.position === "POUR" || v.position === "CONTRE" || v.position === "ABSTENTION"
-      ).length,
-    0
-  );
-
-  const avgParticipation = totalVotes > 0 ? Math.round((activeVotes / totalVotes) * 100) : 0;
-
   // Compute internal cohesion: for each scrutin, what % of members voted
   // like the group majority
   const scrutinVotes = new Map<string, string[]>();
@@ -780,7 +773,8 @@ async function getGroupForComparison(idOrCode: string) {
       memberCount: group._count.mandates,
     },
     stats: {
-      avgParticipation,
+      avgParticipation: null,
+      participationStatus: participationStatusFor(group.chamber),
       cohesionRate,
       totalVotes,
     },

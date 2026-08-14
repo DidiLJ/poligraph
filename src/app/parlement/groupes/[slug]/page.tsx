@@ -13,6 +13,7 @@ import { GOVERNMENT_GROUP_CODE, SENATE_GOVERNMENT_GROUP_CODE } from "@/config/sc
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Users, TrendingUp, Target, Activity, FileCheck2 } from "lucide-react";
 import { ParliamentaryGroupJsonLd } from "@/components/seo/JsonLd";
+import { buildGroupeSeo } from "@/lib/seo/groupe-metadata";
 
 export const revalidate = 3600;
 
@@ -25,9 +26,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const group = await getGroupeDetail(slug);
   if (!group) return { title: "Groupe non trouvé" };
 
+  const seo = buildGroupeSeo({
+    name: group.name,
+    code: group.code,
+    chamber: group.chamber,
+    seatCount: group.seatCount,
+    hasStats: group.stats.length > 0,
+  });
+
   return {
-    title: `${group.name} - Groupe parlementaire`,
-    description: `${group.name} (${group.code}) : ${group.seatCount} membres, cohésion et statistiques de vote.`,
+    title: seo.title,
+    description: seo.description,
     alternates: { canonical: `/parlement/groupes/${slug}` },
   };
 }
@@ -42,6 +51,15 @@ export default async function GroupeDetailPage({ params }: PageProps) {
   const stats = group.stats[0];
 
   const chamberLabel = group.chamber === "AN" ? "Assemblée nationale" : "Sénat";
+  // Same string as the meta description: the JSON-LD must not describe the group
+  // differently from the page (and must not promise a stat the page cannot show).
+  const seo = buildGroupeSeo({
+    name: group.name,
+    code: group.code,
+    chamber: group.chamber,
+    seatCount: group.seatCount,
+    hasStats: group.stats.length > 0,
+  });
   const referenceGroupCode =
     group.chamber === "AN" ? GOVERNMENT_GROUP_CODE : SENATE_GOVERNMENT_GROUP_CODE;
   const concordanceVotesTooltip = `${GLOSSARY.concordanceVotesGroupes} Groupe de référence pour cette chambre : ${referenceGroupCode}.`;
@@ -52,7 +70,7 @@ export default async function GroupeDetailPage({ params }: PageProps) {
       <ParliamentaryGroupJsonLd
         name={group.name}
         alternateName={group.shortName ?? undefined}
-        description={`${group.name} (${group.code}) : ${group.seatCount} membres, cohésion et statistiques de vote.`}
+        description={seo.description}
         url={`https://poligraph.fr/parlement/groupes/${slug}`}
         memberOf={{ name: chamberLabel, url: "https://poligraph.fr/parlement" }}
       />
@@ -145,17 +163,17 @@ export default async function GroupeDetailPage({ params }: PageProps) {
               <VoteCard
                 key={gp.scrutin.id}
                 id={gp.scrutin.id}
-                externalId=""
+                externalId={gp.scrutin.externalId}
                 slug={gp.scrutin.slug}
                 title={gp.scrutin.title}
                 votingDate={gp.scrutin.votingDate}
-                legislature={0}
-                chamber="AN"
+                legislature={gp.scrutin.legislature}
+                chamber={gp.scrutin.chamber}
                 votesFor={gp.scrutin.votesFor}
                 votesAgainst={gp.scrutin.votesAgainst}
                 votesAbstain={gp.scrutin.votesAbstain}
                 result={gp.scrutin.result}
-                sourceUrl={null}
+                sourceUrl={gp.scrutin.sourceUrl}
                 theme={gp.scrutin.theme}
                 policy={gp.scrutin.policyTitle}
               />

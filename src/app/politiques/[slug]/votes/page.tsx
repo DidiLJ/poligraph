@@ -14,9 +14,19 @@ import { formatDate } from "@/lib/utils";
 import { ArrowLeft, ExternalLink, Info } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { feminizeRole, SCRUTIN_TYPE_LABELS, SCRUTIN_TYPE_COLORS } from "@/config/labels";
-import { getPoliticianVotingStats, getPoliticianVoteTabCounts } from "@/services/voteStats";
+import {
+  getPoliticianVotingStats,
+  getPoliticianVoteTabCounts,
+  getPoliticianVoteChamberCoverage,
+} from "@/services/voteStats";
 import { politicianRobotsMetadata } from "@/lib/seo/politician-robots";
 import { getPoliticianIndexSignals } from "@/lib/seo/politician-index-signals";
+import { SeoIntro } from "@/components/seo/SeoIntro";
+import {
+  resolveVoteCorpusChamber,
+  buildPoliticianVotesSeo,
+  buildPoliticianVotesIntro,
+} from "@/lib/seo/politician-votes-metadata";
 import type { ScrutinType } from "@/generated/prisma";
 import type { Prisma } from "@/generated/prisma";
 
@@ -55,7 +65,7 @@ const getPolitician = cache(async function getPolitician(slug: string) {
       currentParty: true,
       mandates: {
         where: { isCurrent: true, role: { not: null } },
-        select: { role: true, type: true },
+        select: { role: true, type: true, isCurrent: true },
       },
     },
   });
@@ -139,9 +149,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Politicien non trouvé" };
   }
 
+  const voteChambers = await getPoliticianVoteChamberCoverage(politician.id);
+  const chamber = resolveVoteCorpusChamber(voteChambers);
+  const seo = buildPoliticianVotesSeo(politician.fullName, chamber);
+
   return {
-    title: `Votes de ${politician.fullName}`,
-    description: `Historique complet des votes parlementaires de ${politician.fullName} à l'Assemblée nationale.`,
+    title: seo.title,
+    description: seo.description,
     // A sub-tab is never richer than its profile: when the profile is noindexed
     // for lack of content (issue #385), the votes tab — empty for anyone who
     // never sat in parliament — must not stay crawlable on its own.
@@ -164,8 +178,11 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
   }
 
   const typeFilter = TYPE_TAB_MAP[typeTab] ?? {};
-  const { votes, total, totalPages, stats, totalAll, amendmentCount, nonAmendmentCount } =
-    await getVotes(politician.id, page, limit, typeFilter);
+  const [voteData, voteChambers] = await Promise.all([
+    getVotes(politician.id, page, limit, typeFilter),
+    getPoliticianVoteChamberCoverage(politician.id),
+  ]);
+  const { votes, total, totalPages, stats, totalAll, amendmentCount, nonAmendmentCount } = voteData;
 
   const buildUrl = (p: number, tabKey: string) => {
     const params = new URLSearchParams();
@@ -192,6 +209,17 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
   ];
 
   const hasMultipleTypes = amendmentCount > 0 && nonAmendmentCount > 0;
+
+  const chamber = resolveVoteCorpusChamber(voteChambers);
+  const seo = buildPoliticianVotesSeo(politician.fullName, chamber);
+  // Deterministic, built from the tab counts already loaded above: no extra
+  // query, no participation rate, no reading of the voting behaviour.
+  const introText = buildPoliticianVotesIntro({
+    fullName: politician.fullName,
+    chamber,
+    totalVotes: totalAll,
+    amendmentVotes: amendmentCount,
+  });
 
   return (
     <div className="container mx-auto px-4 pt-4 pb-8">
@@ -220,17 +248,17 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
           size="md"
         />
         <div>
-          <h1 className="text-2xl font-display font-extrabold tracking-tight">
-            Votes de {politician.fullName}
-          </h1>
+          <h1 className="text-2xl font-display font-extrabold tracking-tight">{seo.heading}</h1>
           <p className="text-muted-foreground">{total} votes enregistrés</p>
         </div>
       </div>
 
+      {introText && <SeoIntro text={introText} />}
+
       {/* NON_VOTANT context note for president of chamber */}
       {(() => {
         const presidentMandate = politician.mandates.find(
-          (m) => m.role && /^Président /.test(m.role)
+          (m) => m.isCurrent && m.role && /^Président /.test(m.role)
         );
         if (presidentMandate) {
           const roleLabel = feminizeRole(presidentMandate.role!, politician.civility);
@@ -330,7 +358,7 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
           <VoteStats
             stats={stats}
             isChamberPresident={politician.mandates.some(
-              (m) => m.role != null && /^Président /.test(m.role)
+              (m) => m.isCurrent && m.role != null && /^Président /.test(m.role)
             )}
           />
         </div>

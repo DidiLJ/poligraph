@@ -89,6 +89,30 @@ describe("VoteCard", () => {
     expect(screen.queryByText("RE")).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["AN", "https://www.assemblee-nationale.fr/dyn/17/scrutins/123"],
+    ["SENAT", "https://www.senat.fr/scrutin-public/2024/scr123.html"],
+  ] as const)(
+    "affiche une source %s générique avec une cible tactile accessible",
+    (chamber, sourceUrl) => {
+      const { container } = render(<VoteCard {...base} chamber={chamber} sourceUrl={sourceUrl} />);
+
+      const sourceLink = screen.getByRole("link", {
+        name: "Voir le scrutin à la source (nouvelle fenêtre)",
+      });
+      expect(sourceLink).toHaveAttribute("href", sourceUrl);
+      expect(sourceLink).toHaveAttribute("title", "Voir le scrutin à la source");
+      expect(sourceLink).toHaveClass(
+        "inline-flex",
+        "min-h-11",
+        "min-w-11",
+        "items-center",
+        "justify-center"
+      );
+      expect(container.innerHTML).not.toContain("NosDéputés");
+    }
+  );
+
   it("motion de censure : pas de cadrage majorité simple, voix pour + note de règle", () => {
     render(
       <VoteCard

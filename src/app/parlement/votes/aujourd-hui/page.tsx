@@ -13,9 +13,11 @@ export async function generateMetadata(): Promise<Metadata> {
     timeZone: "UTC",
   });
 
+  // "Votes du jour" reads as a section name; naming the Parliament makes the
+  // intent readable in a SERP without touching the ISR contract below.
   return {
-    title: `Votes du jour — ${formatted}`,
-    description: `Scrutins de l'Assemblée nationale et du Sénat du ${formatted}. Résultats, résumés et détails des votes parlementaires.`,
+    title: `Votes du Parlement aujourd'hui — ${formatted}`,
+    description: `Consultez les scrutins de l'Assemblée nationale et du Sénat du ${formatted} : résultats et détails des votes parlementaires.`,
     alternates: { canonical: "/parlement/votes/aujourd-hui" },
   };
 }

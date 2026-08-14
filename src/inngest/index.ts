@@ -16,6 +16,7 @@ import { syncPress } from "./functions/sync-press";
 import { syncScrutins } from "./functions/sync-scrutins";
 import { syncPlatformUpdates } from "./functions/sync-platform-updates";
 import { pipelineDigest } from "./functions/pipeline-digest";
+import { runVoteSyncWithCacheInvalidation } from "./vote-cache";
 
 // --- Grouped multi-step functions ---
 const groupedFunctions = [
@@ -46,12 +47,12 @@ const migratedFunctions = [
   createSyncFunction("sync-scrutins-an", async (data) => {
     const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
     const todayOnly = !data.flags || !(data.flags as string).includes("--all");
-    return syncScrutinsAN(undefined, false, todayOnly);
+    return runVoteSyncWithCacheInvalidation(() => syncScrutinsAN(undefined, false, todayOnly));
   }),
   createSyncFunction("sync-scrutins-senat", async (data) => {
     const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
     const todayOnly = !data.flags || !(data.flags as string).includes("--all");
-    return syncScrutinsSenat(null, false, todayOnly);
+    return runVoteSyncWithCacheInvalidation(() => syncScrutinsSenat(null, false, todayOnly));
   }),
   createSyncFunction("sync-press-analysis", async (data) => {
     const { syncPressAnalysis } = await import("@/services/sync/press-analysis");

@@ -197,13 +197,17 @@ export async function getGroupKeyVotes(groupId: string, limit = 5) {
       scrutin: {
         select: {
           id: true,
+          externalId: true,
           slug: true,
           title: true,
           votingDate: true,
+          legislature: true,
+          chamber: true,
           votesFor: true,
           votesAgainst: true,
           votesAbstain: true,
           result: true,
+          sourceUrl: true,
           theme: true,
           // Plan 6: public policy title (shown only when APPROVED + valid).
           policyTitle: {

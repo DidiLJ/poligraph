@@ -14,6 +14,8 @@ import {
 } from "@/lib/data/scrutins";
 import { getScrutinGroupPositionsBatch } from "@/lib/data/groupes";
 import { CollectionPageJsonLd } from "@/components/seo/JsonLd";
+import { themeToSlug } from "@/lib/theme-utils";
+import { themeSeoPhrase } from "@/lib/seo/theme-metadata";
 import { SITE_URL } from "@/config/site";
 import { statsHref } from "@/config/routes";
 import type { VotingResult, Chamber, ThemeCategory, ScrutinType } from "@/types";
@@ -131,6 +133,10 @@ export async function ScrutinsListing({ searchParams: params, sort }: ScrutinsLi
   // Showcase renders only on the default, unfiltered "votes" view (not paginated,
   // not the explained-only listing, default sort) so it doesn't duplicate results
   // the user already filtered for.
+  // Internal links to the thematic landings: bare listing only, so the crawlable
+  // link block sits on the indexable variant and does not repeat on every facet.
+  const showThemeLandings = !explainedOnly && !hasActiveFilters && page === 1;
+
   const showShowcase =
     !explainedOnly &&
     !search &&
@@ -195,6 +201,31 @@ export async function ScrutinsListing({ searchParams: params, sort }: ScrutinsLi
             typeCounts,
           }}
         />
+
+        {/* Thematic landings. The `?theme=` chips in the filter bar above are
+            crawl-blocked facets: these descriptive links point at the indexable
+            /parlement/votes/themes/[theme] pages instead. Rendered only on the
+            bare listing, which is the variant that stays indexable. */}
+        {showThemeLandings && (
+          <nav aria-label="Votes par thème" className="mb-6">
+            <p className="text-sm text-muted-foreground mb-2">Explorer les votes par thème</p>
+            <ul className="flex flex-wrap gap-2">
+              {themeCounts.map(({ theme: themeCategory, _count }) => (
+                <li key={themeCategory}>
+                  <Link
+                    href={`/parlement/votes/themes/${themeToSlug(themeCategory)}`}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+                  >
+                    Votes sur {themeSeoPhrase(themeCategory)}
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {_count.toLocaleString("fr-FR")}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
 
         {/* Results summary */}
         <div className="flex items-center justify-between mb-4 pb-3 border-b">

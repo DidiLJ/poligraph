@@ -4,6 +4,7 @@ import { syncMetadata } from "@/lib/sync/sync-metadata";
 import { revalidateTags } from "@/lib/cache";
 import { isIngestionAnomaly } from "@/lib/monitoring/amendment-link-freshness";
 import { linkableUnlinkedVoteWhere } from "@/lib/monitoring/amendment-link-query";
+import { runVoteSyncWithCacheInvalidation } from "../vote-cache";
 
 interface DailyStep {
   name: string;
@@ -30,14 +31,14 @@ const DAILY_STEPS: DailyStep[] = [
     name: "scrutins-an",
     run: async () => {
       const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
-      return syncScrutinsAN(undefined, false, true);
+      return runVoteSyncWithCacheInvalidation(() => syncScrutinsAN(undefined, false, true));
     },
   },
   {
     name: "scrutins-senat",
     run: async () => {
       const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
-      return syncScrutinsSenat(null, false, true);
+      return runVoteSyncWithCacheInvalidation(() => syncScrutinsSenat(null, false, true));
     },
   },
   {

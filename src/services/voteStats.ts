@@ -493,6 +493,27 @@ export async function getPoliticianVoteTabCounts(
   return { totalAll, amendmentCount, nonAmendmentCount };
 }
 
+/**
+ * Chambers represented in a politician's recorded vote corpus.
+ *
+ * Vote.chamber is denormalized and covered by the
+ * [politicianId, chamber, votingDate] index, so this query needs no Scrutin join.
+ * Consumers must treat [] and ["AN", "SENAT"] as neutral rather than inferring
+ * a chamber from the politician's mandates.
+ */
+export async function getPoliticianVoteChamberCoverage(politicianId: string): Promise<Chamber[]> {
+  "use cache";
+  cacheTag("votes", "politicians");
+  cacheLife("synced");
+
+  const rows = await db.vote.groupBy({
+    by: ["chamber"],
+    where: { politicianId },
+  });
+
+  return rows.map(({ chamber }) => chamber);
+}
+
 // ============================================
 // Participation ranking
 // ============================================

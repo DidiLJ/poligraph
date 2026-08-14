@@ -258,7 +258,7 @@ export async function ParlementHub() {
             className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors"
           >
             <Tag className="h-3.5 w-3.5" aria-hidden="true" />
-            Par thèmes
+            Votes par thème
           </Link>
           <Link
             href={ROUTES.voteStats}

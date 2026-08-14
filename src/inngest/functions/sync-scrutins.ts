@@ -1,5 +1,6 @@
 import { inngest } from "../client";
 import { markJobRunning, markJobCompleted, markJobFailed, updateJobProgress } from "../job-helper";
+import { runVoteSyncWithCacheInvalidation } from "../vote-cache";
 
 export const syncScrutins = inngest.createFunction(
   {
@@ -15,14 +16,16 @@ export const syncScrutins = inngest.createFunction(
     try {
       const anStats = await step.run("scrutins-an", async () => {
         const { syncScrutinsAN } = await import("@/services/sync/scrutins-an");
-        const stats = await syncScrutinsAN(undefined, false, true);
+        const stats = await runVoteSyncWithCacheInvalidation(() =>
+          syncScrutinsAN(undefined, false, true)
+        );
         if (jobId) await updateJobProgress(jobId, 50);
         return stats;
       });
 
       const senatStats = await step.run("scrutins-senat", async () => {
         const { syncScrutinsSenat } = await import("@/services/sync/scrutins-senat");
-        return syncScrutinsSenat(null, false, true);
+        return runVoteSyncWithCacheInvalidation(() => syncScrutinsSenat(null, false, true));
       });
 
       if (jobId)

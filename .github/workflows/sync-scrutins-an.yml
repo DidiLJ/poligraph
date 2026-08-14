@@ -43,6 +43,8 @@ jobs:
         run: npx prisma generate
 
       - name: Sync Scrutins from Official AN API
+        id: sync
+        continue-on-error: true
         run: |
           if [ -n "${{ github.event.inputs.limit }}" ]; then
             npm run sync:scrutins-an -- --limit=${{ github.event.inputs.limit }}
@@ -51,7 +53,14 @@ jobs:
           fi
 
       - name: Revalidate votes cache
+        if: ${{ !cancelled() && (steps.sync.outcome == 'success' || steps.sync.outcome == 'failure') }}
         run: npm run cache:revalidate -- votes
+
+      - name: Preserve sync failure after cache revalidation
+        if: ${{ always() && steps.sync.outcome == 'failure' }}
+        run: |
+          echo "::error::Scrutin sync failed after cache revalidation."
+          exit 1
 
       - name: Show sync stats
         if: always()

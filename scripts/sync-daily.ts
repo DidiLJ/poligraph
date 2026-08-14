@@ -53,6 +53,15 @@ const steps: SyncStep[] = [
     name: "Votes Sénat (today)",
     command: `npx tsx scripts/sync-scrutins-senat.ts --today${dryRunFlag}`,
   },
+  ...(!DRY_RUN
+    ? [
+        {
+          name: "Votes cache revalidation",
+          command: "POST /api/cron/revalidate (votes)",
+          run: () => revalidateRemoteCache(["votes"]),
+        },
+      ]
+    : []),
   {
     name: "Législation (active, 3j)",
     command: `npx tsx scripts/sync-legislation.ts --active --since-days=3${dryRunFlag}`,
@@ -142,12 +151,14 @@ const steps: SyncStep[] = [
         {
           // Scoped tags only — never use { all: true }. See Phase 4 of
           // docs/superpowers/plans/2026-04-07-supabase-perf-improvements.md.
-          // The four tags below match the four data domains touched by the
-          // daily sync. Adding "elections" or "factchecks" here would purge
+          // The three tags below match the remaining data domains touched by
+          // the daily sync. Votes are invalidated immediately after both vote
+          // syncs, before the longer steps below can time out the workflow.
+          // Adding "elections" or "factchecks" here would purge
           // caches that the daily sync did NOT update.
           name: "Cache revalidation",
-          command: "POST /api/cron/revalidate (votes, dossiers, stats, politicians)",
-          run: () => revalidateRemoteCache(["votes", "dossiers", "stats", "politicians"]),
+          command: "POST /api/cron/revalidate (dossiers, stats, politicians)",
+          run: () => revalidateRemoteCache(["dossiers", "stats", "politicians"]),
         },
       ]
     : []),

@@ -75,28 +75,96 @@ describe("architecture d'invalidation du cache des votes", () => {
     ]);
   });
 
-  it("lie le GitHub Daily à une revalidation distante authentifiée et obligatoire", () => {
+  it("invalide les votes du GitHub Daily avant la législation et les traitements longs", () => {
     expect(dailyWorkflow).toContain("CRON_SECRET: ${{ secrets.CRON_SECRET }}");
     expect(dailyWorkflow).toContain("NEXT_PUBLIC_BASE_URL:");
     expect(dailyWorkflow).toContain("run: npm run sync:daily");
     expectInOrder(dailyScript, [
       "scripts/sync-scrutins-an.ts --today",
       "scripts/sync-scrutins-senat.ts --today",
-      'name: "Cache revalidation"',
-      'revalidateRemoteCache(["votes", "dossiers", "stats", "politicians"])',
+      'name: "Votes cache revalidation"',
+      'revalidateRemoteCache(["votes"])',
+      'name: "Législation (active, 3j)"',
     ]);
+    expect(dailyScript).toContain('revalidateRemoteCache(["dossiers", "stats", "politicians"])');
     expect(dailyScript).toContain("...(!DRY_RUN");
   });
 
-  it("lie le GitHub weekly AN à la revalidation distante après succès", () => {
+  it("le Daily continue jusqu'à la revalidation après une erreur de sync partielle", () => {
+    const executionLoop = dailyScript.slice(
+      dailyScript.indexOf("for (const step of steps)"),
+      dailyScript.indexOf("const totalDuration")
+    );
+    const errorHandler = executionLoop.slice(
+      executionLoop.indexOf("} catch (err)"),
+      executionLoop.indexOf("const duration")
+    );
+
+    expect(errorHandler).toContain("lastError =");
+    expect(errorHandler).not.toContain("throw");
+    expect(errorHandler).not.toContain("process.exit");
+  });
+
+  it("le weekly revalide après une sync réussie ou échouée", () => {
     expect(weeklyWorkflow).toContain("CRON_SECRET: ${{ secrets.CRON_SECRET }}");
     expect(weeklyWorkflow).toContain("NEXT_PUBLIC_BASE_URL:");
+    const syncStep = weeklyWorkflow.slice(
+      weeklyWorkflow.indexOf("- name: Sync Scrutins from Official AN API"),
+      weeklyWorkflow.indexOf("- name: Revalidate votes cache")
+    );
+    const revalidationStep = weeklyWorkflow.slice(
+      weeklyWorkflow.indexOf("- name: Revalidate votes cache"),
+      weeklyWorkflow.indexOf("- name: Preserve sync failure after cache revalidation")
+    );
+
+    expect(syncStep).toContain("id: sync");
+    expect(syncStep).toContain("continue-on-error: true");
+    expect(revalidationStep).toContain(
+      "if: ${{ !cancelled() && (steps.sync.outcome == 'success' || steps.sync.outcome == 'failure') }}"
+    );
+    expect(revalidationStep).toContain("run: npm run cache:revalidate -- votes");
     expectInOrder(weeklyWorkflow, [
       "npm run sync:scrutins-an",
       "name: Revalidate votes cache",
-      "run: npm run cache:revalidate -- votes",
+      "name: Preserve sync failure after cache revalidation",
     ]);
   });
+
+  it("le weekly conserve l'échec de sync après avoir tenté la revalidation", () => {
+    const failureStep = weeklyWorkflow.slice(
+      weeklyWorkflow.indexOf("- name: Preserve sync failure after cache revalidation"),
+      weeklyWorkflow.indexOf("- name: Show sync stats")
+    );
+
+    expect(failureStep).toContain("if: ${{ always() && steps.sync.outcome == 'failure' }}");
+    expect(failureStep).toContain("exit 1");
+  });
+
+  it.each([
+    ["success", "success", true, false],
+    ["failure", "success", true, true],
+    ["success", "failure", true, true],
+    ["failure", "failure", true, true],
+  ] as const)(
+    "weekly: sync %s et revalidation %s donnent revalidation=%s et jobFailure=%s",
+    (syncOutcome, revalidationOutcome, expectedRevalidation, expectedJobFailure) => {
+      const syncContinuesOnError = weeklyWorkflow.includes("continue-on-error: true");
+      const revalidationAcceptsFailure = weeklyWorkflow.includes(
+        "steps.sync.outcome == 'success' || steps.sync.outcome == 'failure'"
+      );
+      const syncFailureIsRestored = weeklyWorkflow.includes(
+        "always() && steps.sync.outcome == 'failure'"
+      );
+      const revalidationRuns =
+        syncOutcome === "success" ||
+        (syncOutcome === "failure" && syncContinuesOnError && revalidationAcceptsFailure);
+      const jobFails =
+        revalidationOutcome === "failure" || (syncOutcome === "failure" && syncFailureIsRestored);
+
+      expect(revalidationRuns).toBe(expectedRevalidation);
+      expect(jobFails).toBe(expectedJobFailure);
+    }
+  );
 
   it("impose endpoint, tag, authentification et échec HTTP fail-closed", () => {
     expect(remoteCli).toContain("revalidateRemoteCache(tags)");

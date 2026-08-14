@@ -17,6 +17,12 @@ import { feminizeRole, SCRUTIN_TYPE_LABELS, SCRUTIN_TYPE_COLORS } from "@/config
 import { getPoliticianVotingStats, getPoliticianVoteTabCounts } from "@/services/voteStats";
 import { politicianRobotsMetadata } from "@/lib/seo/politician-robots";
 import { getPoliticianIndexSignals } from "@/lib/seo/politician-index-signals";
+import { SeoIntro } from "@/components/seo/SeoIntro";
+import {
+  resolveParliamentaryChamber,
+  buildPoliticianVotesSeo,
+  buildPoliticianVotesIntro,
+} from "@/lib/seo/politician-votes-metadata";
 import type { ScrutinType } from "@/generated/prisma";
 import type { Prisma } from "@/generated/prisma";
 
@@ -53,9 +59,15 @@ const getPolitician = cache(async function getPolitician(slug: string) {
       photoUrl: true,
       civility: true,
       currentParty: true,
+      // Two needs, one relation read: the chamber-president note wants current
+      // mandates carrying a role, and the chamber resolution wants every
+      // parliamentary mandate (current or not). Consumers filter on `isCurrent`
+      // themselves rather than the query narrowing it for one of the two.
       mandates: {
-        where: { isCurrent: true, role: { not: null } },
-        select: { role: true, type: true },
+        where: {
+          OR: [{ isCurrent: true, role: { not: null } }, { type: { in: ["DEPUTE", "SENATEUR"] } }],
+        },
+        select: { role: true, type: true, isCurrent: true },
       },
     },
   });
@@ -139,9 +151,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Politicien non trouvé" };
   }
 
+  // The chamber is derived from the mandates, never assumed: asserting
+  // "à l'Assemblée nationale" for a senator (or for anyone whose parliamentary
+  // mandate is not established) is a factual error, not an SEO detail.
+  const chamber = resolveParliamentaryChamber(politician.mandates);
+  const seo = buildPoliticianVotesSeo(politician.fullName, chamber);
+
   return {
-    title: `Votes de ${politician.fullName}`,
-    description: `Historique complet des votes parlementaires de ${politician.fullName} à l'Assemblée nationale.`,
+    title: seo.title,
+    description: seo.description,
     // A sub-tab is never richer than its profile: when the profile is noindexed
     // for lack of content (issue #385), the votes tab — empty for anyone who
     // never sat in parliament — must not stay crawlable on its own.
@@ -193,6 +211,17 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
 
   const hasMultipleTypes = amendmentCount > 0 && nonAmendmentCount > 0;
 
+  const chamber = resolveParliamentaryChamber(politician.mandates);
+  const seo = buildPoliticianVotesSeo(politician.fullName, chamber);
+  // Deterministic, built from the tab counts already loaded above: no extra
+  // query, no participation rate, no reading of the voting behaviour.
+  const introText = buildPoliticianVotesIntro({
+    fullName: politician.fullName,
+    chamber,
+    totalVotes: totalAll,
+    amendmentVotes: amendmentCount,
+  });
+
   return (
     <div className="container mx-auto px-4 pt-4 pb-8">
       <Breadcrumb
@@ -220,17 +249,17 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
           size="md"
         />
         <div>
-          <h1 className="text-2xl font-display font-extrabold tracking-tight">
-            Votes de {politician.fullName}
-          </h1>
+          <h1 className="text-2xl font-display font-extrabold tracking-tight">{seo.heading}</h1>
           <p className="text-muted-foreground">{total} votes enregistrés</p>
         </div>
       </div>
 
+      {introText && <SeoIntro text={introText} />}
+
       {/* NON_VOTANT context note for president of chamber */}
       {(() => {
         const presidentMandate = politician.mandates.find(
-          (m) => m.role && /^Président /.test(m.role)
+          (m) => m.isCurrent && m.role && /^Président /.test(m.role)
         );
         if (presidentMandate) {
           const roleLabel = feminizeRole(presidentMandate.role!, politician.civility);
@@ -330,7 +359,7 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
           <VoteStats
             stats={stats}
             isChamberPresident={politician.mandates.some(
-              (m) => m.role != null && /^Président /.test(m.role)
+              (m) => m.isCurrent && m.role != null && /^Président /.test(m.role)
             )}
           />
         </div>

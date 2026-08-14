@@ -1,8 +1,17 @@
+import { cache } from "react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { themeFromSlug, getAllThemeSlugs, themeToSlug } from "@/lib/theme-utils";
+import {
+  buildThemeTitle,
+  buildThemeDescription,
+  buildThemeH1,
+  buildThemeIntro,
+  type ThemeChamberCoverage,
+} from "@/lib/seo/theme-metadata";
+import type { ThemeCategory } from "@/generated/prisma";
 import { VoteCard } from "@/components/votes";
 import { ScrutinTypeTabs } from "@/components/votes/ScrutinTypeTabs";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -26,6 +35,34 @@ export async function generateStaticParams() {
   return getAllThemeSlugs().map((theme) => ({ theme }));
 }
 
+/**
+ * Scrutin counts for the whole theme, split by type AND chamber.
+ *
+ * Replaces the previous `by: ["type"]` groupBy at the same query cost: the
+ * chamber breakdown is what lets the title, the description and the intro name
+ * only the chambers this theme actually covers, instead of promising Senate
+ * scrutins that may not exist here. React `cache` dedupes the call between
+ * generateMetadata and the render of the same request, so metadata adds no query.
+ */
+const getThemeTypeChamberCounts = cache(async function getThemeTypeChamberCounts(
+  theme: ThemeCategory
+) {
+  return db.scrutin.groupBy({
+    by: ["type", "chamber"],
+    where: { theme },
+    _count: true,
+  });
+});
+
+function coverageOf(
+  counts: ReadonlyArray<{ chamber: string; _count: number }>
+): ThemeChamberCoverage {
+  return {
+    hasAN: counts.some((c) => c.chamber === "AN" && c._count > 0),
+    hasSenat: counts.some((c) => c.chamber === "SENAT" && c._count > 0),
+  };
+}
+
 export async function generateMetadata({
   params,
   searchParams,
@@ -38,11 +75,11 @@ export async function generateMetadata({
   const theme = themeFromSlug(slug);
   if (!theme) return { title: "Thème introuvable" };
 
-  const label = THEME_CATEGORY_LABELS[theme];
+  const coverage = coverageOf(await getThemeTypeChamberCounts(theme));
 
   return {
-    title: `Votes ${label}`,
-    description: `Tous les scrutins parlementaires sur le thème ${label}. Résultats des votes de l'Assemblée nationale et du Sénat.`,
+    title: buildThemeTitle(theme, coverage),
+    description: buildThemeDescription(theme, coverage),
     // Tab/paginated variants: noindex,follow, canonical consolidates on the
     // bare theme page (which stays indexable).
     ...listingRobotsMetadata(hasActiveListingFilter(sp, ["type"])),
@@ -104,11 +141,7 @@ export default async function ThemePage({
       orderBy: { votingDate: "desc" },
       select: { votingDate: true },
     }),
-    db.scrutin.groupBy({
-      by: ["type"],
-      where: { theme },
-      _count: true,
-    }),
+    getThemeTypeChamberCounts(theme),
   ]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -124,18 +157,23 @@ export default async function ThemePage({
   const rejected = stats.REJECTED || 0;
   const adoptedPercent = total > 0 ? Math.round((adopted / total) * 100) : 0;
 
-  const introText = [
-    `${total.toLocaleString("fr-FR")} scrutins sur le thème ${label}.`,
-    total > 0 ? `${adoptedPercent}% adoptés.` : "",
-    lastScrutin ? `Dernier vote : ${formatDate(lastScrutin.votingDate)}.` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  // Chambers actually covered by this theme: what the copy is allowed to name.
+  const coverage = coverageOf(typeCounts);
 
-  // Type tab counts
-  const typeCountMap = new Map(typeCounts.map((c) => [c.type, c._count]));
+  const introText = buildThemeIntro({
+    theme,
+    total,
+    adoptedPercent,
+    lastVoteDateLabel: lastScrutin ? formatDate(lastScrutin.votingDate) : null,
+    coverage,
+  });
+
+  // Type tab counts, summed over the chambers of the type × chamber groupBy.
   const totalAll = typeCounts.reduce((sum, c) => sum + c._count, 0);
-  const amendementCount = typeCountMap.get("AMENDEMENT") ?? 0;
+  const amendementCount = typeCounts.reduce(
+    (sum, c) => sum + (c.type === "AMENDEMENT" ? c._count : 0),
+    0
+  );
   const votesCount = totalAll - amendementCount;
 
   const buildPageUrl = (p: number, currentTypeTab: string) => {
@@ -176,7 +214,7 @@ export default async function ThemePage({
       />
 
       <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">
-        {icon} {label}
+        <span aria-hidden="true">{icon}</span> {buildThemeH1(theme)}
       </h1>
       <SeoIntro text={introText} />
 

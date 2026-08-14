@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { VotingResultBadge, VotePositionBadge } from "@/components/votes";
+import { ThemeVotesLink } from "@/components/votes/ThemeVotesLink";
 import { DailyVotesPage } from "@/components/votes/DailyVotesPage";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import { formatDate } from "@/lib/utils";
@@ -600,6 +601,14 @@ export default async function ScrutinPage({ params }: PageProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Contextual link to the thematic landing (descriptive anchor: the
+            theme badge above only carries the bare label). */}
+        {scrutin.theme && (
+          <div className="mt-8 text-center">
+            <ThemeVotesLink theme={scrutin.theme} />
+          </div>
+        )}
 
         {/* Back link */}
         <div className="mt-8 text-center">

@@ -838,7 +838,7 @@ npm run sync:daily -- --dry-run
 | `VOYAGE_API_KEY`           | Embeddings RAG (#19)                                 | Pour `index:embeddings`           |
 | `MAILJET_API_KEY`          | Newsletter (#19)                                     | Pour la newsletter                |
 | `MAILJET_SECRET_KEY`       | Newsletter (#19)                                     | Pour la newsletter                |
-| `CRON_SECRET`              | Cache revalidation (sync:daily)                      | Optionnel                         |
+| `CRON_SECRET`              | Cache revalidation (sync:daily en écriture)          | Requis                            |
 
 ### Configuration des URLs
 

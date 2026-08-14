@@ -17,6 +17,8 @@ permissions:
 
 env:
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+  NEXT_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_BASE_URL || 'https://poligraph.fr' }}
 
 jobs:
   sync-scrutins-an:
@@ -47,6 +49,9 @@ jobs:
           else
             npm run sync:scrutins-an
           fi
+
+      - name: Revalidate votes cache
+        run: npm run cache:revalidate -- votes
 
       - name: Show sync stats
         if: always()

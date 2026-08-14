@@ -14,14 +14,10 @@
 
 import "dotenv/config";
 import { execSync } from "child_process";
+import { revalidateRemoteCache } from "./lib/revalidate-cache";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 const dryRunFlag = DRY_RUN ? " --dry-run" : "";
-const BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
-const CRON_SECRET = process.env.CRON_SECRET;
 
 // Pause between retry attempts so a still-ongoing transient blip (e.g. a
 // Supabase connection drop) has time to clear instead of the retry hitting it
@@ -32,6 +28,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 interface SyncStep {
   name: string;
   command: string;
+  run?: () => Promise<void>;
   /**
    * When true, a failure on this step is recorded but does not mark the whole
    * run as failed. Use sparingly — reserved for steps that depend on unreliable
@@ -140,7 +137,7 @@ const steps: SyncStep[] = [
     command: `npx tsx scripts/notify-press-backlog.ts${dryRunFlag}`,
     allowFailure: true,
   },
-  ...(CRON_SECRET
+  ...(!DRY_RUN
     ? [
         {
           // Scoped tags only — never use { all: true }. See Phase 4 of
@@ -149,7 +146,8 @@ const steps: SyncStep[] = [
           // daily sync. Adding "elections" or "factchecks" here would purge
           // caches that the daily sync did NOT update.
           name: "Cache revalidation",
-          command: `curl -s -X POST "${BASE_URL}/api/cron/revalidate" -H "Authorization: Bearer ${CRON_SECRET}" -H "Content-Type: application/json" -d '{"tags":["votes","dossiers","stats","politicians"]}'`,
+          command: "POST /api/cron/revalidate (votes, dossiers, stats, politicians)",
+          run: () => revalidateRemoteCache(["votes", "dossiers", "stats", "politicians"]),
         },
       ]
     : []),
@@ -194,11 +192,15 @@ async function main() {
       }
       const attemptStart = Date.now();
       try {
-        execSync(step.command, {
-          stdio: "inherit",
-          env: { ...process.env },
-          timeout: 10 * 60 * 1000, // 10 minutes max per step
-        });
+        if (step.run) {
+          await step.run();
+        } else {
+          execSync(step.command, {
+            stdio: "inherit",
+            env: { ...process.env },
+            timeout: 10 * 60 * 1000, // 10 minutes max per step
+          });
+        }
         success = true;
         break;
       } catch (err) {

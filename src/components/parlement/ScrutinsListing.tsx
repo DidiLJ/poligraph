@@ -214,7 +214,7 @@ export async function ScrutinsListing({ searchParams: params, sort }: ScrutinsLi
                 <li key={themeCategory}>
                   <Link
                     href={`/parlement/votes/themes/${themeToSlug(themeCategory)}`}
-                    className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
                   >
                     Votes sur {themeSeoPhrase(themeCategory)}
                     <span className="text-xs text-muted-foreground tabular-nums">

@@ -7,6 +7,7 @@ describe("ThemeVotesLink", () => {
     render(<ThemeVotesLink theme="SANTE" />);
     const link = screen.getByRole("link", { name: /Voir tous les votes sur la santé/ });
     expect(link).toHaveAttribute("href", "/parlement/votes/themes/sante");
+    expect(link).toHaveClass("inline-flex", "min-h-11", "items-center");
   });
 
   it("uses a descriptive anchor, not a bare label", () => {

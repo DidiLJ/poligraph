@@ -179,11 +179,11 @@ export function VoteCard({
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground"
-                title="Voir sur NosDéputés.fr"
-                aria-label="Voir le scrutin sur NosDéputés.fr (nouvelle fenêtre)"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                title="Voir le scrutin à la source"
+                aria-label="Voir le scrutin à la source (nouvelle fenêtre)"
               >
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
               </a>
             )}
           </div>

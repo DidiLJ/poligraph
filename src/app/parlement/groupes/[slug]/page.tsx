@@ -163,17 +163,17 @@ export default async function GroupeDetailPage({ params }: PageProps) {
               <VoteCard
                 key={gp.scrutin.id}
                 id={gp.scrutin.id}
-                externalId=""
+                externalId={gp.scrutin.externalId}
                 slug={gp.scrutin.slug}
                 title={gp.scrutin.title}
                 votingDate={gp.scrutin.votingDate}
-                legislature={0}
-                chamber="AN"
+                legislature={gp.scrutin.legislature}
+                chamber={gp.scrutin.chamber}
                 votesFor={gp.scrutin.votesFor}
                 votesAgainst={gp.scrutin.votesAgainst}
                 votesAbstain={gp.scrutin.votesAbstain}
                 result={gp.scrutin.result}
-                sourceUrl={null}
+                sourceUrl={gp.scrutin.sourceUrl}
                 theme={gp.scrutin.theme}
                 policy={gp.scrutin.policyTitle}
               />

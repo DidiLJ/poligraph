@@ -77,14 +77,14 @@ export function VotesSection({
       {voteData.stats.total > 0 && (
         <Card id="votes">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="leading-none font-semibold">Votes parlementaires</h2>
               <Link
                 href={`/politiques/${slug}/votes`}
                 prefetch={false}
-                className="text-sm text-primary hover:underline"
+                className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
               >
-                Voir tout →
+                Voir tous les votes parlementaires
               </Link>
             </div>
           </CardHeader>

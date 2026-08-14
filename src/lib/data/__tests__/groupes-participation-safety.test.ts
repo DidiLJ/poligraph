@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const dbMock = vi.hoisted(() => ({
   parliamentaryGroup: { findMany: vi.fn(), findUnique: vi.fn() },
+  scrutinGroupPosition: { findMany: vi.fn() },
 }));
 
 vi.mock("next/cache", () => ({ cacheLife: vi.fn(), cacheTag: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: dbMock }));
 
-import { getGroupeDetail, getGroupesListing } from "@/lib/data/groupes";
+import { getGroupeDetail, getGroupesListing, getGroupKeyVotes } from "@/lib/data/groupes";
 
 const staleStats = {
   id: "stats-1",
@@ -61,5 +62,26 @@ describe("frontières publiques des groupes parlementaires", () => {
 
     expect(group?.stats[0]?.averageParticipationPct).toBeNull();
     expect(group?.stats[0]?.cohesionPct).toBe(88);
+  });
+
+  it("sélectionne les attributs réels nécessaires aux cartes de scrutins", async () => {
+    dbMock.scrutinGroupPosition.findMany.mockResolvedValue([]);
+
+    await getGroupKeyVotes("group-1");
+
+    expect(dbMock.scrutinGroupPosition.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          scrutin: {
+            select: expect.objectContaining({
+              externalId: true,
+              legislature: true,
+              chamber: true,
+              sourceUrl: true,
+            }),
+          },
+        },
+      })
+    );
   });
 });

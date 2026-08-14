@@ -14,12 +14,16 @@ import { formatDate } from "@/lib/utils";
 import { ArrowLeft, ExternalLink, Info } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { feminizeRole, SCRUTIN_TYPE_LABELS, SCRUTIN_TYPE_COLORS } from "@/config/labels";
-import { getPoliticianVotingStats, getPoliticianVoteTabCounts } from "@/services/voteStats";
+import {
+  getPoliticianVotingStats,
+  getPoliticianVoteTabCounts,
+  getPoliticianVoteChamberCoverage,
+} from "@/services/voteStats";
 import { politicianRobotsMetadata } from "@/lib/seo/politician-robots";
 import { getPoliticianIndexSignals } from "@/lib/seo/politician-index-signals";
 import { SeoIntro } from "@/components/seo/SeoIntro";
 import {
-  resolveParliamentaryChamber,
+  resolveVoteCorpusChamber,
   buildPoliticianVotesSeo,
   buildPoliticianVotesIntro,
 } from "@/lib/seo/politician-votes-metadata";
@@ -59,14 +63,8 @@ const getPolitician = cache(async function getPolitician(slug: string) {
       photoUrl: true,
       civility: true,
       currentParty: true,
-      // Two needs, one relation read: the chamber-president note wants current
-      // mandates carrying a role, and the chamber resolution wants every
-      // parliamentary mandate (current or not). Consumers filter on `isCurrent`
-      // themselves rather than the query narrowing it for one of the two.
       mandates: {
-        where: {
-          OR: [{ isCurrent: true, role: { not: null } }, { type: { in: ["DEPUTE", "SENATEUR"] } }],
-        },
+        where: { isCurrent: true, role: { not: null } },
         select: { role: true, type: true, isCurrent: true },
       },
     },
@@ -151,10 +149,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Politicien non trouvé" };
   }
 
-  // The chamber is derived from the mandates, never assumed: asserting
-  // "à l'Assemblée nationale" for a senator (or for anyone whose parliamentary
-  // mandate is not established) is a factual error, not an SEO detail.
-  const chamber = resolveParliamentaryChamber(politician.mandates);
+  const voteChambers = await getPoliticianVoteChamberCoverage(politician.id);
+  const chamber = resolveVoteCorpusChamber(voteChambers);
   const seo = buildPoliticianVotesSeo(politician.fullName, chamber);
 
   return {
@@ -182,8 +178,11 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
   }
 
   const typeFilter = TYPE_TAB_MAP[typeTab] ?? {};
-  const { votes, total, totalPages, stats, totalAll, amendmentCount, nonAmendmentCount } =
-    await getVotes(politician.id, page, limit, typeFilter);
+  const [voteData, voteChambers] = await Promise.all([
+    getVotes(politician.id, page, limit, typeFilter),
+    getPoliticianVoteChamberCoverage(politician.id),
+  ]);
+  const { votes, total, totalPages, stats, totalAll, amendmentCount, nonAmendmentCount } = voteData;
 
   const buildUrl = (p: number, tabKey: string) => {
     const params = new URLSearchParams();
@@ -211,7 +210,7 @@ export default async function PoliticianVotesPage({ params, searchParams }: Page
 
   const hasMultipleTypes = amendmentCount > 0 && nonAmendmentCount > 0;
 
-  const chamber = resolveParliamentaryChamber(politician.mandates);
+  const chamber = resolveVoteCorpusChamber(voteChambers);
   const seo = buildPoliticianVotesSeo(politician.fullName, chamber);
   // Deterministic, built from the tab counts already loaded above: no extra
   // query, no participation rate, no reading of the voting behaviour.

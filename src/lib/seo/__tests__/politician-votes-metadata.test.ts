@@ -1,66 +1,25 @@
 import { describe, it, expect } from "vitest";
 import {
-  resolveParliamentaryChamber,
+  resolveVoteCorpusChamber,
   buildPoliticianVotesSeo,
   buildPoliticianVotesIntro,
 } from "@/lib/seo/politician-votes-metadata";
 
-describe("resolveParliamentaryChamber", () => {
-  it("resolves a sitting deputy to the Assemblée nationale", () => {
-    expect(resolveParliamentaryChamber([{ type: "DEPUTE", isCurrent: true }])).toBe("AN");
+describe("resolveVoteCorpusChamber", () => {
+  it("resolves an AN-only corpus", () => {
+    expect(resolveVoteCorpusChamber(["AN"])).toBe("AN");
   });
 
-  it("resolves a sitting senator to the Sénat", () => {
-    expect(resolveParliamentaryChamber([{ type: "SENATEUR", isCurrent: true }])).toBe("SENAT");
+  it("resolves a Sénat-only corpus", () => {
+    expect(resolveVoteCorpusChamber(["SENAT"])).toBe("SENAT");
   });
 
-  it("ignores non-parliamentary mandates", () => {
-    expect(
-      resolveParliamentaryChamber([
-        { type: "MAIRE", isCurrent: true },
-        { type: "SENATEUR", isCurrent: true },
-      ])
-    ).toBe("SENAT");
-    expect(
-      resolveParliamentaryChamber([
-        { type: "MAIRE", isCurrent: true },
-        { type: "MINISTRE", isCurrent: true },
-      ])
-    ).toBeNull();
+  it("returns null for a mixed corpus", () => {
+    expect(resolveVoteCorpusChamber(["AN", "SENAT"])).toBeNull();
   });
 
-  it("returns null when no parliamentary mandate is recorded", () => {
-    expect(resolveParliamentaryChamber([])).toBeNull();
-  });
-
-  it("returns null rather than picking one when two current chambers appear", () => {
-    // Legally impossible: this is a data defect, and a defect must not become
-    // an assertion about where the person sits.
-    expect(
-      resolveParliamentaryChamber([
-        { type: "DEPUTE", isCurrent: true },
-        { type: "SENATEUR", isCurrent: true },
-      ])
-    ).toBeNull();
-  });
-
-  it("falls back to past mandates only when they agree", () => {
-    expect(resolveParliamentaryChamber([{ type: "DEPUTE", isCurrent: false }])).toBe("AN");
-    expect(
-      resolveParliamentaryChamber([
-        { type: "DEPUTE", isCurrent: false },
-        { type: "SENATEUR", isCurrent: false },
-      ])
-    ).toBeNull();
-  });
-
-  it("prefers the current mandate over a past one in the other chamber", () => {
-    expect(
-      resolveParliamentaryChamber([
-        { type: "DEPUTE", isCurrent: false },
-        { type: "SENATEUR", isCurrent: true },
-      ])
-    ).toBe("SENAT");
+  it("returns null for an empty corpus", () => {
+    expect(resolveVoteCorpusChamber([])).toBeNull();
   });
 });
 
@@ -91,7 +50,7 @@ describe("buildPoliticianVotesSeo", () => {
     expect(seo.description).toBe(
       "Consultez les votes parlementaires enregistrés pour Camille Durand : textes de loi, amendements et positions enregistrées."
     );
-    expect(seo.heading).toBe("Votes de Camille Durand");
+    expect(seo.heading).toBe("Votes parlementaires de Camille Durand");
     for (const value of [seo.title, seo.description, seo.heading]) {
       expect(value).not.toContain("Assemblée nationale");
       expect(value).not.toContain("Sénat");
@@ -109,7 +68,7 @@ describe("buildPoliticianVotesIntro", () => {
         amendmentVotes: 112,
       })
     ).toBe(
-      "204 votes de Jean Dupont sont enregistrés à l'Assemblée nationale. 112 portent sur des amendements."
+      "Au total, 204 votes de Jean Dupont sont enregistrés à l'Assemblée nationale. 112 portent sur des amendements."
     );
   });
 
@@ -120,12 +79,12 @@ describe("buildPoliticianVotesIntro", () => {
       totalVotes: 3,
       amendmentVotes: 0,
     });
-    expect(intro).toBe("3 votes de Camille Durand sont enregistrés.");
+    expect(intro).toBe("Au total, 3 votes de Camille Durand sont enregistrés.");
     expect(intro).not.toContain("Assemblée nationale");
     expect(intro).not.toContain("Sénat");
   });
 
-  it("returns null when nothing is recorded, rather than writing a zero", () => {
+  it("uses a neutral fallback when no vote is recorded", () => {
     expect(
       buildPoliticianVotesIntro({
         fullName: "Camille Durand",
@@ -133,7 +92,7 @@ describe("buildPoliticianVotesIntro", () => {
         totalVotes: 0,
         amendmentVotes: 0,
       })
-    ).toBeNull();
+    ).toBe("Aucun vote parlementaire n'est enregistré pour Camille Durand.");
   });
 
   it("carries no participation claim (issue #717)", () => {

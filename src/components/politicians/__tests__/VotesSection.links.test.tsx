@@ -39,6 +39,16 @@ const renderSection = (scrutin: { id: string; slug: string | null }) =>
   );
 
 describe("VotesSection : liens des derniers votes", () => {
+  it("utilise une ancre descriptive vers tous les votes parlementaires", () => {
+    const { getByRole, queryByText } = renderSection({ id: "scrutin-an", slug: "scrutin-an" });
+
+    expect(getByRole("link", { name: "Voir tous les votes parlementaires" })).toHaveAttribute(
+      "href",
+      "/politiques/jean-dupont/votes"
+    );
+    expect(queryByText("Voir tout →")).not.toBeInTheDocument();
+  });
+
   it("affiche l'indisponibilité plutôt qu'un taux pour un sénateur", () => {
     const senateData = {
       ...voteData({ id: "scrutin-senat", slug: "scrutin-senat" }),

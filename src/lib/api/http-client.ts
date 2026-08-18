@@ -8,13 +8,14 @@
  * - Batch requests with concurrency control
  */
 
+import { USER_AGENT } from "@/config/site";
+
 export interface HTTPClientOptions {
   baseUrl?: string;
   timeout?: number;
   retries?: number;
   retryDelay?: number;
   rateLimitMs?: number;
-  userAgent?: string;
   headers?: Record<string, string>;
   /** Enable response caching (default: false) */
   enableCache?: boolean;
@@ -126,12 +127,30 @@ const DEFAULT_OPTIONS: Required<HTTPClientOptions> = {
   retries: 3,
   retryDelay: 1000,
   rateLimitMs: 0,
-  userAgent: "Poligraph/1.0 (https://poligraph.fr)",
   headers: {},
   enableCache: false,
   cacheTtlMs: 5 * 60 * 1000, // 5 minutes
   sourceName: "",
 };
+
+/**
+ * Merge caller-controlled headers without allowing them to replace the crawler identity.
+ * Headers normalizes names case-insensitively, so every User-Agent spelling is removed before
+ * the canonical value is set.
+ */
+function mergeRequestHeaders(...sources: Array<HeadersInit | undefined>): Headers {
+  const headers = new Headers();
+
+  for (const source of sources) {
+    if (!source) continue;
+    new Headers(source).forEach((value, name) => {
+      if (name.toLowerCase() !== "user-agent") headers.set(name, value);
+    });
+  }
+
+  headers.set("User-Agent", USER_AGENT);
+  return headers;
+}
 
 /**
  * Sleep for a specified duration
@@ -260,12 +279,7 @@ export class HTTPClient {
         const response = await fetch(url, {
           ...init,
           signal: controller.signal,
-          headers: {
-            "User-Agent": this.options.userAgent,
-            ...this.options.headers,
-            ...init.headers,
-            ...options.headers,
-          },
+          headers: mergeRequestHeaders(this.options.headers, init.headers, options.headers),
         });
 
         clearTimeout(timeoutId);

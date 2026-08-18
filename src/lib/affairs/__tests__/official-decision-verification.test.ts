@@ -98,6 +98,27 @@ describe("official decision verification", () => {
     );
   });
 
+  it("does not accept identifiers hidden in malformed script markup", async () => {
+    const result = await verifyOfficialDecision(expectation(), {
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValue(
+          response(
+            "<script>N° 23-82.194 ECLI:FR:CCASS:2024:CR00817 19 JUIN 2024</script > N° 23-82.999"
+          )
+        ),
+    });
+
+    expect(result.status).toBe("MISMATCH");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        "pourvoi_absent_ou_different",
+        "ecli_absent_ou_different",
+        "date_decision_absente_ou_differente",
+      ])
+    );
+  });
+
   it("classifies missing pages as broken without using an indexed fallback", async () => {
     const result = await verifyOfficialDecision(
       { ...expectation(), indexedProof: indexedProof() },

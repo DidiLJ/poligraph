@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { load } from "cheerio";
 import type { SourceType } from "@/generated/prisma";
 import { USER_AGENT } from "@/config/site";
 
@@ -109,15 +110,11 @@ function stripDiacritics(value: string): string {
 }
 
 function normalizeText(value: string): string {
+  const $ = load(value);
+  $("script, style").remove();
   return stripDiacritics(
-    value
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;|&#160;/gi, " ")
-      .replace(/&amp;/gi, "&")
-      .replace(/&quot;|&#34;/gi, '"')
-      .replace(/&#39;|&apos;/gi, "'")
+    $.root()
+      .text()
       .replace(/[\u2010-\u2015\u2212]/g, "-")
   )
     .toLowerCase()

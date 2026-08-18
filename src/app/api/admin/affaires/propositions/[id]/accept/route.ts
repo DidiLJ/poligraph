@@ -62,6 +62,15 @@ export const POST = withAdminAuth(
             },
             { status: 422 }
           );
+        case "evidence_unverified":
+          return NextResponse.json(
+            {
+              error:
+                "La décision officielle n'est pas suffisamment vérifiée. Vérifiez l'URL et les identifiants avant de régénérer la proposition.",
+              verification: result.verification,
+            },
+            { status: 422 }
+          );
         case "conflict":
           return NextResponse.json(
             {

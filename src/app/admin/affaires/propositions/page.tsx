@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldAlert } from "lucide-react";
 
 // Affaires v2, lot 1: review queue for importer-proposed affair changes.
 // Every automated write to an existing affair lands here first.
@@ -43,6 +43,15 @@ interface ProposalRow {
   reviewedBy: string | null;
   reviewNotes: string | null;
   createdAt: string;
+  officialEvidence: {
+    required: boolean;
+    acceptable: boolean;
+    canonicalUrl: string | null;
+    status: string | null;
+    checkedAt: string | null;
+    matchedIdentifiers: string[];
+    issues: string[];
+  };
   /** Null once the affair has been deleted; fall back to affairSnapshot. */
   affair: {
     id: string;
@@ -81,6 +90,43 @@ const RISK_VARIANTS: Record<ProposalRisk, "destructive" | "secondary" | "outline
   LOW: "outline",
 };
 
+const VERIFICATION_LABELS: Record<string, string> = {
+  VALID: "Décision vérifiée en direct",
+  REDIRECTED: "URL redirigée à normaliser",
+  INDEX_VERIFIED: "Index officiel concordant",
+  BROKEN: "URL cassée",
+  MISMATCH: "Décision différente",
+  BLOCKED: "Vérification bloquée",
+  UNCHECKED: "Preuve incomplète",
+};
+
+const IDENTIFIER_LABELS: Record<string, string> = {
+  officialId: "identifiant officiel",
+  pourvoi: "pourvoi",
+  ecli: "ECLI",
+  decisionDate: "date",
+};
+
+const VERIFICATION_ISSUE_LABELS: Record<string, string> = {
+  decision_officielle_candidate_absente: "métadonnées de décision absentes",
+  url_decision_absente: "URL de décision absente",
+  source_url_et_decision_candidate_differentes: "URL source différente de l'URL candidate",
+  identifiant_officiel_attendu_absent: "identifiant officiel absent",
+  date_decision_attendue_absente: "date attendue absente",
+  pourvoi_ou_ecli_attendu_absent: "pourvoi ou ECLI absent",
+  url_et_identifiant_officiel_differents: "identifiant incompatible avec l'URL",
+  pourvoi_absent_ou_different: "pourvoi absent ou différent",
+  ecli_absent_ou_different: "ECLI absent ou différent",
+  date_decision_absente_ou_differente: "date absente ou différente",
+  redirection_vers_autre_decision: "redirection vers une autre décision",
+  preuve_indexee_expiree_ou_date_invalide: "preuve indexée expirée",
+};
+
+function verificationIssueLabel(issue: string): string {
+  if (/^http_[0-9]{3}$/.test(issue)) return `réponse HTTP ${issue.slice(5)}`;
+  return VERIFICATION_ISSUE_LABELS[issue] ?? issue.replaceAll("_", " ");
+}
+
 const FIELD_LABELS: Record<string, string> = {
   status: "Statut procédural",
   involvement: "Implication",
@@ -113,8 +159,8 @@ function formatConflictValue(value: string): string {
 
 /** Values arrive as JSON, so dates are ISO strings and arrays stay arrays. */
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
-  if (Array.isArray(value)) return value.length > 0 ? value.join(", ") : "—";
+  if (value === null || value === undefined) return "non renseigné";
+  if (Array.isArray(value)) return value.length > 0 ? value.join(", ") : "non renseigné";
   if (typeof value === "boolean") return value ? "oui" : "non";
   if (typeof value === "string" && ISO_DATE.test(value)) {
     return new Date(value).toLocaleDateString("fr-FR");
@@ -165,6 +211,7 @@ export default function PropositionsPage() {
       const payload = (await res.json()) as {
         error?: string;
         conflictDetail?: Record<string, { expected: string; actual: string }>;
+        verification?: { issues?: string[] };
       };
       if (!res.ok) {
         setFeedback({
@@ -172,7 +219,9 @@ export default function PropositionsPage() {
           message:
             res.status === 409 && payload.conflictDetail
               ? "La valeur en base a changé depuis la proposition. Elle passe en conflit."
-              : (payload.error ?? "Action refusée"),
+              : [payload.error, ...(payload.verification?.issues ?? []).map(verificationIssueLabel)]
+                  .filter(Boolean)
+                  .join(" : ") || "Action refusée",
         });
       } else {
         setFeedback({
@@ -211,6 +260,7 @@ export default function PropositionsPage() {
               key={t.key}
               variant={active ? "default" : "outline"}
               size="sm"
+              className="min-h-11"
               aria-current={active ? "page" : undefined}
               onClick={() => {
                 setTab(t.key);
@@ -254,6 +304,8 @@ export default function PropositionsPage() {
       <ul className="space-y-4">
         {data?.rows.map((row) => {
           const fields = Object.keys(row.proposedPatch);
+          const evidence = row.officialEvidence;
+          const evidenceDescriptionId = `preuve-officielle-${row.id}`;
           return (
             <li key={row.id}>
               <Card>
@@ -263,7 +315,7 @@ export default function PropositionsPage() {
                       {row.affair ? (
                         <Link
                           href={`/admin/affaires/${row.affair.id}/edit`}
-                          className="font-semibold hover:underline"
+                          className="inline-flex min-h-11 items-center font-semibold hover:underline"
                         >
                           {row.affair.title}
                         </Link>
@@ -286,6 +338,11 @@ export default function PropositionsPage() {
                       <Badge variant="outline">
                         {row.importer}@{row.extractorVersion}
                       </Badge>
+                      {evidence.required && (
+                        <Badge variant={evidence.acceptable ? "outline" : "destructive"}>
+                          {VERIFICATION_LABELS[evidence.status ?? ""] ?? "Décision non vérifiée"}
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
@@ -346,6 +403,55 @@ export default function PropositionsPage() {
                     </div>
                   )}
 
+                  {evidence.required && (
+                    <div
+                      id={evidenceDescriptionId}
+                      className={
+                        evidence.acceptable
+                          ? "flex gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm"
+                          : "border-destructive/40 bg-destructive/10 flex gap-2 rounded-md border px-3 py-2 text-sm"
+                      }
+                    >
+                      {evidence.acceptable ? (
+                        <CheckCircle2
+                          className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <ShieldAlert
+                          className="text-destructive mt-0.5 h-4 w-4 shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="space-y-1">
+                        <p className="font-medium">
+                          {VERIFICATION_LABELS[evidence.status ?? ""] ??
+                            "Décision officielle non vérifiée"}
+                        </p>
+                        {evidence.matchedIdentifiers.length > 0 && (
+                          <p>
+                            Concordances :{" "}
+                            {evidence.matchedIdentifiers
+                              .map((identifier) => IDENTIFIER_LABELS[identifier] ?? identifier)
+                              .join(", ")}
+                          </p>
+                        )}
+                        {evidence.checkedAt && (
+                          <p className="text-muted-foreground">
+                            Contrôle du {new Date(evidence.checkedAt).toLocaleString("fr-FR")}
+                          </p>
+                        )}
+                        {evidence.issues.length > 0 && (
+                          <ul className="list-disc pl-4">
+                            {evidence.issues.map((issue) => (
+                              <li key={issue}>{verificationIssueLabel(issue)}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2 text-sm">
                     <p>
                       <span className="text-muted-foreground">Justification : </span>
@@ -357,12 +463,13 @@ export default function PropositionsPage() {
                       </blockquote>
                     )}
                     <p className="flex flex-wrap items-center gap-3">
-                      {row.sourceUrl ? (
+                      {(evidence.canonicalUrl ?? row.sourceUrl) ? (
                         <a
-                          href={row.sourceUrl}
+                          href={evidence.canonicalUrl ?? row.sourceUrl ?? undefined}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 hover:underline"
+                          aria-label={`Ouvrir la source ${row.source} dans un nouvel onglet`}
+                          className="inline-flex min-h-11 items-center gap-1 hover:underline"
                         >
                           {row.source}
                           <ExternalLink className="h-3 w-3" aria-hidden="true" />
@@ -393,12 +500,22 @@ export default function PropositionsPage() {
                       />
                       <div className="flex gap-2">
                         <Button
+                          className="min-h-11"
                           onClick={() => void review(row.id, "accept")}
-                          disabled={busyId === row.id}
+                          disabled={
+                            busyId === row.id || (evidence.required && !evidence.acceptable)
+                          }
+                          aria-describedby={evidence.required ? evidenceDescriptionId : undefined}
+                          title={
+                            evidence.required && !evidence.acceptable
+                              ? "Acceptation bloquée tant que la décision officielle n'est pas vérifiée"
+                              : undefined
+                          }
                         >
                           Accepter et appliquer
                         </Button>
                         <Button
+                          className="min-h-11"
                           variant="outline"
                           onClick={() => void review(row.id, "reject")}
                           disabled={busyId === row.id}
@@ -412,7 +529,7 @@ export default function PropositionsPage() {
                       {row.reviewedBy && row.reviewedAt
                         ? `${row.status} par ${row.reviewedBy} le ${new Date(row.reviewedAt).toLocaleString("fr-FR")}`
                         : row.status}
-                      {row.reviewNotes ? ` — ${row.reviewNotes}` : ""}
+                      {row.reviewNotes ? ` - ${row.reviewNotes}` : ""}
                     </p>
                   )}
                 </CardContent>
@@ -427,6 +544,7 @@ export default function PropositionsPage() {
           <Button
             variant="outline"
             size="sm"
+            className="min-h-11"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
@@ -438,6 +556,7 @@ export default function PropositionsPage() {
           <Button
             variant="outline"
             size="sm"
+            className="min-h-11"
             disabled={page >= data.totalPages}
             onClick={() => setPage((p) => p + 1)}
           >

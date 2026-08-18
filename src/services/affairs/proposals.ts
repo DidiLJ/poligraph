@@ -10,6 +10,7 @@ import {
   type AffairPatch,
   type ProposableField,
 } from "@/lib/security/schemas/affair-proposal";
+import { verifyAndAnnotateProposalOfficialEvidence } from "@/lib/affairs/official-decision-verification";
 
 // Affaires v2, lot 1.
 //
@@ -68,6 +69,7 @@ export const AFFAIR_PROPOSABLE_SELECT = {
   sentence: true,
   prisonMonths: true,
   prisonFirmMonths: true,
+  fineAmount: true,
   ineligibilityMonths: true,
   ineligibilityFirmMonths: true,
   communityService: true,
@@ -288,14 +290,24 @@ export async function proposeAffairUpdate(
 ): Promise<ProposeAffairUpdateResult> {
   const patch = validatePatch(input.patch);
   const fields = patchFields(patch);
-  const extractorVersion = input.extractorVersion ?? "v1";
+  const verifiedEvidence = await verifyAndAnnotateProposalOfficialEvidence(input);
+  const normalizedInput: ProposeAffairUpdateInput = verifiedEvidence
+    ? {
+        ...input,
+        sourceUrl: verifiedEvidence.sourceUrl,
+        sourceContentHash: input.sourceContentHash ?? verifiedEvidence.verification.contentHash,
+        metadata: toJson(verifiedEvidence.metadata),
+      }
+    : input;
+
+  const extractorVersion = normalizedInput.extractorVersion ?? "v1";
 
   const affair = await db.affair.findUnique({
-    where: { id: input.affairId },
+    where: { id: normalizedInput.affairId },
     select: AFFAIR_PROPOSABLE_SELECT,
   });
   if (!affair) {
-    throw new Error(`Affaire introuvable : ${input.affairId}`);
+    throw new Error(`Affaire introuvable : ${normalizedInput.affairId}`);
   }
   const live = affair as unknown as LiveAffair;
 
@@ -310,7 +322,12 @@ export async function proposeAffairUpdate(
   };
 
   if (Object.keys(reviewPatch).length > 0) {
-    const outcome = await recordPendingProposal(input, extractorVersion, reviewPatch, live);
+    const outcome = await recordPendingProposal(
+      normalizedInput,
+      extractorVersion,
+      reviewPatch,
+      live
+    );
     result.pendingProposalId = outcome.proposalId;
     result.deduped = outcome.deduped;
   }

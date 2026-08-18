@@ -13,12 +13,18 @@ const h = vi.hoisted(() => ({
     $transaction: vi.fn(),
   },
   trackStatusChange: vi.fn(),
+  verifyProposalOfficialEvidence: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({ db: h.db }));
 vi.mock("@/services/affairs/status-tracking", () => ({
   trackStatusChange: h.trackStatusChange,
 }));
+vi.mock("@/lib/affairs/official-decision-verification", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/affairs/official-decision-verification")>();
+  return { ...actual, verifyProposalOfficialEvidence: h.verifyProposalOfficialEvidence };
+});
 
 import { acceptProposal, rejectProposal } from "@/services/affairs/proposal-review";
 
@@ -79,9 +85,39 @@ beforeEach(() => {
   db.auditLog.create.mockResolvedValue({});
   db.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(db));
   h.trackStatusChange.mockResolvedValue(undefined);
+  h.verifyProposalOfficialEvidence.mockResolvedValue(null);
 });
 
 describe("acceptProposal", () => {
+  it("refuse avant la transaction quand la décision officielle ne concorde pas", async () => {
+    db.affairUpdateProposal.findUnique.mockResolvedValue(pendingProposal());
+    h.verifyProposalOfficialEvidence.mockResolvedValue({
+      sourceUrl: "https://www.courdecassation.fr/decision/1",
+      metadata: {},
+      verification: {
+        version: 1,
+        status: "MISMATCH",
+        checkedAt: "2026-08-18T09:00:00.000Z",
+        requestedUrl: "https://www.courdecassation.fr/decision/1",
+        resolvedUrl: "https://www.courdecassation.fr/decision/1",
+        httpStatus: 200,
+        contentHash: "a".repeat(64),
+        matchedIdentifiers: ["officialId"],
+        issues: ["pourvoi_absent_ou_different"],
+        indexedProof: null,
+      },
+    });
+
+    const result = await acceptProposal({ proposalId: "prop_1", reviewedBy: "admin" });
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "evidence_unverified",
+      verification: { status: "MISMATCH" },
+    });
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
   it("applique le patch, trace, et renvoie les slugs à invalider", async () => {
     db.affairUpdateProposal.findUnique.mockResolvedValue(pendingProposal());
 

@@ -1,5 +1,6 @@
 import { cacheTag, cacheLife } from "next/cache";
 import { db } from "@/lib/db";
+import { PUBLIC_PARTY_WHERE, PUBLIC_POLITICIAN_WHERE } from "@/lib/api/public-contract";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -15,13 +16,16 @@ interface PressQueryParams {
 // ── Core query (free-text capable, never cached directly) ───
 
 async function queryPress(params: PressQueryParams) {
-  const { page, limit, source, partyId, search, sort } = params;
+  const { page, limit, source, partyId, search } = params;
   const skip = (page - 1) * limit;
 
   const where = {
-    OR: [{ mentions: { some: {} } }, { partyMentions: { some: {} } }],
+    OR: [
+      { mentions: { some: { politician: PUBLIC_POLITICIAN_WHERE } } },
+      { partyMentions: { some: { party: PUBLIC_PARTY_WHERE } } },
+    ],
     ...(source && { feedSource: source }),
-    ...(partyId && { partyMentions: { some: { partyId } } }),
+    ...(partyId && { partyMentions: { some: { partyId, party: PUBLIC_PARTY_WHERE } } }),
     ...(search && {
       title: { contains: search, mode: "insensitive" as const },
     }),
@@ -30,12 +34,17 @@ async function queryPress(params: PressQueryParams) {
   const [articles, total] = await Promise.all([
     db.pressArticle.findMany({
       where,
-      orderBy: sort === "relevance" ? { mentions: { _count: "desc" } } : { publishedAt: "desc" },
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
       skip,
       take: limit,
       include: {
-        _count: { select: { mentions: true } },
+        _count: {
+          select: {
+            mentions: { where: { politician: PUBLIC_POLITICIAN_WHERE } },
+          },
+        },
         mentions: {
+          where: { politician: PUBLIC_POLITICIAN_WHERE },
           include: {
             politician: {
               select: { slug: true, fullName: true },
@@ -43,6 +52,7 @@ async function queryPress(params: PressQueryParams) {
           },
         },
         partyMentions: {
+          where: { party: PUBLIC_PARTY_WHERE },
           include: {
             party: {
               select: { slug: true, name: true, shortName: true, color: true },
@@ -87,7 +97,10 @@ export async function getPressStats() {
   cacheLife("synced");
 
   const linkedFilter = {
-    OR: [{ mentions: { some: {} } }, { partyMentions: { some: {} } }],
+    OR: [
+      { mentions: { some: { politician: PUBLIC_POLITICIAN_WHERE } } },
+      { partyMentions: { some: { party: PUBLIC_PARTY_WHERE } } },
+    ],
   };
 
   const [totalArticles, bySource, totalMentions, totalPartyMentions] = await Promise.all([
@@ -97,8 +110,8 @@ export async function getPressStats() {
       where: linkedFilter,
       _count: true,
     }),
-    db.pressArticleMention.count(),
-    db.pressArticlePartyMention.count(),
+    db.pressArticleMention.count({ where: { politician: PUBLIC_POLITICIAN_WHERE } }),
+    db.pressArticlePartyMention.count({ where: { party: PUBLIC_PARTY_WHERE } }),
   ]);
 
   return {
@@ -123,7 +136,7 @@ export async function getPartiesWithPressMentions() {
   cacheLife("synced");
 
   return db.party.findMany({
-    where: { pressMentions: { some: {} } },
+    where: { ...PUBLIC_PARTY_WHERE, pressMentions: { some: {} } },
     select: {
       id: true,
       name: true,

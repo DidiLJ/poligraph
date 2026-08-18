@@ -38,6 +38,61 @@ describe("getCondamnations", () => {
     expect(result.page).toBe(1);
   });
 
+  it("conserve la condamnation mais masque intégralement son parti historique non public", async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        id: "affair-public",
+        title: "Condamnation publique",
+        fineAmount: null,
+        partyAtTime: {
+          id: "party-draft",
+          publicId: "PT000999",
+          slug: "parti-draft",
+          shortName: "PD",
+          name: "Parti DRAFT",
+          logoUrl: "https://example.test/draft.svg",
+          color: "#123456",
+          _count: { politicians: 0 },
+        },
+      },
+      {
+        id: "affair-public-party",
+        title: "Condamnation avec parti public",
+        fineAmount: null,
+        partyAtTime: {
+          id: "party-public",
+          publicId: "PT000001",
+          slug: "parti-public",
+          shortName: "PP",
+          name: "Parti public",
+          logoUrl: null,
+          color: "#654321",
+          _count: { politicians: 1 },
+        },
+      },
+    ]);
+    mockCount.mockResolvedValue(2);
+
+    const result = await getCondamnations({});
+
+    expect(result.affairs).toHaveLength(2);
+    expect(result.affairs[0]).toMatchObject({ id: "affair-public", partyAtTime: null });
+    expect(result.affairs[1]).toMatchObject({
+      id: "affair-public-party",
+      partyAtTime: {
+        id: "party-public",
+        publicId: "PT000001",
+        slug: "parti-public",
+        name: "Parti public",
+      },
+    });
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("party-draft");
+    expect(serialized).not.toContain("PT000999");
+    expect(serialized).not.toContain("draft.svg");
+    expect(serialized).not.toContain("#123456");
+  });
+
   it("passes mandat=depute as mandates.some.type filter", async () => {
     await getCondamnations({ mandat: "depute" });
     expect(mockFindMany).toHaveBeenCalledOnce();
@@ -67,13 +122,60 @@ describe("getCondamnations", () => {
     expect(args.where.status).toBeUndefined();
   });
 
-  it("applies partiSlug as OR clause on partyAtTime and currentParty", async () => {
+  it("applies partiSlug behind the public Party boundary", async () => {
     await getCondamnations({ partiSlug: "rn" });
     const args = mockFindMany.mock.calls[0]![0];
     expect(args.where.OR).toEqual([
-      { partyAtTime: { slug: "rn" } },
-      { politician: { currentParty: { slug: "rn" } } },
+      {
+        partyAtTime: {
+          slug: "rn",
+          politicians: { some: { publicationStatus: "PUBLISHED" } },
+        },
+      },
+      {
+        politician: {
+          currentParty: {
+            slug: "rn",
+            politicians: { some: { publicationStatus: "PUBLISHED" } },
+          },
+        },
+      },
     ]);
+  });
+
+  it("retourne zéro condamnation pour un parti caché et conserve un parti public", async () => {
+    mockFindMany.mockImplementation(async (args: { where?: unknown }) => {
+      const where = JSON.stringify(args.where);
+      if (!where.includes('"slug":"parti-public"')) return [];
+      return [
+        {
+          id: "condamnation-publique",
+          title: "Condamnation publique",
+          fineAmount: null,
+          partyAtTime: {
+            id: "party-public",
+            publicId: "PT000001",
+            slug: "parti-public",
+            shortName: "PP",
+            name: "Parti public",
+            foundedDate: null,
+            _count: { politicians: 1 },
+          },
+        },
+      ];
+    });
+    mockCount.mockImplementation(async (args: { where?: unknown }) =>
+      JSON.stringify(args.where).includes('"slug":"parti-public"') ? 1 : 0
+    );
+
+    const hidden = await getCondamnations({ partiSlug: "parti-interne" });
+    const visible = await getCondamnations({ partiSlug: "parti-public" });
+
+    expect(hidden).toMatchObject({ affairs: [], total: 0 });
+    expect(visible).toMatchObject({
+      total: 1,
+      affairs: [expect.objectContaining({ id: "condamnation-publique" })],
+    });
   });
 
   it("applies pagination correctly (page 2 skips 30)", async () => {

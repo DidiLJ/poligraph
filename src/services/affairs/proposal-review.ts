@@ -3,6 +3,11 @@ import type { AffairStatus, ProposalStatus } from "@/generated/prisma";
 import { isValidSentenceSplit } from "@/lib/affairs/sentence-split";
 import { trackStatusChange } from "@/services/affairs/status-tracking";
 import {
+  isAcceptableOfficialDecisionVerification,
+  verifyProposalOfficialEvidence,
+  type OfficialDecisionVerification,
+} from "@/lib/affairs/official-decision-verification";
+import {
   AFFAIR_PROPOSABLE_SELECT,
   buildPrismaData,
   detectDrift,
@@ -36,6 +41,11 @@ export type AcceptResult =
   | { ok: false; reason: "not_pending"; status: ProposalStatus }
   | { ok: false; reason: "invalid_patch"; issues: string[] }
   | { ok: false; reason: "invalid_split"; issues: string[] }
+  | {
+      ok: false;
+      reason: "evidence_unverified";
+      verification: OfficialDecisionVerification;
+    }
   | { ok: false; reason: "conflict"; conflictDetail: ConflictDetail };
 
 export type RejectResult =
@@ -117,6 +127,8 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
       rationale: true,
       source: true,
       sourceUrl: true,
+      officialId: true,
+      metadata: true,
       affair: {
         select: {
           id: true,
@@ -146,6 +158,23 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
       return { ok: false, reason: "invalid_patch", issues: error.issues };
     }
     throw error;
+  }
+
+  const officialEvidence = await verifyProposalOfficialEvidence({
+    source: proposal.source,
+    sourceUrl: proposal.sourceUrl,
+    officialId: proposal.officialId,
+    metadata: proposal.metadata,
+  });
+  if (
+    officialEvidence &&
+    !isAcceptableOfficialDecisionVerification(officialEvidence.verification)
+  ) {
+    return {
+      ok: false,
+      reason: "evidence_unverified",
+      verification: officialEvidence.verification,
+    };
   }
 
   const affairId = proposal.affairId;

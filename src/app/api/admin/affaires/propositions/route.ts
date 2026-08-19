@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
+import { parsePagination } from "@/lib/api/pagination";
+import {
+  summarizeProposalOfficialEvidence,
+  summarizeProposalSourceLink,
+} from "@/lib/affairs/official-decision-verification";
 import type { Prisma, ProposalStatus } from "@/generated/prisma";
 
 // Affaires v2, lot 1: review queue for importer-proposed affair changes.
@@ -23,7 +28,10 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
   const params = request.nextUrl.searchParams;
   const status = parseStatus(params.get("status"));
   const importer = params.get("importer");
-  const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
+  const { page, skip } = parsePagination(params, {
+    defaultLimit: PAGE_SIZE,
+    maxLimit: PAGE_SIZE,
+  });
 
   const where: Prisma.AffairUpdateProposalWhereInput = {
     status,
@@ -35,7 +43,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
       where,
       // riskLevel is declared LOW, MEDIUM, HIGH, so "desc" surfaces HIGH first.
       orderBy: [{ riskLevel: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * PAGE_SIZE,
+      skip,
       take: PAGE_SIZE,
       select: {
         id: true,
@@ -51,6 +59,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
         officialId: true,
         sourceContentHash: true,
         sourceExcerpt: true,
+        metadata: true,
         confidence: true,
         riskLevel: true,
         rationale: true,
@@ -76,7 +85,23 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
   ]);
 
   return NextResponse.json({
-    rows,
+    rows: rows.map(({ metadata, ...row }) => {
+      const officialEvidence = summarizeProposalOfficialEvidence({
+        source: row.source,
+        sourceUrl: row.sourceUrl,
+        officialId: row.officialId,
+        metadata,
+      });
+      const sourceLink = officialEvidence.required
+        ? { rawUrl: row.sourceUrl, safeUrl: null }
+        : summarizeProposalSourceLink(row.sourceUrl);
+
+      return {
+        ...row,
+        officialEvidence,
+        sourceLink,
+      };
+    }),
     total,
     page,
     pageSize: PAGE_SIZE,

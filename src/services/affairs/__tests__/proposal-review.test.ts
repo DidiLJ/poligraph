@@ -13,12 +13,18 @@ const h = vi.hoisted(() => ({
     $transaction: vi.fn(),
   },
   trackStatusChange: vi.fn(),
+  verifyProposalOfficialEvidence: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({ db: h.db }));
 vi.mock("@/services/affairs/status-tracking", () => ({
   trackStatusChange: h.trackStatusChange,
 }));
+vi.mock("@/lib/affairs/official-decision-verification", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/affairs/official-decision-verification")>();
+  return { ...actual, verifyProposalOfficialEvidence: h.verifyProposalOfficialEvidence };
+});
 
 import { acceptProposal, rejectProposal } from "@/services/affairs/proposal-review";
 
@@ -44,6 +50,18 @@ const LIVE_AFFAIR = {
   pourvoiNumber: null,
   caseNumbers: [],
 };
+
+const LEGIFRANCE_URL = "https://www.legifrance.gouv.fr/juri/id/JURITEXT000049774995";
+
+function forbiddenOfficialResponse(): Response {
+  return {
+    status: 403,
+    ok: false,
+    url: LEGIFRANCE_URL,
+    headers: new Headers(),
+    text: vi.fn().mockResolvedValue("Forbidden"),
+  } as unknown as Response;
+}
 
 function pendingProposal(overrides: Record<string, unknown> = {}) {
   return {
@@ -79,9 +97,107 @@ beforeEach(() => {
   db.auditLog.create.mockResolvedValue({});
   db.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(db));
   h.trackStatusChange.mockResolvedValue(undefined);
+  h.verifyProposalOfficialEvidence.mockResolvedValue(null);
 });
 
 describe("acceptProposal", () => {
+  it("refuse avant la transaction quand la décision officielle ne concorde pas", async () => {
+    db.affairUpdateProposal.findUnique.mockResolvedValue(pendingProposal());
+    h.verifyProposalOfficialEvidence.mockResolvedValue({
+      sourceUrl: "https://www.courdecassation.fr/decision/1",
+      metadata: {},
+      verification: {
+        version: 1,
+        status: "MISMATCH",
+        checkedAt: "2026-08-18T09:00:00.000Z",
+        requestedUrl: "https://www.courdecassation.fr/decision/1",
+        resolvedUrl: "https://www.courdecassation.fr/decision/1",
+        httpStatus: 200,
+        contentHash: "a".repeat(64),
+        matchedIdentifiers: ["officialId"],
+        issues: ["pourvoi_absent_ou_different"],
+        indexedProof: null,
+      },
+    });
+
+    const result = await acceptProposal({ proposalId: "prop_1", reviewedBy: "admin" });
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "evidence_unverified",
+      verification: { status: "MISMATCH" },
+    });
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuse une preuve INDEX_VERIFIED déclarative après une revérification HTTP 403", async () => {
+    const verifiedAt = new Date().toISOString();
+    const indexedProof = {
+      version: 1,
+      exactUrl: LEGIFRANCE_URL,
+      verifiedAt,
+      method: "EXACT_OFFICIAL_SEARCH_RESULT",
+      title: "Cour de cassation, Chambre criminelle, 19 juin 2024, 23-82.194",
+      publisher: "Légifrance",
+      pourvoi: "23-82.194",
+      ecli: "FR:CCASS:2024:CR00817",
+      decisionDate: "2024-06-19",
+      officialId: "JURITEXT000049774995",
+    };
+    db.affairUpdateProposal.findUnique.mockResolvedValue(
+      pendingProposal({
+        source: "LEGIFRANCE",
+        sourceUrl: LEGIFRANCE_URL,
+        officialId: "JURITEXT000049774995",
+        metadata: {
+          courtDecisionCandidate: {
+            url: LEGIFRANCE_URL,
+            canonicalUrl: LEGIFRANCE_URL,
+            pourvoi: "23-82.194",
+            ecli: "FR:CCASS:2024:CR00817",
+            date: "2024-06-19",
+            legifranceId: "JURITEXT000049774995",
+            indexedProof,
+            verification: {
+              version: 1,
+              status: "INDEX_VERIFIED",
+              checkedAt: verifiedAt,
+              requestedUrl: LEGIFRANCE_URL,
+              resolvedUrl: LEGIFRANCE_URL,
+              httpStatus: 403,
+              contentHash: null,
+              matchedIdentifiers: ["pourvoi", "ecli", "decisionDate", "officialId"],
+              issues: ["http_403", "url_officielle_confirmee_par_index_exact"],
+              indexedProof,
+            },
+          },
+        },
+      })
+    );
+    const actual = await vi.importActual<
+      typeof import("@/lib/affairs/official-decision-verification")
+    >("@/lib/affairs/official-decision-verification");
+    const fetchImpl = vi.fn().mockResolvedValue(forbiddenOfficialResponse());
+    h.verifyProposalOfficialEvidence.mockImplementation((input) =>
+      actual.verifyProposalOfficialEvidence(input, { fetchImpl })
+    );
+
+    const result = await acceptProposal({ proposalId: "prop_1", reviewedBy: "admin" });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "evidence_unverified",
+      verification: { status: "INDEX_VERIFIED", httpStatus: 403 },
+    });
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(db.affair.update).not.toHaveBeenCalled();
+    expect(db.affairUpdateProposal.updateMany).not.toHaveBeenCalled();
+    expect(db.affairUpdateProposal.update).not.toHaveBeenCalled();
+    expect(db.moderationReview.create).not.toHaveBeenCalled();
+    expect(db.auditLog.create).not.toHaveBeenCalled();
+  });
+
   it("applique le patch, trace, et renvoie les slugs à invalider", async () => {
     db.affairUpdateProposal.findUnique.mockResolvedValue(pendingProposal());
 

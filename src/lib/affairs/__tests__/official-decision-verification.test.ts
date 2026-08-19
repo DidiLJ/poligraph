@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isAcceptableOfficialDecisionVerification,
   summarizeProposalOfficialEvidence,
+  summarizeProposalSourceLink,
+  verifyAndAnnotateProposalOfficialEvidence,
   verifyOfficialDecision,
   verifyProposalOfficialEvidence,
   type OfficialDecisionIndexedProof,
@@ -333,7 +335,7 @@ describe("official decision verification", () => {
     expect(result.issues[0]).toContain("redirection_non_autorisee");
   });
 
-  it("normalizes a concordant redirect on creation and validates the final URL directly", async () => {
+  it("normalizes a concordant redirect and stores a direct VALID verification", async () => {
     const normalizedUrl = "https://legifrance.gouv.fr/juri/id/JURITEXT000049774995";
     const body = "N° 23-82.194 ECLI:FR:CCASS:2024:CR00817 19 JUIN 2024 REJET";
     const input = {
@@ -349,28 +351,125 @@ describe("official decision verification", () => {
         },
       },
     };
-    const redirected = await verifyProposalOfficialEvidence(input, {
+    const verified = await verifyAndAnnotateProposalOfficialEvidence(input, {
       fetchImpl: vi
         .fn()
         .mockResolvedValueOnce(response("", { status: 302, headers: { location: normalizedUrl } }))
+        .mockResolvedValueOnce(response(body, { url: normalizedUrl }))
         .mockResolvedValueOnce(response(body, { url: normalizedUrl })),
     });
 
-    expect(redirected?.verification.status).toBe("REDIRECTED");
-    expect(redirected?.sourceUrl).toBe(normalizedUrl);
-    expect(isAcceptableOfficialDecisionVerification(redirected!.verification)).toBe(false);
-
-    const direct = await verifyProposalOfficialEvidence(
-      {
-        ...input,
-        sourceUrl: redirected!.sourceUrl,
-        metadata: redirected!.metadata,
+    expect(verified?.verification.status).toBe("VALID");
+    expect(verified?.sourceUrl).toBe(normalizedUrl);
+    expect(isAcceptableOfficialDecisionVerification(verified!.verification)).toBe(true);
+    expect(verified?.metadata).toMatchObject({
+      courtDecisionCandidate: {
+        url: normalizedUrl,
+        canonicalUrl: normalizedUrl,
+        urlNormalization: {
+          initialUrl: URL,
+          finalUrl: normalizedUrl,
+          reason: "OFFICIAL_REDIRECT",
+        },
       },
-      { fetchImpl: vi.fn().mockResolvedValue(response(body, { url: normalizedUrl })) }
-    );
+    });
+  });
 
-    expect(direct?.verification.status).toBe("VALID");
-    expect(isAcceptableOfficialDecisionVerification(direct!.verification)).toBe(true);
+  it("blocks creation when the direct verification after a redirect mismatches", async () => {
+    const normalizedUrl = "https://legifrance.gouv.fr/juri/id/JURITEXT000049774995";
+    const matchingBody = "N° 23-82.194 ECLI:FR:CCASS:2024:CR00817 19 JUIN 2024 REJET";
+    const mismatchingBody = "N° 23-82.999 ECLI:FR:CCASS:2024:CR00999 20 JUIN 2024";
+
+    await expect(
+      verifyAndAnnotateProposalOfficialEvidence(
+        {
+          source: "LEGIFRANCE",
+          sourceUrl: URL,
+          metadata: {
+            courtDecisionCandidate: {
+              url: URL,
+              pourvoi: "23-82.194",
+              ecli: "FR:CCASS:2024:CR00817",
+              date: "2024-06-19",
+              legifranceId: "JURITEXT000049774995",
+            },
+          },
+        },
+        {
+          fetchImpl: vi
+            .fn()
+            .mockResolvedValueOnce(
+              response("", { status: 302, headers: { location: normalizedUrl } })
+            )
+            .mockResolvedValueOnce(response(matchingBody, { url: normalizedUrl }))
+            .mockResolvedValueOnce(response(mismatchingBody, { url: normalizedUrl })),
+        }
+      )
+    ).rejects.toMatchObject({ verification: { status: "MISMATCH" } });
+  });
+
+  it("does not turn a 403 after redirect normalization into VALID", async () => {
+    const normalizedUrl = "https://legifrance.gouv.fr/juri/id/JURITEXT000049774995";
+    const matchingBody = "N° 23-82.194 ECLI:FR:CCASS:2024:CR00817 19 JUIN 2024 REJET";
+
+    await expect(
+      verifyAndAnnotateProposalOfficialEvidence(
+        {
+          source: "LEGIFRANCE",
+          sourceUrl: URL,
+          metadata: {
+            courtDecisionCandidate: {
+              url: URL,
+              pourvoi: "23-82.194",
+              ecli: "FR:CCASS:2024:CR00817",
+              date: "2024-06-19",
+              legifranceId: "JURITEXT000049774995",
+            },
+          },
+        },
+        {
+          fetchImpl: vi
+            .fn()
+            .mockResolvedValueOnce(
+              response("", { status: 302, headers: { location: normalizedUrl } })
+            )
+            .mockResolvedValueOnce(response(matchingBody, { url: normalizedUrl }))
+            .mockResolvedValueOnce(response("Forbidden", { status: 403, url: normalizedUrl })),
+        }
+      )
+    ).rejects.toMatchObject({ verification: { status: "BLOCKED" } });
+  });
+
+  it.each([
+    ["HTTPS", "https://www.lemonde.fr/politique/article-test.html", true],
+    ["HTTP", "http://www.franceinfo.fr/politique/article-test", true],
+    ["JavaScript", "javascript:alert(1)", false],
+    ["data", "data:text/html,<script>alert(1)</script>", false],
+    ["credentials", "https://user:password@example.com/article", false],
+    ["invalid syntax", "not a URL", false],
+  ])("validates an ordinary %s editorial source link", (_label, rawUrl, expectedSafe) => {
+    const summary = summarizeProposalSourceLink(rawUrl);
+
+    expect(summary.rawUrl).toBe(rawUrl);
+    expect(summary.safeUrl !== null).toBe(expectedSafe);
+  });
+
+  it("does not transform an ordinary press source into official decision evidence", async () => {
+    const sourceUrl = "https://www.lemonde.fr/politique/article-test.html";
+
+    expect(
+      await verifyProposalOfficialEvidence({
+        source: "PRESSE",
+        sourceUrl,
+        metadata: { editorialSource: "Le Monde" },
+      })
+    ).toBeNull();
+    expect(summarizeProposalOfficialEvidence({ source: "PRESSE", sourceUrl })).toMatchObject({
+      required: false,
+      canonicalUrl: null,
+      requestedUrl: null,
+    });
+    expect(summarizeProposalSourceLink(sourceUrl).safeUrl).toBe(sourceUrl);
   });
 
   it.each([

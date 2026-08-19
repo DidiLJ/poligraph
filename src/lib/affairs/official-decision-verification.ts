@@ -71,6 +71,11 @@ export interface ProposalOfficialEvidenceSummary {
   issues: string[];
 }
 
+export interface ProposalSourceLinkSummary {
+  rawUrl: string | null;
+  safeUrl: string | null;
+}
+
 type OfficialProvider = "LEGIFRANCE" | "COUR_DE_CASSATION" | "CONSEIL_ETAT";
 
 interface AllowedOfficialUrl {
@@ -104,6 +109,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+/**
+ * Allows a moderator to open an ordinary editorial source without presenting it
+ * as verified judicial evidence. This validates URL structure only. It does not
+ * check reachability, redirects, paywalls or agreement with the proposed change.
+ */
+export function summarizeProposalSourceLink(sourceUrl: unknown): ProposalSourceLinkSummary {
+  const rawUrl = asNonEmptyString(sourceUrl);
+  if (!rawUrl) return { rawUrl: null, safeUrl: null };
+
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return { rawUrl, safeUrl: null };
+  }
+
+  if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) {
+    return { rawUrl, safeUrl: null };
+  }
+
+  return { rawUrl, safeUrl: parsed.toString() };
 }
 
 function stripDiacritics(value: string): string {
@@ -358,7 +386,7 @@ function blockedOrIndexedResult(
       resolvedUrl: partial.resolvedUrl ?? url.url.toString(),
       httpStatus: partial.httpStatus ?? null,
       matchedIdentifiers: indexed.matchedIdentifiers,
-      issues: [issue, "url_officielle_confirmee_par_index_exact"],
+      issues: [issue, "reference_indexee_declaree_concordante"],
       indexedProof: indexed.proof,
     });
   }
@@ -719,7 +747,41 @@ export async function verifyAndAnnotateProposalOfficialEvidence(
   input: ProposalOfficialEvidenceInput,
   options: { timeoutMs?: number; fetchImpl?: typeof fetch } = {}
 ): Promise<VerifiedProposalOfficialEvidence | null> {
-  const verified = await verifyProposalOfficialEvidence(input, options);
+  let verified = await verifyProposalOfficialEvidence(input, options);
+
+  if (verified?.verification.status === "REDIRECTED") {
+    const initialUrl = verified.verification.requestedUrl;
+    const direct = await verifyProposalOfficialEvidence(
+      {
+        ...input,
+        sourceUrl: verified.sourceUrl,
+        metadata: verified.metadata,
+      },
+      options
+    );
+
+    if (direct) {
+      const candidate = candidateFromMetadata(direct.metadata);
+      verified = candidate
+        ? {
+            ...direct,
+            metadata: {
+              ...direct.metadata,
+              courtDecisionCandidate: {
+                ...candidate,
+                urlNormalization: {
+                  initialUrl,
+                  finalUrl: direct.sourceUrl,
+                  normalizedAt: direct.verification.checkedAt,
+                  reason: "OFFICIAL_REDIRECT",
+                },
+              },
+            },
+          }
+        : direct;
+    }
+  }
+
   if (verified && !isSuccessfulOfficialDecisionVerification(verified.verification)) {
     throw new OfficialEvidenceVerificationError(verified.verification);
   }
@@ -773,10 +835,11 @@ export function summarizeProposalOfficialEvidence(
   const expectation = candidate ? expectationFromInput(input, candidate) : null;
   let acceptable = stored ? isAcceptableOfficialDecisionVerification(stored) : false;
   let issues = stored?.issues ?? [];
-  const requestedUrl =
-    asNonEmptyString(candidate?.canonicalUrl) ??
-    asNonEmptyString(candidate?.url) ??
-    asNonEmptyString(input.sourceUrl);
+  const requestedUrl = required
+    ? (asNonEmptyString(candidate?.canonicalUrl) ??
+      asNonEmptyString(candidate?.url) ??
+      asNonEmptyString(input.sourceUrl))
+    : null;
   const allowedLink = requestedUrl ? allowedOfficialUrl(requestedUrl) : null;
 
   if (allowedLink && !allowedLink.ok) {

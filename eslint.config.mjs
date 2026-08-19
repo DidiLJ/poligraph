@@ -20,11 +20,13 @@ const eslintConfig = defineConfig([
     "scripts/**",
     // Git worktrees (contain their own .next/build artifacts):
     ".worktrees/**",
+    ".claude/worktrees/**",
+    // Local Storybook output:
+    "storybook-static/**",
   ]),
   {
     rules: {
       "no-console": "warn",
-      "react-hooks/set-state-in-effect": "warn",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -33,6 +35,14 @@ const eslintConfig = defineConfig([
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+    },
+  },
+  // React Hooks is provided by eslint-config-next only for application files.
+  // Keep its rule in that same perimeter so root tooling files remain lintable.
+  {
+    files: ["src/**/*.{js,jsx,ts,tsx}"],
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
     },
   },
   // Allow console in server-side code (API routes, sync services, CLI utilities)

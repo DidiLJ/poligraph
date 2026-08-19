@@ -31,6 +31,10 @@ interface ProposalRow {
   affairSnapshot: AffairSnapshot;
   source: string;
   sourceUrl: string | null;
+  sourceLink: {
+    rawUrl: string | null;
+    safeUrl: string | null;
+  };
   officialId: string | null;
   sourceContentHash: string | null;
   sourceExcerpt: string | null;
@@ -94,7 +98,7 @@ const RISK_VARIANTS: Record<ProposalRisk, "destructive" | "secondary" | "outline
 const VERIFICATION_LABELS: Record<string, string> = {
   VALID: "Décision vérifiée en direct",
   REDIRECTED: "Redirection concordante, régénération requise",
-  INDEX_VERIFIED: "Référence retrouvée dans un index, vérification humaine requise",
+  INDEX_VERIFIED: "Référence d’index déclarée, vérification humaine requise",
   BROKEN: "Lien indisponible",
   MISMATCH: "Le lien renvoie vers une autre décision",
   BLOCKED: "Vérification automatique impossible",
@@ -121,6 +125,10 @@ const VERIFICATION_ISSUE_LABELS: Record<string, string> = {
   date_decision_absente_ou_differente: "date absente ou différente",
   redirection_vers_autre_decision: "redirection vers une autre décision",
   preuve_indexee_expiree_ou_date_invalide: "preuve indexée expirée",
+  reference_indexee_declaree_concordante:
+    "référence d’index déclarée concordante, provenance non indépendante",
+  url_officielle_confirmee_par_index_exact:
+    "ancienne référence d’index déclarée, provenance non indépendante",
 };
 
 function verificationIssueLabel(issue: string): string {
@@ -310,6 +318,8 @@ export default function PropositionsPage() {
           const fields = Object.keys(row.proposedPatch);
           const evidence = row.officialEvidence;
           const evidenceDescriptionId = `preuve-officielle-${row.id}`;
+          const sourceHref = evidence.required ? evidence.canonicalUrl : row.sourceLink.safeUrl;
+          const rawSourceUrl = evidence.required ? evidence.requestedUrl : row.sourceLink.rawUrl;
           return (
             <li key={row.id}>
               <Card>
@@ -467,9 +477,9 @@ export default function PropositionsPage() {
                       </blockquote>
                     )}
                     <p className="flex flex-wrap items-center gap-3">
-                      {evidence.canonicalUrl ? (
+                      {sourceHref ? (
                         <a
-                          href={evidence.canonicalUrl}
+                          href={sourceHref}
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={`Ouvrir la source ${row.source} dans un nouvel onglet`}
@@ -482,9 +492,7 @@ export default function PropositionsPage() {
                       ) : (
                         <span className="text-muted-foreground flex flex-col gap-1">
                           <span>{row.source}</span>
-                          {evidence.requestedUrl && (
-                            <span className="break-all">{evidence.requestedUrl}</span>
-                          )}
+                          {rawSourceUrl && <span className="break-all">{rawSourceUrl}</span>}
                         </span>
                       )}
                       {row.officialId && (

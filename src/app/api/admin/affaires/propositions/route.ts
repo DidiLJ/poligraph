@@ -2,7 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { parsePagination } from "@/lib/api/pagination";
-import { summarizeProposalOfficialEvidence } from "@/lib/affairs/official-decision-verification";
+import {
+  summarizeProposalOfficialEvidence,
+  summarizeProposalSourceLink,
+} from "@/lib/affairs/official-decision-verification";
 import type { Prisma, ProposalStatus } from "@/generated/prisma";
 
 // Affaires v2, lot 1: review queue for importer-proposed affair changes.
@@ -82,15 +85,23 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
   ]);
 
   return NextResponse.json({
-    rows: rows.map(({ metadata, ...row }) => ({
-      ...row,
-      officialEvidence: summarizeProposalOfficialEvidence({
+    rows: rows.map(({ metadata, ...row }) => {
+      const officialEvidence = summarizeProposalOfficialEvidence({
         source: row.source,
         sourceUrl: row.sourceUrl,
         officialId: row.officialId,
         metadata,
-      }),
-    })),
+      });
+      const sourceLink = officialEvidence.required
+        ? { rawUrl: row.sourceUrl, safeUrl: null }
+        : summarizeProposalSourceLink(row.sourceUrl);
+
+      return {
+        ...row,
+        officialEvidence,
+        sourceLink,
+      };
+    }),
     total,
     page,
     pageSize: PAGE_SIZE,

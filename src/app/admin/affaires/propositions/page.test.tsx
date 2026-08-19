@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import PropositionsPage from "./page";
 
-const PRESS_URL = "https://www.lemonde.fr/politique/article-test.html";
+const PRESS_URL = "https://press.example.test/politique/article-test.html";
 
 function listResponse() {
   return {

@@ -3,14 +3,28 @@ import { load } from "cheerio";
 import type { SourceType } from "@/generated/prisma";
 import { USER_AGENT } from "@/config/site";
 
+export const OFFICIAL_DECISION_VERIFICATION_STATUSES = [
+  "VALID",
+  "REDIRECTED",
+  "INDEX_VERIFIED",
+  "BROKEN",
+  "MISMATCH",
+  "BLOCKED",
+  "UNCHECKED",
+] as const;
+
 export type OfficialDecisionVerificationStatus =
-  | "VALID"
-  | "REDIRECTED"
-  | "INDEX_VERIFIED"
-  | "BROKEN"
-  | "MISMATCH"
-  | "BLOCKED"
-  | "UNCHECKED";
+  (typeof OFFICIAL_DECISION_VERIFICATION_STATUSES)[number];
+
+const OFFICIAL_DECISION_VERIFICATION_STATUS_SET: ReadonlySet<string> = new Set(
+  OFFICIAL_DECISION_VERIFICATION_STATUSES
+);
+
+function isOfficialDecisionVerificationStatus(
+  value: string
+): value is OfficialDecisionVerificationStatus {
+  return OFFICIAL_DECISION_VERIFICATION_STATUS_SET.has(value);
+}
 
 export interface OfficialDecisionIndexedProof {
   version: 1;
@@ -792,20 +806,8 @@ function verificationFromCandidate(
   candidate: Record<string, unknown>
 ): OfficialDecisionVerification | null {
   const verification = isRecord(candidate.verification) ? candidate.verification : null;
-  const status = asNonEmptyString(
-    verification?.status
-  ) as OfficialDecisionVerificationStatus | null;
-  if (!status) return null;
-  const validStatuses: OfficialDecisionVerificationStatus[] = [
-    "VALID",
-    "REDIRECTED",
-    "INDEX_VERIFIED",
-    "BROKEN",
-    "MISMATCH",
-    "BLOCKED",
-    "UNCHECKED",
-  ];
-  if (!validStatuses.includes(status)) return null;
+  const status = asNonEmptyString(verification?.status);
+  if (!status || !isOfficialDecisionVerificationStatus(status)) return null;
   return {
     version: 1,
     status,

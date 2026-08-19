@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, ShieldAlert } from "lucide-react";
+import type { OfficialDecisionVerificationStatus } from "@/lib/affairs/official-decision-verification";
 
 // Affaires v2, lot 1: review queue for importer-proposed affair changes.
 // Every automated write to an existing affair lands here first.
@@ -52,7 +53,7 @@ interface ProposalRow {
     acceptable: boolean;
     canonicalUrl: string | null;
     requestedUrl: string | null;
-    status: string | null;
+    status: OfficialDecisionVerificationStatus | null;
     checkedAt: string | null;
     matchedIdentifiers: string[];
     issues: string[];
@@ -95,7 +96,7 @@ const RISK_VARIANTS: Record<ProposalRisk, "destructive" | "secondary" | "outline
   LOW: "outline",
 };
 
-const VERIFICATION_LABELS: Record<string, string> = {
+const VERIFICATION_LABELS: Record<OfficialDecisionVerificationStatus, string> = {
   VALID: "Décision vérifiée en direct",
   REDIRECTED: "Redirection concordante, régénération requise",
   INDEX_VERIFIED: "Référence d’index déclarée, vérification humaine requise",
@@ -354,7 +355,9 @@ export default function PropositionsPage() {
                       </Badge>
                       {evidence.required && (
                         <Badge variant={evidence.acceptable ? "outline" : "destructive"}>
-                          {VERIFICATION_LABELS[evidence.status ?? ""] ?? "Décision non vérifiée"}
+                          {evidence.status
+                            ? VERIFICATION_LABELS[evidence.status]
+                            : "Décision non vérifiée"}
                         </Badge>
                       )}
                     </div>
@@ -439,8 +442,9 @@ export default function PropositionsPage() {
                       )}
                       <div className="space-y-1">
                         <p className="font-medium">
-                          {VERIFICATION_LABELS[evidence.status ?? ""] ??
-                            "Décision officielle non vérifiée"}
+                          {evidence.status
+                            ? VERIFICATION_LABELS[evidence.status]
+                            : "Décision officielle non vérifiée"}
                         </p>
                         {evidence.matchedIdentifiers.length > 0 && (
                           <p>

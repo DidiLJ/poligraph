@@ -18,7 +18,7 @@ vi.mock("@/lib/api/with-admin-auth", () => ({
 
 import { GET } from "./route";
 
-const PRESS_URL = "https://www.lemonde.fr/politique/article-test.html";
+const PRESS_URL = "https://press.example.test/politique/article-test.html";
 
 function proposalRow(overrides: Record<string, unknown> = {}) {
   return {

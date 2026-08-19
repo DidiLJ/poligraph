@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  OFFICIAL_DECISION_VERIFICATION_STATUSES,
   isAcceptableOfficialDecisionVerification,
   summarizeProposalOfficialEvidence,
   summarizeProposalSourceLink,
@@ -58,30 +59,25 @@ describe("official decision verification", () => {
     vi.useRealTimers();
   });
 
-  it.each([
-    "VALID",
-    "REDIRECTED",
-    "INDEX_VERIFIED",
-    "BROKEN",
-    "MISMATCH",
-    "BLOCKED",
-    "UNCHECKED",
-  ] as const)("accepts only a direct VALID verification, not %s by declaration", (status) => {
-    expect(
-      isAcceptableOfficialDecisionVerification({
-        version: 1,
-        status,
-        checkedAt: "2026-08-18T09:00:00.000Z",
-        requestedUrl: URL,
-        resolvedUrl: URL,
-        httpStatus: status === "VALID" ? 200 : null,
-        contentHash: null,
-        matchedIdentifiers: [],
-        issues: [],
-        indexedProof: null,
-      })
-    ).toBe(status === "VALID");
-  });
+  it.each(OFFICIAL_DECISION_VERIFICATION_STATUSES)(
+    "accepts only a direct VALID verification, not %s by declaration",
+    (status) => {
+      expect(
+        isAcceptableOfficialDecisionVerification({
+          version: 1,
+          status,
+          checkedAt: "2026-08-18T09:00:00.000Z",
+          requestedUrl: URL,
+          resolvedUrl: URL,
+          httpStatus: status === "VALID" ? 200 : null,
+          contentHash: null,
+          matchedIdentifiers: [],
+          issues: [],
+          indexedProof: null,
+        })
+      ).toBe(status === "VALID");
+    }
+  );
 
   it("validates the URL, pourvoi, ECLI, date and official identifier together", async () => {
     const result = await verifyOfficialDecision(expectation(), {
@@ -441,8 +437,8 @@ describe("official decision verification", () => {
   });
 
   it.each([
-    ["HTTPS", "https://www.lemonde.fr/politique/article-test.html", true],
-    ["HTTP", "http://www.franceinfo.fr/politique/article-test", true],
+    ["HTTPS", "https://press.example.test/politique/article-test.html", true],
+    ["HTTP", "http://press.example.test/politique/article-test", true],
     ["JavaScript", "javascript:alert(1)", false],
     ["data", "data:text/html,<script>alert(1)</script>", false],
     ["credentials", "https://user:password@example.com/article", false],
@@ -455,7 +451,7 @@ describe("official decision verification", () => {
   });
 
   it("does not transform an ordinary press source into official decision evidence", async () => {
-    const sourceUrl = "https://www.lemonde.fr/politique/article-test.html";
+    const sourceUrl = "https://press.example.test/politique/article-test.html";
 
     expect(
       await verifyProposalOfficialEvidence({

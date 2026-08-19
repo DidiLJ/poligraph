@@ -126,4 +126,38 @@ describe("official evidence on proposal creation", () => {
     expect(h.db.affair.findUnique).not.toHaveBeenCalled();
     expect(h.db.affairUpdateProposal.create).not.toHaveBeenCalled();
   });
+
+  it("does not construct an official URL when identifiers are present without a URL", async () => {
+    const actual = await vi.importActual<
+      typeof import("@/lib/affairs/official-decision-verification")
+    >("@/lib/affairs/official-decision-verification");
+    h.verifyAndAnnotateProposalOfficialEvidence.mockImplementation((input) =>
+      actual.verifyAndAnnotateProposalOfficialEvidence(input)
+    );
+
+    await expect(
+      proposeAffairUpdate({
+        affairId: "affair-1",
+        importer: "test",
+        importRunId: "run-1",
+        patch: { court: "Cour de cassation" },
+        source: "LEGIFRANCE",
+        officialId: "JURITEXT000049774995",
+        metadata: {
+          courtDecisionCandidate: {
+            pourvoi: "23-82.194",
+            ecli: "FR:CCASS:2024:CR00817",
+            date: "2024-06-19",
+            legifranceId: "JURITEXT000049774995",
+          },
+        },
+        confidence: 99,
+        rationale: "Identifiants officiels sans URL vérifiable.",
+      })
+    ).rejects.toThrow("UNCHECKED");
+
+    expect(h.verifyAndAnnotateProposalOfficialEvidence.mock.calls[0]![0].sourceUrl).toBeUndefined();
+    expect(h.db.affair.findUnique).not.toHaveBeenCalled();
+    expect(h.db.affairUpdateProposal.create).not.toHaveBeenCalled();
+  });
 });

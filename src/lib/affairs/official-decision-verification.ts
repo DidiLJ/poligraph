@@ -64,6 +64,7 @@ export interface ProposalOfficialEvidenceSummary {
   required: boolean;
   acceptable: boolean;
   canonicalUrl: string | null;
+  requestedUrl: string | null;
   status: OfficialDecisionVerificationStatus | null;
   checkedAt: string | null;
   matchedIdentifiers: string[];
@@ -238,7 +239,10 @@ export function isSuccessfulOfficialDecisionVerification(
 export function isAcceptableOfficialDecisionVerification(
   verification: OfficialDecisionVerification
 ): boolean {
-  return verification.status === "VALID" || verification.status === "INDEX_VERIFIED";
+  // INDEX_VERIFIED is supplied through importer-controlled metadata. Its internal
+  // consistency helps a moderator, but it is not independent provenance. A future
+  // persisted or signed official proof may introduce a separate trusted path.
+  return verification.status === "VALID";
 }
 
 function expectedValues(expectation: OfficialDecisionExpectation) {
@@ -769,6 +773,15 @@ export function summarizeProposalOfficialEvidence(
   const expectation = candidate ? expectationFromInput(input, candidate) : null;
   let acceptable = stored ? isAcceptableOfficialDecisionVerification(stored) : false;
   let issues = stored?.issues ?? [];
+  const requestedUrl =
+    asNonEmptyString(candidate?.canonicalUrl) ??
+    asNonEmptyString(candidate?.url) ??
+    asNonEmptyString(input.sourceUrl);
+  const allowedLink = requestedUrl ? allowedOfficialUrl(requestedUrl) : null;
+
+  if (allowedLink && !allowedLink.ok) {
+    issues = [...new Set([...issues, `url_administration_non_cliquable:${allowedLink.issue}`])];
+  }
 
   if (stored?.status === "INDEX_VERIFIED" && expectation) {
     const allowed = allowedOfficialUrl(expectation.url);
@@ -787,10 +800,8 @@ export function summarizeProposalOfficialEvidence(
   return {
     required,
     acceptable,
-    canonicalUrl:
-      asNonEmptyString(candidate?.canonicalUrl) ??
-      asNonEmptyString(candidate?.url) ??
-      asNonEmptyString(input.sourceUrl),
+    canonicalUrl: allowedLink?.ok ? allowedLink.value.url.toString() : null,
+    requestedUrl,
     status: stored?.status ?? null,
     checkedAt: asNonEmptyString(stored?.checkedAt),
     matchedIdentifiers: stored?.matchedIdentifiers ?? [],

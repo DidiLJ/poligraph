@@ -56,6 +56,31 @@ describe("official decision verification", () => {
     vi.useRealTimers();
   });
 
+  it.each([
+    "VALID",
+    "REDIRECTED",
+    "INDEX_VERIFIED",
+    "BROKEN",
+    "MISMATCH",
+    "BLOCKED",
+    "UNCHECKED",
+  ] as const)("accepts only a direct VALID verification, not %s by declaration", (status) => {
+    expect(
+      isAcceptableOfficialDecisionVerification({
+        version: 1,
+        status,
+        checkedAt: "2026-08-18T09:00:00.000Z",
+        requestedUrl: URL,
+        resolvedUrl: URL,
+        httpStatus: status === "VALID" ? 200 : null,
+        contentHash: null,
+        matchedIdentifiers: [],
+        issues: [],
+        indexedProof: null,
+      })
+    ).toBe(status === "VALID");
+  });
+
   it("validates the URL, pourvoi, ECLI, date and official identifier together", async () => {
     const result = await verifyOfficialDecision(expectation(), {
       fetchImpl: vi
@@ -140,7 +165,7 @@ describe("official decision verification", () => {
     expect(result.issues).toContain("lecture_reponse_impossible");
   });
 
-  it("refuses non-official hosts before any network request", async () => {
+  it("refuses non-official hosts before a network request", async () => {
     const fetchImpl = vi.fn();
     const result = await verifyOfficialDecision(
       { ...expectation(), url: "https://example.test/juri/id/JURITEXT000049774995" },
@@ -166,7 +191,7 @@ describe("official decision verification", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it("accepts a fresh exact index proof only when the official host blocks automation", async () => {
+  it("keeps a fresh caller-provided index proof informative but unacceptable after a 403", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-18T09:00:00.000Z"));
     const result = await verifyOfficialDecision(
@@ -176,7 +201,52 @@ describe("official decision verification", () => {
 
     expect(result.status).toBe("INDEX_VERIFIED");
     expect(result.matchedIdentifiers).toEqual(["pourvoi", "ecli", "decisionDate", "officialId"]);
-    expect(isAcceptableOfficialDecisionVerification(result)).toBe(true);
+    expect(isAcceptableOfficialDecisionVerification(result)).toBe(false);
+  });
+
+  it("does not trust authority flags added by the importer to indexed proof JSON", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-18T09:00:00.000Z"));
+    const proof = {
+      ...indexedProof(),
+      trusted: true,
+      verifiedBy: "server",
+      official: true,
+      humanValidated: true,
+    };
+    const summary = summarizeProposalOfficialEvidence({
+      source: "LEGIFRANCE",
+      sourceUrl: URL,
+      metadata: {
+        courtDecisionCandidate: {
+          url: URL,
+          pourvoi: "23-82.194",
+          ecli: "FR:CCASS:2024:CR00817",
+          date: "2024-06-19",
+          legifranceId: "JURITEXT000049774995",
+          indexedProof: proof,
+          trusted: true,
+          humanValidated: true,
+          verification: {
+            version: 1,
+            status: "INDEX_VERIFIED",
+            checkedAt: proof.verifiedAt,
+            requestedUrl: URL,
+            resolvedUrl: URL,
+            httpStatus: 403,
+            contentHash: null,
+            matchedIdentifiers: ["pourvoi", "ecli", "decisionDate", "officialId"],
+            issues: ["http_403"],
+            indexedProof: proof,
+            acceptable: true,
+            verifiedBy: "server",
+          },
+        },
+      },
+    });
+
+    expect(summary.status).toBe("INDEX_VERIFIED");
+    expect(summary.acceptable).toBe(false);
   });
 
   it("rejects an indexed proof with a different pourvoi or an expired timestamp", async () => {
@@ -209,6 +279,131 @@ describe("official decision verification", () => {
 
     expect(result?.verification.status).toBe("UNCHECKED");
     expect(result?.verification.issues).toContain("decision_officielle_candidate_absente");
+  });
+
+  it("does not construct an official URL from identifiers when no URL was supplied", async () => {
+    const fetchImpl = vi.fn();
+    const result = await verifyProposalOfficialEvidence(
+      {
+        source: "LEGIFRANCE",
+        officialId: "JURITEXT000049774995",
+        metadata: {
+          courtDecisionCandidate: {
+            pourvoi: "23-82.194",
+            ecli: "FR:CCASS:2024:CR00817",
+            date: "2024-06-19",
+            legifranceId: "JURITEXT000049774995",
+          },
+        },
+      },
+      { fetchImpl }
+    );
+
+    expect(result?.sourceUrl).toBe("");
+    expect(result?.verification.status).toBe("UNCHECKED");
+    expect(result?.verification.issues).toContain("url_decision_absente");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("classifies a redirect to another official decision as a mismatch", async () => {
+    const otherUrl = "https://www.legifrance.gouv.fr/juri/id/JURITEXT000050868554";
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(response("", { status: 302, headers: { location: otherUrl } }))
+      .mockResolvedValueOnce(response("Autre décision", { url: otherUrl }));
+
+    const result = await verifyOfficialDecision(expectation(), { fetchImpl });
+
+    expect(result.status).toBe("MISMATCH");
+    expect(result.issues).toContain("redirection_vers_autre_decision");
+    expect(isAcceptableOfficialDecisionVerification(result)).toBe(false);
+  });
+
+  it("blocks a redirect to a generic official page", async () => {
+    const result = await verifyOfficialDecision(expectation(), {
+      fetchImpl: vi.fn().mockResolvedValue(
+        response("", {
+          status: 302,
+          headers: { location: "https://www.legifrance.gouv.fr/" },
+        })
+      ),
+    });
+
+    expect(result.status).toBe("BLOCKED");
+    expect(result.issues[0]).toContain("redirection_non_autorisee");
+  });
+
+  it("normalizes a concordant redirect on creation and validates the final URL directly", async () => {
+    const normalizedUrl = "https://legifrance.gouv.fr/juri/id/JURITEXT000049774995";
+    const body = "N° 23-82.194 ECLI:FR:CCASS:2024:CR00817 19 JUIN 2024 REJET";
+    const input = {
+      source: "LEGIFRANCE",
+      sourceUrl: URL,
+      metadata: {
+        courtDecisionCandidate: {
+          url: URL,
+          pourvoi: "23-82.194",
+          ecli: "FR:CCASS:2024:CR00817",
+          date: "2024-06-19",
+          legifranceId: "JURITEXT000049774995",
+        },
+      },
+    };
+    const redirected = await verifyProposalOfficialEvidence(input, {
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValueOnce(response("", { status: 302, headers: { location: normalizedUrl } }))
+        .mockResolvedValueOnce(response(body, { url: normalizedUrl })),
+    });
+
+    expect(redirected?.verification.status).toBe("REDIRECTED");
+    expect(redirected?.sourceUrl).toBe(normalizedUrl);
+    expect(isAcceptableOfficialDecisionVerification(redirected!.verification)).toBe(false);
+
+    const direct = await verifyProposalOfficialEvidence(
+      {
+        ...input,
+        sourceUrl: redirected!.sourceUrl,
+        metadata: redirected!.metadata,
+      },
+      { fetchImpl: vi.fn().mockResolvedValue(response(body, { url: normalizedUrl })) }
+    );
+
+    expect(direct?.verification.status).toBe("VALID");
+    expect(isAcceptableOfficialDecisionVerification(direct!.verification)).toBe(true);
+  });
+
+  it.each([
+    ["a lookalike Légifrance host", "https://legifrance.gouv.fr.example.com/juri/id/JURITEXT1"],
+    ["a JavaScript URL", "javascript:alert(1)"],
+    ["an arbitrary candidate domain", "https://example.com/decision/123"],
+    ["a non-canonical Cour de cassation path", "https://www.courdecassation.fr/agenda"],
+  ])("never exposes %s as a clickable admin URL", (_label, rawUrl) => {
+    const summary = summarizeProposalOfficialEvidence({
+      source: "LEGIFRANCE",
+      sourceUrl: URL,
+      metadata: { courtDecisionCandidate: { canonicalUrl: rawUrl, url: URL } },
+    });
+
+    expect(summary.canonicalUrl).toBeNull();
+    expect(summary.requestedUrl).toBe(rawUrl);
+    expect(summary.issues).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^url_administration_non_cliquable:/)])
+    );
+  });
+
+  it.each([
+    ["Légifrance", URL],
+    ["ArianeWeb", "https://www.conseil-etat.fr/fr/arianeweb/CE/decision/2024-06-19/472007"],
+  ])("keeps a canonical %s URL clickable in the admin summary", (_provider, rawUrl) => {
+    const summary = summarizeProposalOfficialEvidence({
+      source: "LEGIFRANCE",
+      sourceUrl: rawUrl,
+      metadata: { courtDecisionCandidate: { canonicalUrl: rawUrl } },
+    });
+
+    expect(summary.canonicalUrl).toBe(rawUrl);
+    expect(summary.requestedUrl).toBe(rawUrl);
   });
 
   it("rejects a source URL different from the decision candidate", async () => {

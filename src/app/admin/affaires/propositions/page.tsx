@@ -47,6 +47,7 @@ interface ProposalRow {
     required: boolean;
     acceptable: boolean;
     canonicalUrl: string | null;
+    requestedUrl: string | null;
     status: string | null;
     checkedAt: string | null;
     matchedIdentifiers: string[];
@@ -92,12 +93,12 @@ const RISK_VARIANTS: Record<ProposalRisk, "destructive" | "secondary" | "outline
 
 const VERIFICATION_LABELS: Record<string, string> = {
   VALID: "Décision vérifiée en direct",
-  REDIRECTED: "URL redirigée à normaliser",
-  INDEX_VERIFIED: "Index officiel concordant",
-  BROKEN: "URL cassée",
-  MISMATCH: "Décision différente",
-  BLOCKED: "Vérification bloquée",
-  UNCHECKED: "Preuve incomplète",
+  REDIRECTED: "Redirection concordante, régénération requise",
+  INDEX_VERIFIED: "Référence retrouvée dans un index, vérification humaine requise",
+  BROKEN: "Lien indisponible",
+  MISMATCH: "Le lien renvoie vers une autre décision",
+  BLOCKED: "Vérification automatique impossible",
+  UNCHECKED: "Preuve incomplète ou non vérifiée",
 };
 
 const IDENTIFIER_LABELS: Record<string, string> = {
@@ -124,6 +125,9 @@ const VERIFICATION_ISSUE_LABELS: Record<string, string> = {
 
 function verificationIssueLabel(issue: string): string {
   if (/^http_[0-9]{3}$/.test(issue)) return `réponse HTTP ${issue.slice(5)}`;
+  if (issue.startsWith("url_administration_non_cliquable:")) {
+    return `URL non cliquable : ${issue.slice("url_administration_non_cliquable:".length).replaceAll("_", " ")}`;
+  }
   return VERIFICATION_ISSUE_LABELS[issue] ?? issue.replaceAll("_", " ");
 }
 
@@ -463,9 +467,9 @@ export default function PropositionsPage() {
                       </blockquote>
                     )}
                     <p className="flex flex-wrap items-center gap-3">
-                      {(evidence.canonicalUrl ?? row.sourceUrl) ? (
+                      {evidence.canonicalUrl ? (
                         <a
-                          href={evidence.canonicalUrl ?? row.sourceUrl ?? undefined}
+                          href={evidence.canonicalUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={`Ouvrir la source ${row.source} dans un nouvel onglet`}
@@ -476,7 +480,12 @@ export default function PropositionsPage() {
                           <span className="sr-only">(nouvel onglet)</span>
                         </a>
                       ) : (
-                        <span className="text-muted-foreground">{row.source}</span>
+                        <span className="text-muted-foreground flex flex-col gap-1">
+                          <span>{row.source}</span>
+                          {evidence.requestedUrl && (
+                            <span className="break-all">{evidence.requestedUrl}</span>
+                          )}
+                        </span>
                       )}
                       {row.officialId && (
                         <span className="text-muted-foreground">{row.officialId}</span>

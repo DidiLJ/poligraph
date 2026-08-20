@@ -96,5 +96,5 @@ job-logs.txt
 # Local Search Console analysis (exports + plans with private SEO data, not committed)
 /docs/search-console/
 
-# Program import downloads and generated reports
-/.tmp/program-import/
+# Local imports, generated reports and production backups
+/.tmp/

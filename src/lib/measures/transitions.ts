@@ -362,9 +362,21 @@ export async function reviewMeasureRevision(input: {
   await db.$transaction(async (tx) => {
     await lockMeasure(tx, input.measureId);
 
+    const measure = await tx.measure.findUniqueOrThrow({
+      where: { id: input.measureId },
+      select: { latestRevisionId: true, publishedRevisionId: true },
+    });
+
     const revision = await tx.measureRevision.findUnique({
       where: { id: input.revisionId },
-      select: { measureId: true, discardedAt: true, supersededAt: true, reviewedAt: true },
+      select: {
+        measureId: true,
+        discardedAt: true,
+        supersededAt: true,
+        rejectedAt: true,
+        reviewedAt: true,
+        _count: { select: { sources: true } },
+      },
     });
     if (!revision) throw new MeasureValidationError(`Révision ${input.revisionId} introuvable`);
     if (revision.measureId !== input.measureId) {
@@ -375,6 +387,18 @@ export async function reviewMeasureRevision(input: {
     }
     if (revision.supersededAt) {
       throw new MeasureValidationError("Une révision remplacée ne peut pas être relue");
+    }
+    if (revision.rejectedAt) {
+      throw new MeasureValidationError("Une révision rejetée ne peut pas être relue");
+    }
+    if (measure.latestRevisionId !== input.revisionId) {
+      throw new MeasureValidationError("Seul le brouillon actif peut être relu");
+    }
+    if (measure.publishedRevisionId === input.revisionId) {
+      throw new MeasureValidationError("Une révision déjà publiée ne peut pas être relue");
+    }
+    if (revision._count.sources === 0) {
+      throw new MeasureValidationError("Une révision sans source ne peut pas être relue");
     }
     // Without this, a second review overwrites reviewedAt and reviewedBy: two successive reviewers
     // leave only the trace of the last one, and the attribution becomes false without anything
@@ -387,6 +411,15 @@ export async function reviewMeasureRevision(input: {
     await tx.measureRevision.update({
       where: { id: input.revisionId },
       data: { reviewedAt: new Date(), reviewedBy: input.reviewedBy },
+    });
+    await tx.auditLog.create({
+      data: {
+        action: "REVIEW_MEASURE_REVISION",
+        entityType: "MeasureRevision",
+        entityId: input.revisionId,
+        changes: { measureId: input.measureId },
+        userId: input.reviewedBy,
+      },
     });
   });
 }

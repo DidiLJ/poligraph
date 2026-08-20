@@ -61,6 +61,16 @@ describeIfDisposableDb("reviewMeasureRevision", () => {
     const revision = await db.measureRevision.findUniqueOrThrow({ where: { id: revisionId } });
     expect(revision.reviewedBy).toBe("relecteur");
     expect(revision.reviewedAt).not.toBeNull();
+    await expect(
+      db.auditLog.findFirst({
+        where: {
+          action: "REVIEW_MEASURE_REVISION",
+          entityType: "MeasureRevision",
+          entityId: revisionId,
+          userId: "relecteur",
+        },
+      })
+    ).resolves.not.toBeNull();
     // Review is not publication: the measure stays invisible until publish runs.
     const measure = await db.measure.findUniqueOrThrow({ where: { id: measureId } });
     expect(measure.publishedRevisionId).toBeNull();

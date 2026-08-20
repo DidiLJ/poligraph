@@ -26,8 +26,10 @@ const EMPTY_RESULT: MeasureQueueResult = {
   scanCapped: false,
 };
 
-const queryMeasureQueueMock = vi.fn(async () => EMPTY_RESULT);
-const queryBatchPublishGroupsMock = vi.fn(async () => []);
+const queryMeasureQueueMock = vi.fn(async (_filters?: unknown) => EMPTY_RESULT);
+const listMeasureQueueCandidatesMock = vi.fn(async () => []);
+const queryBatchReviewGroupsMock = vi.fn(async (_filters?: unknown) => []);
+const queryBatchPublishGroupsMock = vi.fn(async (_filters?: unknown) => []);
 
 vi.mock("next/navigation", () => ({
   redirect: (path: string) => redirectMock(path),
@@ -43,11 +45,16 @@ vi.mock("@/lib/auth", () => ({
 // Mocked so the pages load without DATABASE_URL, and so a page that queried before checking
 // the session would be visible in the call order.
 vi.mock("../_data/queue-query", () => ({
-  queryMeasureQueue: () => queryMeasureQueueMock(),
+  queryMeasureQueue: (filters: unknown) => queryMeasureQueueMock(filters),
+  listMeasureQueueCandidates: () => listMeasureQueueCandidatesMock(),
 }));
 
 vi.mock("../_data/batch-publish-query", () => ({
-  queryBatchPublishGroups: () => queryBatchPublishGroupsMock(),
+  queryBatchPublishGroups: (filters: unknown) => queryBatchPublishGroupsMock(filters),
+}));
+
+vi.mock("../_data/batch-review-query", () => ({
+  queryBatchReviewGroups: (filters: unknown) => queryBatchReviewGroupsMock(filters),
 }));
 
 vi.mock("../_data/detail-query", () => ({
@@ -69,6 +76,7 @@ vi.mock("../actions", () => ({
   createMeasureAction: vi.fn(async () => ({ ok: true })),
   draftRevisionAction: vi.fn(async () => ({ ok: true })),
   reviewRevisionAction: vi.fn(async () => ({ ok: true })),
+  reviewDraftBatchAction: vi.fn(async () => ({ ok: true, reviewedCount: 0 })),
   discardRevisionAction: vi.fn(async () => ({ ok: true })),
   publishRevisionAction: vi.fn(async () => ({ ok: true })),
   publishReviewedBatchAction: vi.fn(async () => ({ ok: true, publishedCount: 0 })),
@@ -95,6 +103,8 @@ describe("accès aux écrans de modération des mesures", () => {
     );
     expect(redirectMock).toHaveBeenCalledWith("/admin/login");
     expect(queryMeasureQueueMock).not.toHaveBeenCalled();
+    expect(listMeasureQueueCandidatesMock).not.toHaveBeenCalled();
+    expect(queryBatchReviewGroupsMock).not.toHaveBeenCalled();
     expect(queryBatchPublishGroupsMock).not.toHaveBeenCalled();
   });
 
@@ -125,7 +135,26 @@ describe("accès aux écrans de modération des mesures", () => {
 
     expect(redirectMock).not.toHaveBeenCalled();
     expect(queryMeasureQueueMock).toHaveBeenCalledTimes(1);
+    expect(listMeasureQueueCandidatesMock).toHaveBeenCalledTimes(1);
+    expect(queryBatchReviewGroupsMock).toHaveBeenCalledTimes(1);
     expect(queryBatchPublishGroupsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("transmet le filtre de candidature à toute la file et aux deux actions par lot", async () => {
+    isAuthenticatedMock.mockResolvedValue(true);
+    const { default: QueuePage } = await import("../page");
+
+    await QueuePage({ searchParams: Promise.resolve({ candidat: "candidature-1" }) });
+
+    expect(queryMeasureQueueMock).toHaveBeenCalledWith(
+      expect.objectContaining({ candidacyId: "candidature-1" })
+    );
+    expect(queryBatchReviewGroupsMock).toHaveBeenCalledWith({
+      candidacyId: "candidature-1",
+    });
+    expect(queryBatchPublishGroupsMock).toHaveBeenCalledWith({
+      candidacyId: "candidature-1",
+    });
   });
 
   it("garde les trois écrans hors des index", async () => {

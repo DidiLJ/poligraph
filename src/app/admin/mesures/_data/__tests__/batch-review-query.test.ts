@@ -6,14 +6,14 @@ vi.mock("@/lib/db", () => ({
   db: { programEdition: { findMany: findManyMock } },
 }));
 
-import { queryBatchPublishGroups } from "../batch-publish-query";
+import { queryBatchReviewGroups } from "../batch-review-query";
 
-describe("queryBatchPublishGroups", () => {
+describe("queryBatchReviewGroups", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("sérialise un lot relu avec sa version optimiste", async () => {
+  it("sérialise un lot de brouillons actifs", async () => {
     findManyMock.mockResolvedValue([
       {
         id: "edition-1",
@@ -25,14 +25,13 @@ describe("queryBatchPublishGroups", () => {
         measures: [
           {
             id: "measure-1",
-            updatedAt: new Date("2027-01-16T10:00:00.000Z"),
             latestRevision: { id: "revision-1", text: "Créer un service public du logement." },
           },
         ],
       },
     ]);
 
-    await expect(queryBatchPublishGroups()).resolves.toEqual([
+    await expect(queryBatchReviewGroups()).resolves.toEqual([
       {
         programEditionId: "edition-1",
         editionLabel: "Cahier 1",
@@ -43,7 +42,6 @@ describe("queryBatchPublishGroups", () => {
           {
             measureId: "measure-1",
             revisionId: "revision-1",
-            expectedUpdatedAt: "2027-01-16T10:00:00.000Z",
             text: "Créer un service public du logement.",
           },
         ],
@@ -52,10 +50,10 @@ describe("queryBatchPublishGroups", () => {
     ]);
   });
 
-  it("demande uniquement les premières publications relues et sourcées", async () => {
+  it("demande uniquement les premières publications non relues et sourcées", async () => {
     findManyMock.mockResolvedValue([]);
 
-    await queryBatchPublishGroups();
+    await queryBatchReviewGroups();
 
     expect(findManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -66,7 +64,8 @@ describe("queryBatchPublishGroups", () => {
               publishedRevisionId: null,
               latestRevision: {
                 is: expect.objectContaining({
-                  reviewedAt: { not: null },
+                  reviewedAt: null,
+                  rejectedAt: null,
                   sources: { some: {} },
                 }),
               },
@@ -80,7 +79,7 @@ describe("queryBatchPublishGroups", () => {
   it("borne le lot à la candidature sélectionnée", async () => {
     findManyMock.mockResolvedValue([]);
 
-    await queryBatchPublishGroups({ candidacyId: "candidature-1" });
+    await queryBatchReviewGroups({ candidacyId: "candidature-1" });
 
     expect(findManyMock).toHaveBeenCalledWith(
       expect.objectContaining({

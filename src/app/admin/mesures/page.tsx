@@ -5,10 +5,12 @@ import type { ThemeCategory } from "@/generated/prisma";
 import { isAuthenticated } from "@/lib/auth";
 import type { PublicationState } from "@/lib/measures/moderation-state";
 import { BatchPublishPanel } from "./_components/BatchPublishPanel";
+import { BatchReviewPanel } from "./_components/BatchReviewPanel";
 import { QueueFilters, type QueueFilterState } from "./_components/QueueFilters";
 import { QueueTable } from "./_components/QueueTable";
 import { queryBatchPublishGroups } from "./_data/batch-publish-query";
-import { queryMeasureQueue } from "./_data/queue-query";
+import { queryBatchReviewGroups } from "./_data/batch-review-query";
+import { listMeasureQueueCandidates, queryMeasureQueue } from "./_data/queue-query";
 
 export const metadata = {
   title: "Mesures : relecture (admin) | Poligraph",
@@ -52,25 +54,36 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
   const retrait = asString(params.retrait);
   const withdrawn = retrait === "only" || retrait === "exclude" ? retrait : undefined;
   const anomaliesOnly = asString(params.anomalies) === "1";
+  const candidacyId = asString(params.candidat);
   const q = asString(params.q);
 
   const pageParam = Number(asString(params.page) ?? "1");
   const page = Number.isFinite(pageParam) ? Math.max(1, Math.trunc(pageParam)) : 1;
 
-  const [result, batchPublishGroups] = await Promise.all([
+  const [result, candidates, batchReviewGroups, batchPublishGroups] = await Promise.all([
     queryMeasureQueue({
       publication,
       theme,
+      candidacyId,
       withdrawn,
       anomaliesOnly,
       q,
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
     }),
-    queryBatchPublishGroups(),
+    listMeasureQueueCandidates(),
+    queryBatchReviewGroups({ candidacyId }),
+    queryBatchPublishGroups({ candidacyId }),
   ]);
 
-  const current: QueueFilterState = { publication, theme, anomaliesOnly, withdrawn, q };
+  const current: QueueFilterState = {
+    publication,
+    theme,
+    candidacyId,
+    anomaliesOnly,
+    withdrawn,
+    q,
+  };
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
 
   return (
@@ -105,7 +118,9 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
         </p>
       )}
 
-      <QueueFilters current={current} result={result} />
+      <QueueFilters current={current} result={result} candidates={candidates} />
+
+      <BatchReviewPanel groups={batchReviewGroups} />
 
       <BatchPublishPanel groups={batchPublishGroups} />
 
@@ -117,6 +132,7 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
             const query = new URLSearchParams();
             for (const state of publication) query.append("etat", state);
             for (const key of theme) query.append("theme", key);
+            if (candidacyId) query.set("candidat", candidacyId);
             if (anomaliesOnly) query.set("anomalies", "1");
             if (withdrawn) query.set("retrait", withdrawn);
             if (q) query.set("q", q);

@@ -404,6 +404,56 @@ describe("publication par lot", () => {
   });
 });
 
+describe("relecture par lot", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const input = {
+    items: [
+      { measureId: "m-1", revisionId: "rev-1" },
+      { measureId: "m-2", revisionId: "rev-2" },
+    ],
+  };
+
+  it("refuse le lot sans session avant toute relecture", async () => {
+    isAuthenticatedMock.mockResolvedValue(false);
+    const { reviewDraftBatchAction } = await actions();
+
+    await expect(reviewDraftBatchAction(input)).rejects.toThrow("Non autorisé");
+    expect(transitionsMock.reviewMeasureRevision).not.toHaveBeenCalled();
+  });
+
+  it("relit toutes les révisions du lot via la transition et trace l'acteur", async () => {
+    isAuthenticatedMock.mockResolvedValue(true);
+    const { reviewDraftBatchAction } = await actions();
+
+    const result = await reviewDraftBatchAction(input);
+
+    expect(result).toEqual({ ok: true, reviewedCount: 2 });
+    expect(transitionsMock.reviewMeasureRevision).toHaveBeenNthCalledWith(1, {
+      measureId: "m-1",
+      revisionId: "rev-1",
+      reviewedBy: "admin",
+    });
+    expect(transitionsMock.reviewMeasureRevision).toHaveBeenNthCalledWith(2, {
+      measureId: "m-2",
+      revisionId: "rev-2",
+      reviewedBy: "admin",
+    });
+  });
+
+  it("refuse une charge mal formée avant toute relecture", async () => {
+    isAuthenticatedMock.mockResolvedValue(true);
+    const { reviewDraftBatchAction } = await actions();
+
+    const result = await reviewDraftBatchAction({ items: [] });
+
+    expect(result).toMatchObject({ ok: false, reviewedCount: 0 });
+    expect(transitionsMock.reviewMeasureRevision).not.toHaveBeenCalled();
+  });
+});
+
 describe("actions éditoriales : ce qu'elles transmettent", () => {
   beforeEach(() => {
     vi.clearAllMocks();

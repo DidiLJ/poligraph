@@ -19,6 +19,11 @@ import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
 import { createQualification, createSimilarityAssessment } from "@/lib/measures/assessments";
 import {
+  MAX_MEASURE_REVIEW_BATCH_SIZE,
+  reviewMeasureRevisionBatch,
+  type MeasureReviewBatchFailure,
+} from "@/lib/measures/batch-review";
+import {
   MAX_MEASURE_PUBLICATION_BATCH_SIZE,
   publishMeasureRevisionBatch,
   type MeasurePublicationBatchFailure,
@@ -66,6 +71,10 @@ export type BatchActionResult =
       failures: MeasurePublicationBatchFailure[];
     };
 
+export type BatchReviewActionResult =
+  | { ok: true; reviewedCount: number }
+  | { ok: false; reviewedCount: number; failures: MeasureReviewBatchFailure[] };
+
 /**
  * The admin auth of this project is a single signed cookie with no per-user identity (see
  * `src/lib/auth.ts`), so every action attributes its review to a constant actor. Same convention as
@@ -88,6 +97,22 @@ const batchPublicationInputSchema = z
       )
       .min(1)
       .max(MAX_MEASURE_PUBLICATION_BATCH_SIZE),
+  })
+  .strict();
+
+const batchReviewInputSchema = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            measureId: z.string().min(1),
+            revisionId: z.string().min(1),
+          })
+          .strict()
+      )
+      .min(1)
+      .max(MAX_MEASURE_REVIEW_BATCH_SIZE),
   })
   .strict();
 
@@ -260,6 +285,43 @@ export async function reviewRevisionAction(input: {
     return { ok: true };
   } catch (error) {
     return toFailure(error);
+  }
+}
+
+export async function reviewDraftBatchAction(input: unknown): Promise<BatchReviewActionResult> {
+  await assertAuthenticated();
+
+  try {
+    // Validate the whole payload before the first review. A malformed trailing row must not leave
+    // a valid prefix marked as reviewed.
+    const parsed = batchReviewInputSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new MeasureValidationError(
+        `Le lot doit contenir entre 1 et ${MAX_MEASURE_REVIEW_BATCH_SIZE} éléments valides`
+      );
+    }
+    const result = await reviewMeasureRevisionBatch(parsed.data.items, ACTOR);
+
+    revalidatePath("/admin/mesures");
+    for (const item of parsed.data.items) revalidatePath(`/admin/mesures/${item.measureId}`);
+
+    return result.failures.length === 0
+      ? { ok: true, reviewedCount: result.reviewedCount }
+      : { ok: false, reviewedCount: result.reviewedCount, failures: result.failures };
+  } catch (error) {
+    const failure = toFailure(error);
+    if (failure.ok) throw new Error("Résultat d'échec incohérent");
+    return {
+      ok: false,
+      reviewedCount: 0,
+      failures: [
+        {
+          measureId: "batch",
+          revisionId: "batch",
+          message: failure.message,
+        },
+      ],
+    };
   }
 }
 

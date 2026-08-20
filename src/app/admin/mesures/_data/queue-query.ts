@@ -34,6 +34,7 @@ export type MeasureQueueFilters = {
   publication?: PublicationState[];
   theme?: ThemeCategory[];
   electionId?: string;
+  candidacyId?: string;
   politicianId?: string;
   withdrawn?: "only" | "exclude";
   anomaliesOnly?: boolean;
@@ -99,6 +100,7 @@ function buildWhere(filters: MeasureQueueFilters): Prisma.MeasureWhereInput {
 
   if (filters.theme && filters.theme.length > 0) where.theme = { in: filters.theme };
   if (filters.electionId) where.electionId = filters.electionId;
+  if (filters.candidacyId) where.candidacyId = filters.candidacyId;
   if (filters.politicianId) where.politicianId = filters.politicianId;
   if (filters.withdrawn === "only") where.withdrawnAt = { not: null };
   if (filters.withdrawn === "exclude") where.withdrawnAt = null;
@@ -112,6 +114,32 @@ function buildWhere(filters: MeasureQueueFilters): Prisma.MeasureWhereInput {
   }
 
   return where;
+}
+
+export type MeasureQueueCandidateOption = {
+  id: string;
+  candidateName: string;
+  electionTitle: string;
+};
+
+/** Only offers candidacies that already own at least one measure in the moderation queue. */
+export async function listMeasureQueueCandidates(): Promise<MeasureQueueCandidateOption[]> {
+  const rows = await db.candidacy.findMany({
+    where: { measures: { some: {} } },
+    select: {
+      id: true,
+      candidateName: true,
+      election: { select: { title: true } },
+    },
+    // Alphabetical order is neutral and keeps the filter stable as imports are added.
+    orderBy: [{ candidateName: "asc" }, { election: { title: "asc" } }],
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    candidateName: row.candidateName,
+    electionTitle: row.election.title,
+  }));
 }
 
 function referenceTextOf(row: QueueDbRow): string | null {

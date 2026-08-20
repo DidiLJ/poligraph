@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { PUBLICATION_STATE_LABELS, THEME_CATEGORY_LABELS } from "@/config/labels";
-import type { PublicationState } from "@/lib/measures/moderation-state";
 import type { ThemeCategory } from "@/generated/prisma";
-import type { MeasureQueueResult } from "../_data/queue-query";
+import type { PublicationState } from "@/lib/measures/moderation-state";
+import type { MeasureQueueCandidateOption, MeasureQueueResult } from "../_data/queue-query";
 
 /**
  * Filters as plain links, server-rendered.
@@ -15,6 +15,7 @@ import type { MeasureQueueResult } from "../_data/queue-query";
 export type QueueFilterState = {
   publication: PublicationState[];
   theme: ThemeCategory[];
+  candidacyId: string | undefined;
   anomaliesOnly: boolean;
   withdrawn: "only" | "exclude" | undefined;
   q: string | undefined;
@@ -41,6 +42,7 @@ function hrefWith(current: QueueFilterState, patch: Partial<QueueFilterState>): 
 
   for (const state of next.publication) params.append("etat", state);
   for (const theme of next.theme) params.append("theme", theme);
+  if (next.candidacyId) params.set("candidat", next.candidacyId);
   if (next.anomaliesOnly) params.set("anomalies", "1");
   if (next.withdrawn) params.set("retrait", next.withdrawn);
   if (next.q) params.set("q", next.q);
@@ -56,9 +58,11 @@ function toggle<T>(values: T[], value: T): T[] {
 export function QueueFilters({
   current,
   result,
+  candidates,
 }: {
   current: QueueFilterState;
   result: MeasureQueueResult;
+  candidates: MeasureQueueCandidateOption[];
 }) {
   const themeKeys = Object.keys(THEME_CATEGORY_LABELS) as ThemeCategory[];
 
@@ -90,6 +94,37 @@ export function QueueFilters({
           ))}
         </div>
       </fieldset>
+
+      {candidates.length > 0 && (
+        <fieldset>
+          <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Candidat
+          </legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Link
+              href={hrefWith(current, { candidacyId: undefined })}
+              prefetch={false}
+              className={`${TAB} ${current.candidacyId === undefined ? TAB_ACTIVE : ""}`}
+            >
+              Tous les candidats
+            </Link>
+            {candidates.map((candidate) => (
+              <Link
+                key={candidate.id}
+                href={hrefWith(current, {
+                  candidacyId: current.candidacyId === candidate.id ? undefined : candidate.id,
+                })}
+                prefetch={false}
+                className={`${TAB} ${current.candidacyId === candidate.id ? TAB_ACTIVE : ""}`}
+                aria-current={current.candidacyId === candidate.id ? "true" : undefined}
+                title={candidate.electionTitle}
+              >
+                {candidate.candidateName}
+              </Link>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <fieldset>
         <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -157,6 +192,7 @@ export function QueueFilters({
         {current.theme.map((theme) => (
           <input key={theme} type="hidden" name="theme" value={theme} />
         ))}
+        {current.candidacyId && <input type="hidden" name="candidat" value={current.candidacyId} />}
         {current.anomaliesOnly && <input type="hidden" name="anomalies" value="1" />}
         {current.withdrawn && <input type="hidden" name="retrait" value={current.withdrawn} />}
 

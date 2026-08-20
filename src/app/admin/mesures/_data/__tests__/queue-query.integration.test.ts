@@ -104,6 +104,19 @@ describeIfDisposableDb("queryMeasureQueue", () => {
     );
   });
 
+  it("filtre par candidature sans mélanger deux programmes de la même élection", async () => {
+    const candidacy = await db.measure.findUniqueOrThrow({
+      where: { id: corpus.measureIds.relue },
+      select: { candidacyId: true },
+    });
+    expect(candidacy.candidacyId).not.toBeNull();
+
+    const result = await scoped({ candidacyId: candidacy.candidacyId ?? undefined });
+
+    expect(result.rows.some((row) => row.id === corpus.measureIds.relue)).toBe(true);
+    expect(result.rows.some((row) => row.id === corpus.measureIds.brouillon)).toBe(false);
+  });
+
   it("isole ou exclut les retraits", async () => {
     const only = await scoped({ withdrawn: "only" });
     const excluded = await scoped({ withdrawn: "exclude" });

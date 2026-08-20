@@ -1,48 +1,44 @@
 import type { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
-import { MAX_MEASURE_PUBLICATION_BATCH_SIZE } from "@/lib/measures/batch-publication";
+import { MAX_MEASURE_REVIEW_BATCH_SIZE } from "@/lib/measures/batch-review";
 
 const ELIGIBLE_MEASURE_WHERE = {
   publicationStatus: "DRAFT",
   publishedRevisionId: null,
   latestRevision: {
     is: {
-      reviewedAt: { not: null },
+      reviewedAt: null,
       publishedAt: null,
       discardedAt: null,
       supersededAt: null,
+      rejectedAt: null,
       sources: { some: {} },
     },
   },
 } satisfies Prisma.MeasureWhereInput;
 
-export type BatchPublishItem = {
+export type BatchReviewItem = {
   measureId: string;
   revisionId: string;
-  expectedUpdatedAt: string;
   text: string;
 };
 
-export type BatchPublishGroup = {
+export type BatchReviewGroup = {
   programEditionId: string;
   editionLabel: string;
   editionVersion: number;
   ownerLabel: string;
   electionTitle: string;
-  items: BatchPublishItem[];
+  items: BatchReviewItem[];
   hasMore: boolean;
 };
 
-/**
- * Returns only first publications whose active revision was already reviewed. Corrections and
- * republications remain individual actions because replacing public text or reversing a legal
- * depublication requires a decision tied to that exact measure.
- */
-export async function queryBatchPublishGroups(
+/** Lists sourced active drafts by programme edition, ready for one explicit human decision. */
+export async function queryBatchReviewGroups(
   filters: {
     candidacyId?: string;
   } = {}
-): Promise<BatchPublishGroup[]> {
+): Promise<BatchReviewGroup[]> {
   const eligibleWhere: Prisma.MeasureWhereInput = filters.candidacyId
     ? { ...ELIGIBLE_MEASURE_WHERE, candidacyId: filters.candidacyId }
     : ELIGIBLE_MEASURE_WHERE;
@@ -63,11 +59,10 @@ export async function queryBatchPublishGroups(
         where: eligibleWhere,
         select: {
           id: true,
-          updatedAt: true,
           latestRevision: { select: { id: true, text: true } },
         },
         orderBy: { createdAt: "asc" },
-        take: MAX_MEASURE_PUBLICATION_BATCH_SIZE + 1,
+        take: MAX_MEASURE_REVIEW_BATCH_SIZE + 1,
       },
     },
     orderBy: [{ publishedAt: "asc" }, { version: "asc" }],
@@ -75,14 +70,13 @@ export async function queryBatchPublishGroups(
 
   return editions.flatMap((edition) => {
     const items = edition.measures
-      .slice(0, MAX_MEASURE_PUBLICATION_BATCH_SIZE)
-      .flatMap((measure): BatchPublishItem[] => {
+      .slice(0, MAX_MEASURE_REVIEW_BATCH_SIZE)
+      .flatMap((measure): BatchReviewItem[] => {
         if (measure.latestRevision === null) return [];
         return [
           {
             measureId: measure.id,
             revisionId: measure.latestRevision.id,
-            expectedUpdatedAt: measure.updatedAt.toISOString(),
             text: measure.latestRevision.text,
           },
         ];
@@ -98,7 +92,7 @@ export async function queryBatchPublishGroups(
           edition.candidacy?.candidateName ?? edition.party?.name ?? "Propriétaire inconnu",
         electionTitle: edition.election.title,
         items,
-        hasMore: edition.measures.length > MAX_MEASURE_PUBLICATION_BATCH_SIZE,
+        hasMore: edition.measures.length > MAX_MEASURE_REVIEW_BATCH_SIZE,
       },
     ];
   });

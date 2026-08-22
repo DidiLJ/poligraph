@@ -167,11 +167,26 @@ describeIfDisposableDb("getPublicMeasureStatsByCandidacy", () => {
     expect(stats.lastReviewedAt).toBeInstanceOf(Date);
   });
 
+  // Sert à dater le programme lui-même, pas la dernière retouche : c'est ce qui permet de savoir
+  // si une synthèse écrite tel jour l'a été sur une candidature encore vide.
+  it("rend la date de publication de la plus ancienne mesure visible", async () => {
+    const stats = await getPublicMeasureStatsByCandidacy(publishedCandidacyId);
+    expect(stats.firstPublishedAt).toBeInstanceOf(Date);
+
+    const publications = await db.measureRevision.findMany({
+      where: { publishedOf: { candidacyId: publishedCandidacyId } },
+      select: { publishedAt: true },
+    });
+    const earliest = Math.min(...publications.map((r) => r.publishedAt!.getTime()));
+    expect(stats.firstPublishedAt!.getTime()).toBe(earliest);
+  });
+
   it("ne compte rien pour une candidature à extension DRAFT", async () => {
     const stats = await getPublicMeasureStatsByCandidacy(draftExtensionCandidacyId);
     expect(stats.measureCount).toBe(0);
     expect(stats.primarySourceMeasureCount).toBe(0);
     expect(stats.lastReviewedAt).toBeNull();
+    expect(stats.firstPublishedAt).toBeNull();
   });
 
   it("ignore une source primaire portée par un brouillon non publié", async () => {
@@ -186,11 +201,14 @@ describeIfDisposableDb("getPublicMeasureStatsByCandidacy", () => {
   it("compte pour l'admin les mesures qu'une extension DRAFT retient", async () => {
     const readiness = await getMeasureReadinessByCandidacies([draftExtensionCandidacyId]);
 
-    expect(readiness.get(draftExtensionCandidacyId)).toEqual({
+    expect(readiness.get(draftExtensionCandidacyId)).toMatchObject({
       measureCount: 1,
       themesCoveredCount: 1,
       primarySourceMeasureCount: 1,
     });
+    // Datée alors même que la lecture publique compte zéro : c'est ce qui permet à l'écran d'admin
+    // de dire si la synthèse survivra à la publication de l'extension.
+    expect(readiness.get(draftExtensionCandidacyId)?.firstPublishedAt).toBeInstanceOf(Date);
   });
 
   it("agrège plusieurs candidatures en une lecture", async () => {
@@ -200,13 +218,13 @@ describeIfDisposableDb("getPublicMeasureStatsByCandidacy", () => {
       secondarySourceCandidacyId,
     ]);
 
-    expect(readiness.get(publishedCandidacyId)).toEqual({
+    expect(readiness.get(publishedCandidacyId)).toMatchObject({
       measureCount: 2,
       themesCoveredCount: 2,
       primarySourceMeasureCount: 1,
     });
     // Même piège de révision que la lecture publique : la source primaire du brouillon ne compte pas.
-    expect(readiness.get(secondarySourceCandidacyId)).toEqual({
+    expect(readiness.get(secondarySourceCandidacyId)).toMatchObject({
       measureCount: 1,
       themesCoveredCount: 1,
       primarySourceMeasureCount: 0,

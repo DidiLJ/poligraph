@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import {
   CHAMBER_SHORT_LABELS,
@@ -5,6 +6,7 @@ import {
   SOURCE_TIER_LABELS,
   THEME_ACCENT_BAR,
   THEME_CATEGORY_LABELS,
+  VOTE_RELATION_BASIS_LABELS,
 } from "@/config/labels";
 import { MeasurePrecisionBadge } from "@/components/measures/MeasurePrecisionBadge";
 import { QualifiedEmptyCell } from "@/components/measures/QualifiedEmptyCell";
@@ -148,6 +150,16 @@ const QUOTED_MEASURE_LIMIT = 3;
  *
  * `<details>` rather than a state hook: the page is a server component, and the browser's own
  * disclosure is keyboard-operable and announced correctly without a line of JavaScript.
+ *
+ * The folded measures are rendered exactly like the quoted ones, in the same divided column. They
+ * used to sit in an indented block with its own left rule, which read as a quotation inside the
+ * quotation: opening the disclosure broke the reading of one candidacy in two, the first three
+ * measures at one indent and the rest at another, when the two groups are the same kind of thing
+ * and the split between them is an arbitrary display limit. One hairline between every measure,
+ * folded or not, and the disclosure becomes one more row of that column instead of a seam.
+ *
+ * The summary states both directions, because a control that keeps saying "voir les 2 autres" once
+ * they are already on screen leaves the reader with no visible way back to the short form.
  */
 function ProposalCell({ entry, theme }: { entry: SubjectCandidateEntry; theme: ThemeCategory }) {
   if (entry.measures.length === 0) {
@@ -157,18 +169,35 @@ function ProposalCell({ entry, theme }: { entry: SubjectCandidateEntry; theme: T
   const folded = entry.measures.slice(QUOTED_MEASURE_LIMIT);
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-border/70">
       {quoted.map((measure) => (
-        <QuotedMeasure key={measure.measure.id} entry={measure} />
+        <div key={measure.measure.id} className="py-3 first:pt-0 last:pb-0">
+          <QuotedMeasure entry={measure} />
+        </div>
       ))}
       {folded.length > 0 && (
         <details className="group">
-          <summary className="inline-flex min-h-11 cursor-pointer items-center text-xs font-semibold text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid">
-            + {folded.length} {folded.length === 1 ? "autre mesure" : "autres mesures"} sur ce sujet
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 [&::-webkit-details-marker]:hidden">
+            <ChevronRight
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+            />
+            <span className="group-open:hidden">
+              {folded.length === 1
+                ? "Lire la dernière mesure sur ce sujet"
+                : `Lire les ${folded.length} autres mesures sur ce sujet`}
+            </span>
+            <span className="hidden group-open:inline">
+              {folded.length === 1
+                ? "Replier cette mesure"
+                : `Replier ces ${folded.length} mesures`}
+            </span>
           </summary>
-          <div className="mt-2 space-y-3 border-l-2 border-border pl-3">
+          <div className="divide-y divide-border/70">
             {folded.map((other) => (
-              <QuotedMeasure key={other.measure.id} entry={other} />
+              <div key={other.measure.id} className="py-3 last:pb-0">
+                <QuotedMeasure entry={other} />
+              </div>
             ))}
           </div>
         </details>
@@ -293,6 +322,7 @@ export function SubjectComparison({ data }: { data: SubjectPageData }) {
           <SubjectGate data={data} />
         ) : (
           <>
+            <VoteMentionLegend />
             <ComparisonTable data={data} />
             <FooterCard
               documented={documented}
@@ -348,6 +378,42 @@ function PlannedSections() {
         ))}
       </dl>
     </section>
+  );
+}
+
+/**
+ * What the mention under every measure is about, said once, before the reader meets it.
+ *
+ * The mention is the state of a rapprochement we are still building, measure by measure: which
+ * scrutins of the Assemblée nationale and the Sénat bear on the same object as a proposal. Nothing
+ * on the page said that work existed, so "à vérifier" under a measure had no antecedent, and a
+ * reader could take it for a reservation about the candidacy rather than about our own coverage.
+ *
+ * Here rather than in the method card at the bottom: a key that arrives after the table it explains
+ * is read, if at all, once the reader has already made sense of the labels on their own.
+ */
+function VoteMentionLegend() {
+  return (
+    <aside
+      aria-labelledby="legende-votes"
+      className="rounded-xl border border-border bg-muted/40 px-5 py-4"
+    >
+      <h2
+        id="legende-votes"
+        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+      >
+        La mention sous chaque mesure
+      </h2>
+      <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+        Nous rapprochons chaque mesure des scrutins de l&apos;Assemblée nationale et du Sénat qui
+        portent sur le même objet. Ce travail se fait mesure par mesure et il est en cours&nbsp;:
+        «&nbsp;{VOTE_RELATION_BASIS_LABELS.SEARCH_NOT_DONE}&nbsp;» signale une mesure que nous
+        n&apos;avons pas encore rapprochée, «&nbsp;
+        {VOTE_RELATION_BASIS_LABELS.NO_VOTE_IN_SCOPE}&nbsp;» une mesure pour laquelle nous avons
+        cherché sans rien trouver. Dans ce second cas, les chambres et les législatures couvertes et
+        la date de la vérification suivent la mention.
+      </p>
+    </aside>
   );
 }
 
@@ -455,16 +521,15 @@ function FooterCard({
 function MethodCard() {
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      {/* The two states quoted here are the ones the badge actually renders today
-          (VOTE_RELATION_BASIS_LABELS). An earlier version quoted "aucun vote sur cet objet", a
-          string that exists nowhere: a reader would have looked for a wording they never meet. */}
+      {/* What the two search states mean is stated by `VoteMentionLegend`, above the table, where a
+          reader meets the mention for the first time. What is left here is the rule that decides
+          whether a POSITION can appear at all, which is a different fact and belongs next to the
+          link to the method page. */}
       <p className="max-w-3xl text-sm text-muted-foreground">
-        En présidentielle, la plupart des mesures n&apos;ont jamais été soumises à un vote. La
-        mention portée sous chaque mesure dit donc surtout où nous en sommes&nbsp;: «&nbsp;périmètre
-        non examiné&nbsp;» tant que nous n&apos;avons pas cherché de scrutin proche,
-        «&nbsp;périmètre examiné sans résultat&nbsp;» quand nous avons cherché sans rien trouver.
-        Une position ne s&apos;affiche que pour une candidature qui siégeait au moment où un texte
-        proche a été soumis.
+        En présidentielle, la plupart des mesures n&apos;ont jamais été soumises à un vote, et une
+        position pour ou contre ne s&apos;affiche que pour une candidature qui siégeait au moment où
+        un texte proche a été soumis. Une mesure sans position n&apos;est donc pas une mesure sans
+        travail de notre part.
       </p>
       <Link
         href="/methodologie"

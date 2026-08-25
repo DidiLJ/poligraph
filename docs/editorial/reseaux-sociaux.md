@@ -101,7 +101,7 @@ Nos publications s'adressent à des citoyens de tous âges, adolescents et adult
 vulgarisation politique et civique. Ce lecteur n'a pas lu le texte dont nous parlons, ne connaît pas
 le vocabulaire de l'institution qui le produit, et n'a aucune raison de fournir un effort pour nous.
 
-Sept conséquences, toutes vérifiables sur une publication finie.
+Chacune des conséquences ci-dessous se vérifie sur une publication finie.
 
 **Le vocabulaire de l'institution se traduit.** Les catégories de travail d'une administration ou
 d'une commission sont ses outils de classement, pas des explications. Un terme technique que rien ne
@@ -125,10 +125,12 @@ annonce un contenu au lieu de le porter fait défiler le lecteur sans rien lui a
 ignore le sujet, elle doit délivrer une information. Si elle n'est claire que pour qui connaît déjà,
 elle est à réécrire.
 
-**Une accroche énonce une condition nécessaire, jamais une condition suffisante.** « Quand X, alors
-Y » se lit mieux que « pour Y, il faut X », et affirme beaucoup plus. Chercher un contre-exemple à
-sa propre accroche avant de la valider : sur un compte dont l'argument est la vérifiabilité,
-publier une phrase logiquement fausse est le pire endroit où se tromper.
+**Quand une accroche énonce une condition, c'est une condition nécessaire.** Beaucoup d'accroches
+n'énoncent aucune condition, et cette règle ne les concerne pas. Mais « quand X, alors Y » se lit
+mieux que « pour Y, il faut X » tout en affirmant bien davantage, puisque la première forme prétend
+que X suffit. Chercher un contre-exemple à sa propre accroche avant de la valider. Sur un compte
+dont l'argument est la vérifiabilité, publier une phrase logiquement fausse est le pire endroit où
+se tromper.
 
 ## 11. Ce qui ne devient jamais une étiquette
 

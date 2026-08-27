@@ -24,15 +24,17 @@ import { WD_PROPS } from "../src/config/wikidata";
 import { mapWikidataOffense, getOffenseLabel } from "../src/config/wikidata-affairs";
 import { wikipediaService } from "../src/lib/api/wikipedia";
 import { extractAffairsFromWikipedia } from "../src/services/wikipedia-affair-extraction";
-import { findMatchingAffairs } from "../src/services/affairs/matching";
+import { classifyAffairMatches, findMatchingAffairs } from "../src/services/affairs/matching";
 import { createDraftAffairFromDiscovery } from "../src/services/affairs/create-draft";
 import { clampConfidenceScore } from "../src/services/affairs/confidence";
-import { extractDateFromUrl } from "../src/lib/extract-date-from-url";
 import {
   getDiscoverAffairsCursor,
   saveDiscoverAffairsCursor,
 } from "../src/services/sync/discover-affairs";
 import type { AffairCategory, AffairStatus, Involvement } from "../src/generated/prisma";
+import { hashSourceContent, proposeAffairEvent } from "../src/services/affairs/proposals";
+import { IMPORTER_DISCOVER_AFFAIRS, withImportRun } from "../src/services/affairs/import-run";
+import { findVerifiedAffairPressEventSource } from "../src/config/affair-sources";
 
 // ============================================
 // TYPES
@@ -56,6 +58,7 @@ interface DiscoveredAffair {
     publisher: string;
     sourceType: "WIKIDATA" | "WIKIPEDIA" | "PRESSE";
     publishedAt: Date | null;
+    excerpt?: string | null;
   }>;
   phase: "wikidata" | "wikipedia";
 }
@@ -72,6 +75,10 @@ interface DiscoveryStats {
   affairsCreated: number;
   /** Toujours égal à affairsCreated : un importeur ne crée que des brouillons. */
   affairsDraft: number;
+  proposalsPending: number;
+  proposalsDeduped: number;
+  ambiguousMatches: number;
+  insufficientSourceProvenance: number;
   errors: number;
 }
 
@@ -320,7 +327,8 @@ async function runPhase2Wikipedia(
               title: extracted.title,
               publisher: extractPublisherFromUrl(sourceUrl),
               sourceType: "PRESSE",
-              publishedAt: extractDateFromUrl(sourceUrl),
+              // A date embedded in the URL is not verified publication metadata.
+              publishedAt: null,
             });
           }
 
@@ -372,7 +380,8 @@ async function runPhase3Reconciliation(
   allAffairs: DiscoveredAffair[],
   stats: DiscoveryStats,
   dryRun: boolean,
-  verbose: boolean
+  verbose: boolean,
+  importRunId: string | null
 ): Promise<void> {
   console.log(`\n  Phase 3: Réconciliation — ${allAffairs.length} affaires à traiter`);
   const progress = new ProgressTracker({
@@ -387,17 +396,77 @@ async function runPhase3Reconciliation(
         politicianId: affair.politicianId,
         title: affair.title,
         category: affair.category,
+        status: affair.status,
       });
 
-      const highMatch = matches.find((m) => m.confidence === "HIGH" || m.confidence === "CERTAIN");
+      const routing = classifyAffairMatches(matches);
+      let insufficientEvolutionProvenance = false;
 
-      if (highMatch) {
+      if (routing.kind === "CONFIDENT_MATCH") {
         stats.duplicatesSkipped++;
         if (verbose) {
           console.log(
-            `    [SKIP] Doublon détecté (${highMatch.confidence}, ${highMatch.matchedBy}): ${affair.title}`
+            `    [SKIP] Doublon détecté (${routing.match.confidence}, ${routing.match.matchedBy}): ${affair.title}`
           );
         }
+        progress.tick();
+        continue;
+      }
+
+      if (routing.kind === "CONFIDENT_AMBIGUOUS" || routing.kind === "POSSIBLE_AMBIGUOUS") {
+        stats.ambiguousMatches++;
+      }
+
+      if (routing.kind === "UNIQUE_EVOLUTION") {
+        const pressSource = findVerifiedAffairPressEventSource(
+          affair.sources.filter((source) => source.sourceType === "PRESSE")
+        );
+        if (pressSource?.publishedAt) {
+          if (dryRun) {
+            console.log(`    [DRY] Proposerait un événement sur ${routing.match.affairId}`);
+            stats.proposalsPending++;
+            progress.tick();
+            continue;
+          }
+          if (!importRunId) throw new Error("ImportRun discover-affairs absent");
+          const proposal = await proposeAffairEvent({
+            affairId: routing.match.affairId,
+            importer: IMPORTER_DISCOVER_AFFAIRS,
+            importRunId,
+            sourceUrl: pressSource.url,
+            sourceTitle: pressSource.title,
+            publishedAt: pressSource.publishedAt,
+            publisher: pressSource.publisher,
+            sourceExcerpt: pressSource.excerpt!,
+            sourceContentHash: hashSourceContent({
+              sourceUrl: pressSource.url,
+              publishedAt: pressSource.publishedAt,
+              title: affair.title,
+              status: affair.status,
+            }),
+            confidence: Math.round(routing.match.score * 100),
+            rationale:
+              `Candidat d’évolution unique (${routing.match.matchedBy}) avec une source de presse ` +
+              `datée. La publication est proposée comme événement médiatique, sans déduire la ` +
+              `date d’un acte judiciaire.`,
+            extractorVersion: "discover-evolution-v1",
+          });
+          if (proposal.outcome === "CREATED") stats.proposalsPending++;
+          if (proposal.deduped) stats.proposalsDeduped++;
+          if (proposal.outcome !== "TARGET_INELIGIBLE") {
+            progress.tick();
+            continue;
+          }
+        } else {
+          insufficientEvolutionProvenance = true;
+        }
+      }
+
+      if (insufficientEvolutionProvenance) stats.insufficientSourceProvenance++;
+
+      const datedSources = affair.sources.filter((source) => source.publishedAt !== null);
+      if (datedSources.length === 0) {
+        if (!insufficientEvolutionProvenance) stats.insufficientSourceProvenance++;
         progress.tick();
         continue;
       }
@@ -423,11 +492,11 @@ async function runPhase3Reconciliation(
         confidenceScore: affair.confidenceScore,
         factsDate: affair.factsDate,
         court: affair.court,
-        sources: affair.sources.map((s) => ({
+        sources: datedSources.map((s) => ({
           url: s.url,
           title: s.title,
           publisher: s.publisher,
-          publishedAt: s.publishedAt ?? affair.factsDate ?? new Date(),
+          publishedAt: s.publishedAt!,
           sourceType: s.sourceType,
         })),
       });
@@ -559,6 +628,10 @@ Environnement :
       duplicatesSkipped: 0,
       affairsCreated: 0,
       affairsDraft: 0,
+      proposalsPending: 0,
+      proposalsDeduped: 0,
+      ambiguousMatches: 0,
+      insufficientSourceProvenance: 0,
       errors: 0,
     };
 
@@ -595,7 +668,7 @@ Environnement :
     stats.politiciansProcessed = politicians.length;
     console.log(`\n  ${politicians.length} politicien(s) trouvé(s)`);
 
-    if (cursorActive) {
+    if (cursorActive && !dryRun) {
       if (politicians.length === 0 || (typeof limit === "number" && politicians.length < limit)) {
         console.log(
           `[discover-affairs] cursor: ${cursor ?? "(start)"} -> (end), processed ${politicians.length}; alphabet exhausted, cursor reset`
@@ -635,7 +708,21 @@ Environnement :
     const allAffairs = [...phase1Affairs, ...phase2Affairs];
 
     if (allAffairs.length > 0) {
-      await runPhase3Reconciliation(allAffairs, stats, dryRun, verbose);
+      if (dryRun) {
+        await runPhase3Reconciliation(allAffairs, stats, true, verbose, null);
+      } else {
+        await withImportRun(IMPORTER_DISCOVER_AFFAIRS, async ({ importRunId, setStats }) => {
+          await runPhase3Reconciliation(allAffairs, stats, false, verbose, importRunId);
+          setStats({
+            duplicatesSkipped: stats.duplicatesSkipped,
+            affairsCreated: stats.affairsCreated,
+            proposalsPending: stats.proposalsPending,
+            proposalsDeduped: stats.proposalsDeduped,
+            ambiguousMatches: stats.ambiguousMatches,
+            insufficientSourceProvenance: stats.insufficientSourceProvenance,
+          });
+        });
+      }
     } else {
       console.log("\n  Phase 3: Aucune affaire découverte — rien à réconcilier.");
     }
@@ -651,6 +738,9 @@ Environnement :
     console.log(`  Doublons ignorés :          ${stats.duplicatesSkipped}`);
     console.log(`  Affaires créées :           ${stats.affairsCreated}`);
     console.log(`    — Brouillons (toutes) :   ${stats.affairsDraft}`);
+    console.log(`  Propositions d’événement :  ${stats.proposalsPending}`);
+    console.log(`  Rapprochements ambigus :    ${stats.ambiguousMatches}`);
+    console.log(`  Provenance insuffisante :   ${stats.insufficientSourceProvenance}`);
     console.log(`  Erreurs :                   ${stats.errors}`);
 
     return {

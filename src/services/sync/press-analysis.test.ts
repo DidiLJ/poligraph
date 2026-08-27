@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // these tests of their meaning.
 const mocks = vi.hoisted(() => ({
   resolveAffairPolitician: vi.fn(),
+  previewAffairPolitician: vi.fn(),
   findMatchingAffairs: vi.fn(),
   createDraftAffairFromDiscovery: vi.fn(),
+  proposeAffairEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -29,6 +31,10 @@ vi.mock("@/lib/affair-matching", async (importOriginal) => ({
   resolveAffairPolitician: mocks.resolveAffairPolitician,
 }));
 
+vi.mock("@/lib/affair-matching/resolver", () => ({
+  previewAffairPolitician: mocks.previewAffairPolitician,
+}));
+
 // pickConfidentMatch is pure and stays real; only the DB lookup is replaced.
 vi.mock("@/services/affairs/matching", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/services/affairs/matching")>()),
@@ -37,6 +43,11 @@ vi.mock("@/services/affairs/matching", async (importOriginal) => ({
 
 vi.mock("@/services/affairs/create-draft", () => ({
   createDraftAffairFromDiscovery: mocks.createDraftAffairFromDiscovery,
+}));
+
+vi.mock("@/services/affairs/proposals", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/services/affairs/proposals")>()),
+  proposeAffairEvent: mocks.proposeAffairEvent,
 }));
 
 import { isPressAnalysisSuccessful, processAnalyzedArticle } from "./press-analysis";
@@ -48,8 +59,18 @@ beforeEach(() => {
     topCandidateId: null,
     decisionId: null,
   });
+  mocks.previewAffairPolitician.mockResolvedValue({
+    judgment: "NO_MATCH",
+    topCandidateId: null,
+    decisionId: null,
+  });
   mocks.findMatchingAffairs.mockResolvedValue([]);
   mocks.createDraftAffairFromDiscovery.mockResolvedValue({ id: "aff-1", slug: "aff-1" });
+  mocks.proposeAffairEvent.mockResolvedValue({
+    outcome: "CREATED",
+    pendingProposalId: "proposal-1",
+    deduped: false,
+  });
 });
 
 function zeroStats() {
@@ -60,6 +81,9 @@ function zeroStats() {
     affairsEnriched: 0,
     affairsCreated: 0,
     affairsRejected: 0,
+    proposalsPending: 0,
+    proposalsDeduped: 0,
+    ambiguousMatches: 0,
     scrapeErrors: 0,
     analysisErrors: 0,
     sensitiveWarnings: 0,
@@ -275,5 +299,145 @@ describe("createAffairFromPress : involvement", () => {
     expect(mocks.createDraftAffairFromDiscovery).toHaveBeenCalledWith(
       expect.objectContaining({ involvement: "DIRECT" })
     );
+  });
+});
+
+describe("processAnalyzedArticle : proposition d’évolution", () => {
+  const article = {
+    id: "article-evolution",
+    url: "https://www.lemonde.fr/politique/article/2026/08/27/suivi-affaire.html",
+    title: "Un nouvel article sur l’enquête",
+    feedSource: "lemonde",
+    publishedAt: new Date("2026-08-27T08:00:00.000Z"),
+  };
+  const excerpt = "Jeanne Martin fait toujours l’objet d’une enquête préliminaire.";
+  const detected = {
+    politicianName: "Jeanne Martin",
+    involvement: "DIRECT" as const,
+    category: "DETOURNEMENT_FONDS_PUBLICS",
+    categoryValidated: true,
+    status: "ENQUETE_PRELIMINAIRE",
+    statusValidated: true,
+    title: "Enquête sur des marchés publics contestés",
+    description: "Résumé produit par le modèle, non publiable.",
+    factsDate: null,
+    court: null,
+    charges: [],
+    excerpts: [excerpt],
+    isNewRevelation: true,
+    confidenceScore: 95,
+    mentionedNames: ["Jeanne Martin"],
+  };
+
+  beforeEach(() => {
+    mocks.resolveAffairPolitician.mockResolvedValue({
+      judgment: "SAME",
+      topCandidateId: "pol-1",
+      decisionId: "decision-1",
+    });
+    mocks.findMatchingAffairs.mockResolvedValue([
+      {
+        affairId: "aff-existing",
+        confidence: "POSSIBLE",
+        score: 0.55,
+        matchedBy: "evolution-title-overlap",
+      },
+    ]);
+  });
+
+  it("dépose une proposition unique sans créer de brouillon ni relation", async () => {
+    const stats = zeroStats();
+
+    await processAnalyzedArticle(
+      article,
+      `Introduction. ${excerpt} Suite de l’article.`,
+      { isAffairRelated: true, summary: "résumé", affairs: [detected] },
+      stats,
+      { dryRun: false, verbose: false, importRunId: "run-press" }
+    );
+
+    expect(mocks.proposeAffairEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        affairId: "aff-existing",
+        importRunId: "run-press",
+        pressArticleId: "article-evolution",
+        resolverDecisionId: "decision-1",
+        sourceExcerpt: excerpt,
+        confidence: 55,
+      })
+    );
+    expect(mocks.createDraftAffairFromDiscovery).not.toHaveBeenCalled();
+    expect(stats.proposalsPending).toBe(1);
+  });
+
+  it("ne choisit rien lorsqu’un autre candidat POSSIBLE existe", async () => {
+    mocks.findMatchingAffairs.mockResolvedValue([
+      {
+        affairId: "aff-existing",
+        confidence: "POSSIBLE",
+        score: 0.55,
+        matchedBy: "evolution-title-overlap",
+      },
+      {
+        affairId: "aff-other",
+        confidence: "POSSIBLE",
+        score: 0.5,
+        matchedBy: "title-partial",
+      },
+    ]);
+    const stats = zeroStats();
+
+    await processAnalyzedArticle(
+      article,
+      `Introduction. ${excerpt}`,
+      { isAffairRelated: true, summary: "résumé", affairs: [detected] },
+      stats,
+      { dryRun: false, verbose: false, importRunId: "run-press" }
+    );
+
+    expect(mocks.proposeAffairEvent).not.toHaveBeenCalled();
+    expect(mocks.createDraftAffairFromDiscovery).toHaveBeenCalledTimes(1);
+    expect(stats.ambiguousMatches).toBe(1);
+  });
+
+  it("utilise le resolver sans persistance en dry-run", async () => {
+    mocks.previewAffairPolitician.mockResolvedValue({
+      judgment: "SAME",
+      topCandidateId: "pol-1",
+      decisionId: null,
+    });
+    const stats = zeroStats();
+
+    await processAnalyzedArticle(
+      article,
+      `Introduction. ${excerpt}`,
+      { isAffairRelated: true, summary: "résumé", affairs: [detected] },
+      stats,
+      { dryRun: true, verbose: false }
+    );
+
+    expect(mocks.previewAffairPolitician).toHaveBeenCalledTimes(1);
+    expect(mocks.resolveAffairPolitician).not.toHaveBeenCalled();
+    expect(mocks.proposeAffairEvent).not.toHaveBeenCalled();
+    expect(stats.proposalsPending).toBe(1);
+  });
+
+  it("ne route pas un statut remplacé par le fallback de l’analyse", async () => {
+    const stats = zeroStats();
+
+    await processAnalyzedArticle(
+      article,
+      `Introduction. ${excerpt}`,
+      {
+        isAffairRelated: true,
+        summary: "résumé",
+        affairs: [{ ...detected, statusValidated: false }],
+      },
+      stats,
+      { dryRun: false, verbose: false, importRunId: "run-press" }
+    );
+
+    expect(mocks.proposeAffairEvent).not.toHaveBeenCalled();
+    expect(mocks.createDraftAffairFromDiscovery).toHaveBeenCalledTimes(1);
   });
 });

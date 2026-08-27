@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
 import { assertDisposableTestDb, describeIfDisposableDb } from "@/test/db-guard";
 
 let db: typeof import("@/lib/db").db;

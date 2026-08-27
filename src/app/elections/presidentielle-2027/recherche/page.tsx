@@ -1,0 +1,207 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
+import {
+  CANDIDACY_STATUS_LABELS,
+  MEASURE_SOURCE_KIND_LABELS,
+  THEME_CATEGORY_LABELS,
+} from "@/config/labels";
+import { searchPresidentialCorpus } from "@/lib/presidentielle/corpus-search";
+import {
+  PRESIDENTIELLE_2027_SLUG,
+  THEMES_IN_ORDER,
+  themeToSlug,
+} from "@/lib/presidentielle/themes";
+
+const PAGE_PATH = "/elections/presidentielle-2027/recherche";
+
+export const metadata: Metadata = {
+  title: "Recherche dans le corpus présidentielle 2027 | Poligraph",
+  description: "Rechercher les personnalités suivies et les mesures publiques du corpus 2027.",
+  robots: { index: false, follow: true },
+  alternates: { canonical: PAGE_PATH },
+};
+
+function normalize(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("fr")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function matchingTheme(query: string) {
+  const normalized = normalize(query);
+  const exact = THEMES_IN_ORDER.find(
+    (theme) =>
+      normalize(THEME_CATEGORY_LABELS[theme]) === normalized ||
+      normalize(themeToSlug(theme)) === normalized
+  );
+  if (exact || normalized.length < 3) return exact;
+
+  const tokenMatches = THEMES_IN_ORDER.filter((theme) =>
+    normalize(THEME_CATEGORY_LABELS[theme]).split(" ").includes(normalized)
+  );
+  return tokenMatches.length === 1 ? tokenMatches[0] : undefined;
+}
+
+export default async function PresidentialSearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const raw = Array.isArray(params.q) ? params.q[0] : params.q;
+  const query = raw?.trim().slice(0, 200) ?? "";
+  const result = await searchPresidentialCorpus(PRESIDENTIELLE_2027_SLUG, query, 50);
+  const theme = matchingTheme(query);
+  const hasResults = result !== null && result.total > 0;
+
+  return (
+    <main className="container mx-auto px-4 pb-12 pt-4">
+      <Breadcrumb
+        items={[
+          { label: "Élections", href: "/elections" },
+          { label: "Présidentielle 2027", href: "/elections/presidentielle-2027" },
+          { label: "Recherche" },
+        ]}
+      />
+      <div className="mx-auto max-w-4xl">
+        <Link
+          href="/elections/presidentielle-2027"
+          className="mb-6 inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          Retour au hub
+        </Link>
+        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+          Résultats dans le corpus 2027
+        </h1>
+
+        <form role="search" className="mt-6 flex gap-2" action={PAGE_PATH}>
+          <label htmlFor="full-corpus-query" className="sr-only">
+            Rechercher une mesure ou une personnalité suivie
+          </label>
+          <input
+            id="full-corpus-query"
+            name="q"
+            type="search"
+            defaultValue={query}
+            placeholder="logement, retraites, une personnalité…"
+            className="min-h-12 min-w-0 flex-1 rounded-xl border border-border bg-card px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          />
+          <button
+            type="submit"
+            className="inline-flex min-h-12 items-center rounded-xl bg-primary px-5 font-bold text-primary-foreground hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            Rechercher
+          </button>
+        </form>
+
+        {theme && (
+          <aside className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-5">
+            <p className="font-bold">Cette recherche correspond à un sujet comparable.</p>
+            <Link
+              href={"/elections/presidentielle-2027/sujets/" + themeToSlug(theme)}
+              className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              Comparer le sujet {THEME_CATEGORY_LABELS[theme]}
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+          </aside>
+        )}
+
+        {query.length < 2 ? (
+          <p className="mt-10 text-muted-foreground">
+            Saisissez au moins deux caractères pour rechercher dans le corpus public.
+          </p>
+        ) : !hasResults ? (
+          <section className="mt-10 rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-display text-2xl font-extrabold">
+              Aucun résultat pour « {query} »
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Le corpus public de Poligraph ne contient, à ce jour, aucune mesure publiée ni
+              personnalité suivie correspondant à cette recherche. Cette absence ne prouve pas qu
+              {"'"}une proposition n{"'"}existe pas : elle dit ce que notre corpus contient.
+            </p>
+          </section>
+        ) : (
+          <div className="mt-10 space-y-10">
+            <p className="text-sm text-muted-foreground">
+              {result.total} résultat{result.total > 1 ? "s" : ""} dans le corpus public
+            </p>
+            {result.candidacies.length > 0 && (
+              <section aria-labelledby="full-candidacies-title">
+                <h2
+                  id="full-candidacies-title"
+                  className="font-display text-2xl font-extrabold tracking-tight"
+                >
+                  Personnalités suivies
+                </h2>
+                <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {result.candidacies.map((candidacy) => (
+                    <li key={candidacy.id}>
+                      <Link
+                        href={candidacy.url}
+                        className="flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-card p-4 hover:border-primary/50 hover:bg-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      >
+                        <PoliticianAvatar
+                          photoUrl={candidacy.photoUrl}
+                          blobPhotoUrl={candidacy.blobPhotoUrl}
+                          fullName={candidacy.name}
+                          size="md"
+                        />
+                        <span className="min-w-0">
+                          <span className="block font-bold">{candidacy.name}</span>
+                          <span className="block text-sm text-muted-foreground">
+                            {CANDIDACY_STATUS_LABELS[candidacy.status]}
+                            {candidacy.party ? " · " + candidacy.party : ""}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {result.measures.length > 0 && (
+              <section aria-labelledby="full-measures-title">
+                <h2
+                  id="full-measures-title"
+                  className="font-display text-2xl font-extrabold tracking-tight"
+                >
+                  Mesures
+                </h2>
+                <ul className="mt-4 space-y-4">
+                  {result.measures.map((measure) => {
+                    const source = measure.sourceLabel
+                      ? MEASURE_SOURCE_KIND_LABELS[measure.sourceLabel]
+                      : null;
+                    return (
+                      <li key={measure.id}>
+                        <Link
+                          href={measure.url}
+                          className="block rounded-2xl border border-border bg-card p-5 hover:border-primary/50 hover:bg-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        >
+                          <p className="text-lg font-bold leading-relaxed">{measure.text}</p>
+                          <p className="mt-3 text-sm text-muted-foreground">
+                            {measure.candidateName} · {THEME_CATEGORY_LABELS[measure.theme]}
+                            {source ? " · " + source : ""}
+                          </p>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

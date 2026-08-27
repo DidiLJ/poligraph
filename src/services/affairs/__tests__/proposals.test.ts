@@ -442,11 +442,13 @@ describe("proposeAffairEvent", () => {
     const tracked = computeAffairEventIdentity({
       affairId: "aff_1",
       sourceUrl: "https://www.lemonde.fr/article.html?utm_source=rss#titre",
+      publishedAt: EVENT_INPUT.publishedAt,
       pressArticleId: "article_1",
     });
     const canonical = computeAffairEventIdentity({
       affairId: "aff_1",
       sourceUrl: "https://www.lemonde.fr/article.html",
+      publishedAt: EVENT_INPUT.publishedAt,
       pressArticleId: "article_1",
     });
 
@@ -457,13 +459,51 @@ describe("proposeAffairEvent", () => {
     const tracked = computeAffairEventIdentity({
       affairId: "aff_1",
       sourceUrl: "https://www.lemonde.fr/article.html?utm_source=rss&b=2&a=1#titre",
+      publishedAt: EVENT_INPUT.publishedAt,
     });
     const canonical = computeAffairEventIdentity({
       affairId: "aff_1",
       sourceUrl: "https://www.lemonde.fr/article.html?a=1&b=2",
+      publishedAt: EVENT_INPUT.publishedAt,
     });
 
     expect(tracked).toBe(canonical);
+  });
+
+  it("distingue l’affaire cible et la date réelle de publication", () => {
+    const base = computeAffairEventIdentity({
+      affairId: "aff_1",
+      sourceUrl: "https://www.lemonde.fr/article.html",
+      publishedAt: new Date("2026-08-27T08:00:00.000Z"),
+    });
+    const otherAffair = computeAffairEventIdentity({
+      affairId: "aff_2",
+      sourceUrl: "https://www.lemonde.fr/article.html",
+      publishedAt: new Date("2026-08-27T08:00:00.000Z"),
+    });
+    const otherPublication = computeAffairEventIdentity({
+      affairId: "aff_1",
+      sourceUrl: "https://www.lemonde.fr/article.html",
+      publishedAt: new Date("2026-08-28T08:00:00.000Z"),
+    });
+
+    expect(otherAffair).not.toBe(base);
+    expect(otherPublication).not.toBe(base);
+  });
+
+  it("ignore le titre et le hash de contenu dans l’identité de l’événement", async () => {
+    await proposeAffairEvent(EVENT_INPUT);
+    await proposeAffairEvent({
+      ...EVENT_INPUT,
+      sourceTitle: "Un titre éditorial modifié",
+      sourceContentHash: "un-autre-hash-de-contenu",
+    });
+
+    const identityKeys = db.affairEvent.findUnique.mock.calls.map(
+      ([query]) => query.where.affairId_identityKey.identityKey
+    );
+    expect(identityKeys).toHaveLength(2);
+    expect(identityKeys[1]).toBe(identityKeys[0]);
   });
 
   it("dépose un événement médiatique HIGH sans écrire sur l’affaire", async () => {

@@ -395,6 +395,7 @@ export type PreviewAffairEventProposalInput = Omit<ProposeAffairEventInput, "imp
 export function computeAffairEventIdentity(input: {
   affairId: string;
   sourceUrl: string;
+  publishedAt: Date;
   pressArticleId?: string | null;
 }): string {
   const sourceIdentity = input.pressArticleId
@@ -404,6 +405,8 @@ export function computeAffairEventIdentity(input: {
     .update(
       canonicalJson({
         version: "press-revelation-v2",
+        affairId: input.affairId,
+        publishedAt: input.publishedAt.toISOString(),
         type: "REVELATION",
         sourceIdentity,
       })
@@ -460,6 +463,7 @@ export function parseAffairEventProposalContext(input: {
   const identityKey = computeAffairEventIdentity({
     affairId: input.affairId,
     sourceUrl: parsed.event.sourceUrl,
+    publishedAt: metadata.eventProposal.publishedAt,
     pressArticleId: metadata.eventProposal.pressArticleId,
   });
   if (metadata.eventProposal.identityKey !== identityKey) {
@@ -555,6 +559,7 @@ async function assessAffairEventProposal(
   const identityKey = computeAffairEventIdentity({
     affairId: input.affairId,
     sourceUrl,
+    publishedAt: eventPayload.addEvent.date,
     pressArticleId: input.pressArticleId,
   });
   const existingEvent = await findAppliedAffairEvent({

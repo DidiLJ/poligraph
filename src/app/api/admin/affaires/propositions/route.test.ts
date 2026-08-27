@@ -117,6 +117,7 @@ describe("GET admin affair proposals source links", () => {
     const identityKey = computeAffairEventIdentity({
       affairId: "affair-1",
       sourceUrl,
+      publishedAt: new Date(date),
       pressArticleId: "article-1",
     });
     h.db.affairUpdateProposal.findMany.mockResolvedValue([

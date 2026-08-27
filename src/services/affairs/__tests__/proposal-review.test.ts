@@ -100,6 +100,7 @@ function pendingEventProposal(overrides: Record<string, unknown> = {}) {
   const identityKey = computeAffairEventIdentity({
     affairId: "aff_1",
     sourceUrl,
+    publishedAt: date,
     pressArticleId: "article_1",
   });
   return pendingProposal({

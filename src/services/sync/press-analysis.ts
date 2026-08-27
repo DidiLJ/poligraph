@@ -35,7 +35,13 @@ import {
 import { previewAffairPolitician } from "@/lib/affair-matching/resolver";
 import { createDraftAffairFromDiscovery } from "@/services/affairs/create-draft";
 import { safeJsonParseOrThrow } from "@/lib/api/safe-json";
-import { hashSourceContent, proposeAffairEvent } from "@/services/affairs/proposals";
+import {
+  hashSourceContent,
+  previewAffairEventProposal,
+  proposeAffairEvent,
+  type PreviewAffairEventProposalOutcome,
+  type ProposeAffairEventOutcome,
+} from "@/services/affairs/proposals";
 import { IMPORTER_PRESS_ANALYSIS, withImportRun } from "@/services/affairs/import-run";
 import { isVerifiedAffairPressUrl } from "@/config/affair-sources";
 
@@ -62,7 +68,12 @@ export interface PressAnalysisStats {
   affairsRejected: number;
   proposalsPending: number;
   proposalsDeduped: number;
+  proposalsWouldCreate: number;
+  proposalsDedupedPending: number;
+  proposalsDedupedTerminal: number;
+  eventsAlreadyApplied: number;
   ambiguousMatches: number;
+  insufficientSourceProvenance: number;
   scrapeErrors: number;
   analysisErrors: number;
   sensitiveWarnings: number;
@@ -126,7 +137,12 @@ export async function syncPressAnalysis(
     affairsRejected: 0,
     proposalsPending: 0,
     proposalsDeduped: 0,
+    proposalsWouldCreate: 0,
+    proposalsDedupedPending: 0,
+    proposalsDedupedTerminal: 0,
+    eventsAlreadyApplied: 0,
     ambiguousMatches: 0,
+    insufficientSourceProvenance: 0,
     scrapeErrors: 0,
     analysisErrors: 0,
     sensitiveWarnings: 0,
@@ -280,7 +296,12 @@ export async function syncPressAnalysis(
     setStats({
       proposalsPending: result.proposalsPending,
       proposalsDeduped: result.proposalsDeduped,
+      proposalsWouldCreate: result.proposalsWouldCreate,
+      proposalsDedupedPending: result.proposalsDedupedPending,
+      proposalsDedupedTerminal: result.proposalsDedupedTerminal,
+      eventsAlreadyApplied: result.eventsAlreadyApplied,
       ambiguousMatches: result.ambiguousMatches,
+      insufficientSourceProvenance: result.insufficientSourceProvenance,
       affairsCreated: result.affairsCreated,
     });
     return result;
@@ -502,19 +523,9 @@ export async function processAnalyzedArticle(
       ) {
         const sourceExcerpt = findVerifiedPressExcerpt(detected.excerpts, analysisContent);
         if (sourceExcerpt && isVerifiedAffairPressUrl(article.url)) {
-          if (dryRun) {
-            stats.proposalsPending++;
-            if (verbose) {
-              console.log(`  [DRY-RUN] Proposerait un événement sur ${routing.match.affairId}`);
-            }
-            continue;
-          }
-          if (!importRunId) throw new Error("ImportRun presse absent pour la proposition");
-
-          const proposal = await proposeAffairEvent({
+          const eventInput = {
             affairId: routing.match.affairId,
             importer: IMPORTER_PRESS_ANALYSIS,
-            importRunId,
             sourceUrl: article.url,
             sourceTitle: article.title,
             publishedAt: article.publishedAt,
@@ -534,12 +545,24 @@ export async function processAnalyzedArticle(
               `pré-décision du même politique. L’article est proposé comme nouvelle source ` +
               `médiatique, sans modification automatique de l’état judiciaire.`,
             extractorVersion: "press-evolution-v1",
-          });
-          if (proposal.outcome === "CREATED") stats.proposalsPending++;
-          if (proposal.deduped) stats.proposalsDeduped++;
+          };
+          let proposal;
+          if (dryRun) {
+            proposal = await previewAffairEventProposal(eventInput);
+          } else {
+            if (!importRunId) throw new Error("ImportRun presse absent pour la proposition");
+            proposal = await proposeAffairEvent({ ...eventInput, importRunId });
+          }
+          recordEventProposalOutcome(stats, proposal.outcome);
+          if (verbose && dryRun) {
+            console.log(`  [DRY-RUN] Proposition événement : ${proposal.outcome}`);
+          }
           if (proposal.outcome !== "TARGET_INELIGIBLE") continue;
         } else if (verbose) {
           console.log("  - Source ou extrait insuffisant, conservation du brouillon de revue");
+        }
+        if (!sourceExcerpt || !isVerifiedAffairPressUrl(article.url)) {
+          stats.insufficientSourceProvenance++;
         }
       }
 
@@ -567,6 +590,23 @@ export async function processAnalyzedArticle(
       }
     }
   }
+}
+
+function recordEventProposalOutcome(
+  stats: PressAnalysisStats,
+  outcome: ProposeAffairEventOutcome | PreviewAffairEventProposalOutcome
+): void {
+  if (outcome === "CREATED") stats.proposalsPending++;
+  if (outcome === "WOULD_CREATE") stats.proposalsWouldCreate++;
+  if (outcome === "DEDUPED_PENDING") {
+    stats.proposalsDeduped++;
+    stats.proposalsDedupedPending++;
+  }
+  if (outcome === "DEDUPED_TERMINAL") {
+    stats.proposalsDeduped++;
+    stats.proposalsDedupedTerminal++;
+  }
+  if (outcome === "ALREADY_APPLIED") stats.eventsAlreadyApplied++;
 }
 
 // ============================================

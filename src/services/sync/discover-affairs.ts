@@ -33,8 +33,11 @@ import type { SurnameVocabulary } from "@/lib/affair-matching/surname-ambiguity"
 import type { AffairCandidateRecord } from "@/lib/affair-matching";
 import {
   hashSourceContent,
+  previewAffairEventProposal,
   proposeAffairEvent,
   proposeAffairUpdate,
+  type PreviewAffairEventProposalOutcome,
+  type ProposeAffairEventOutcome,
 } from "@/services/affairs/proposals";
 import { createDraftAffairFromDiscovery } from "@/services/affairs/create-draft";
 import { IMPORTER_DISCOVER_AFFAIRS, withImportRun } from "@/services/affairs/import-run";
@@ -95,6 +98,10 @@ export interface DiscoverAffairsResult {
   /** Affaires v2, lot 1: enrichment of existing affairs is now proposal-based. */
   proposalsPending: number;
   proposalsDeduped: number;
+  proposalsWouldCreate: number;
+  proposalsDedupedPending: number;
+  proposalsDedupedTerminal: number;
+  eventsAlreadyApplied: number;
   /** Several affairs tied at HIGH: no enrichment, a draft is created instead. */
   ambiguousMatches: number;
   insufficientSourceProvenance: number;
@@ -113,14 +120,20 @@ export function extractPenaltyData(claim: WikidataClaim): ExtractedPenaltyData {
   const timeClaims = claim.qualifiers[WD_PROPS.POINT_IN_TIME];
   if (timeClaims?.[0]?.datavalue?.value) {
     const tv = timeClaims[0].datavalue.value;
-    if (typeof tv === "object" && "time" in tv) {
+    if (typeof tv === "object" && "time" in tv && "precision" in tv && tv.precision >= 11) {
       const match = tv.time.match(/^\+?(\d{4})-(\d{2})-(\d{2})/);
-      if (match) {
-        // Wikidata uses 00 for unknown month/day (year-only or month-only precision)
-        const safeMonth = match[2] === "00" ? "01" : match[2];
-        const safeDay = match[3] === "00" ? "01" : match[3];
-        const date = new Date(`${match[1]}-${safeMonth}-${safeDay}`);
-        if (!isNaN(date.getTime())) result.verdictDate = date;
+      if (match && match[2] !== "00" && match[3] !== "00") {
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        if (
+          date.getUTCFullYear() === year &&
+          date.getUTCMonth() === month - 1 &&
+          date.getUTCDate() === day
+        ) {
+          result.verdictDate = date;
+        }
       }
     }
   }
@@ -239,6 +252,10 @@ export async function discoverAffairs(options?: {
     affairsCreated: 0,
     proposalsPending: 0,
     proposalsDeduped: 0,
+    proposalsWouldCreate: 0,
+    proposalsDedupedPending: 0,
+    proposalsDedupedTerminal: 0,
+    eventsAlreadyApplied: 0,
     ambiguousMatches: 0,
     insufficientSourceProvenance: 0,
     errors: [],
@@ -343,6 +360,10 @@ export async function discoverAffairs(options?: {
         affairsCreated: stats.affairsCreated,
         proposalsPending: stats.proposalsPending,
         proposalsDeduped: stats.proposalsDeduped,
+        proposalsWouldCreate: stats.proposalsWouldCreate,
+        proposalsDedupedPending: stats.proposalsDedupedPending,
+        proposalsDedupedTerminal: stats.proposalsDedupedTerminal,
+        eventsAlreadyApplied: stats.eventsAlreadyApplied,
         ambiguousMatches: stats.ambiguousMatches,
         insufficientSourceProvenance: stats.insufficientSourceProvenance,
       });
@@ -770,15 +791,9 @@ async function runPhase3Reconciliation(
           affair.sources.filter((source) => source.sourceType === "PRESSE")
         );
         if (pressSource?.publishedAt) {
-          if (dryRun) {
-            stats.proposalsPending++;
-            continue;
-          }
-          if (!importRunId) throw new Error("ImportRun discover-affairs absent");
-          const proposal = await proposeAffairEvent({
+          const eventInput = {
             affairId: routing.match.affairId,
             importer: IMPORTER_DISCOVER_AFFAIRS,
-            importRunId,
             sourceUrl: pressSource.url,
             sourceTitle: pressSource.title,
             publishedAt: pressSource.publishedAt,
@@ -797,9 +812,15 @@ async function runPhase3Reconciliation(
               `datée. La publication est proposée comme événement médiatique, sans déduire la ` +
               `date d’un acte judiciaire.`,
             extractorVersion: "discover-evolution-v1",
-          });
-          if (proposal.outcome === "CREATED") stats.proposalsPending++;
-          if (proposal.deduped) stats.proposalsDeduped++;
+          };
+          let proposal;
+          if (dryRun) {
+            proposal = await previewAffairEventProposal(eventInput);
+          } else {
+            if (!importRunId) throw new Error("ImportRun discover-affairs absent");
+            proposal = await proposeAffairEvent({ ...eventInput, importRunId });
+          }
+          recordEventProposalOutcome(stats, proposal.outcome);
           if (proposal.outcome !== "TARGET_INELIGIBLE") continue;
         } else {
           insufficientEvolutionProvenance = true;
@@ -865,4 +886,21 @@ async function runPhase3Reconciliation(
       );
     }
   }
+}
+
+function recordEventProposalOutcome(
+  stats: DiscoverAffairsResult,
+  outcome: ProposeAffairEventOutcome | PreviewAffairEventProposalOutcome
+): void {
+  if (outcome === "CREATED") stats.proposalsPending++;
+  if (outcome === "WOULD_CREATE") stats.proposalsWouldCreate++;
+  if (outcome === "DEDUPED_PENDING") {
+    stats.proposalsDeduped++;
+    stats.proposalsDedupedPending++;
+  }
+  if (outcome === "DEDUPED_TERMINAL") {
+    stats.proposalsDeduped++;
+    stats.proposalsDedupedTerminal++;
+  }
+  if (outcome === "ALREADY_APPLIED") stats.eventsAlreadyApplied++;
 }

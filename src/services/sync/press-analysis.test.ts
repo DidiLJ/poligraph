@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   findMatchingAffairs: vi.fn(),
   createDraftAffairFromDiscovery: vi.fn(),
   proposeAffairEvent: vi.fn(),
+  previewAffairEventProposal: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -48,6 +49,7 @@ vi.mock("@/services/affairs/create-draft", () => ({
 vi.mock("@/services/affairs/proposals", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/services/affairs/proposals")>()),
   proposeAffairEvent: mocks.proposeAffairEvent,
+  previewAffairEventProposal: mocks.previewAffairEventProposal,
 }));
 
 import { isPressAnalysisSuccessful, processAnalyzedArticle } from "./press-analysis";
@@ -71,6 +73,11 @@ beforeEach(() => {
     pendingProposalId: "proposal-1",
     deduped: false,
   });
+  mocks.previewAffairEventProposal.mockResolvedValue({
+    outcome: "WOULD_CREATE",
+    pendingProposalId: null,
+    deduped: false,
+  });
 });
 
 function zeroStats() {
@@ -83,7 +90,12 @@ function zeroStats() {
     affairsRejected: 0,
     proposalsPending: 0,
     proposalsDeduped: 0,
+    proposalsWouldCreate: 0,
+    proposalsDedupedPending: 0,
+    proposalsDedupedTerminal: 0,
+    eventsAlreadyApplied: 0,
     ambiguousMatches: 0,
+    insufficientSourceProvenance: 0,
     scrapeErrors: 0,
     analysisErrors: 0,
     sensitiveWarnings: 0,
@@ -419,7 +431,39 @@ describe("processAnalyzedArticle : proposition d’évolution", () => {
     expect(mocks.previewAffairPolitician).toHaveBeenCalledTimes(1);
     expect(mocks.resolveAffairPolitician).not.toHaveBeenCalled();
     expect(mocks.proposeAffairEvent).not.toHaveBeenCalled();
-    expect(stats.proposalsPending).toBe(1);
+    expect(mocks.previewAffairEventProposal).toHaveBeenCalledTimes(1);
+    expect(stats.proposalsPending).toBe(0);
+    expect(stats.proposalsWouldCreate).toBe(1);
+  });
+
+  it.each([
+    ["DEDUPED_PENDING", "proposalsDedupedPending"],
+    ["DEDUPED_TERMINAL", "proposalsDedupedTerminal"],
+    ["ALREADY_APPLIED", "eventsAlreadyApplied"],
+  ] as const)("distingue l’issue %s en dry-run", async (outcome, counter) => {
+    mocks.previewAffairPolitician.mockResolvedValue({
+      judgment: "SAME",
+      topCandidateId: "pol-1",
+      decisionId: null,
+    });
+    mocks.previewAffairEventProposal.mockResolvedValue({
+      outcome,
+      pendingProposalId: outcome.startsWith("DEDUPED") ? "proposal-1" : null,
+      deduped: true,
+    });
+    const stats = zeroStats();
+
+    await processAnalyzedArticle(
+      article,
+      `Introduction. ${excerpt}`,
+      { isAffairRelated: true, summary: "résumé", affairs: [detected] },
+      stats,
+      { dryRun: true, verbose: false }
+    );
+
+    expect(stats[counter]).toBe(1);
+    expect(stats.proposalsWouldCreate).toBe(0);
+    expect(mocks.createDraftAffairFromDiscovery).not.toHaveBeenCalled();
   });
 
   it("ne route pas un statut remplacé par le fallback de l’analyse", async () => {

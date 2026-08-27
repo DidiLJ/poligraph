@@ -13,6 +13,8 @@ function listResponse() {
         extractorVersion: "v1",
         proposedPatch: { court: "Tribunal judiciaire de Paris" },
         payloadKind: "PATCH",
+        acceptanceEligible: true,
+        validationIssues: [],
         eventPreview: null,
         observedValues: { court: null },
         affairSnapshot: {
@@ -94,7 +96,7 @@ describe("admin affair proposal ordinary sources", () => {
         },
       },
       observedValues: {
-        addEvent: { identityVersion: "press-revelation-v1", identityKey: "a".repeat(64) },
+        addEvent: { identityVersion: "press-revelation-v2", identityKey: "a".repeat(64) },
       },
       payloadKind: "ADD_EVENT",
       eventPreview: {
@@ -105,6 +107,7 @@ describe("admin affair proposal ordinary sources", () => {
         sourceUrl: PRESS_URL,
         sourceTitle: "Titre original de l’article",
         identityKey: "a".repeat(64),
+        publisher: "Le Monde",
       },
       riskLevel: "HIGH",
     });
@@ -123,6 +126,31 @@ describe("admin affair proposal ordinary sources", () => {
     expect(await screen.findByText("Nouvel événement")).toBeInTheDocument();
     expect(screen.getByText("Ajout proposé à la chronologie")).toBeInTheDocument();
     expect(screen.getByText("Titre original de l’article")).toBeInTheDocument();
+    expect(screen.getByText("Le Monde")).toBeInTheDocument();
     expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+  });
+
+  it("désactive l’acceptation lorsque la provenance est invalide", async () => {
+    const response = listResponse();
+    Object.assign(response.rows[0] as unknown as Record<string, unknown>, {
+      payloadKind: "INVALID",
+      acceptanceEligible: false,
+      validationIssues: ["Métadonnées de provenance absentes"],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
+      )
+    );
+
+    render(<PropositionsPage />);
+
+    expect(await screen.findByText("Proposition non applicable")).toBeInTheDocument();
+    expect(screen.getByText("Métadonnées de provenance absentes")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accepter et appliquer" })).toBeDisabled();
   });
 });

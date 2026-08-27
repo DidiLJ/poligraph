@@ -33,6 +33,7 @@ import { acceptProposal, rejectProposal } from "@/services/affairs/proposal-revi
 import { invalidateEntity, invalidateAffectedPoliticians } from "@/lib/cache";
 import type { Prisma, ProposalRisk, ProposalStatus } from "@/generated/prisma";
 import { parseAffairProposalPayload } from "@/lib/security/schemas/affair-proposal";
+import { selectProposalIdsForBatch } from "@/services/affairs/proposal-batch";
 
 /** Persisted in reviewedBy and in the audit trail. Names the channel, nothing more. */
 const REVIEWED_BY = "cli";
@@ -372,7 +373,7 @@ async function group(f: BatchFilter, asJson: boolean) {
     console.log(`    affaires  : ${g.affairs.size} distincte(s)`);
     if (g.affairs.size <= 4) console.log(`                ${[...g.affairs].join(" / ")}`);
     console.log(
-      `    appliquer : npm run proposals -- --accept-ids=${g.ids.slice(0, 3).join(",")}${g.ids.length > 3 ? ",…" : ""}`
+      `    appliquer : npm run proposals -- --accept-ids=${g.ids.slice(0, 3).join(",")}${g.ids.length > 3 ? ",…" : ""}${g.fields.includes("event") ? " --include-events" : ""}`
     );
     console.log("");
   }
@@ -452,6 +453,34 @@ async function rejectBatch(ids: string[], note: string | undefined) {
   console.log(`${done}/${ids.length} rejetée(s).`);
 }
 
+async function acceptSelectedIds(
+  ids: string[],
+  note: string | undefined,
+  includeEvents: boolean
+): Promise<void> {
+  const candidates = await db.affairUpdateProposal.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, proposedPatch: true },
+  });
+  const { acceptedIds, excludedEventIds } = selectProposalIdsForBatch(
+    ids,
+    candidates,
+    includeEvents
+  );
+  if (excludedEventIds.length > 0) {
+    console.log(
+      `${excludedEventIds.length} proposition(s) d’événement exclue(s). Utilisez --include-events pour les accepter explicitement.\n`
+    );
+  }
+
+  const outcomes: Outcome[] = [];
+  for (const id of acceptedIds) outcomes.push(await accept(id, note, true));
+  console.log(
+    `${outcomes.filter((outcome) => outcome.ok).length}/${acceptedIds.length} appliquée(s).`
+  );
+  invalidateBatch(outcomes);
+}
+
 function parseRisk(raw: string | undefined): ProposalRisk[] | undefined {
   if (!raw) return undefined;
   const valid: ProposalRisk[] = ["LOW", "MEDIUM", "HIGH"];
@@ -472,11 +501,7 @@ async function main() {
   const acceptIds = arg("accept-ids");
   if (acceptIds) {
     const ids = acceptIds.split(",").filter(Boolean);
-    const outcomes: Outcome[] = [];
-    for (const id of ids) outcomes.push(await accept(id, note, true));
-    console.log(`${outcomes.filter((o) => o.ok).length}/${ids.length} appliquée(s).`);
-    invalidateBatch(outcomes);
-    return;
+    return acceptSelectedIds(ids, note, flag("include-events"));
   }
 
   const rejectIds = arg("reject-ids");

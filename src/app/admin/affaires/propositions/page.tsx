@@ -31,6 +31,8 @@ interface ProposalRow {
   extractorVersion: string;
   proposedPatch: Record<string, unknown>;
   payloadKind: "PATCH" | "ADD_EVENT" | "INVALID";
+  acceptanceEligible: boolean;
+  validationIssues: string[];
   eventPreview: {
     date: string;
     type: string;
@@ -39,6 +41,7 @@ interface ProposalRow {
     sourceUrl: string;
     sourceTitle: string;
     identityKey: string;
+    publisher: string;
   } | null;
   observedValues: Record<string, unknown>;
   affairSnapshot: AffairSnapshot;
@@ -378,7 +381,11 @@ export default function PropositionsPage() {
                     </div>
                   </div>
 
-                  {row.payloadKind === "ADD_EVENT" && row.eventPreview ? (
+                  {row.payloadKind === "INVALID" ? (
+                    <p className="text-muted-foreground text-sm">
+                      Le contenu imbriqué ne peut pas être présenté de façon sûre.
+                    </p>
+                  ) : row.payloadKind === "ADD_EVENT" && row.eventPreview ? (
                     <div className="border-border bg-muted/30 rounded-md border p-4 text-sm">
                       <p className="font-semibold">Ajout proposé à la chronologie</p>
                       <dl className="mt-3 grid gap-2 sm:grid-cols-[10rem_1fr]">
@@ -390,6 +397,8 @@ export default function PropositionsPage() {
                         <dd>{row.eventPreview.title}</dd>
                         <dt className="text-muted-foreground">Source</dt>
                         <dd>{row.eventPreview.sourceTitle}</dd>
+                        <dt className="text-muted-foreground">Éditeur</dt>
+                        <dd>{row.eventPreview.publisher}</dd>
                         <dt className="text-muted-foreground">URL</dt>
                         <dd className="break-all">{row.eventPreview.sourceUrl}</dd>
                         <dt className="text-muted-foreground">Identité technique</dt>
@@ -451,6 +460,26 @@ export default function PropositionsPage() {
                               {formatConflictValue(detail.expected)}&nbsp;», trouvé «&nbsp;
                               {formatConflictValue(detail.actual)}&nbsp;»
                             </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {row.validationIssues.length > 0 && (
+                    <div
+                      id={`validation-${row.id}`}
+                      className="border-destructive/40 bg-destructive/10 flex gap-2 rounded-md border px-3 py-2 text-sm"
+                    >
+                      <ShieldAlert
+                        className="text-destructive mt-0.5 h-4 w-4 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <p className="font-medium">Proposition non applicable</p>
+                        <ul className="mt-1 list-disc pl-4">
+                          {row.validationIssues.map((issue) => (
+                            <li key={issue}>{issue}</li>
                           ))}
                         </ul>
                       </div>
@@ -561,13 +590,23 @@ export default function PropositionsPage() {
                           className="min-h-11"
                           onClick={() => void review(row.id, "accept")}
                           disabled={
-                            busyId === row.id || (evidence.required && !evidence.acceptable)
+                            busyId === row.id ||
+                            !row.acceptanceEligible ||
+                            (evidence.required && !evidence.acceptable)
                           }
-                          aria-describedby={evidence.required ? evidenceDescriptionId : undefined}
+                          aria-describedby={
+                            !row.acceptanceEligible
+                              ? `validation-${row.id}`
+                              : evidence.required
+                                ? evidenceDescriptionId
+                                : undefined
+                          }
                           title={
-                            evidence.required && !evidence.acceptable
-                              ? "Acceptation bloquée tant que la décision officielle n'est pas vérifiée"
-                              : undefined
+                            !row.acceptanceEligible
+                              ? "Acceptation bloquée car la proposition ou sa provenance est invalide"
+                              : evidence.required && !evidence.acceptable
+                                ? "Acceptation bloquée tant que la décision officielle n'est pas vérifiée"
+                                : undefined
                           }
                         >
                           Accepter et appliquer

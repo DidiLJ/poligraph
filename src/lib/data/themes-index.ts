@@ -26,7 +26,10 @@ export type ThemeIndexEntry = {
   slug: string;
   documentedMeasureCount: number;
   currentlyDefendedMeasureCount: number;
+  /** Distinct public candidacies with at least one documented measure, withdrawals included. */
+  documentedCandidacyCount: number;
   candidaciesWithVerifiedMeasure: number;
+  lastReviewedAt: Date | null;
   publishable: boolean;
 };
 
@@ -62,14 +65,22 @@ export async function loadThemesIndex(
   const themes: ThemeIndexEntry[] = THEMES_IN_ORDER.map((theme) => {
     const onTheme = byTheme.get(theme) ?? [];
     const defended = onTheme.filter((m) => m.withdrawal === null);
+    const documentedCandidacies = new Set(onTheme.map((m) => m.candidacyId as string));
     const candidacies = new Set(defended.map((m) => m.candidacyId as string));
+    const lastReviewedAt = onTheme.reduce<Date | null>(
+      (latest, measure) =>
+        latest === null || measure.reviewedAt > latest ? measure.reviewedAt : latest,
+      null
+    );
     return {
       theme,
       label: THEME_CATEGORY_LABELS[theme],
       slug: themeToSlug(theme),
       documentedMeasureCount: onTheme.length,
       currentlyDefendedMeasureCount: defended.length,
+      documentedCandidacyCount: documentedCandidacies.size,
       candidaciesWithVerifiedMeasure: candidacies.size,
+      lastReviewedAt,
       publishable: isSubjectPagePublishable(candidacies.size),
     };
   });

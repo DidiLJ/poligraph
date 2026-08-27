@@ -21,7 +21,9 @@ describe("generateMetadata de l'index des sujets", () => {
       publishableSubjectPageCount: 1,
     });
     const meta = await generateMetadata();
-    expect(String(meta.title)).toMatch(/Les 13 sujets de la présidentielle 2027 \| Poligraph/);
+    expect(String(meta.title)).toMatch(
+      /Couverture du corpus par sujet, présidentielle 2027 \| Poligraph/
+    );
   });
 
   it("noindex quand aucune page sujet n'est publiable", async () => {
@@ -48,5 +50,15 @@ describe("generateMetadata de l'index des sujets", () => {
     mockGet.mockResolvedValue(null);
     const meta = await generateMetadata();
     expect(meta.robots).toEqual({ index: false, follow: true });
+  });
+
+  it("porte un canonical propre, distinct du hub", async () => {
+    mockGet.mockResolvedValue({
+      electionSlug: "presidentielle-2027",
+      themes: [],
+      publishableSubjectPageCount: 1,
+    });
+    const meta = await generateMetadata();
+    expect(meta.alternates?.canonical).toBe("/elections/presidentielle-2027/sujets");
   });
 });

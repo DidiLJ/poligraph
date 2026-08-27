@@ -33,7 +33,10 @@ import { acceptProposal, rejectProposal } from "@/services/affairs/proposal-revi
 import { invalidateEntity, invalidateAffectedPoliticians } from "@/lib/cache";
 import type { Prisma, ProposalRisk, ProposalStatus } from "@/generated/prisma";
 import { parseAffairProposalPayload } from "@/lib/security/schemas/affair-proposal";
-import { selectProposalIdsForBatch } from "@/services/affairs/proposal-batch";
+import {
+  collectProposalCandidatesForBatch,
+  selectProposalIdsForBatch,
+} from "@/services/affairs/proposal-batch";
 
 /** Persisted in reviewedBy and in the audit trail. Names the channel, nothing more. */
 const REVIEWED_BY = "cli";
@@ -140,7 +143,13 @@ async function list(status: ProposalStatus, asJson: boolean) {
     const snap = r.affairSnapshot as { title?: string; politicianName?: string };
     const patch = r.proposedPatch as Record<string, unknown>;
     const observed = r.observedValues as Record<string, unknown>;
-    const parsed = parseAffairProposalPayload(patch);
+    let parsed: ReturnType<typeof parseAffairProposalPayload> | null = null;
+    let payloadError: string | null = null;
+    try {
+      parsed = parseAffairProposalPayload(patch);
+    } catch (error) {
+      payloadError = error instanceof Error ? error.message : "Payload invalide";
+    }
 
     console.log(`─── ${r.id}`);
     console.log(`  affaire   : ${snap?.title ?? "(supprimée)"}`);
@@ -151,7 +160,10 @@ async function list(status: ProposalStatus, asJson: boolean) {
       `  risque    : ${r.riskLevel} · confiance ${r.confidence} · ${r.importer}@${r.extractorVersion}`
     );
     console.log(`  run       : ${r.importRunId}`);
-    if (parsed.kind === "ADD_EVENT") {
+    if (!parsed) {
+      console.log("  opération  : payload invalide");
+      console.log(`  erreur     : ${payloadError}`);
+    } else if (parsed.kind === "ADD_EVENT") {
       console.log("  opération  : nouvel événement de chronologie");
       console.log(`  date       : ${fmt(parsed.event.date.toISOString())}`);
       console.log(`  type       : ${parsed.event.type}`);
@@ -165,7 +177,7 @@ async function list(status: ProposalStatus, asJson: boolean) {
       }
     }
     console.log(`  pourquoi  : ${r.rationale}`);
-    if (r.sourceUrl && parsed.kind !== "ADD_EVENT") {
+    if (r.sourceUrl && parsed?.kind !== "ADD_EVENT") {
       console.log(`  source    : ${r.source} ${r.sourceUrl}`);
     }
     if (r.conflictDetail) console.log(`  conflit   : ${JSON.stringify(r.conflictDetail)}`);
@@ -397,19 +409,19 @@ async function acceptBatch(
   limit: number,
   includeEvents: boolean
 ) {
-  const candidates = await db.affairUpdateProposal.findMany({
-    where: buildWhere(f),
-    select: { id: true, riskLevel: true, proposedPatch: true },
-    // Low risk first: the cheap wins land even if a later one fails.
-    orderBy: [{ riskLevel: "asc" }, { createdAt: "asc" }],
-    take: includeEvents ? limit : Math.max(limit, 500),
-  });
-  const excludedEvents = includeEvents
-    ? 0
-    : candidates.filter((row) => isEventProposal(row.proposedPatch)).length;
-  const rows = candidates
-    .filter((row) => includeEvents || !isEventProposal(row.proposedPatch))
-    .slice(0, limit);
+  const { rows, excludedEvents } = await collectProposalCandidatesForBatch(
+    ({ skip, take }) =>
+      db.affairUpdateProposal.findMany({
+        where: buildWhere(f),
+        select: { id: true, riskLevel: true, proposedPatch: true },
+        // Low risk first: the cheap wins land even if a later one fails.
+        orderBy: [{ riskLevel: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+        skip,
+        take,
+      }),
+    limit,
+    includeEvents
+  );
 
   if (excludedEvents > 0) {
     console.log(

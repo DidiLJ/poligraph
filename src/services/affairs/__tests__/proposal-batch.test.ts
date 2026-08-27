@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AFFAIR_EVOLUTION_REVELATION_TITLE } from "@/lib/security/schemas/affair-proposal";
-import { selectProposalIdsForBatch } from "@/services/affairs/proposal-batch";
+import {
+  collectProposalCandidatesForBatch,
+  selectProposalIdsForBatch,
+} from "@/services/affairs/proposal-batch";
 
 const eventPatch = {
   addEvent: {
@@ -31,5 +34,44 @@ describe("selectProposalIdsForBatch", () => {
     expect(
       selectProposalIdsForBatch(["event-1"], [{ id: "event-1", proposedPatch: eventPatch }], true)
     ).toEqual({ acceptedIds: ["event-1"], excludedEventIds: [] });
+  });
+});
+
+describe("collectProposalCandidatesForBatch", () => {
+  it("applies the limit after excluded event proposals", async () => {
+    const candidates = [
+      ...Array.from({ length: 5 }, (_, index) => ({
+        id: `event-${index}`,
+        proposedPatch: eventPatch,
+      })),
+      { id: "patch-1", proposedPatch: { court: "TJ de Paris" } },
+      { id: "patch-2", proposedPatch: { court: "CA de Paris" } },
+    ];
+    const fetchPage = vi.fn(async ({ skip, take }: { skip: number; take: number }) =>
+      candidates.slice(skip, skip + take)
+    );
+
+    const result = await collectProposalCandidatesForBatch(fetchPage, 2, false, 3);
+
+    expect(result.rows.map((row) => row.id)).toEqual(["patch-1", "patch-2"]);
+    expect(result.excludedEvents).toBe(5);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps event proposals when explicitly included", async () => {
+    const candidates = [
+      { id: "event-1", proposedPatch: eventPatch },
+      { id: "patch-1", proposedPatch: { court: "TJ de Paris" } },
+    ];
+
+    const result = await collectProposalCandidatesForBatch(
+      async ({ skip, take }) => candidates.slice(skip, skip + take),
+      1,
+      true,
+      1
+    );
+
+    expect(result.rows.map((row) => row.id)).toEqual(["event-1"]);
+    expect(result.excludedEvents).toBe(0);
   });
 });

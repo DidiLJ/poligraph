@@ -32,9 +32,7 @@ describe("page complète de recherche présidentielle", () => {
 
   it("reste partageable mais noindex avec un canonical sans requête", () => {
     expect(metadata.robots).toEqual({ index: false, follow: true });
-    expect(metadata.alternates?.canonical).toBe(
-      "/elections/presidentielle-2027/recherche"
-    );
+    expect(metadata.alternates?.canonical).toBe("/elections/presidentielle-2027/recherche");
   });
 
   it("affiche le texte complet et le lien canonique de la mesure", async () => {
@@ -62,8 +60,9 @@ describe("page complète de recherche présidentielle", () => {
       measures: [],
     });
     render(await Page({ searchParams: Promise.resolve({ q: "inconnu" }) }));
-    expect(screen.getByRole("heading", { name: "Aucun résultat pour « inconnu »" }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Aucun résultat pour « inconnu »" })
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Cette absence ne prouve pas qu'une proposition n'existe pas/)
     ).toBeInTheDocument();

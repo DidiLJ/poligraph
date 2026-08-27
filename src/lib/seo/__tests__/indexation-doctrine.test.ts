@@ -326,9 +326,7 @@ describe("doctrine — presidentielle-2027 hub stays out of the sitemap while un
 
   it("annonce la couverture et les sujets uniquement sous la porte du hub", () => {
     expect(electionShard).toContain("const presidentialSubjectPages");
-    expect(electionShard).toContain(
-      "${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/sujets"
-    );
+    expect(electionShard).toContain("${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/sujets");
     expect(electionShard).toContain("theme.publishable");
     expect(electionShard).toContain("...presidentialSubjectPages");
   });
@@ -345,10 +343,7 @@ describe("doctrine — presidentielle-2027 hub stays out of the sitemap while un
 
 describe("doctrine — la recherche présidentielle reste une surface utilitaire", () => {
   const src = readFileSync(
-    join(
-      process.cwd(),
-      "src/app/elections/presidentielle-2027/recherche/page.tsx"
-    ),
+    join(process.cwd(), "src/app/elections/presidentielle-2027/recherche/page.tsx"),
     "utf8"
   );
 

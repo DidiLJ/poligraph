@@ -2744,6 +2744,7 @@ model AffairCourtDecision {
 enum SearchEntityType {
   MEASURE
   QUESTION
+  CANDIDACY
 }
 
 enum SearchVisibility {
@@ -2766,6 +2767,11 @@ model SearchDocument {
   url   String // result destination, so a search never needs a second query
 
   visibility SearchVisibility
+
+  // Optional election scope. Questions and future global entities remain null; election-bound
+  // documents must set it explicitly through upsertSearchDocument(). Deliberately no relation:
+  // the central index stays entity-agnostic and search:audit owns orphan detection.
+  electionId String?
 
   // Opaque identifier, deliberately NOT a relation: Question has its own revision
   // family and the lot 9 entities have no revision at all. Nothing guarantees this
@@ -2792,6 +2798,7 @@ model SearchDocument {
   @@unique([entityType, entityId])
   @@index([searchVector], type: Gin)
   @@index([visibility])
+  @@index([electionId, visibility])
 }
 
 // ============================================

@@ -1,5 +1,9 @@
 import type { Prisma } from "@/generated/prisma";
 import { PUBLIC_POLITICIAN_WHERE } from "@/lib/api/public-contract";
+import {
+  PUBLIC_PRESIDENTIAL_EXTENSION_WHERE,
+  PUBLIC_TRACKED_PRESIDENTIAL_CANDIDACY_WHERE,
+} from "@/lib/data/presidential-candidacy-policy";
 
 /**
  * Shared public predicates for the presidential corpus.
@@ -30,18 +34,7 @@ export const PUBLIC_CURRENT_MEASURE_WHERE = {
 } satisfies Prisma.MeasureWhereInput;
 
 /** The public field shown by the hub, independently of whether a full fiche is open yet. */
-export const PUBLIC_HUB_CANDIDACY_WHERE = {
-  status: { not: null },
-  sourceUrl: { not: null },
-  sourceLabel: { not: null },
-  politicianId: { not: null },
-  politician: { is: PUBLIC_POLITICIAN_WHERE },
-} satisfies Prisma.CandidacyWhereInput;
-
-/** Editorial extension used by comparison surfaces. It is deliberately weaker than the fiche. */
-export const PUBLIC_PRESIDENTIAL_EXTENSION_WHERE = {
-  presidentialData: { is: { publicationStatus: "PUBLISHED" } },
-} satisfies Prisma.CandidacyWhereInput;
+export const PUBLIC_HUB_CANDIDACY_WHERE = PUBLIC_TRACKED_PRESIDENTIAL_CANDIDACY_WHERE;
 
 /**
  * Complete candidate-fiche gate: sourced hub identity, published extension and at least one
@@ -62,6 +55,20 @@ export const PUBLIC_PRESIDENTIAL_FICHE_WHERE = {
     },
   },
 } satisfies Prisma.CandidacyWhereInput;
+
+export function getPublicPresidentialFicheWhere(
+  politicianSlug?: string
+): Prisma.CandidacyWhereInput {
+  return {
+    ...PUBLIC_PRESIDENTIAL_FICHE_WHERE,
+    politician: {
+      is: {
+        ...PUBLIC_POLITICIAN_WHERE,
+        ...(politicianSlug !== undefined ? { slug: politicianSlug } : {}),
+      },
+    },
+  };
+}
 
 /** Public search/detail population for presidential measures. */
 export const PUBLIC_PRESIDENTIAL_MEASURE_WHERE = {

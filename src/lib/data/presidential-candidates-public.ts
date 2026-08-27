@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { resolveCandidateAccentColor } from "@/lib/presidentielle/candidate-accent";
 import { sortPresidentialCandidatesBySurname } from "@/lib/presidentielle/candidate-order";
 import type { CandidacyStatus, Prisma } from "@/generated/prisma";
-import { PUBLIC_PRESIDENTIAL_EXTENSION_WHERE } from "@/lib/presidentielle/publication";
+import { PUBLIC_PRESIDENTIAL_EXTENSION_WHERE } from "./presidential-candidacy-policy";
 
 /**
  * Public read authority for presidential candidacies.

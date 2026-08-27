@@ -9,6 +9,7 @@ import { themeToSlug } from "@/lib/theme-utils";
 import { getPublicTrackedPresidentialCandidacyWhere } from "./presidential-candidacy-policy";
 import { PUBLIC_CANDIDACY_WHERE } from "./presidential-candidates-public";
 import {
+  getPublicPresidentialFicheWhere,
   PUBLIC_MEASURE_WHERE,
   PUBLIC_MEASURE_REVISION_WHERE,
 } from "@/lib/presidentielle/publication";
@@ -241,10 +242,12 @@ function toPublicPresidentialMeasure(
 export async function listPublicPresidentialMeasures(
   options: ListPublicPresidentialMeasuresOptions
 ): Promise<PublicPresidentialMeasurePage> {
-  const candidacyWhere: Prisma.CandidacyWhereInput = {
-    ...getPublicTrackedPresidentialCandidacyWhere(options.candidateSlug),
-    ...PUBLIC_CANDIDACY_WHERE,
-  };
+  const candidacyWhere: Prisma.CandidacyWhereInput = options.includeWithdrawn
+    ? {
+        ...getPublicTrackedPresidentialCandidacyWhere(options.candidateSlug),
+        ...PUBLIC_CANDIDACY_WHERE,
+      }
+    : getPublicPresidentialFicheWhere(options.candidateSlug);
   const where: Prisma.MeasureWhereInput = {
     electionId: options.electionId,
     ...(options.theme ? { theme: options.theme } : {}),

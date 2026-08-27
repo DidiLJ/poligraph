@@ -2,15 +2,22 @@ import { createHash } from "node:crypto";
 import { canonicalJson, hashSourceContent } from "@/lib/hash/canonical";
 import { db, type DbTransactionClient } from "@/lib/db";
 import { Prisma } from "@/generated/prisma";
-import type { ProposalRisk, SourceType } from "@/generated/prisma";
+import type { ProposalRisk, ProposalStatus, SourceType } from "@/generated/prisma";
 import { safeJsonParseOrThrow } from "@/lib/api/safe-json";
 import {
+  AFFAIR_EVOLUTION_REVELATION_TITLE,
+  affairEventAdditionSchema,
+  affairEventProposalMetadataSchema,
   affairPatchSchema,
+  normalizeAffairEventSourceUrl,
   PROPOSABLE_FIELDS,
+  type AffairEventAddition,
+  type AffairEventProposalMetadata,
   type AffairPatch,
   type ProposableField,
 } from "@/lib/security/schemas/affair-proposal";
 import { verifyAndAnnotateProposalOfficialEvidence } from "@/lib/affairs/official-decision-verification";
+import { isVerifiedAffairPressUrl } from "@/config/affair-sources";
 
 // Affaires v2, lot 1.
 //
@@ -63,6 +70,7 @@ export const AFFAIR_PROPOSABLE_SELECT = {
   publicId: true,
   title: true,
   politician: { select: { slug: true, fullName: true } },
+  publicationStatus: true,
   status: true,
   verdictDate: true,
   court: true,
@@ -280,6 +288,8 @@ export type LiveAffair = Record<string, unknown> & {
   politician?: { slug: string; fullName: string } | null;
 };
 
+const EVENT_TARGET_PUBLICATION_STATUSES = new Set(["DRAFT", "PUBLISHED"]);
+
 /**
  * Entry point for importers. Splits the patch into what may be auto-applied and
  * what needs review, then records both halves as proposals so every automated
@@ -335,6 +345,168 @@ export async function proposeAffairUpdate(
   return result;
 }
 
+export interface ProposeAffairEventInput {
+  affairId: string;
+  importer: string;
+  importRunId: string;
+  sourceUrl: string;
+  sourceTitle: string;
+  publishedAt: Date;
+  publisher: string;
+  pressArticleId?: string | null;
+  resolverDecisionId?: string | null;
+  sourceContentHash?: string | null;
+  sourceExcerpt: string;
+  confidence: number;
+  rationale: string;
+  extractorVersion?: string;
+}
+
+export type ProposeAffairEventOutcome =
+  | "CREATED"
+  | "DEDUPED_PENDING"
+  | "DEDUPED_TERMINAL"
+  | "ALREADY_APPLIED"
+  | "TARGET_INELIGIBLE";
+
+export interface ProposeAffairEventResult extends ProposeAffairUpdateResult {
+  outcome: ProposeAffairEventOutcome;
+  existingStatus?: ProposalStatus;
+}
+
+export function computeAffairEventIdentity(input: {
+  affairId: string;
+  sourceUrl: string;
+  publishedAt: Date;
+  pressArticleId?: string | null;
+}): string {
+  return createHash("sha256")
+    .update(
+      canonicalJson({
+        version: "press-revelation-v1",
+        affairId: input.affairId,
+        pressArticleId: input.pressArticleId ?? null,
+        sourceUrl: normalizeAffairEventSourceUrl(input.sourceUrl),
+        publishedAt: input.publishedAt.toISOString(),
+        type: "REVELATION",
+      })
+    )
+    .digest("hex");
+}
+
+/**
+ * Files a human-reviewed proposal for a media timeline entry.
+ *
+ * The source article is the event: its publication date is known, while the date
+ * of any procedural act mentioned by the article is not. Nothing related to the
+ * target affair is written before a reviewer accepts the proposal.
+ */
+export async function proposeAffairEvent(
+  input: ProposeAffairEventInput
+): Promise<ProposeAffairEventResult> {
+  const sourceUrl = normalizeAffairEventSourceUrl(input.sourceUrl);
+  if (!isVerifiedAffairPressUrl(sourceUrl)) {
+    throw new ProposalValidationError(["sourceUrl: source journalistique non vérifiée"]);
+  }
+  const sourceExcerpt = input.sourceExcerpt.trim();
+  if (!sourceExcerpt || sourceExcerpt.length > 500) {
+    throw new ProposalValidationError([
+      "sourceExcerpt: un extrait vérifié de 1 à 500 caractères est obligatoire",
+    ]);
+  }
+  const eventPayload = affairEventAdditionSchema.parse({
+    addEvent: {
+      date: input.publishedAt,
+      type: "REVELATION",
+      title: AFFAIR_EVOLUTION_REVELATION_TITLE,
+      description: null,
+      sourceUrl,
+      sourceTitle: input.sourceTitle,
+    },
+  }) as AffairEventAddition;
+
+  const affair = await db.affair.findUnique({
+    where: { id: input.affairId },
+    select: AFFAIR_PROPOSABLE_SELECT,
+  });
+  if (!affair) throw new Error(`Affaire introuvable : ${input.affairId}`);
+  if (!EVENT_TARGET_PUBLICATION_STATUSES.has(affair.publicationStatus)) {
+    return { outcome: "TARGET_INELIGIBLE", pendingProposalId: null, deduped: false };
+  }
+
+  const existingEvent = await db.affairEvent.findFirst({
+    where: {
+      affairId: input.affairId,
+      type: "REVELATION",
+      date: eventPayload.addEvent.date,
+      sourceUrl,
+    },
+    select: { id: true },
+  });
+  if (existingEvent) {
+    return { outcome: "ALREADY_APPLIED", pendingProposalId: null, deduped: true };
+  }
+
+  const identityKey = computeAffairEventIdentity({
+    affairId: input.affairId,
+    sourceUrl,
+    publishedAt: eventPayload.addEvent.date,
+    pressArticleId: input.pressArticleId,
+  });
+  const metadata = affairEventProposalMetadataSchema.parse({
+    eventProposal: {
+      version: 1,
+      identityVersion: "press-revelation-v1",
+      identityKey,
+      publisher: input.publisher,
+      publishedAt: eventPayload.addEvent.date,
+      pressArticleId: input.pressArticleId ?? null,
+      resolverDecisionId: input.resolverDecisionId ?? null,
+    },
+  }) as AffairEventProposalMetadata;
+  const observedValues = {
+    addEvent: {
+      identityVersion: "press-revelation-v1" as const,
+      identityKey,
+      existingEventId: null,
+    },
+  };
+  const normalizedInput: ProposeAffairUpdateInput = {
+    affairId: input.affairId,
+    importer: input.importer,
+    importRunId: input.importRunId,
+    patch: eventPayload,
+    source: "PRESSE",
+    sourceUrl,
+    sourceContentHash: input.sourceContentHash ?? null,
+    sourceExcerpt,
+    metadata: toJson(metadata),
+    confidence: input.confidence,
+    rationale: input.rationale,
+    extractorVersion: input.extractorVersion,
+  };
+
+  const recorded = await recordPendingProposal(
+    normalizedInput,
+    input.extractorVersion ?? "v1",
+    eventPayload,
+    affair as unknown as LiveAffair,
+    { observedValues, riskLevel: "HIGH" }
+  );
+  const outcome = recorded.deduped
+    ? recorded.status === "PENDING"
+      ? "DEDUPED_PENDING"
+      : "DEDUPED_TERMINAL"
+    : "CREATED";
+
+  return {
+    outcome,
+    pendingProposalId: recorded.proposalId,
+    deduped: recorded.deduped,
+    existingStatus: recorded.deduped ? recorded.status : undefined,
+  };
+}
+
 function pickObserved(
   patch: Record<string, unknown>,
   live: Record<string, unknown>
@@ -351,6 +523,7 @@ interface ProposalRowArgs {
   observedValues: Record<string, unknown>;
   snapshot: AffairSnapshot;
   payloadHash: string;
+  riskLevel?: ProposalRisk;
 }
 
 /**
@@ -376,7 +549,7 @@ function buildProposalData(
     sourceExcerpt: args.input.sourceExcerpt ?? null,
     metadata: args.input.metadata ?? undefined,
     confidence: clampConfidence(args.input.confidence),
-    riskLevel: deriveRiskLevel(Object.keys(args.patch), args.observedValues),
+    riskLevel: args.riskLevel ?? deriveRiskLevel(Object.keys(args.patch), args.observedValues),
     rationale: args.input.rationale,
     extractorVersion: args.extractorVersion,
     payloadHash: args.payloadHash,
@@ -394,7 +567,7 @@ async function findExisting(
   affairId: string,
   importer: string,
   payloadHash: string
-): Promise<{ id: string; status: string } | null> {
+): Promise<{ id: string; status: ProposalStatus } | null> {
   return db.affairUpdateProposal.findFirst({
     where: { affairId, importer, payloadHash },
     select: { id: true, status: true },
@@ -412,8 +585,10 @@ export function buildPendingProposalPayload(args: {
   extractorVersion: string;
   patch: Record<string, unknown>;
   live: LiveAffair;
+  observedValues?: Record<string, unknown>;
+  riskLevel?: ProposalRisk;
 }): { payloadHash: string; data: Prisma.AffairUpdateProposalUncheckedCreateInput } {
-  const observedValues = pickObserved(args.patch, args.live);
+  const observedValues = args.observedValues ?? pickObserved(args.patch, args.live);
   const payloadHash = computePayloadHash({
     importer: args.input.importer,
     extractorVersion: args.extractorVersion,
@@ -435,6 +610,7 @@ export function buildPendingProposalPayload(args: {
         observedValues,
         snapshot: buildAffairSnapshot(args.live),
         payloadHash,
+        riskLevel: args.riskLevel,
       },
       "PENDING"
     ),
@@ -483,13 +659,16 @@ async function recordPendingProposal(
   input: ProposeAffairUpdateInput,
   extractorVersion: string,
   patch: Record<string, unknown>,
-  live: LiveAffair
-): Promise<{ proposalId: string; deduped: boolean }> {
+  live: LiveAffair,
+  options: { observedValues?: Record<string, unknown>; riskLevel?: ProposalRisk } = {}
+): Promise<{ proposalId: string; deduped: boolean; status: ProposalStatus }> {
   const { payloadHash, data } = buildPendingProposalPayload({
     input,
     extractorVersion,
     patch,
     live,
+    observedValues: options.observedValues,
+    riskLevel: options.riskLevel,
   });
 
   const existing = await findExisting(input.affairId, input.importer, payloadHash);
@@ -502,11 +681,20 @@ async function recordPendingProposal(
         data: { updatedAt: new Date() },
       });
     }
-    return { proposalId: existing.id, deduped: true };
+    return { proposalId: existing.id, deduped: true, status: existing.status };
   }
 
-  const created = await db.affairUpdateProposal.create({ data, select: { id: true } });
-  return { proposalId: created.id, deduped: false };
+  try {
+    const created = await db.affairUpdateProposal.create({ data, select: { id: true } });
+    return { proposalId: created.id, deduped: false, status: "PENDING" };
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+      throw error;
+    }
+    const winner = await findExisting(input.affairId, input.importer, payloadHash);
+    if (!winner) throw error;
+    return { proposalId: winner.id, deduped: true, status: winner.status };
+  }
 }
 
 function clampConfidence(value: number): number {

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, type DbTransactionClient } from "@/lib/db";
 import type { AffairStatus, ProposalStatus } from "@/generated/prisma";
 import { isValidSentenceSplit } from "@/lib/affairs/sentence-split";
 import { trackStatusChange } from "@/services/affairs/status-tracking";
@@ -10,11 +10,23 @@ import {
 import {
   AFFAIR_PROPOSABLE_SELECT,
   buildPrismaData,
+  computeAffairEventIdentity,
   detectDrift,
   ProposalValidationError,
-  validatePatch,
   type ConflictDetail,
 } from "@/services/affairs/proposals";
+import {
+  normalizeAffairEventSourceUrl,
+  parseAffairEventObservation,
+  parseAffairEventProposalMetadata,
+  parseAffairProposalPayload,
+  type AffairEventObservation,
+  type AffairEventProposal,
+  type AffairEventProposalMetadata,
+  type ParsedAffairProposal,
+} from "@/lib/security/schemas/affair-proposal";
+import { AffairNotFoundError, lockAffair } from "@/services/affairs/lock";
+import { isVerifiedAffairPressUrl } from "@/config/affair-sources";
 
 // Affaires v2, lot 1: human review of importer proposals.
 //
@@ -71,6 +83,18 @@ class RollbackSignal extends Error {
   }
 }
 
+interface EventReviewContext {
+  event: AffairEventProposal;
+  observation: AffairEventObservation;
+  metadata: AffairEventProposalMetadata;
+}
+
+function validationIssues(error: unknown): string[] {
+  if (error instanceof ProposalValidationError) return error.issues;
+  if (error instanceof Error) return [error.message];
+  return ["Payload invalide"];
+}
+
 /**
  * Checks the firm/suspended pairs against what the row actually holds (#576).
  *
@@ -104,6 +128,36 @@ async function currentStatus(proposalId: string): Promise<ProposalStatus | null>
   return row?.status ?? null;
 }
 
+async function markConflict(
+  tx: DbTransactionClient,
+  proposal: { id: string; affairId: string | null; importer: string; extractorVersion: string },
+  input: ReviewInput,
+  drift: ConflictDetail
+): Promise<{ kind: "conflict"; drift: ConflictDetail }> {
+  await tx.affairUpdateProposal.update({
+    where: { id: proposal.id },
+    data: { status: "CONFLICT", conflictDetail: drift, appliedAt: null },
+  });
+  await tx.auditLog.create({
+    data: {
+      action: "UPDATE",
+      entityType: "AffairUpdateProposal",
+      entityId: proposal.id,
+      userId: input.reviewedBy,
+      ipAddress: input.requestMeta?.ip ?? null,
+      userAgent: input.requestMeta?.userAgent ?? null,
+      changes: {
+        action: "PROPOSAL_CONFLICT",
+        affairId: proposal.affairId,
+        importer: proposal.importer,
+        extractorVersion: proposal.extractorVersion,
+        conflictDetail: drift,
+      },
+    },
+  });
+  return { kind: "conflict", drift };
+}
+
 /**
  * Applies a pending proposal.
  *
@@ -127,6 +181,7 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
       rationale: true,
       source: true,
       sourceUrl: true,
+      sourceExcerpt: true,
       officialId: true,
       metadata: true,
       affair: {
@@ -134,6 +189,7 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
           id: true,
           slug: true,
           status: true,
+          publicationStatus: true,
           politician: { select: { slug: true } },
         },
       },
@@ -150,14 +206,50 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
     return { ok: false, reason: "orphaned" };
   }
 
-  let patch;
+  let parsed: ParsedAffairProposal;
+  let eventContext: EventReviewContext | null = null;
   try {
-    patch = validatePatch(proposal.proposedPatch);
-  } catch (error) {
-    if (error instanceof ProposalValidationError) {
-      return { ok: false, reason: "invalid_patch", issues: error.issues };
+    parsed = parseAffairProposalPayload(proposal.proposedPatch);
+    if (parsed.kind === "ADD_EVENT") {
+      const observation = parseAffairEventObservation(proposal.observedValues);
+      const metadata = parseAffairEventProposalMetadata(proposal.metadata);
+      const normalizedProposalUrl = proposal.sourceUrl
+        ? normalizeAffairEventSourceUrl(proposal.sourceUrl)
+        : null;
+      if (proposal.source !== "PRESSE" || !normalizedProposalUrl) {
+        throw new Error("Un événement importé exige une source de presse HTTP(S)");
+      }
+      if (!isVerifiedAffairPressUrl(normalizedProposalUrl)) {
+        throw new Error("La source journalistique de l’événement n’est pas vérifiée");
+      }
+      if (!proposal.sourceExcerpt?.trim() || proposal.sourceExcerpt.trim().length > 500) {
+        throw new Error("Un extrait vérifié est obligatoire pour cet événement");
+      }
+      if (parsed.event.sourceUrl !== normalizedProposalUrl) {
+        throw new Error("L’URL de l’événement diffère de celle de la proposition");
+      }
+      if (metadata.eventProposal.publishedAt.getTime() !== parsed.event.date.getTime()) {
+        throw new Error("La date de provenance diffère de celle de l’événement");
+      }
+      if (
+        observation.addEvent.identityKey !== metadata.eventProposal.identityKey ||
+        observation.addEvent.identityVersion !== metadata.eventProposal.identityVersion
+      ) {
+        throw new Error("L’identité observée de l’événement est incohérente");
+      }
+      const expectedIdentity = computeAffairEventIdentity({
+        affairId: proposal.affairId,
+        sourceUrl: parsed.event.sourceUrl,
+        publishedAt: parsed.event.date,
+        pressArticleId: metadata.eventProposal.pressArticleId,
+      });
+      if (metadata.eventProposal.identityKey !== expectedIdentity) {
+        throw new Error("L’identité de l’événement ne correspond pas à son contenu");
+      }
+      eventContext = { event: parsed.event, observation, metadata };
     }
-    throw error;
+  } catch (error) {
+    return { ok: false, reason: "invalid_patch", issues: validationIssues(error) };
   }
 
   const officialEvidence = await verifyProposalOfficialEvidence({
@@ -179,11 +271,17 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
 
   const affairId = proposal.affairId;
   const observedValues = (proposal.observedValues ?? {}) as Record<string, unknown>;
-  const fields = Object.keys(observedValues);
-  const previousStatus = proposal.affair.status;
+  const fields = parsed.kind === "ADD_EVENT" ? ["event"] : Object.keys(observedValues);
   const now = new Date();
 
-  let outcome: { kind: "applied" } | { kind: "conflict"; drift: ConflictDetail };
+  let outcome:
+    | {
+        kind: "applied";
+        affairSlug: string;
+        politicianSlug: string;
+        previousStatus: AffairStatus;
+      }
+    | { kind: "conflict"; drift: ConflictDetail };
   try {
     outcome = await db.$transaction(async (tx) => {
       // Compare-and-set: this is the concurrency gate. A second acceptance
@@ -200,31 +298,126 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
       });
       if (claim.count === 0) throw new RollbackSignal("lost_race");
 
+      await lockAffair(tx, affairId);
       const live = await tx.affair.findUnique({
         where: { id: affairId },
         select: AFFAIR_PROPOSABLE_SELECT,
       });
       if (!live) throw new RollbackSignal("affair_gone");
 
-      const drift = detectDrift(observedValues, live as unknown as Record<string, unknown>);
-      if (drift) {
-        await tx.affairUpdateProposal.update({
-          where: { id: proposal.id },
-          data: { status: "CONFLICT", conflictDetail: drift, appliedAt: null },
+      let eventId: string | null = null;
+      if (parsed.kind === "PATCH") {
+        const drift = detectDrift(observedValues, live as unknown as Record<string, unknown>);
+        if (drift) return markConflict(tx, proposal, input, drift);
+
+        const issues = splitIssues(
+          live as unknown as Record<string, unknown>,
+          parsed.patch as unknown as Record<string, unknown>
+        );
+        if (issues.length > 0) throw new RollbackSignal("invalid_split", issues);
+
+        await tx.affair.update({
+          where: { id: affairId },
+          data: buildPrismaData(parsed.patch),
         });
-        return { kind: "conflict" as const, drift };
+      } else {
+        const context = eventContext!;
+        if (!new Set(["DRAFT", "PUBLISHED"]).has(live.publicationStatus)) {
+          return markConflict(tx, proposal, input, {
+            publicationStatus: {
+              expected: "DRAFT|PUBLISHED",
+              actual: live.publicationStatus,
+            },
+          });
+        }
+
+        const existingEvent = await tx.affairEvent.findFirst({
+          where: {
+            affairId,
+            type: context.event.type,
+            date: context.event.date,
+            sourceUrl: context.event.sourceUrl,
+          },
+          select: { id: true },
+        });
+        if (existingEvent) {
+          return markConflict(tx, proposal, input, {
+            event: { expected: "absent", actual: existingEvent.id },
+          });
+        }
+
+        const decisionId = context.metadata.eventProposal.resolverDecisionId ?? null;
+        if (decisionId) {
+          const decision = await tx.affairPoliticianDecision.findUnique({
+            where: { id: decisionId },
+            select: { affairId: true },
+          });
+          if (!decision || (decision.affairId !== null && decision.affairId !== affairId)) {
+            return markConflict(tx, proposal, input, {
+              resolverDecision: {
+                expected: `absent|${affairId}`,
+                actual: decision?.affairId ?? "introuvable",
+              },
+            });
+          }
+          if (decision.affairId === null) {
+            const attached = await tx.affairPoliticianDecision.updateMany({
+              where: { id: decisionId, affairId: null },
+              data: { affairId },
+            });
+            if (attached.count === 0) {
+              const racedDecision = await tx.affairPoliticianDecision.findUnique({
+                where: { id: decisionId },
+                select: { affairId: true },
+              });
+              if (racedDecision?.affairId !== affairId) {
+                return markConflict(tx, proposal, input, {
+                  resolverDecision: {
+                    expected: `absent|${affairId}`,
+                    actual: racedDecision?.affairId ?? "introuvable",
+                  },
+                });
+              }
+            }
+          }
+        }
+
+        const createdEvent = await tx.affairEvent.create({
+          data: { affairId, ...context.event },
+          select: { id: true },
+        });
+        eventId = createdEvent.id;
+
+        await tx.source.upsert({
+          where: { affairId_url: { affairId, url: context.event.sourceUrl } },
+          update: {},
+          create: {
+            affairId,
+            url: context.event.sourceUrl,
+            title: context.event.sourceTitle,
+            publisher: context.metadata.eventProposal.publisher,
+            publishedAt: context.metadata.eventProposal.publishedAt,
+            sourceType: "PRESSE",
+            excerpt: proposal.sourceExcerpt ?? null,
+          },
+        });
+
+        const pressArticleId = context.metadata.eventProposal.pressArticleId ?? null;
+        if (pressArticleId) {
+          const link = await tx.pressArticleAffair.upsert({
+            where: { articleId_affairId: { articleId: pressArticleId, affairId } },
+            update: {},
+            create: { articleId: pressArticleId, affairId, role: "UPDATE" },
+            select: { id: true, role: true },
+          });
+          if (link.role === "MENTION") {
+            await tx.pressArticleAffair.update({
+              where: { id: link.id },
+              data: { role: "UPDATE" },
+            });
+          }
+        }
       }
-
-      const issues = splitIssues(
-        live as unknown as Record<string, unknown>,
-        patch as unknown as Record<string, unknown>
-      );
-      if (issues.length > 0) throw new RollbackSignal("invalid_split", issues);
-
-      await tx.affair.update({
-        where: { id: affairId },
-        data: buildPrismaData(patch),
-      });
 
       await tx.moderationReview.create({
         data: {
@@ -244,8 +437,8 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
       await tx.auditLog.create({
         data: {
           action: "UPDATE",
-          entityType: "Affair",
-          entityId: affairId,
+          entityType: eventId ? "AffairEvent" : "Affair",
+          entityId: eventId ?? affairId,
           userId: input.reviewedBy,
           ipAddress: input.requestMeta?.ip ?? null,
           userAgent: input.requestMeta?.userAgent ?? null,
@@ -260,7 +453,12 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
         },
       });
 
-      return { kind: "applied" as const };
+      return {
+        kind: "applied" as const,
+        affairSlug: live.slug,
+        politicianSlug: live.politician.slug,
+        previousStatus: live.status,
+      };
     });
   } catch (error) {
     if (error instanceof RollbackSignal) {
@@ -273,6 +471,7 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
       const status = await currentStatus(proposal.id);
       return { ok: false, reason: "not_pending", status: status ?? "APPROVED" };
     }
+    if (error instanceof AffairNotFoundError) return { ok: false, reason: "orphaned" };
     throw error;
   }
 
@@ -282,10 +481,11 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
 
   // Timeline event, outside the transaction. It is display-only: the audit trail
   // already committed, so a failure here must not fail the acceptance.
-  const newStatus = patch.status as AffairStatus | null | undefined;
-  if (newStatus && newStatus !== previousStatus) {
+  const newStatus =
+    parsed.kind === "PATCH" ? (parsed.patch.status as AffairStatus | null | undefined) : null;
+  if (newStatus && newStatus !== outcome.previousStatus) {
     try {
-      await trackStatusChange(affairId, previousStatus, newStatus, {
+      await trackStatusChange(affairId, outcome.previousStatus, newStatus, {
         type: proposal.source,
         url: proposal.sourceUrl ?? undefined,
         title: `Proposition ${proposal.importer} acceptée`,
@@ -301,8 +501,8 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
   return {
     ok: true,
     affairId,
-    affairSlug: proposal.affair.slug,
-    politicianSlug: proposal.affair.politician.slug,
+    affairSlug: outcome.affairSlug,
+    politicianSlug: outcome.politicianSlug,
     appliedFields: fields,
   };
 }

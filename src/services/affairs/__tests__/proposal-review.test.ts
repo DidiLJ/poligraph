@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const h = vi.hoisted(() => ({
   db: {
     affair: { findUnique: vi.fn(), update: vi.fn() },
-    affairEvent: { findFirst: vi.fn(), create: vi.fn() },
+    affairEvent: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn() },
     source: { upsert: vi.fn() },
     pressArticleAffair: { upsert: vi.fn(), update: vi.fn() },
     affairPoliticianDecision: { findUnique: vi.fn(), updateMany: vi.fn() },
@@ -100,7 +100,6 @@ function pendingEventProposal(overrides: Record<string, unknown> = {}) {
   const identityKey = computeAffairEventIdentity({
     affairId: "aff_1",
     sourceUrl,
-    publishedAt: date,
     pressArticleId: "article_1",
   });
   return pendingProposal({
@@ -121,7 +120,7 @@ function pendingEventProposal(overrides: Record<string, unknown> = {}) {
     },
     observedValues: {
       addEvent: {
-        identityVersion: "press-revelation-v1",
+        identityVersion: "press-revelation-v2",
         identityKey,
         existingEventId: null,
       },
@@ -129,7 +128,7 @@ function pendingEventProposal(overrides: Record<string, unknown> = {}) {
     metadata: {
       eventProposal: {
         version: 1,
-        identityVersion: "press-revelation-v1",
+        identityVersion: "press-revelation-v2",
         identityKey,
         publisher: "AFP",
         publishedAt: date.toISOString(),
@@ -145,7 +144,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   db.affair.findUnique.mockResolvedValue(LIVE_AFFAIR);
   db.affair.update.mockResolvedValue({});
-  db.affairEvent.findFirst.mockResolvedValue(null);
+  db.affairEvent.findUnique.mockResolvedValue(null);
+  db.affairEvent.findMany.mockResolvedValue([]);
   db.affairEvent.create.mockResolvedValue({ id: "event_1" });
   db.source.upsert.mockResolvedValue({ id: "source_1" });
   db.pressArticleAffair.upsert.mockResolvedValue({ id: "link_1", role: "UPDATE" });
@@ -453,6 +453,7 @@ describe("acceptProposal", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           affairId: "aff_1",
+          identityKey: expect.stringMatching(/^[a-f0-9]{64}$/),
           type: "REVELATION",
           title: AFFAIR_EVOLUTION_REVELATION_TITLE,
           description: null,
@@ -481,7 +482,7 @@ describe("acceptProposal", () => {
 
   it("passe en conflit si le même événement est apparu après le dépôt", async () => {
     db.affairUpdateProposal.findUnique.mockResolvedValue(pendingEventProposal());
-    db.affairEvent.findFirst.mockResolvedValue({ id: "event_existing" });
+    db.affairEvent.findUnique.mockResolvedValue({ id: "event_existing" });
 
     const result = await acceptProposal({ proposalId: "prop_1", reviewedBy: "admin" });
 

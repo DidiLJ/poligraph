@@ -69,6 +69,27 @@ function normalizeHttpUrl(raw: string): string | null {
     const url = new URL(raw);
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
     url.hash = "";
+    for (const key of [...url.searchParams.keys()]) {
+      if (
+        /^(utm_|pk_)/i.test(key) ||
+        [
+          "fbclid",
+          "gclid",
+          "dclid",
+          "gbraid",
+          "wbraid",
+          "msclkid",
+          "mc_cid",
+          "mc_eid",
+          "at_campaign",
+          "at_medium",
+          "xtor",
+        ].includes(key.toLowerCase())
+      ) {
+        url.searchParams.delete(key);
+      }
+    }
+    url.searchParams.sort();
     return url.toString();
   } catch {
     return null;
@@ -104,7 +125,7 @@ export const affairEventAdditionSchema = z.strictObject({
 
 export const affairEventObservationSchema = z.strictObject({
   addEvent: z.strictObject({
-    identityVersion: z.literal("press-revelation-v1"),
+    identityVersion: z.literal("press-revelation-v2"),
     identityKey: z.string().regex(/^[a-f0-9]{64}$/),
     existingEventId: z.null(),
   }),
@@ -113,7 +134,7 @@ export const affairEventObservationSchema = z.strictObject({
 export const affairEventProposalMetadataSchema = z.strictObject({
   eventProposal: z.strictObject({
     version: z.literal(1),
-    identityVersion: z.literal("press-revelation-v1"),
+    identityVersion: z.literal("press-revelation-v2"),
     identityKey: z.string().regex(/^[a-f0-9]{64}$/),
     publisher: z.string().trim().min(1).max(200),
     publishedAt: strictInstantLike,

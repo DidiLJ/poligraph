@@ -10,8 +10,13 @@ import {
   affairEventProposalMetadataSchema,
   affairPatchSchema,
   normalizeAffairEventSourceUrl,
+  parseAffairEventObservation,
+  parseAffairEventProposalMetadata,
+  parseAffairProposalPayload,
   PROPOSABLE_FIELDS,
   type AffairEventAddition,
+  type AffairEventObservation,
+  type AffairEventProposal,
   type AffairEventProposalMetadata,
   type AffairPatch,
   type ProposableField,
@@ -374,36 +379,149 @@ export interface ProposeAffairEventResult extends ProposeAffairUpdateResult {
   existingStatus?: ProposalStatus;
 }
 
+export type PreviewAffairEventProposalOutcome =
+  | "WOULD_CREATE"
+  | Exclude<ProposeAffairEventOutcome, "CREATED">;
+
+export interface PreviewAffairEventProposalResult extends ProposeAffairUpdateResult {
+  outcome: PreviewAffairEventProposalOutcome;
+  existingStatus?: ProposalStatus;
+}
+
+export type PreviewAffairEventProposalInput = Omit<ProposeAffairEventInput, "importRunId"> & {
+  importRunId?: string;
+};
+
 export function computeAffairEventIdentity(input: {
   affairId: string;
   sourceUrl: string;
-  publishedAt: Date;
   pressArticleId?: string | null;
 }): string {
+  const sourceIdentity = input.pressArticleId
+    ? { pressArticleId: input.pressArticleId }
+    : { sourceUrl: normalizeAffairEventSourceUrl(input.sourceUrl) };
   return createHash("sha256")
     .update(
       canonicalJson({
-        version: "press-revelation-v1",
-        affairId: input.affairId,
-        pressArticleId: input.pressArticleId ?? null,
-        sourceUrl: normalizeAffairEventSourceUrl(input.sourceUrl),
-        publishedAt: input.publishedAt.toISOString(),
+        version: "press-revelation-v2",
         type: "REVELATION",
+        sourceIdentity,
       })
     )
     .digest("hex");
 }
 
-/**
- * Files a human-reviewed proposal for a media timeline entry.
- *
- * The source article is the event: its publication date is known, while the date
- * of any procedural act mentioned by the article is not. Nothing related to the
- * target affair is written before a reviewer accepts the proposal.
- */
-export async function proposeAffairEvent(
-  input: ProposeAffairEventInput
-): Promise<ProposeAffairEventResult> {
+export interface AffairEventProposalContext {
+  event: AffairEventProposal;
+  observation: AffairEventObservation;
+  metadata: AffairEventProposalMetadata;
+  normalizedSourceUrl: string;
+  identityKey: string;
+}
+
+/** Single strict parser shared by the review UI and the acceptance service. */
+export function parseAffairEventProposalContext(input: {
+  affairId: string;
+  proposedPatch: unknown;
+  observedValues: unknown;
+  metadata: unknown;
+  source: SourceType;
+  sourceUrl: string | null;
+  sourceExcerpt: string | null;
+}): AffairEventProposalContext {
+  const parsed = parseAffairProposalPayload(input.proposedPatch);
+  if (parsed.kind !== "ADD_EVENT") throw new Error("La proposition n’ajoute pas un événement");
+  const observation = parseAffairEventObservation(input.observedValues);
+  const metadata = parseAffairEventProposalMetadata(input.metadata);
+  const normalizedSourceUrl = input.sourceUrl
+    ? normalizeAffairEventSourceUrl(input.sourceUrl)
+    : null;
+  if (input.source !== "PRESSE" || !normalizedSourceUrl) {
+    throw new Error("Un événement importé exige une source de presse HTTP(S)");
+  }
+  if (!isVerifiedAffairPressUrl(normalizedSourceUrl)) {
+    throw new Error("La source journalistique de l’événement n’est pas vérifiée");
+  }
+  if (!input.sourceExcerpt?.trim() || input.sourceExcerpt.trim().length > 500) {
+    throw new Error("Un extrait vérifié est obligatoire pour cet événement");
+  }
+  if (parsed.event.sourceUrl !== normalizedSourceUrl) {
+    throw new Error("L’URL de l’événement diffère de celle de la proposition");
+  }
+  if (metadata.eventProposal.publishedAt.getTime() !== parsed.event.date.getTime()) {
+    throw new Error("La date de provenance diffère de celle de l’événement");
+  }
+  if (
+    observation.addEvent.identityKey !== metadata.eventProposal.identityKey ||
+    observation.addEvent.identityVersion !== metadata.eventProposal.identityVersion
+  ) {
+    throw new Error("L’identité observée de l’événement est incohérente");
+  }
+  const identityKey = computeAffairEventIdentity({
+    affairId: input.affairId,
+    sourceUrl: parsed.event.sourceUrl,
+    pressArticleId: metadata.eventProposal.pressArticleId,
+  });
+  if (metadata.eventProposal.identityKey !== identityKey) {
+    throw new Error("L’identité de l’événement ne correspond pas à son contenu");
+  }
+  return {
+    event: parsed.event,
+    observation,
+    metadata,
+    normalizedSourceUrl,
+    identityKey,
+  };
+}
+
+interface PreparedAffairEventProposal {
+  affair: LiveAffair;
+  eventPayload: AffairEventAddition;
+  normalizedInput: ProposeAffairUpdateInput;
+  observedValues: AffairEventObservation;
+  identityKey: string;
+}
+
+type AffairEventAssessment =
+  | { outcome: "WOULD_CREATE"; prepared: PreparedAffairEventProposal }
+  | {
+      outcome: Exclude<PreviewAffairEventProposalOutcome, "WOULD_CREATE">;
+      pendingProposalId: string | null;
+      deduped: boolean;
+      existingStatus?: ProposalStatus;
+    };
+
+async function findAppliedAffairEvent(input: {
+  affairId: string;
+  identityKey: string;
+  date: Date;
+  sourceUrl: string;
+}): Promise<{ id: string } | null> {
+  const identified = await db.affairEvent.findUnique({
+    where: {
+      affairId_identityKey: { affairId: input.affairId, identityKey: input.identityKey },
+    },
+    select: { id: true },
+  });
+  if (identified) return identified;
+
+  const legacyEvents = await db.affairEvent.findMany({
+    where: { affairId: input.affairId, type: "REVELATION", date: input.date },
+    select: { id: true, sourceUrl: true },
+  });
+  const canonicalSourceUrl = normalizeAffairEventSourceUrl(input.sourceUrl);
+  return (
+    legacyEvents.find(
+      (event) =>
+        event.sourceUrl !== null &&
+        normalizeAffairEventSourceUrl(event.sourceUrl) === canonicalSourceUrl
+    ) ?? null
+  );
+}
+
+async function assessAffairEventProposal(
+  input: PreviewAffairEventProposalInput
+): Promise<AffairEventAssessment> {
   const sourceUrl = normalizeAffairEventSourceUrl(input.sourceUrl);
   if (!isVerifiedAffairPressUrl(sourceUrl)) {
     throw new ProposalValidationError(["sourceUrl: source journalistique non vérifiée"]);
@@ -434,29 +552,25 @@ export async function proposeAffairEvent(
     return { outcome: "TARGET_INELIGIBLE", pendingProposalId: null, deduped: false };
   }
 
-  const existingEvent = await db.affairEvent.findFirst({
-    where: {
-      affairId: input.affairId,
-      type: "REVELATION",
-      date: eventPayload.addEvent.date,
-      sourceUrl,
-    },
-    select: { id: true },
+  const identityKey = computeAffairEventIdentity({
+    affairId: input.affairId,
+    sourceUrl,
+    pressArticleId: input.pressArticleId,
+  });
+  const existingEvent = await findAppliedAffairEvent({
+    affairId: input.affairId,
+    identityKey,
+    date: eventPayload.addEvent.date,
+    sourceUrl,
   });
   if (existingEvent) {
     return { outcome: "ALREADY_APPLIED", pendingProposalId: null, deduped: true };
   }
 
-  const identityKey = computeAffairEventIdentity({
-    affairId: input.affairId,
-    sourceUrl,
-    publishedAt: eventPayload.addEvent.date,
-    pressArticleId: input.pressArticleId,
-  });
   const metadata = affairEventProposalMetadataSchema.parse({
     eventProposal: {
       version: 1,
-      identityVersion: "press-revelation-v1",
+      identityVersion: "press-revelation-v2",
       identityKey,
       publisher: input.publisher,
       publishedAt: eventPayload.addEvent.date,
@@ -464,9 +578,9 @@ export async function proposeAffairEvent(
       resolverDecisionId: input.resolverDecisionId ?? null,
     },
   }) as AffairEventProposalMetadata;
-  const observedValues = {
+  const observedValues: AffairEventObservation = {
     addEvent: {
-      identityVersion: "press-revelation-v1" as const,
+      identityVersion: "press-revelation-v2",
       identityKey,
       existingEventId: null,
     },
@@ -474,7 +588,7 @@ export async function proposeAffairEvent(
   const normalizedInput: ProposeAffairUpdateInput = {
     affairId: input.affairId,
     importer: input.importer,
-    importRunId: input.importRunId,
+    importRunId: input.importRunId ?? "dry-run",
     patch: eventPayload,
     source: "PRESSE",
     sourceUrl,
@@ -485,13 +599,65 @@ export async function proposeAffairEvent(
     rationale: input.rationale,
     extractorVersion: input.extractorVersion,
   };
+  const prepared: PreparedAffairEventProposal = {
+    affair: affair as unknown as LiveAffair,
+    eventPayload,
+    normalizedInput,
+    observedValues,
+    identityKey,
+  };
+  const { payloadHash } = buildPendingProposalPayload({
+    input: normalizedInput,
+    extractorVersion: input.extractorVersion ?? "v1",
+    patch: eventPayload,
+    live: prepared.affair,
+    observedValues,
+    riskLevel: "HIGH",
+  });
+  const existing = await findExisting(input.affairId, input.importer, payloadHash);
+  if (existing) {
+    return {
+      outcome: existing.status === "PENDING" ? "DEDUPED_PENDING" : "DEDUPED_TERMINAL",
+      pendingProposalId: existing.id,
+      deduped: true,
+      existingStatus: existing.status,
+    };
+  }
+
+  return { outcome: "WOULD_CREATE", prepared };
+}
+
+/** Performs every validation and deduplication lookup without writing anything. */
+export async function previewAffairEventProposal(
+  input: PreviewAffairEventProposalInput
+): Promise<PreviewAffairEventProposalResult> {
+  const assessment = await assessAffairEventProposal(input);
+  if (assessment.outcome === "WOULD_CREATE") {
+    return { outcome: "WOULD_CREATE", pendingProposalId: null, deduped: false };
+  }
+  return assessment;
+}
+
+/**
+ * Files a human-reviewed proposal for a media timeline entry.
+ *
+ * The source article is the event: its publication date is known, while the date
+ * of any procedural act mentioned by the article is not. Nothing related to the
+ * target affair is written before a reviewer accepts the proposal.
+ */
+export async function proposeAffairEvent(
+  input: ProposeAffairEventInput
+): Promise<ProposeAffairEventResult> {
+  const assessment = await assessAffairEventProposal(input);
+  if (assessment.outcome !== "WOULD_CREATE") return assessment;
+  const { prepared } = assessment;
 
   const recorded = await recordPendingProposal(
-    normalizedInput,
+    prepared.normalizedInput,
     input.extractorVersion ?? "v1",
-    eventPayload,
-    affair as unknown as LiveAffair,
-    { observedValues, riskLevel: "HIGH" }
+    prepared.eventPayload,
+    prepared.affair,
+    { observedValues: prepared.observedValues, riskLevel: "HIGH" }
   );
   const outcome = recorded.deduped
     ? recorded.status === "PENDING"

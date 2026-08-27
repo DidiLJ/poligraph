@@ -659,9 +659,10 @@ model Affair {
 
 // Timeline events for an affair
 model AffairEvent {
-  id       String @id @default(cuid())
-  affair   Affair @relation(fields: [affairId], references: [id], onDelete: Cascade)
-  affairId String
+  id          String  @id @default(cuid())
+  affair      Affair  @relation(fields: [affairId], references: [id], onDelete: Cascade)
+  affairId    String
+  identityKey String? // Stable importer identity; null for historical/manual events
 
   date        DateTime
   type        AffairEventType
@@ -676,6 +677,7 @@ model AffairEvent {
 
   @@index([affairId])
   @@index([date])
+  @@unique([affairId, identityKey])
 }
 
 enum AffairEventType {

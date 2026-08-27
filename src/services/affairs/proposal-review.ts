@@ -10,23 +10,18 @@ import {
 import {
   AFFAIR_PROPOSABLE_SELECT,
   buildPrismaData,
-  computeAffairEventIdentity,
   detectDrift,
+  parseAffairEventProposalContext,
   ProposalValidationError,
+  type AffairEventProposalContext,
   type ConflictDetail,
 } from "@/services/affairs/proposals";
 import {
   normalizeAffairEventSourceUrl,
-  parseAffairEventObservation,
-  parseAffairEventProposalMetadata,
   parseAffairProposalPayload,
-  type AffairEventObservation,
-  type AffairEventProposal,
-  type AffairEventProposalMetadata,
   type ParsedAffairProposal,
 } from "@/lib/security/schemas/affair-proposal";
 import { AffairNotFoundError, lockAffair } from "@/services/affairs/lock";
-import { isVerifiedAffairPressUrl } from "@/config/affair-sources";
 
 // Affaires v2, lot 1: human review of importer proposals.
 //
@@ -81,12 +76,6 @@ class RollbackSignal extends Error {
     super(`proposal review rollback: ${reason}`);
     this.name = "RollbackSignal";
   }
-}
-
-interface EventReviewContext {
-  event: AffairEventProposal;
-  observation: AffairEventObservation;
-  metadata: AffairEventProposalMetadata;
 }
 
 function validationIssues(error: unknown): string[] {
@@ -207,46 +196,19 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
   }
 
   let parsed: ParsedAffairProposal;
-  let eventContext: EventReviewContext | null = null;
+  let eventContext: AffairEventProposalContext | null = null;
   try {
     parsed = parseAffairProposalPayload(proposal.proposedPatch);
     if (parsed.kind === "ADD_EVENT") {
-      const observation = parseAffairEventObservation(proposal.observedValues);
-      const metadata = parseAffairEventProposalMetadata(proposal.metadata);
-      const normalizedProposalUrl = proposal.sourceUrl
-        ? normalizeAffairEventSourceUrl(proposal.sourceUrl)
-        : null;
-      if (proposal.source !== "PRESSE" || !normalizedProposalUrl) {
-        throw new Error("Un événement importé exige une source de presse HTTP(S)");
-      }
-      if (!isVerifiedAffairPressUrl(normalizedProposalUrl)) {
-        throw new Error("La source journalistique de l’événement n’est pas vérifiée");
-      }
-      if (!proposal.sourceExcerpt?.trim() || proposal.sourceExcerpt.trim().length > 500) {
-        throw new Error("Un extrait vérifié est obligatoire pour cet événement");
-      }
-      if (parsed.event.sourceUrl !== normalizedProposalUrl) {
-        throw new Error("L’URL de l’événement diffère de celle de la proposition");
-      }
-      if (metadata.eventProposal.publishedAt.getTime() !== parsed.event.date.getTime()) {
-        throw new Error("La date de provenance diffère de celle de l’événement");
-      }
-      if (
-        observation.addEvent.identityKey !== metadata.eventProposal.identityKey ||
-        observation.addEvent.identityVersion !== metadata.eventProposal.identityVersion
-      ) {
-        throw new Error("L’identité observée de l’événement est incohérente");
-      }
-      const expectedIdentity = computeAffairEventIdentity({
+      eventContext = parseAffairEventProposalContext({
         affairId: proposal.affairId,
-        sourceUrl: parsed.event.sourceUrl,
-        publishedAt: parsed.event.date,
-        pressArticleId: metadata.eventProposal.pressArticleId,
+        proposedPatch: proposal.proposedPatch,
+        observedValues: proposal.observedValues,
+        metadata: proposal.metadata,
+        source: proposal.source,
+        sourceUrl: proposal.sourceUrl,
+        sourceExcerpt: proposal.sourceExcerpt,
       });
-      if (metadata.eventProposal.identityKey !== expectedIdentity) {
-        throw new Error("L’identité de l’événement ne correspond pas à son contenu");
-      }
-      eventContext = { event: parsed.event, observation, metadata };
     }
   } catch (error) {
     return { ok: false, reason: "invalid_patch", issues: validationIssues(error) };
@@ -331,15 +293,28 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
           });
         }
 
-        const existingEvent = await tx.affairEvent.findFirst({
+        let existingEvent = await tx.affairEvent.findUnique({
           where: {
-            affairId,
-            type: context.event.type,
-            date: context.event.date,
-            sourceUrl: context.event.sourceUrl,
+            affairId_identityKey: { affairId, identityKey: context.identityKey },
           },
           select: { id: true },
         });
+        if (!existingEvent) {
+          const legacyEvents = await tx.affairEvent.findMany({
+            where: {
+              affairId,
+              type: context.event.type,
+              date: context.event.date,
+            },
+            select: { id: true, sourceUrl: true },
+          });
+          existingEvent =
+            legacyEvents.find(
+              (event) =>
+                event.sourceUrl !== null &&
+                normalizeAffairEventSourceUrl(event.sourceUrl) === context.normalizedSourceUrl
+            ) ?? null;
+        }
         if (existingEvent) {
           return markConflict(tx, proposal, input, {
             event: { expected: "absent", actual: existingEvent.id },
@@ -383,7 +358,7 @@ export async function acceptProposal(input: ReviewInput): Promise<AcceptResult> 
         }
 
         const createdEvent = await tx.affairEvent.create({
-          data: { affairId, ...context.event },
+          data: { affairId, identityKey: context.identityKey, ...context.event },
           select: { id: true },
         });
         eventId = createdEvent.id;

@@ -45,6 +45,15 @@ describeIfDisposableDb("propositions d’événement concurrentes", () => {
     const importRun = await db.importRun.create({
       data: { importer: "test-affair-evolution", status: "COMPLETED", finishedAt: new Date() },
     });
+    const pressArticle = await db.pressArticle.create({
+      data: {
+        feedSource: "lemonde",
+        externalId: `test-concurrent-${suffix}`,
+        title: "Article de test concurrent",
+        url: `https://www.lemonde.fr/politique/article/test-concurrent-${suffix}.html`,
+        publishedAt: new Date("2026-08-27T08:00:00.000Z"),
+      },
+    });
 
     const proposalIds: string[] = [];
     try {
@@ -52,7 +61,7 @@ describeIfDisposableDb("propositions d’événement concurrentes", () => {
         affairId: affair.id,
         importer: "test-affair-evolution",
         importRunId: importRun.id,
-        sourceUrl: "https://www.lemonde.fr/politique/article/test-concurrent.html",
+        sourceUrl: `${pressArticle.url}?utm_source=rss#suivi`,
         sourceTitle: "Article de test concurrent",
         publishedAt: new Date("2026-08-27T08:00:00.000Z"),
         publisher: "Le Monde",
@@ -60,9 +69,14 @@ describeIfDisposableDb("propositions d’événement concurrentes", () => {
         confidence: 55,
         rationale: "Test de sérialisation PostgreSQL.",
         extractorVersion: "integration-v1",
+        pressArticleId: pressArticle.id,
       };
       const first = await proposeAffairEvent({ ...base, sourceContentHash: "version-1" });
-      const second = await proposeAffairEvent({ ...base, sourceContentHash: "version-2" });
+      const second = await proposeAffairEvent({
+        ...base,
+        sourceUrl: pressArticle.url,
+        sourceContentHash: "version-2",
+      });
       proposalIds.push(first.pendingProposalId!, second.pendingProposalId!);
 
       const results = await Promise.all([
@@ -75,6 +89,8 @@ describeIfDisposableDb("propositions d’événement concurrentes", () => {
         1
       );
       await expect(db.affairEvent.count({ where: { affairId: affair.id } })).resolves.toBe(1);
+      const event = await db.affairEvent.findFirstOrThrow({ where: { affairId: affair.id } });
+      expect(event.identityKey).toMatch(/^[a-f0-9]{64}$/);
       const proposals = await db.affairUpdateProposal.findMany({
         where: { id: { in: proposalIds } },
         select: { status: true },
@@ -86,6 +102,7 @@ describeIfDisposableDb("propositions d’événement concurrentes", () => {
       ).map((event) => event.id);
       await db.auditLog.deleteMany({ where: { entityId: { in: [...proposalIds, ...eventIds] } } });
       await db.affairUpdateProposal.deleteMany({ where: { id: { in: proposalIds } } });
+      await db.pressArticle.delete({ where: { id: pressArticle.id } });
       await db.importRun.delete({ where: { id: importRun.id } });
       await db.politician.delete({ where: { id: politician.id } });
     }

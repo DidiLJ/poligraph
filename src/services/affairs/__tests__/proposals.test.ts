@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const h = vi.hoisted(() => ({
   db: {
     affair: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
-    affairEvent: { findFirst: vi.fn() },
+    affairEvent: { findUnique: vi.fn(), findMany: vi.fn() },
     affairUpdateProposal: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(),
@@ -21,12 +21,14 @@ import {
   parseAffairProposalPayload,
 } from "@/lib/security/schemas/affair-proposal";
 import {
+  computeAffairEventIdentity,
   computePayloadHash,
   deriveRiskLevel,
   detectDrift,
   EMPTY_VALUE,
   hashSourceContent,
   normalizeForCompare,
+  previewAffairEventProposal,
   proposeAffairUpdate,
   proposeAffairEvent,
   ProposalValidationError,
@@ -74,7 +76,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   db.affair.findUnique.mockResolvedValue(EMPTY_AFFAIR);
   db.affair.findFirst.mockResolvedValue(null);
-  db.affairEvent.findFirst.mockResolvedValue(null);
+  db.affairEvent.findUnique.mockResolvedValue(null);
+  db.affairEvent.findMany.mockResolvedValue([]);
   db.affairUpdateProposal.findFirst.mockResolvedValue(null);
   db.affairUpdateProposal.create.mockImplementation(async () => ({ id: "prop_new" }));
   db.affairUpdateProposal.update.mockResolvedValue({});
@@ -435,18 +438,47 @@ describe("proposeAffairEvent", () => {
     extractorVersion: "press-evolution-v1",
   };
 
+  it("utilise uniquement PressArticle.id quand il est disponible", () => {
+    const tracked = computeAffairEventIdentity({
+      affairId: "aff_1",
+      sourceUrl: "https://www.lemonde.fr/article.html?utm_source=rss#titre",
+      pressArticleId: "article_1",
+    });
+    const canonical = computeAffairEventIdentity({
+      affairId: "aff_1",
+      sourceUrl: "https://www.lemonde.fr/article.html",
+      pressArticleId: "article_1",
+    });
+
+    expect(tracked).toBe(canonical);
+  });
+
+  it("canonise les paramètres de tracking quand aucun PressArticle.id n’existe", () => {
+    const tracked = computeAffairEventIdentity({
+      affairId: "aff_1",
+      sourceUrl: "https://www.lemonde.fr/article.html?utm_source=rss&b=2&a=1#titre",
+    });
+    const canonical = computeAffairEventIdentity({
+      affairId: "aff_1",
+      sourceUrl: "https://www.lemonde.fr/article.html?a=1&b=2",
+    });
+
+    expect(tracked).toBe(canonical);
+  });
+
   it("dépose un événement médiatique HIGH sans écrire sur l’affaire", async () => {
     const result = await proposeAffairEvent(EVENT_INPUT);
 
     expect(result).toMatchObject({ outcome: "CREATED", pendingProposalId: "prop_new" });
     expect(db.affair.update).not.toHaveBeenCalled();
-    expect(db.affairEvent.findFirst).toHaveBeenCalledWith(
+    expect(db.affairEvent.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          affairId: "aff_1",
-          type: "REVELATION",
-          sourceUrl: "https://www.lemonde.fr/politique/article-test.html",
-        }),
+        where: {
+          affairId_identityKey: {
+            affairId: "aff_1",
+            identityKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+          },
+        },
       })
     );
     const created = db.affairUpdateProposal.create.mock.calls[0]![0].data;
@@ -464,7 +496,7 @@ describe("proposeAffairEvent", () => {
   });
 
   it("ne dépose rien lorsqu’un événement identique existe déjà", async () => {
-    db.affairEvent.findFirst.mockResolvedValue({ id: "event_1" });
+    db.affairEvent.findUnique.mockResolvedValue({ id: "event_1" });
 
     const result = await proposeAffairEvent(EVENT_INPUT);
 
@@ -482,7 +514,7 @@ describe("proposeAffairEvent", () => {
     const result = await proposeAffairEvent(EVENT_INPUT);
 
     expect(result.outcome).toBe("TARGET_INELIGIBLE");
-    expect(db.affairEvent.findFirst).not.toHaveBeenCalled();
+    expect(db.affairEvent.findUnique).not.toHaveBeenCalled();
     expect(db.affairUpdateProposal.create).not.toHaveBeenCalled();
   });
 
@@ -518,5 +550,19 @@ describe("proposeAffairEvent", () => {
       existingStatus: "REJECTED",
     });
     expect(db.affairUpdateProposal.create).not.toHaveBeenCalled();
+  });
+
+  it("prévisualise une proposition terminale sans écriture", async () => {
+    db.affairUpdateProposal.findFirst.mockResolvedValue({ id: "prop_old", status: "REJECTED" });
+
+    const result = await previewAffairEventProposal(EVENT_INPUT);
+
+    expect(result).toMatchObject({
+      outcome: "DEDUPED_TERMINAL",
+      pendingProposalId: "prop_old",
+      existingStatus: "REJECTED",
+    });
+    expect(db.affairUpdateProposal.create).not.toHaveBeenCalled();
+    expect(db.affairUpdateProposal.update).not.toHaveBeenCalled();
   });
 });

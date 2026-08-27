@@ -11,6 +11,7 @@ import { getWeekStart, getISOWeekString } from "@/lib/data/recap";
 import { loadThemesIndex } from "@/lib/data/themes-index";
 import { isFicheCandidatPublishable, isHubPublishable } from "@/config/publication-gates";
 import { PRESIDENTIELLE_2027_SLUG } from "@/lib/presidentielle/themes";
+import { PUBLIC_PRESIDENTIAL_MEASURE_WHERE } from "@/lib/presidentielle/publication";
 import { getPublicPresidentialCandidates } from "@/lib/data/presidential-candidates-public";
 import { getPublicMeasureStatsByCandidacy } from "@/lib/data/measures";
 import {
@@ -396,12 +397,13 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
   // loadHubMeasureContext makes for the same authority), and imports isHubPublishable rather
   // than re-deriving its threshold.
   const presidentielle2027 = elections.find((e) => e.slug === PRESIDENTIELLE_2027_SLUG);
+  const presidentialThemesIndex =
+    presidentielle2027 === undefined
+      ? null
+      : await loadThemesIndex(presidentielle2027.id, PRESIDENTIELLE_2027_SLUG);
   const presidentielleHubPublishable =
-    presidentielle2027 !== undefined &&
-    isHubPublishable(
-      (await loadThemesIndex(presidentielle2027.id, PRESIDENTIELLE_2027_SLUG))
-        .publishableSubjectPageCount
-    );
+    presidentialThemesIndex !== null &&
+    isHubPublishable(presidentialThemesIndex.publishableSubjectPageCount);
 
   const affairPages: MetadataRoute.Sitemap = affairs.map((a) => ({
     url: `${SITE_URL}/affaires/${a.slug}`,
@@ -449,6 +451,26 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
         ]
       : [];
 
+  const presidentialSubjectPages: MetadataRoute.Sitemap =
+    presidentielleHubPublishable && presidentialThemesIndex !== null
+      ? [
+          {
+            url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/sujets`,
+            lastModified: presidentielle2027?.updatedAt ?? new Date(),
+            changeFrequency: "weekly" as const,
+            priority: 0.5,
+          },
+          ...presidentialThemesIndex.themes
+            .filter((theme) => theme.publishable)
+            .map((theme) => ({
+              url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/sujets/${theme.slug}`,
+              lastModified: theme.lastReviewedAt ?? presidentielle2027?.updatedAt ?? new Date(),
+              changeFrequency: "weekly" as const,
+              priority: 0.6,
+            })),
+        ]
+      : [];
+
   // Candidate fiches, only above their own publication gate (spec §4.1, indexation §4.2). The route
   // redirects to /politiques/[slug] below the gate, so announcing an unpublishable slug would spend
   // crawl budget on a redirect.
@@ -479,6 +501,25 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
     }
   }
 
+  const presidentialMeasurePages: MetadataRoute.Sitemap =
+    presidentielle2027 === undefined
+      ? []
+      : (
+          await db.measure.findMany({
+            where: {
+              electionId: presidentielle2027.id,
+              ...PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
+            },
+            select: { id: true, updatedAt: true },
+            orderBy: { updatedAt: "desc" },
+          })
+        ).map((measure) => ({
+          url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/mesures/${measure.id}`,
+          lastModified: measure.updatedAt,
+          changeFrequency: "weekly" as const,
+          priority: 0.6,
+        }));
+
   const departmentPages: MetadataRoute.Sitemap = Object.values(DEPARTMENTS).map((dept) => ({
     url: `${SITE_URL}/departements/${getDepartmentSlug(dept.name)}`,
     lastModified: new Date(),
@@ -508,7 +549,9 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
     ...partyAffairPages,
     ...electionPages,
     ...presidentialDirectoryPages,
+    ...presidentialSubjectPages,
     ...candidateFichePages,
+    ...presidentialMeasurePages,
     ...departmentPages,
     ...themePages,
   ];

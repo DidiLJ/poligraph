@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { PUBLIC_PRESIDENTIAL_MEASURE_WHERE } from "@/lib/presidentielle/publication";
 
 export type AuditViolation = {
   rule: string;
@@ -63,6 +64,14 @@ export async function auditMeasures(): Promise<AuditViolation[]> {
     select: { entityId: true, visibility: true, sourceRevisionId: true },
   });
   const byEntity = new Map(documents.map((d) => [d.entityId, d]));
+  const publicMeasureIds = new Set(
+    (
+      await db.measure.findMany({
+        where: PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
+        select: { id: true },
+      })
+    ).map((measure) => measure.id)
+  );
 
   for (const m of measures) {
     const published = m.publishedRevision;
@@ -187,7 +196,7 @@ export async function auditMeasures(): Promise<AuditViolation[]> {
     }
 
     const doc = byEntity.get(m.id);
-    const shouldBePublic = m.publicationStatus === "PUBLISHED" && m.publishedRevisionId !== null;
+    const shouldBePublic = publicMeasureIds.has(m.id);
 
     // A missing document is a violation, not a normal case. Without this rule the two
     // checks below never fire on a measure that was never indexed at all, because both are

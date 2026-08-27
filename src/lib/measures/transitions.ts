@@ -15,6 +15,7 @@ import { validateRevisionEvidence, type MeasureImportEngine } from "./evidence-s
 import { MeasureConcurrencyError, MeasureValidationError } from "./errors";
 import { lockMeasure } from "./lock";
 import { syncSearchDocument } from "./search-sync";
+import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
 
 export type MeasureSourceInput = {
   sourceKind: MeasureSourceKind;
@@ -576,6 +577,7 @@ export async function publishMeasureRevision(input: {
       where: { id: input.measureId },
       select: {
         electionId: true,
+        candidacyId: true,
         publishedRevisionId: true,
         latestRevisionId: true,
         updatedAt: true,
@@ -677,7 +679,13 @@ export async function publishMeasureRevision(input: {
     // In the same transaction: the database must never expose a new revision while the
     // index still holds the previous text. Called last, so it reads the pointers this
     // transaction has just written.
-    await syncSearchDocument(tx, input.measureId);
+    if (measure.candidacyId) {
+      // Publishing can open the carrier fiche (first primary-sourced measure), which changes the
+      // visibility of every already-published measure of that candidacy.
+      await syncPresidentialSearchDocumentsForCandidacy(tx, measure.candidacyId);
+    } else {
+      await syncSearchDocument(tx, input.measureId);
+    }
 
     return { electionId: measure.electionId };
   });
@@ -710,7 +718,7 @@ export async function depublishMeasure(input: {
 
     const measure = await tx.measure.findUniqueOrThrow({
       where: { id: input.measureId },
-      select: { electionId: true, updatedAt: true },
+      select: { electionId: true, candidacyId: true, updatedAt: true },
     });
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
@@ -729,7 +737,13 @@ export async function depublishMeasure(input: {
     // text: only changing visibility would leave it aligned on the former published
     // revision, which the staleness rule reports as stale. The row is kept either way, an
     // upsert never deletes.
-    await syncSearchDocument(tx, input.measureId);
+    if (measure.candidacyId) {
+      // Depublishing the last primary-sourced measure closes the fiche and therefore every measure
+      // document it carried. Re-evaluate the set before committing.
+      await syncPresidentialSearchDocumentsForCandidacy(tx, measure.candidacyId);
+    } else {
+      await syncSearchDocument(tx, input.measureId);
+    }
 
     return { electionId: measure.electionId };
   });
@@ -744,9 +758,9 @@ export async function depublishMeasure(input: {
  *
  * The three withdrawal fields are written here and nowhere else, and never separately.
  *
- * No syncSearchDocument call, same as reviewMeasureRevision: neither changes the pointers,
- * the visibility or the indexed text. A withdrawal is displayed by the page, it does not
- * change the searchable content, so syncing here would be a write that changes nothing.
+ * Withdrawal now changes public search eligibility. It can also close the carrier fiche when the
+ * withdrawn proposal was its last primary-sourced current measure, so the full candidacy set is
+ * synchronized in the same transaction.
  */
 export async function withdrawMeasure(input: {
   measureId: string;
@@ -769,7 +783,7 @@ export async function withdrawMeasure(input: {
 
     const measure = await tx.measure.findUniqueOrThrow({
       where: { id: input.measureId },
-      select: { electionId: true, updatedAt: true },
+      select: { electionId: true, candidacyId: true, updatedAt: true },
     });
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
@@ -782,6 +796,12 @@ export async function withdrawMeasure(input: {
         withdrawnSourceLabel: input.sourceLabel,
       },
     });
+
+    if (measure.candidacyId) {
+      await syncPresidentialSearchDocumentsForCandidacy(tx, measure.candidacyId);
+    } else {
+      await syncSearchDocument(tx, input.measureId);
+    }
 
     return { electionId: measure.electionId };
   });

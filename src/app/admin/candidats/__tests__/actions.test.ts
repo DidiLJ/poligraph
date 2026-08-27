@@ -14,6 +14,7 @@ const invalidateEntityMock = vi.fn();
 const invalidateCandidacyTagsMock = vi.fn();
 
 const dbMock = {
+  $transaction: vi.fn(),
   candidacy: { findUnique: vi.fn() },
   candidacyPresidential: { upsert: vi.fn() },
   programEdition: { findUnique: vi.fn(), update: vi.fn() },
@@ -27,6 +28,9 @@ vi.mock("@/lib/cache", () => ({
 }));
 vi.mock("@/lib/presidentielle/candidacy-cache", () => ({
   invalidatePresidentialCandidacyTags: (id: string) => invalidateCandidacyTagsMock(id),
+}));
+vi.mock("@/lib/presidentielle/search-sync", () => ({
+  syncPresidentialSearchDocumentsForCandidacy: vi.fn(async () => undefined),
 }));
 vi.mock("@/lib/db", () => ({ db: dbMock }));
 
@@ -50,6 +54,7 @@ async function actions() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  dbMock.$transaction.mockImplementation(async (callback) => callback(dbMock));
   isAuthenticatedMock.mockResolvedValue(true);
   dbMock.candidacy.findUnique.mockResolvedValue(SOURCED_CANDIDACY);
   dbMock.candidacyPresidential.upsert.mockResolvedValue({ id: "pres-1" });

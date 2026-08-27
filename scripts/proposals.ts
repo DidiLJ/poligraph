@@ -22,6 +22,7 @@
  *
  *   npm run proposals -- --accept-batch [--run=<id>] [--importer=<nom>]
  *                        [--risk=LOW,MEDIUM] [--limit=500] [--note="..."]
+ *                        [--include-events]
  *
  * Le traitement par lot reste séquentiel : chaque acceptation garde sa propre
  * transaction, son compare-and-set et sa détection de dérive. Un échec sur une
@@ -31,6 +32,7 @@ import { db } from "@/lib/db";
 import { acceptProposal, rejectProposal } from "@/services/affairs/proposal-review";
 import { invalidateEntity, invalidateAffectedPoliticians } from "@/lib/cache";
 import type { Prisma, ProposalRisk, ProposalStatus } from "@/generated/prisma";
+import { parseAffairProposalPayload } from "@/lib/security/schemas/affair-proposal";
 
 /** Persisted in reviewedBy and in the audit trail. Names the channel, nothing more. */
 const REVIEWED_BY = "cli";
@@ -65,6 +67,14 @@ function fmt(value: unknown): string {
     return new Date(value).toLocaleDateString("fr-FR");
   }
   return String(value);
+}
+
+function isEventProposal(raw: unknown): boolean {
+  try {
+    return parseAffairProposalPayload(raw).kind === "ADD_EVENT";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -129,6 +139,7 @@ async function list(status: ProposalStatus, asJson: boolean) {
     const snap = r.affairSnapshot as { title?: string; politicianName?: string };
     const patch = r.proposedPatch as Record<string, unknown>;
     const observed = r.observedValues as Record<string, unknown>;
+    const parsed = parseAffairProposalPayload(patch);
 
     console.log(`─── ${r.id}`);
     console.log(`  affaire   : ${snap?.title ?? "(supprimée)"}`);
@@ -139,12 +150,23 @@ async function list(status: ProposalStatus, asJson: boolean) {
       `  risque    : ${r.riskLevel} · confiance ${r.confidence} · ${r.importer}@${r.extractorVersion}`
     );
     console.log(`  run       : ${r.importRunId}`);
-    for (const key of Object.keys(patch)) {
-      const label = FIELD_LABELS[key] ?? key;
-      console.log(`  ${label.padEnd(22)} ${fmt(observed[key])}  →  ${fmt(patch[key])}`);
+    if (parsed.kind === "ADD_EVENT") {
+      console.log("  opération  : nouvel événement de chronologie");
+      console.log(`  date       : ${fmt(parsed.event.date.toISOString())}`);
+      console.log(`  type       : ${parsed.event.type}`);
+      console.log(`  titre      : ${parsed.event.title}`);
+      console.log(`  source     : ${parsed.event.sourceTitle}`);
+      console.log(`  URL        : ${parsed.event.sourceUrl}`);
+    } else {
+      for (const key of Object.keys(patch)) {
+        const label = FIELD_LABELS[key] ?? key;
+        console.log(`  ${label.padEnd(22)} ${fmt(observed[key])}  →  ${fmt(patch[key])}`);
+      }
     }
     console.log(`  pourquoi  : ${r.rationale}`);
-    if (r.sourceUrl) console.log(`  source    : ${r.source} ${r.sourceUrl}`);
+    if (r.sourceUrl && parsed.kind !== "ADD_EVENT") {
+      console.log(`  source    : ${r.source} ${r.sourceUrl}`);
+    }
     if (r.conflictDetail) console.log(`  conflit   : ${JSON.stringify(r.conflictDetail)}`);
     console.log("");
   }
@@ -299,7 +321,8 @@ async function group(f: BatchFilter, asJson: boolean) {
   for (const r of rows) {
     const patch = r.proposedPatch as Record<string, unknown>;
     const observed = r.observedValues as Record<string, unknown>;
-    const fields = Object.keys(patch).sort();
+    const eventProposal = isEventProposal(patch);
+    const fields = eventProposal ? ["event"] : Object.keys(patch).sort();
     const overwrites = fields.filter(
       (k) => observed[k] !== null && observed[k] !== undefined && observed[k] !== ""
     );
@@ -367,14 +390,31 @@ async function group(f: BatchFilter, asJson: boolean) {
  * compare-and-set and drift check, and running them in parallel would only add
  * lock contention on the same affairs. A failure on one never stops the others.
  */
-async function acceptBatch(f: BatchFilter, note: string | undefined, limit: number) {
-  const rows = await db.affairUpdateProposal.findMany({
+async function acceptBatch(
+  f: BatchFilter,
+  note: string | undefined,
+  limit: number,
+  includeEvents: boolean
+) {
+  const candidates = await db.affairUpdateProposal.findMany({
     where: buildWhere(f),
-    select: { id: true, riskLevel: true },
+    select: { id: true, riskLevel: true, proposedPatch: true },
     // Low risk first: the cheap wins land even if a later one fails.
     orderBy: [{ riskLevel: "asc" }, { createdAt: "asc" }],
-    take: limit,
+    take: includeEvents ? limit : Math.max(limit, 500),
   });
+  const excludedEvents = includeEvents
+    ? 0
+    : candidates.filter((row) => isEventProposal(row.proposedPatch)).length;
+  const rows = candidates
+    .filter((row) => includeEvents || !isEventProposal(row.proposedPatch))
+    .slice(0, limit);
+
+  if (excludedEvents > 0) {
+    console.log(
+      `${excludedEvents} proposition(s) d’événement exclue(s) du lot. Utilisez --include-events pour les inclure explicitement.\n`
+    );
+  }
 
   if (rows.length === 0) {
     console.log("Aucune proposition PENDING sur ce périmètre.");
@@ -457,11 +497,11 @@ async function main() {
 
   if (flag("accept-batch")) {
     const limit = Number.parseInt(arg("limit") ?? "500", 10);
-    return acceptBatch(filter, note, limit);
+    return acceptBatch(filter, note, limit, flag("include-events"));
   }
 
   // --accept-run kept as a shorthand for the whole run.
-  if (arg("accept-run")) return acceptBatch(filter, note, 500);
+  if (arg("accept-run")) return acceptBatch(filter, note, 500, flag("include-events"));
 
   if (flag("group")) return group(filter, flag("json"));
 

@@ -7,6 +7,10 @@ import {
   summarizeProposalSourceLink,
 } from "@/lib/affairs/official-decision-verification";
 import type { Prisma, ProposalStatus } from "@/generated/prisma";
+import {
+  parseAffairEventObservation,
+  parseAffairProposalPayload,
+} from "@/lib/security/schemas/affair-proposal";
 
 // Affaires v2, lot 1: review queue for importer-proposed affair changes.
 
@@ -22,6 +26,27 @@ const VALID_STATUSES: ProposalStatus[] = [
 
 function parseStatus(raw: string | null): ProposalStatus {
   return VALID_STATUSES.includes(raw as ProposalStatus) ? (raw as ProposalStatus) : "PENDING";
+}
+
+function proposalPresentation(raw: unknown, observedValues: unknown) {
+  try {
+    const parsed = parseAffairProposalPayload(raw);
+    if (parsed.kind === "PATCH") return { payloadKind: "PATCH" as const, eventPreview: null };
+    return {
+      payloadKind: "ADD_EVENT" as const,
+      eventPreview: {
+        date: parsed.event.date.toISOString(),
+        type: parsed.event.type,
+        title: parsed.event.title,
+        description: parsed.event.description ?? null,
+        sourceUrl: parsed.event.sourceUrl,
+        sourceTitle: parsed.event.sourceTitle,
+        identityKey: parseAffairEventObservation(observedValues).addEvent.identityKey,
+      },
+    };
+  } catch {
+    return { payloadKind: "INVALID" as const, eventPreview: null };
+  }
 }
 
 export const GET = withAdminAuth(async (request: NextRequest) => {
@@ -98,6 +123,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
 
       return {
         ...row,
+        ...proposalPresentation(row.proposedPatch, row.observedValues),
         officialEvidence,
         sourceLink,
       };

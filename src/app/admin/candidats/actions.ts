@@ -39,7 +39,10 @@ const candidacyStatusSchema = z
   .object({
     candidacyId: z.string().min(1),
     status: z.enum(["DECLARE", "PRESSENTI", "ENVISAGE", "RETIRE"]),
-    sourceUrl: z.string().url(),
+    sourceUrl: z
+      .string()
+      .url()
+      .refine((value) => ["http:", "https:"].includes(new URL(value).protocol)),
     sourceLabel: z.string().trim().min(1),
   })
   .strict();

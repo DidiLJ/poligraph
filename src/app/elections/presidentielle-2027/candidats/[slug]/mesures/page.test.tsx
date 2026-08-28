@@ -108,6 +108,18 @@ describe("page des mesures d'une candidature", () => {
     );
   });
 
+  it("ramène une page démesurée à une valeur sûre avant la requête Prisma", async () => {
+    const { default: Page } = await import("./page");
+    render(
+      await Page({
+        params,
+        searchParams: Promise.resolve({ page: "9007199254740991" }),
+      })
+    );
+
+    expect(mocks.listMeasures).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
+  });
+
   it("rend des liens explicites vers la mesure et sa source", async () => {
     const { default: Page } = await import("./page");
     render(await Page({ params, searchParams: Promise.resolve({}) }));

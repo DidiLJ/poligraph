@@ -1,5 +1,6 @@
 import { db } from "../src/lib/db";
 import {
+  getPreviouslyClassifiedMeasureRevisionIds,
   proposeMeasureRevisionSubtopics,
   syncMeasureSubtopicTaxonomy,
 } from "../src/lib/measures/subtopics";
@@ -33,13 +34,19 @@ function parseOptions(args: string[]): Options {
 
 async function main(): Promise<void> {
   const options = parseOptions(process.argv.slice(2));
+  const processedRevisionIds = options.force
+    ? []
+    : await getPreviouslyClassifiedMeasureRevisionIds();
   const rows = await db.measure.findMany({
     where: {
       election: { slug: options.electionSlug },
       ...(options.candidateSlug
         ? { candidacy: { is: { politician: { is: { slug: options.candidateSlug } } } } }
         : {}),
-      publishedRevisionId: { not: null },
+      publishedRevisionId: {
+        not: null,
+        ...(processedRevisionIds.length > 0 ? { notIn: processedRevisionIds } : {}),
+      },
       ...(!options.force
         ? {
             publishedRevision: {

@@ -70,4 +70,14 @@ describe("parseStrictPagination", () => {
       parseStrictPagination(new URLSearchParams(query), { defaultLimit: 20, maxLimit: 100 })
     ).toBeNull();
   });
+
+  it("respecte une borne explicite sur le numéro de page", () => {
+    expect(
+      parseStrictPagination(new URLSearchParams({ page: "10001" }), {
+        defaultLimit: 20,
+        maxLimit: 20,
+        maxPage: 10_000,
+      })
+    ).toBeNull();
+  });
 });

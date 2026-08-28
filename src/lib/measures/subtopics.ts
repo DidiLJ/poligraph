@@ -6,6 +6,7 @@ import {
 } from "@/config/measure-subtopics";
 import { callAnthropic, extractToolUse } from "@/lib/api/anthropic";
 import { db } from "@/lib/db";
+import { invalidateMeasureTags } from "@/lib/measures/cache";
 import { MeasureValidationError } from "@/lib/measures/errors";
 
 const CLASSIFIER_MODEL = "claude-haiku-4-5-20251001";
@@ -113,6 +114,15 @@ export type ProposeSubtopicsResult = {
   skipped: boolean;
 };
 
+export async function getPreviouslyClassifiedMeasureRevisionIds(): Promise<string[]> {
+  const attempts = await db.auditLog.findMany({
+    where: { action: "PROPOSE_SUBTOPICS", entityType: "MeasureRevision" },
+    select: { entityId: true },
+    distinct: ["entityId"],
+  });
+  return attempts.map((attempt) => attempt.entityId);
+}
+
 export async function proposeMeasureRevisionSubtopics(
   revisionId: string,
   options: { dryRun?: boolean; proposedBy?: string; skipTaxonomySync?: boolean } = {}
@@ -197,7 +207,7 @@ export async function reviewMeasureRevisionSubtopic(input: {
   status: Extract<MeasureSubtopicAssignmentStatus, "APPROVED" | "REJECTED">;
   reviewedBy: string;
 }): Promise<void> {
-  await db.$transaction(async (tx) => {
+  const measure = await db.$transaction(async (tx) => {
     const assignment = await tx.measureRevisionSubtopic.findUnique({
       where: {
         revisionId_subtopicId: {
@@ -205,18 +215,20 @@ export async function reviewMeasureRevisionSubtopic(input: {
           subtopicId: input.subtopicId,
         },
       },
-      select: { status: true },
+      select: {
+        status: true,
+        revision: { select: { measure: { select: { id: true, electionId: true } } } },
+      },
     });
     if (!assignment || assignment.status !== "SUGGESTED") {
       throw new MeasureValidationError("Cette proposition a déjà été traitée");
     }
 
-    await tx.measureRevisionSubtopic.update({
+    const updated = await tx.measureRevisionSubtopic.updateMany({
       where: {
-        revisionId_subtopicId: {
-          revisionId: input.revisionId,
-          subtopicId: input.subtopicId,
-        },
+        revisionId: input.revisionId,
+        subtopicId: input.subtopicId,
+        status: "SUGGESTED",
       },
       data: {
         status: input.status,
@@ -224,6 +236,9 @@ export async function reviewMeasureRevisionSubtopic(input: {
         reviewedBy: input.reviewedBy,
       },
     });
+    if (updated.count !== 1) {
+      throw new MeasureValidationError("Cette proposition a déjà été traitée");
+    }
     await tx.auditLog.create({
       data: {
         action: "REVIEW_SUBTOPIC",
@@ -233,5 +248,9 @@ export async function reviewMeasureRevisionSubtopic(input: {
         userId: input.reviewedBy,
       },
     });
+
+    return assignment.revision.measure;
   });
+
+  invalidateMeasureTags(measure.id, measure.electionId);
 }

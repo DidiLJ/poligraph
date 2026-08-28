@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { THEME_ACCENT_BAR, THEME_CATEGORY_LABELS } from "@/config/labels";
 import type { ThemeCategory } from "@/generated/prisma";
 import { getPublicElectionIdentity } from "@/lib/data/presidential-candidacy-field";
+import { parseStrictPagination } from "@/lib/api/pagination";
 import {
   getPublicMeasureSubtopicCountsByCandidacy,
   listPublicPresidentialMeasures,
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils";
 
 const ELECTION_SLUG = "presidentielle-2027";
 const PAGE_SIZE = 20;
+const MAX_PAGE = 10_000;
 const MAX_QUERY_LENGTH = 120;
 const THEME_ENTRIES = Object.entries(THEME_CATEGORY_LABELS) as [ThemeCategory, string][];
 
@@ -84,8 +86,15 @@ export default async function CandidateMeasuresPage({ params, searchParams }: Pa
   const parsedTheme = rawTheme ? themeFromSlug(rawTheme) : undefined;
   const query = (firstParam(rawSearchParams.q) ?? "").trim().slice(0, MAX_QUERY_LENGTH);
   const rawSubtopic = firstParam(rawSearchParams["sous-sujet"]);
-  const rawPage = Number(firstParam(rawSearchParams.page) ?? "1");
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const paginationParams = new URLSearchParams();
+  const rawPage = firstParam(rawSearchParams.page);
+  if (rawPage) paginationParams.set("page", rawPage);
+  const page =
+    parseStrictPagination(paginationParams, {
+      defaultLimit: PAGE_SIZE,
+      maxLimit: PAGE_SIZE,
+      maxPage: MAX_PAGE,
+    })?.page ?? 1;
 
   if (rawTheme && !parsedTheme) {
     redirect(buildMeasuresUrl(slug, { query: query || undefined }));

@@ -235,22 +235,24 @@ describe("actions de publication des candidatures", () => {
 });
 
 describe("statut politique d'une candidature", () => {
-  it.each(["mailto:redaction@example.org", "ftp://example.org/source", "data:text/plain,test"])(
-    "refuse une source non HTTP(S): %s",
-    async (sourceUrl) => {
-      const a = await actions();
+  it.each([
+    "not a url",
+    "mailto:redaction@example.org",
+    "ftp://example.org/source",
+    "data:text/plain,test",
+  ])("refuse une source non HTTP(S): %s", async (sourceUrl) => {
+    const a = await actions();
 
-      expect(
-        await a.setCandidacyStatusAction({
-          candidacyId: "cand-1",
-          status: "DECLARE",
-          sourceUrl,
-          sourceLabel: "Déclaration officielle",
-        })
-      ).toEqual({ ok: false, message: "Requête invalide." });
-      expect(dbMock.$transaction).not.toHaveBeenCalled();
-    }
-  );
+    expect(
+      await a.setCandidacyStatusAction({
+        candidacyId: "cand-1",
+        status: "DECLARE",
+        sourceUrl,
+        sourceLabel: "Déclaration officielle",
+      })
+    ).toEqual({ ok: false, message: "Requête invalide." });
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
+  });
 
   it("met à jour le statut sourcé et écrit l'audit", async () => {
     dbMock.candidacy.findUnique.mockResolvedValue({ ...SOURCED_CANDIDACY, status: "PRESSENTI" });

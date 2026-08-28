@@ -12,6 +12,8 @@ import {
   PUBLIC_HUB_CANDIDACY_WHERE,
   PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
 } from "@/lib/presidentielle/publication";
+import { THEME_CATEGORY_LABELS } from "@/config/labels";
+import { findMatchingThemes, themeToSlug } from "@/lib/presidentielle/themes";
 
 const MAX_RESULTS = 50;
 
@@ -37,9 +39,17 @@ export type PresidentialMeasureSearchResult = {
   sourceLabel: MeasureSourceKind | null;
 };
 
+export type PresidentialSubjectSearchResult = {
+  type: "subject";
+  theme: ThemeCategory;
+  label: string;
+  url: string;
+};
+
 export type PresidentialCorpusSearchResult = {
   query: string;
   total: number;
+  subjects: PresidentialSubjectSearchResult[];
   candidacies: PresidentialCandidacySearchResult[];
   measures: PresidentialMeasureSearchResult[];
 };
@@ -66,8 +76,15 @@ export async function searchPresidentialCorpus(
   });
   if (election === null) return null;
   if (query.length < 2) {
-    return { query, total: 0, candidacies: [], measures: [] };
+    return { query, total: 0, subjects: [], candidacies: [], measures: [] };
   }
+
+  const subjects: PresidentialSubjectSearchResult[] = findMatchingThemes(query).map((theme) => ({
+    type: "subject",
+    theme,
+    label: THEME_CATEGORY_LABELS[theme],
+    url: `/elections/${election.slug}/sujets/${themeToSlug(theme)}`,
+  }));
 
   const page = await searchPublicPage(query, {
     electionId: election.id,
@@ -178,7 +195,8 @@ export async function searchPresidentialCorpus(
   const discardedFromPage = page.hits.length - candidacies.length - measures.length;
   return {
     query,
-    total: Math.max(0, page.total - discardedFromPage),
+    total: subjects.length + Math.max(0, page.total - discardedFromPage),
+    subjects,
     candidacies,
     measures,
   };

@@ -13,6 +13,12 @@ function response() {
     query: "logement",
     total: 2,
     groups: {
+      subjects: [] as Array<{
+        type: "subject";
+        theme: "LOGEMENT_URBANISME";
+        label: string;
+        url: string;
+      }>,
       candidacies: [
         {
           type: "candidacy",
@@ -72,20 +78,31 @@ describe("PresidentialCorpusSearch", () => {
     expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("affiche les groupes dans l'ordre sans ajouter les sujets", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => response() }));
+  it("affiche les sujets avant les personnalités et les mesures", async () => {
+    const result = response();
+    result.total = 3;
+    result.groups.subjects = [
+      {
+        type: "subject",
+        theme: "LOGEMENT_URBANISME",
+        label: "Logement & Urbanisme",
+        url: "/elections/presidentielle-2027/sujets/logement-urbanisme",
+      },
+    ];
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => result }));
     render(<PresidentialCorpusSearch />);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "logement" } });
     await runDebounce();
 
     const listbox = screen.getByRole("listbox");
-    expect(within(listbox).getAllByRole("option")).toHaveLength(2);
+    expect(within(listbox).getAllByRole("option")).toHaveLength(3);
     const headings = within(listbox).getAllByRole("heading");
     expect(headings.map((heading) => heading.textContent)).toEqual([
+      "Sujets",
       "Personnalités suivies",
       "Mesures",
     ]);
-    expect(within(listbox).queryByRole("heading", { name: /sujets/i })).not.toBeInTheDocument();
+    expect(within(listbox).getByText("Logement & Urbanisme")).toBeInTheDocument();
   });
 
   it("distingue le chargement, l'état vide et l'erreur technique", async () => {
@@ -97,7 +114,7 @@ describe("PresidentialCorpusSearch", () => {
           state: "empty",
           query: "introuvable",
           total: 0,
-          groups: { candidacies: [], measures: [] },
+          groups: { subjects: [], candidacies: [], measures: [] },
         }),
       })
       .mockResolvedValueOnce({ ok: false });
@@ -178,6 +195,14 @@ describe("PresidentialCorpusSearch", () => {
     fireEvent.click(screen.getByRole("button", { name: "Effacer la recherche" }));
     expect(input).toHaveValue("");
     expect(input).toHaveFocus();
+  });
+
+  it("n'affiche qu'un seul bouton d'effacement", () => {
+    render(<PresidentialCorpusSearch />);
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "logement" } });
+    expect(input).toHaveAttribute("type", "text");
+    expect(screen.getAllByRole("button", { name: "Effacer la recherche" })).toHaveLength(1);
   });
 
   it("envoie la page complète avec une requête partageable", () => {

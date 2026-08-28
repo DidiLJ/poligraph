@@ -79,17 +79,25 @@ describe("searchPresidentialCorpus", () => {
       text: "Construire des logements publics",
       url: "/elections/presidentielle-test/mesures/measure-public",
     });
+    expect(result?.subjects).toEqual([
+      {
+        type: "subject",
+        theme: "LOGEMENT_URBANISME",
+        label: "Logement & Urbanisme",
+        url: "/elections/presidentielle-test/sujets/logement-urbanisme",
+      },
+    ]);
   });
 
   it("écarte défensivement un document devenu privé sans exposer son total", async () => {
     const result = await searchPresidentialCorpus("presidentielle-test", "logement", 8);
     expect(result?.measures.map((measure) => measure.id)).not.toContain("measure-stale");
-    expect(result?.total).toBe(2);
+    expect(result?.total).toBe(3);
   });
 
   it("ne consulte pas l'index pour une requête trop courte", async () => {
     const result = await searchPresidentialCorpus("presidentielle-test", "a", 8);
-    expect(result).toMatchObject({ total: 0, candidacies: [], measures: [] });
+    expect(result).toMatchObject({ total: 0, subjects: [], candidacies: [], measures: [] });
     expect(searchPublicPage).not.toHaveBeenCalled();
   });
 });

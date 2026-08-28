@@ -6,7 +6,7 @@ vi.mock("@/lib/presidentielle/corpus-search", () => ({
   searchPresidentialCorpus: (...args: unknown[]) => search(...args),
 }));
 
-import Page, { metadata } from "./page";
+import PresidentialSearchPage, { metadata } from "./page";
 
 describe("page complète de recherche présidentielle", () => {
   beforeEach(() => {
@@ -14,6 +14,7 @@ describe("page complète de recherche présidentielle", () => {
     search.mockResolvedValue({
       query: "logement",
       total: 1,
+      subjects: [],
       candidacies: [],
       measures: [
         {
@@ -36,7 +37,7 @@ describe("page complète de recherche présidentielle", () => {
   });
 
   it("affiche le texte complet et le lien canonique de la mesure", async () => {
-    render(await Page({ searchParams: Promise.resolve({ q: "logement" }) }));
+    render(await PresidentialSearchPage({ searchParams: Promise.resolve({ q: "logement" }) }));
     const link = screen.getByRole("link", {
       name: /Construire davantage de logements accessibles sur tout le territoire/,
     });
@@ -44,22 +45,46 @@ describe("page complète de recherche présidentielle", () => {
     expect(search).toHaveBeenCalledWith("presidentielle-2027", "logement", 50);
   });
 
-  it("rend utile une correspondance claire avec un sujet sans l'ajouter au panneau", async () => {
-    render(await Page({ searchParams: Promise.resolve({ q: "Santé" }) }));
-    expect(screen.getByRole("link", { name: "Comparer le sujet Santé" })).toHaveAttribute(
-      "href",
-      "/elections/presidentielle-2027/sujets/sante"
+  it("présente un sujet comme un résultat sans message vide ni promesse de comparabilité", async () => {
+    search.mockResolvedValue({
+      query: "Logement",
+      total: 1,
+      subjects: [
+        {
+          type: "subject",
+          theme: "LOGEMENT_URBANISME",
+          label: "Logement & Urbanisme",
+          url: "/elections/presidentielle-2027/sujets/logement-urbanisme",
+        },
+      ],
+      candidacies: [],
+      measures: [],
+    });
+
+    render(
+      await PresidentialSearchPage({
+        searchParams: Promise.resolve({ q: "Logement" }),
+      })
     );
+
+    expect(screen.getByRole("heading", { level: 2, name: "Sujets" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Logement & Urbanisme/ })).toHaveAttribute(
+      "href",
+      "/elections/presidentielle-2027/sujets/logement-urbanisme"
+    );
+    expect(screen.queryByText(/Aucun résultat/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sujet comparable/)).not.toBeInTheDocument();
   });
 
   it("reprend l'état vide prudent du handoff", async () => {
     search.mockResolvedValue({
       query: "inconnu",
       total: 0,
+      subjects: [],
       candidacies: [],
       measures: [],
     });
-    render(await Page({ searchParams: Promise.resolve({ q: "inconnu" }) }));
+    render(await PresidentialSearchPage({ searchParams: Promise.resolve({ q: "inconnu" }) }));
     expect(
       screen.getByRole("heading", { name: "Aucun résultat pour « inconnu »" })
     ).toBeInTheDocument();

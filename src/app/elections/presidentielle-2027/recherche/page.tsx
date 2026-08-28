@@ -9,11 +9,7 @@ import {
   THEME_CATEGORY_LABELS,
 } from "@/config/labels";
 import { searchPresidentialCorpus } from "@/lib/presidentielle/corpus-search";
-import {
-  PRESIDENTIELLE_2027_SLUG,
-  THEMES_IN_ORDER,
-  themeToSlug,
-} from "@/lib/presidentielle/themes";
+import { PRESIDENTIELLE_2027_SLUG } from "@/lib/presidentielle/themes";
 
 const PAGE_PATH = "/elections/presidentielle-2027/recherche";
 
@@ -24,30 +20,6 @@ export const metadata: Metadata = {
   alternates: { canonical: PAGE_PATH },
 };
 
-function normalize(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("fr")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function matchingTheme(query: string) {
-  const normalized = normalize(query);
-  const exact = THEMES_IN_ORDER.find(
-    (theme) =>
-      normalize(THEME_CATEGORY_LABELS[theme]) === normalized ||
-      normalize(themeToSlug(theme)) === normalized
-  );
-  if (exact || normalized.length < 3) return exact;
-
-  const tokenMatches = THEMES_IN_ORDER.filter((theme) =>
-    normalize(THEME_CATEGORY_LABELS[theme]).split(" ").includes(normalized)
-  );
-  return tokenMatches.length === 1 ? tokenMatches[0] : undefined;
-}
-
 export default async function PresidentialSearchPage({
   searchParams,
 }: {
@@ -57,7 +29,6 @@ export default async function PresidentialSearchPage({
   const raw = Array.isArray(params.q) ? params.q[0] : params.q;
   const query = raw?.trim().slice(0, 200) ?? "";
   const result = await searchPresidentialCorpus(PRESIDENTIELLE_2027_SLUG, query, 50);
-  const theme = matchingTheme(query);
   const hasResults = result !== null && result.total > 0;
 
   return (
@@ -101,19 +72,6 @@ export default async function PresidentialSearchPage({
           </button>
         </form>
 
-        {theme && (
-          <aside className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-5">
-            <p className="font-bold">Cette recherche correspond à un sujet comparable.</p>
-            <Link
-              href={"/elections/presidentielle-2027/sujets/" + themeToSlug(theme)}
-              className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-            >
-              Comparer le sujet {THEME_CATEGORY_LABELS[theme]}
-              <ArrowRight aria-hidden="true" className="h-4 w-4" />
-            </Link>
-          </aside>
-        )}
-
         {query.length < 2 ? (
           <p className="mt-10 text-muted-foreground">
             Saisissez au moins deux caractères pour rechercher dans le corpus public.
@@ -134,6 +92,35 @@ export default async function PresidentialSearchPage({
             <p className="text-sm text-muted-foreground">
               {result.total} résultat{result.total > 1 ? "s" : ""} dans le corpus public
             </p>
+            {result.subjects.length > 0 && (
+              <section aria-labelledby="full-subjects-title">
+                <h2
+                  id="full-subjects-title"
+                  className="font-display text-2xl font-extrabold tracking-tight"
+                >
+                  Sujets
+                </h2>
+                <ul className="mt-4 space-y-3">
+                  {result.subjects.map((subject) => (
+                    <li key={subject.theme}>
+                      <Link
+                        href={subject.url}
+                        prefetch={false}
+                        className="flex min-h-16 items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5 hover:border-primary/50 hover:bg-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      >
+                        <span>
+                          <span className="block text-lg font-bold">{subject.label}</span>
+                          <span className="mt-1 block text-sm text-muted-foreground">
+                            Sujet du corpus 2027
+                          </span>
+                        </span>
+                        <ArrowRight aria-hidden="true" className="h-5 w-5 shrink-0" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             {result.candidacies.length > 0 && (
               <section aria-labelledby="full-candidacies-title">
                 <h2
@@ -147,6 +134,7 @@ export default async function PresidentialSearchPage({
                     <li key={candidacy.id}>
                       <Link
                         href={candidacy.url}
+                        prefetch={false}
                         className="flex min-h-20 items-center gap-4 rounded-2xl border border-border bg-card p-4 hover:border-primary/50 hover:bg-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       >
                         <PoliticianAvatar
@@ -185,6 +173,7 @@ export default async function PresidentialSearchPage({
                       <li key={measure.id}>
                         <Link
                           href={measure.url}
+                          prefetch={false}
                           className="block rounded-2xl border border-border bg-card p-5 hover:border-primary/50 hover:bg-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         >
                           <p className="text-lg font-bold leading-relaxed">{measure.text}</p>

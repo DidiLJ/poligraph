@@ -12,6 +12,7 @@ import {
 import type {
   PresidentialCandidacySearchResult,
   PresidentialMeasureSearchResult,
+  PresidentialSubjectSearchResult,
 } from "@/lib/presidentielle/corpus-search";
 import { cn } from "@/lib/utils";
 
@@ -23,12 +24,14 @@ type ApiResponse = {
   query: string;
   total: number;
   groups: {
+    subjects: PresidentialSubjectSearchResult[];
     candidacies: PresidentialCandidacySearchResult[];
     measures: PresidentialMeasureSearchResult[];
   };
 };
 
 type Option =
+  | { kind: "subject"; value: PresidentialSubjectSearchResult }
   | { kind: "candidacy"; value: PresidentialCandidacySearchResult }
   | { kind: "measure"; value: PresidentialMeasureSearchResult };
 
@@ -47,6 +50,10 @@ export function PresidentialCorpusSearch() {
   const [hydrated, setHydrated] = useState(false);
   const options = useMemo<Option[]>(
     () => [
+      ...(response?.groups.subjects.map((value) => ({
+        kind: "subject" as const,
+        value,
+      })) ?? []),
       ...(response?.groups.candidacies.map((value) => ({
         kind: "candidacy" as const,
         value,
@@ -173,14 +180,15 @@ export function PresidentialCorpusSearch() {
           }}
         >
           <label htmlFor="presidential-corpus-query" className="mb-2 block font-bold">
-            Rechercher une mesure ou une personnalité suivie
+            Rechercher un sujet, une mesure ou une personnalité suivie
           </label>
           <div className="flex min-h-14 items-center rounded-2xl border border-border bg-card shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <Search aria-hidden="true" className="ml-4 h-5 w-5 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
               id="presidential-corpus-query"
-              type="search"
+              type="text"
+              inputMode="search"
               disabled={!hydrated}
               value={query}
               placeholder="logement, retraites, une personnalité…"
@@ -256,11 +264,50 @@ export function PresidentialCorpusSearch() {
             )}
             {status === "idle" && response && options.length > 0 && (
               <>
+                {response.groups.subjects.length > 0 && (
+                  <div role="group" aria-labelledby={listboxId + "-subjects"}>
+                    <h3
+                      id={listboxId + "-subjects"}
+                      className="px-4 pb-1 pt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground"
+                    >
+                      Sujets
+                    </h3>
+                    {response.groups.subjects.map((result) => {
+                      const currentIndex = optionIndex++;
+                      return (
+                        <button
+                          key={result.theme}
+                          id={listboxId + "-option-" + currentIndex}
+                          type="button"
+                          role="option"
+                          aria-selected={selectedIndex === currentIndex}
+                          className={cn(
+                            "min-h-14 w-full px-4 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary",
+                            selectedIndex === currentIndex ? "bg-accent" : "hover:bg-accent/60"
+                          )}
+                          onMouseEnter={() => {
+                            selectedIndexRef.current = currentIndex;
+                            setSelectedIndex(currentIndex);
+                          }}
+                          onClick={() => navigate(result.url)}
+                        >
+                          <span className="block font-bold">{result.label}</span>
+                          <span className="mt-1 block text-sm text-muted-foreground">
+                            Sujet du corpus 2027
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 {response.groups.candidacies.length > 0 && (
                   <div role="group" aria-labelledby={listboxId + "-candidacies"}>
                     <h3
                       id={listboxId + "-candidacies"}
-                      className="px-4 pb-1 pt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground"
+                      className={cn(
+                        "px-4 pb-1 pt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground",
+                        response.groups.subjects.length > 0 && "border-t border-border"
+                      )}
                     >
                       Personnalités suivies
                     </h3>
@@ -362,8 +409,8 @@ export function PresidentialCorpusSearch() {
         )}
       </div>
       <p className="mt-3 text-sm text-muted-foreground">
-        Recherche limitée aux contenus publics de l{"'"}élection présidentielle 2027. Une absence de
-        résultat ne prouve pas qu{"'"}une proposition n{"'"}existe pas.
+        Recherche limitée aux sujets et contenus publics de l{"'"}élection présidentielle 2027. Une
+        absence de résultat ne prouve pas qu{"'"}une proposition n{"'"}existe pas.
       </p>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {liveMessage}

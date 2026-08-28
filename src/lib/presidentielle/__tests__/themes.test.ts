@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { themeToSlug, parseThemeSlug, THEMES_IN_ORDER, PRESIDENTIELLE_2027_SLUG } from "../themes";
+import {
+  findMatchingThemes,
+  themeToSlug,
+  parseThemeSlug,
+  THEMES_IN_ORDER,
+  PRESIDENTIELLE_2027_SLUG,
+} from "../themes";
 import { THEME_CATEGORY_LABELS } from "@/config/labels";
 import type { ThemeCategory } from "@/generated/prisma";
 
@@ -22,5 +28,12 @@ describe("theme route helpers", () => {
   });
   it("pins the slug", () => {
     expect(PRESIDENTIELLE_2027_SLUG).toBe("presidentielle-2027");
+  });
+  it("retrouve un sujet par un mot de son libellé, accents neutralisés", () => {
+    expect(findMatchingThemes("Logement")).toEqual(["LOGEMENT_URBANISME"]);
+    expect(findMatchingThemes("santé")).toEqual(["SANTE"]);
+  });
+  it("ne transforme pas un mot étranger à la taxonomie en sujet", () => {
+    expect(findMatchingThemes("introuvable")).toEqual([]);
   });
 });

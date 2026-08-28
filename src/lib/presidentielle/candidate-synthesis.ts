@@ -139,6 +139,17 @@ export type CandidateSynthesisInput = {
   measures: Array<{ theme: ThemeCategory; text: string }>;
 };
 
+type ProgrammeReference = {
+  ref: string;
+  theme: ThemeCategory;
+  text: string;
+};
+
+type ProgrammePlan = {
+  references: ProgrammeReference[];
+  expectedThemes: ThemeCategory[];
+};
+
 /**
  * Neutralises a database value before it reaches the prompt.
  *
@@ -164,6 +175,11 @@ function safe(value: string): string {
       .trim()
       .slice(0, FIELD_LIMIT)
   );
+}
+
+/** Reader-facing measure wording, changed only where the house style already requires it. */
+function canonicalMeasureText(value: string): string {
+  return value.replace(/[—–]/g, "-").replace(/\s+/g, " ").trim();
 }
 
 function formatMandate(mandate: SynthesisMandate): string {
@@ -200,9 +216,39 @@ Forme :
 - Entre ${synthesisTargetRange(material).min} et ${synthesisTargetRange(material).max} mots au total.
 - Aucun tiret cadratin ni demi-cadratin. Utilise virgules, parenthèses ou deux-points.
 - Pas de phrase de conclusion générale du type « une candidature qui entend peser ». Termine sur un fait.
-- Si le parcours ou le programme est vide, dis-le en une phrase simple plutôt que de meubler.
+- Si le parcours est vide, dis-le en une phrase simple plutôt que de meubler. Le programme vide suit le marqueur imposé ci-dessous et sa phrase est ajoutée par le serveur.
 
-Réponds uniquement par le texte de la synthèse, sans titre ni préambule.`;
+Format interne obligatoire :
+- Place le premier paragraphe dans <parcours>...</parcours>, lui-même dans une unique balise <synthese>...</synthese>.
+- Si des mesures sont fournies, ajoute ensuite <programme> avec uniquement des balises vides <engagement ref="M1" />. Choisis les références qui couvrent les thèmes attendus, sans aucun texte libre dans <programme>.
+- Si aucune mesure n'est fournie, ajoute uniquement <programme-vide /> après le parcours.
+- Le serveur compose lui-même le paragraphe public du programme à partir des formulations exactes référencées. N'écris et ne paraphrase aucun engagement.
+- Ces balises sont retirées après contrôle et ne seront jamais montrées au lecteur.`;
+}
+
+function buildProgrammePlan(input: CandidateSynthesisInput): ProgrammePlan {
+  const references = input.measures.map((measure, index) => ({
+    ref: `M${index + 1}`,
+    theme: measure.theme,
+    text: canonicalMeasureText(measure.text),
+  }));
+  const counts = new Map<ThemeCategory, number>();
+  for (const reference of references) {
+    counts.set(reference.theme, (counts.get(reference.theme) ?? 0) + 1);
+  }
+  const themes = [...counts.entries()].sort(
+    ([themeA, countA], [themeB, countB]) =>
+      countB - countA ||
+      THEME_CATEGORY_LABELS[themeA].localeCompare(THEME_CATEGORY_LABELS[themeB], "fr")
+  );
+  // Theme frequency is context, not an editorial ranking. It gives a stable, candidate-agnostic
+  // answer to “principal themes” while the explicit cap prevents the largest family swallowing the
+  // paragraph. Eight short examples fit the large 250-word format; five fit the standard one.
+  const coverageLimit = input.measures.length >= LARGE_PROGRAMME_MEASURES ? 8 : 5;
+  return {
+    references,
+    expectedThemes: themes.slice(0, coverageLimit).map(([theme]) => theme),
+  };
 }
 
 export function buildCandidateSynthesisPrompt(input: CandidateSynthesisInput): string {
@@ -211,31 +257,26 @@ export function buildCandidateSynthesisPrompt(input: CandidateSynthesisInput): s
       ? input.mandates.map(formatMandate).join("\n")
       : "Aucun mandat enregistré sur le site.";
 
-  const byTheme = new Map<ThemeCategory, string[]>();
-  for (const measure of input.measures) {
-    if (!byTheme.has(measure.theme)) byTheme.set(measure.theme, []);
-    byTheme.get(measure.theme)!.push(safe(measure.text));
+  const programmePlan = buildProgrammePlan(input);
+  const byTheme = new Map<ThemeCategory, ProgrammeReference[]>();
+  for (const reference of programmePlan.references) {
+    if (!byTheme.has(reference.theme)) byTheme.set(reference.theme, []);
+    byTheme.get(reference.theme)!.push(reference);
   }
   const themes = [...byTheme.entries()].sort(
-    ([themeA, textsA], [themeB, textsB]) =>
-      textsB.length - textsA.length ||
+    ([themeA, referencesA], [themeB, referencesB]) =>
+      referencesB.length - referencesA.length ||
       THEME_CATEGORY_LABELS[themeA].localeCompare(THEME_CATEGORY_LABELS[themeB], "fr")
   );
-  // Theme frequency is context, not an editorial ranking. It gives a stable, candidate-agnostic
-  // answer to “principal themes” while the explicit cap prevents the largest family swallowing the
-  // paragraph. Eight short examples fit the large 250-word format; five fit the standard one.
-  const coverageLimit = input.measures.length >= LARGE_PROGRAMME_MEASURES ? 8 : 5;
-  const expectedThemes = themes
-    .slice(0, coverageLimit)
-    .map(([theme]) => THEME_CATEGORY_LABELS[theme]);
+  const expectedThemes = programmePlan.expectedThemes.map((theme) => THEME_CATEGORY_LABELS[theme]);
   const measures =
     themes.length > 0
       ? themes
           .map(
-            ([theme, texts]) =>
-              `${THEME_CATEGORY_LABELS[theme]} (${texts.length} mesure${texts.length > 1 ? "s" : ""}) :\n${texts
-                .sort((a, b) => a.localeCompare(b, "fr"))
-                .map((t) => `  - ${t}`)
+            ([theme, references]) =>
+              `${THEME_CATEGORY_LABELS[theme]} (${references.length} mesure${references.length > 1 ? "s" : ""}) :\n${references
+                .sort((a, b) => a.text.localeCompare(b.text, "fr"))
+                .map((reference) => `  - [${reference.ref}] ${safe(reference.text)}`)
                 .join("\n")}`
           )
           .join("\n")
@@ -244,8 +285,8 @@ export function buildCandidateSynthesisPrompt(input: CandidateSynthesisInput): s
     themes.length > 0
       ? themes
           .map(
-            ([theme, texts]) =>
-              `- ${THEME_CATEGORY_LABELS[theme]} : ${texts.length} mesure${texts.length > 1 ? "s" : ""}`
+            ([theme, references]) =>
+              `- ${THEME_CATEGORY_LABELS[theme]} : ${references.length} mesure${references.length > 1 ? "s" : ""}`
           )
           .join("\n")
       : "Aucun thème représenté.";
@@ -288,6 +329,159 @@ export type SynthesisScreen =
   | { ok: true; text: string }
   | { ok: false; reason: string; detail: string };
 
+export const EMPTY_PROGRAMME_SENTENCE =
+  "Aucune mesure n'est publiée dans le cadre de son programme.";
+
+function asSentence(value: string): string {
+  return /[.!?]$/u.test(value) ? value : `${value}.`;
+}
+
+function wordCount(value: string): number {
+  return value.trim() === "" ? 0 : value.trim().split(/\s+/).length;
+}
+
+/**
+ * Validates the internal evidence markup and returns only the reader-facing prose.
+ *
+ * Theme names or paraphrases reported beside the prose would be unverifiable declarations by the
+ * same model that wrote it. The provider therefore returns references only. The screen resolves
+ * them against the input, derives their themes, and constructs the public paragraph from the
+ * canonical source wording. No generated verb can reverse or soften a published action.
+ */
+export function screenCandidateSynthesis(
+  raw: string,
+  input: CandidateSynthesisInput
+): SynthesisScreen {
+  const wrapper =
+    /^<synthese>\s*<parcours>([\s\S]*?)<\/parcours>\s*([\s\S]*?)\s*<\/synthese>$/u.exec(raw.trim());
+  if (!wrapper) {
+    return {
+      ok: false,
+      reason: "format_structure",
+      detail: "la réponse doit contenir un parcours structuré dans une unique balise <synthese>",
+    };
+  }
+
+  const career = wrapper[1]!.trim();
+  const programmeOutput = wrapper[2]!.trim();
+  if (!/\p{L}{2,}/u.test(career) || !/[.!?]$/u.test(career)) {
+    return {
+      ok: false,
+      reason: "parcours_vide",
+      detail: "le parcours doit contenir une phrase non vide",
+    };
+  }
+  if (/[<>]/u.test(career)) {
+    return {
+      ok: false,
+      reason: "format_structure",
+      detail: "le parcours contient une balise interne interdite",
+    };
+  }
+
+  const plan = buildProgrammePlan(input);
+  if (plan.references.length === 0) {
+    if (!/^<programme-vide\s*\/>$/u.test(programmeOutput)) {
+      return {
+        ok: false,
+        reason: "programme_vide_invalide",
+        detail: "une candidature sans mesure doit utiliser uniquement <programme-vide />",
+      };
+    }
+    return screenSynthesis({
+      text: `${career}\n\n${EMPTY_PROGRAMME_SENTENCE}`,
+      generatedText: career,
+      exemptSourceTexts: [],
+      material: synthesisMaterial(input),
+    });
+  }
+
+  const programme = /^<programme>\s*([\s\S]*?)\s*<\/programme>$/u.exec(programmeOutput);
+  if (!programme) {
+    return {
+      ok: false,
+      reason: "format_programme",
+      detail: "les références doivent être contenues dans une unique balise <programme>",
+    };
+  }
+  const references = new Map(plan.references.map((reference) => [reference.ref, reference]));
+  const themeCounts = new Map<ThemeCategory, number>();
+  const usedReferences = new Set<string>();
+  const selectedReferences: ProgrammeReference[] = [];
+  const engagementPattern = /<engagement ref="(M[1-9][0-9]*)"\s*\/>/gu;
+  let failure: Extract<SynthesisScreen, { ok: false }> | null = null;
+  const remainder = programme[1]!.replace(engagementPattern, (_match, ref: string) => {
+    const source = references.get(ref);
+    if (!source) {
+      failure = {
+        ok: false,
+        reason: "preuve_inconnue",
+        detail: `la référence ${ref} ne correspond à aucune mesure fournie`,
+      };
+      return "";
+    }
+    if (usedReferences.has(ref)) {
+      failure = {
+        ok: false,
+        reason: "preuve_repetee",
+        detail: `la référence ${ref} est utilisée plusieurs fois`,
+      };
+      return "";
+    }
+    usedReferences.add(ref);
+    selectedReferences.push(source);
+    themeCounts.set(source.theme, (themeCounts.get(source.theme) ?? 0) + 1);
+    return "";
+  });
+  if (failure) return failure;
+  if (remainder.trim() !== "") {
+    return {
+      ok: false,
+      reason: "format_structure",
+      detail: "le programme doit contenir uniquement des références de mesures sans texte libre",
+    };
+  }
+
+  for (const theme of plan.expectedThemes) {
+    if (!themeCounts.has(theme)) {
+      return {
+        ok: false,
+        reason: "couverture_theme",
+        detail: `aucun engagement vérifiable ne représente le thème ${THEME_CATEGORY_LABELS[theme]}`,
+      };
+    }
+  }
+  for (const [theme, count] of themeCounts) {
+    if (count > 2) {
+      return {
+        ok: false,
+        reason: "concentration_theme",
+        detail: `${count} engagements représentent le thème ${THEME_CATEGORY_LABELS[theme]}, maximum 2`,
+      };
+    }
+  }
+
+  const programmeText = `Son programme comprend notamment les engagements suivants. ${selectedReferences
+    .map((reference) => asSentence(reference.text))
+    .join(" ")}`;
+  // Coverage needs one measure per expected theme, never every measure the provider selected. When
+  // it chose two, exempt the shorter one: the second is optional and remains inside the cap. Text
+  // from a non-required theme is optional too and is never deducted.
+  const exemptSourceTexts = plan.expectedThemes.map(
+    (theme) =>
+      selectedReferences
+        .filter((reference) => reference.theme === theme)
+        .map((reference) => asSentence(reference.text))
+        .sort((a, b) => wordCount(a) - wordCount(b))[0]!
+  );
+  return screenSynthesis({
+    text: `${career}\n\n${programmeText}`,
+    generatedText: career,
+    exemptSourceTexts,
+    material: synthesisMaterial(input),
+  });
+}
+
 /**
  * Screens a generated synthesis before anything stores or displays it.
  *
@@ -296,18 +490,25 @@ export type SynthesisScreen =
  * reach a length, a model that reaches for the em dash it was told not to use.
  * A rejection is not a fallback to a degraded text: the caller stores nothing.
  */
-export function screenSynthesis(
-  raw: string,
-  /**
-   * The material the text was written from. Omitted, it defaults to the richest case, which is the
-   * strictest floor: a caller that forgets to say gets the demanding answer rather than a free pass.
-   */
-  material: SynthesisMaterial = {
+export function screenSynthesis({
+  text: raw,
+  generatedText,
+  exemptSourceTexts,
+  material = {
     mandateCount: SUBSTANTIAL_MANDATES,
     voteCount: SUBSTANTIAL_VOTES,
     measureCount: SUBSTANTIAL_MEASURES,
-  }
-): SynthesisScreen {
+  },
+}: {
+  /** Complete reader-facing text, including canonical source wording. */
+  text: string;
+  /** Provider-authored segment only. Judicial vocabulary is forbidden here, not in sources. */
+  generatedText: string;
+  /** One canonical source formulation per mandatory theme, excluded from the flexible maximum. */
+  exemptSourceTexts: string[];
+  /** Omitted, the strictest ordinary floor applies. */
+  material?: SynthesisMaterial;
+}): SynthesisScreen {
   const minWords = synthesisFloor(material);
   const text = raw.trim();
   if (text === "") return { ok: false, reason: "vide", detail: "le modèle n'a rien renvoyé" };
@@ -319,9 +520,9 @@ export function screenSynthesis(
     return { ok: false, reason: "tiret_long", detail: `caractère « ${dash[0]} » interdit` };
   }
 
-  // Judicial vocabulary. A synthesis that mentions a case is not edited down, it is
-  // thrown away: the model was told plainly, and a text that ignored that rule cannot
-  // be trusted on the rest either.
+  // Judicial vocabulary is screened only in provider-authored prose. Canonical programme measures
+  // may legitimately propose a tribunal or a parquet and are inserted after generation from a
+  // reviewed source. Passing both segments explicitly makes that trust boundary hard to erase.
   //
   // Unicode lookarounds rather than `\b`, and that is not a style choice: `\b` sits
   // between a word character and a non-word one, and JavaScript counts `é` as a
@@ -330,13 +531,13 @@ export function screenSynthesis(
   // followed by one, so the whole family was affected.
   const judicial =
     /(?<!\p{L})(mises? en examen|condamn(?:é|ée|és|ées|ation|ations)|procès|enquête judiciaire|garde à vue|instruction judiciaire|tribunal|cour d'appel|parquet|inéligibilité)(?!\p{L})/iu.exec(
-      text
+      generatedText
     );
   if (judicial) {
     return { ok: false, reason: "judiciaire", detail: `mention « ${judicial[0]} »` };
   }
 
-  const words = text.split(/\s+/).filter(Boolean).length;
+  const words = wordCount(text);
   if (words < minWords) {
     return {
       ok: false,
@@ -345,11 +546,24 @@ export function screenSynthesis(
     };
   }
   const maxWords = synthesisTargetRange(material).max;
-  if (words > maxWords) {
+  const absentSource = exemptSourceTexts.find((sourceText) => !text.includes(sourceText));
+  if (absentSource) {
+    return {
+      ok: false,
+      reason: "source_absente",
+      detail: "le texte exclu du plafond ne figure pas dans la synthèse finale",
+    };
+  }
+  const sourceWords = exemptSourceTexts.reduce(
+    (total, sourceText) => total + wordCount(sourceText),
+    0
+  );
+  const cappedWords = Math.max(0, words - sourceWords);
+  if (cappedWords > maxWords) {
     return {
       ok: false,
       reason: "trop_long",
-      detail: `${words} mots, maximum ${maxWords}`,
+      detail: `${cappedWords} mots non sourcés, maximum ${maxWords}`,
     };
   }
 

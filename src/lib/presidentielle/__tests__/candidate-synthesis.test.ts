@@ -48,7 +48,12 @@ function words(n: number): string {
 
 /** Most pure-screen tests use one generated segment as the complete text. */
 function screenSynthesis(raw: string, material?: SynthesisMaterial) {
-  return screenSynthesisSegments({ text: raw, generatedText: raw, sourceText: "", material });
+  return screenSynthesisSegments({
+    text: raw,
+    generatedText: raw,
+    exemptSourceTexts: [],
+    material,
+  });
 }
 
 describe("buildCandidateSynthesisPrompt", () => {
@@ -279,6 +284,25 @@ describe("screenCandidateSynthesis", () => {
     expect(result).toMatchObject({ ok: true });
     expect(result.ok && result.text).toContain("source219.");
   });
+
+  it("charges an optional second source from the same theme against the maximum", () => {
+    const longOptional = Array.from(
+      { length: SYNTHESIS_MAX_WORDS + 20 },
+      (_, i) => `option${i}`
+    ).join(" ");
+    const input: CandidateSynthesisInput = {
+      ...BASE,
+      measures: [
+        { theme: "SANTE", text: "Rouvrir des maternités de proximité." },
+        { theme: "SANTE", text: `${longOptional}.` },
+      ],
+    };
+
+    expect(screenCandidateSynthesis(structured(["M2", "M1"]), input)).toMatchObject({
+      ok: false,
+      reason: "trop_long",
+    });
+  });
 });
 
 describe("buildSynthesisSystemPrompt", () => {
@@ -366,7 +390,7 @@ describe("screenSynthesis", () => {
       screenSynthesisSegments({
         text: good,
         generatedText: good,
-        sourceText: "formulation canonique absente",
+        exemptSourceTexts: ["formulation canonique absente"],
       })
     ).toMatchObject({ ok: false, reason: "source_absente" });
   });

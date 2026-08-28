@@ -336,6 +336,10 @@ function asSentence(value: string): string {
   return /[.!?]$/u.test(value) ? value : `${value}.`;
 }
 
+function wordCount(value: string): number {
+  return value.trim() === "" ? 0 : value.trim().split(/\s+/).length;
+}
+
 /**
  * Validates the internal evidence markup and returns only the reader-facing prose.
  *
@@ -387,7 +391,7 @@ export function screenCandidateSynthesis(
     return screenSynthesis({
       text: `${career}\n\n${EMPTY_PROGRAMME_SENTENCE}`,
       generatedText: career,
-      sourceText: "",
+      exemptSourceTexts: [],
       material: synthesisMaterial(input),
     });
   }
@@ -460,10 +464,20 @@ export function screenCandidateSynthesis(
   const programmeText = `Son programme comprend notamment les engagements suivants. ${selectedReferences
     .map((reference) => asSentence(reference.text))
     .join(" ")}`;
+  // Coverage needs one measure per expected theme, never every measure the provider selected. When
+  // it chose two, exempt the shorter one: the second is optional and remains inside the cap. Text
+  // from a non-required theme is optional too and is never deducted.
+  const exemptSourceTexts = plan.expectedThemes.map(
+    (theme) =>
+      selectedReferences
+        .filter((reference) => reference.theme === theme)
+        .map((reference) => asSentence(reference.text))
+        .sort((a, b) => wordCount(a) - wordCount(b))[0]!
+  );
   return screenSynthesis({
     text: `${career}\n\n${programmeText}`,
     generatedText: career,
-    sourceText: selectedReferences.map((reference) => asSentence(reference.text)).join(" "),
+    exemptSourceTexts,
     material: synthesisMaterial(input),
   });
 }
@@ -479,7 +493,7 @@ export function screenCandidateSynthesis(
 export function screenSynthesis({
   text: raw,
   generatedText,
-  sourceText,
+  exemptSourceTexts,
   material = {
     mandateCount: SUBSTANTIAL_MANDATES,
     voteCount: SUBSTANTIAL_VOTES,
@@ -490,8 +504,8 @@ export function screenSynthesis({
   text: string;
   /** Provider-authored segment only. Judicial vocabulary is forbidden here, not in sources. */
   generatedText: string;
-  /** Canonical source wording inserted by the server and excluded from the flexible maximum. */
-  sourceText: string;
+  /** One canonical source formulation per mandatory theme, excluded from the flexible maximum. */
+  exemptSourceTexts: string[];
   /** Omitted, the strictest ordinary floor applies. */
   material?: SynthesisMaterial;
 }): SynthesisScreen {
@@ -523,7 +537,7 @@ export function screenSynthesis({
     return { ok: false, reason: "judiciaire", detail: `mention « ${judicial[0]} »` };
   }
 
-  const words = text.split(/\s+/).filter(Boolean).length;
+  const words = wordCount(text);
   if (words < minWords) {
     return {
       ok: false,
@@ -532,14 +546,18 @@ export function screenSynthesis({
     };
   }
   const maxWords = synthesisTargetRange(material).max;
-  if (sourceText !== "" && !text.includes(sourceText)) {
+  const absentSource = exemptSourceTexts.find((sourceText) => !text.includes(sourceText));
+  if (absentSource) {
     return {
       ok: false,
       reason: "source_absente",
       detail: "le texte exclu du plafond ne figure pas dans la synthèse finale",
     };
   }
-  const sourceWords = sourceText.trim() === "" ? 0 : sourceText.trim().split(/\s+/).length;
+  const sourceWords = exemptSourceTexts.reduce(
+    (total, sourceText) => total + wordCount(sourceText),
+    0
+  );
   const cappedWords = Math.max(0, words - sourceWords);
   if (cappedWords > maxWords) {
     return {

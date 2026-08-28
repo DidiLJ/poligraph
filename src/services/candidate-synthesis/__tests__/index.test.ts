@@ -338,4 +338,20 @@ describe("generateCandidateSynthesis", () => {
       "source219."
     );
   });
+
+  it("ne persiste pas une seconde formulation optionnelle qui dépasse le plafond", async () => {
+    const longOptional = Array.from({ length: 220 }, (_, i) => `option${i}`).join(" ");
+    dbMock.measure.findMany.mockResolvedValue([
+      { theme: "SANTE", publishedRevision: { text: "Rouvrir des maternités de proximité." } },
+      { theme: "SANTE", publishedRevision: { text: `${longOptional}.` } },
+    ]);
+    callAnthropicMock.mockResolvedValue(anthropicText(providerOutput(["M2", "M1"])));
+    const { generateCandidateSynthesis } = await service();
+
+    const result = await generateCandidateSynthesis("cand-1", { persist: true });
+
+    expect(result).toMatchObject({ ok: false, reason: "refuse" });
+    expect(callAnthropicMock).toHaveBeenCalledTimes(2);
+    expect(dbMock.candidacyPresidential.update).not.toHaveBeenCalled();
+  });
 });

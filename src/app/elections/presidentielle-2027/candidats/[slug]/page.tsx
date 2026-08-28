@@ -232,6 +232,8 @@ export default async function CandidateFichePage({ params }: PageProps) {
             <CandidateThemes
               themes={detail.themes}
               electionSlug={candidacy.electionSlug}
+              candidateSlug={slug}
+              measureCount={candidacy.publishedMeasureCount}
               lastReviewedAt={candidacy.lastReviewedAt}
             />
 

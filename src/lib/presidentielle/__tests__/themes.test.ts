@@ -33,6 +33,12 @@ describe("theme route helpers", () => {
     expect(findMatchingThemes("Logement")).toEqual(["LOGEMENT_URBANISME"]);
     expect(findMatchingThemes("santé")).toEqual(["SANTE"]);
   });
+  it("complète les mots d'un sujet à partir de trois caractères", () => {
+    expect(findMatchingThemes("loge")).toEqual(["LOGEMENT_URBANISME"]);
+    expect(findMatchingThemes("urban")).toEqual(["LOGEMENT_URBANISME"]);
+    expect(findMatchingThemes("sant")).toEqual(["SANTE"]);
+    expect(findMatchingThemes("lo")).toEqual([]);
+  });
   it("ne transforme pas un mot étranger à la taxonomie en sujet", () => {
     expect(findMatchingThemes("introuvable")).toEqual([]);
   });

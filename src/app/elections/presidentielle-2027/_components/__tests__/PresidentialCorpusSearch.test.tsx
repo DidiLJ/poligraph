@@ -125,7 +125,7 @@ describe("PresidentialCorpusSearch", () => {
     fireEvent.change(input, { target: { value: "introuvable" } });
     expect(screen.getByText("Recherche en cours…")).toBeInTheDocument();
     await runDebounce();
-    expect(screen.getByText(/Aucun résultat dans le corpus public/)).toBeInTheDocument();
+    expect(screen.getByText(/Aucune suggestion pour/)).toBeInTheDocument();
 
     fireEvent.change(input, { target: { value: "erreur" } });
     await runDebounce();

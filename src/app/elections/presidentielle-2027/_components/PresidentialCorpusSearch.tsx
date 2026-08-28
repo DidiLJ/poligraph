@@ -259,7 +259,7 @@ export function PresidentialCorpusSearch() {
             )}
             {status === "idle" && response?.state === "empty" && (
               <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-                Aucun résultat dans le corpus public pour « {query.trim()} ».
+                Aucune suggestion pour « {query.trim()} ».
               </p>
             )}
             {status === "idle" && response && options.length > 0 && (

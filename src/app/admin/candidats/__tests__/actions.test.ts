@@ -15,7 +15,7 @@ const invalidateCandidacyTagsMock = vi.fn();
 
 const dbMock = {
   $transaction: vi.fn(),
-  candidacy: { findUnique: vi.fn() },
+  candidacy: { findUnique: vi.fn(), update: vi.fn() },
   candidacyPresidential: { upsert: vi.fn() },
   programEdition: { findUnique: vi.fn(), update: vi.fn() },
   auditLog: { create: vi.fn() },
@@ -58,6 +58,7 @@ beforeEach(() => {
   isAuthenticatedMock.mockResolvedValue(true);
   dbMock.candidacy.findUnique.mockResolvedValue(SOURCED_CANDIDACY);
   dbMock.candidacyPresidential.upsert.mockResolvedValue({ id: "pres-1" });
+  dbMock.candidacy.update.mockResolvedValue({ id: "cand-1" });
   dbMock.programEdition.findUnique.mockResolvedValue({
     id: "ed-1",
     electionId: "elec-1",
@@ -217,6 +218,30 @@ describe("actions de publication des candidatures", () => {
 
     expect(result).toEqual({ ok: false, message: "Requête invalide." });
     expect(dbMock.programEdition.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("statut politique d'une candidature", () => {
+  it("met à jour le statut sourcé et écrit l'audit", async () => {
+    dbMock.candidacy.findUnique.mockResolvedValue({ ...SOURCED_CANDIDACY, status: "PRESSENTI" });
+    const a = await actions();
+
+    expect(await a.setCandidacyStatusAction({ candidacyId: "cand-1", status: "DECLARE" })).toEqual({
+      ok: true,
+    });
+    expect(dbMock.candidacy.update).toHaveBeenCalledWith({
+      where: { id: "cand-1" },
+      data: { status: "DECLARE" },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          entityType: "Candidacy",
+          entityId: "cand-1",
+          changes: { status: "DECLARE", previousStatus: "PRESSENTI" },
+        }),
+      })
+    );
   });
 });
 

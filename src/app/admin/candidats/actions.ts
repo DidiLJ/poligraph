@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { PublicationStatus } from "@/generated/prisma";
+import type { CandidacyStatus, PublicationStatus } from "@/generated/prisma";
 import { isAuthenticated } from "@/lib/auth";
 import { invalidateEntity } from "@/lib/cache";
 import { db } from "@/lib/db";
@@ -33,6 +33,13 @@ const candidacyPublicationSchema = z
   .object({ candidacyId: z.string().min(1), status: publicationStatusSchema })
   .strict();
 
+const candidacyStatusSchema = z
+  .object({
+    candidacyId: z.string().min(1),
+    status: z.enum(["DECLARE", "PRESSENTI", "ENVISAGE", "RETIRE"]),
+  })
+  .strict();
+
 const programEditionPublicationSchema = z
   .object({ programEditionId: z.string().min(1), status: publicationStatusSchema })
   .strict();
@@ -45,6 +52,51 @@ async function assertAuthenticated(): Promise<void> {
 
 function revalidate(): void {
   revalidatePath("/admin/candidats");
+}
+
+/** Updates the sourced political status carried by the core candidacy row. */
+export async function setCandidacyStatusAction(input: {
+  candidacyId: string;
+  status: CandidacyStatus;
+}): Promise<CandidacyActionResult> {
+  await assertAuthenticated();
+
+  const parsed = candidacyStatusSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Requête invalide." };
+  const { candidacyId, status } = parsed.data;
+
+  const outcome = await db.$transaction(async (tx) => {
+    const candidacy = await tx.candidacy.findUnique({
+      where: { id: candidacyId },
+      select: { id: true, electionId: true, status: true, sourceUrl: true, sourceLabel: true },
+    });
+    if (!candidacy) return { ok: false as const, message: "Candidature introuvable." };
+    if (!candidacy.sourceUrl || !candidacy.sourceLabel) {
+      return {
+        ok: false as const,
+        message: "Une source et son libellé sont requis avant de modifier le statut.",
+      };
+    }
+    if (candidacy.status === status) return { ok: true as const, electionId: candidacy.electionId };
+
+    await tx.candidacy.update({ where: { id: candidacyId }, data: { status } });
+    await tx.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "Candidacy",
+        entityId: candidacyId,
+        changes: { status, previousStatus: candidacy.status },
+      },
+    });
+    await syncPresidentialSearchDocumentsForCandidacy(tx, candidacyId);
+    return { ok: true as const, electionId: candidacy.electionId };
+  });
+
+  if (!outcome.ok) return outcome;
+  invalidateEntity("election");
+  invalidatePresidentialCandidacyTags(outcome.electionId);
+  revalidate();
+  return { ok: true };
 }
 
 /**

@@ -14,10 +14,14 @@ const setProgramEditionPublicationMock = vi.fn<(input: unknown) => Promise<Actio
 const regenerateCandidateSynthesisMock = vi.fn<(input: unknown) => Promise<ActionResult>>(
   async () => ({ ok: true })
 );
+const setCandidacyStatusMock = vi.fn<(input: unknown) => Promise<ActionResult>>(async () => ({
+  ok: true,
+}));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("../actions", () => ({
   setCandidacyPublicationAction: (input: unknown) => setCandidacyPublicationMock(input),
+  setCandidacyStatusAction: (input: unknown) => setCandidacyStatusMock(input),
   setProgramEditionPublicationAction: (input: unknown) => setProgramEditionPublicationMock(input),
   regenerateCandidateSynthesisAction: (input: unknown) => regenerateCandidateSynthesisMock(input),
 }));
@@ -81,6 +85,21 @@ describe("CandidatesListClient", () => {
     expect(setCandidacyPublicationMock).toHaveBeenCalledWith({
       candidacyId: "cand-1",
       status: "PUBLISHED",
+    });
+  });
+
+  it("modifie le statut politique depuis la liste", async () => {
+    const user = userEvent.setup();
+    render(<CandidatesListClient rows={[row({ status: "PRESSENTI" })]} />);
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Statut de Alix Démonstration" }),
+      "DECLARE"
+    );
+
+    expect(setCandidacyStatusMock).toHaveBeenCalledWith({
+      candidacyId: "cand-1",
+      status: "DECLARE",
     });
   });
 

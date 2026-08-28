@@ -11,10 +11,15 @@ import type {
 } from "@/generated/prisma";
 import { db, type DbTransactionClient } from "@/lib/db";
 import { invalidateMeasureTags } from "./cache";
-import { validateRevisionEvidence, type MeasureImportEngine } from "./evidence-snapshot";
+import {
+  createV6CorrectionFingerprint,
+  validateRevisionEvidence,
+  type MeasureImportEngine,
+} from "./evidence-snapshot";
 import { MeasureConcurrencyError, MeasureValidationError } from "./errors";
 import { lockMeasure } from "./lock";
 import { syncSearchDocument } from "./search-sync";
+import { PUBLIC_PRESIDENTIAL_FICHE_WHERE } from "@/lib/presidentielle/publication";
 import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
 
 export type MeasureSourceInput = {
@@ -283,7 +288,13 @@ export async function draftMeasureRevision(
         evidenceSnapshot: previous.evidenceSnapshot,
         reviewReadiness: previous.reviewReadiness,
         reviewWarnings: previous.reviewWarnings,
-        importFingerprint: null,
+        importFingerprint:
+          input.revision.extractionMethod === "AI_ASSISTED"
+            ? createV6CorrectionFingerprint({
+                previousRevisionId: input.preserveEvidenceFromRevisionId,
+                text: input.revision.text,
+              })
+            : null,
       };
       revisionSources = previous.sources;
     }
@@ -586,6 +597,13 @@ export async function publishMeasureRevision(input: {
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
 
+    const ficheWasPublic = measure.candidacyId
+      ? (await tx.candidacy.findFirst({
+          where: { id: measure.candidacyId, ...PUBLIC_PRESIDENTIAL_FICHE_WHERE },
+          select: { id: true },
+        })) !== null
+      : false;
+
     const revision = await tx.measureRevision.findUnique({
       where: { id: input.revisionId },
       select: {
@@ -679,7 +697,7 @@ export async function publishMeasureRevision(input: {
     // In the same transaction: the database must never expose a new revision while the
     // index still holds the previous text. Called last, so it reads the pointers this
     // transaction has just written.
-    if (measure.candidacyId) {
+    if (measure.candidacyId && !ficheWasPublic) {
       // Publishing can open the carrier fiche (first primary-sourced measure), which changes the
       // visibility of every already-published measure of that candidacy.
       await syncPresidentialSearchDocumentsForCandidacy(tx, measure.candidacyId);

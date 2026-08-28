@@ -11,6 +11,7 @@ import type { CandidacyMeasureReadiness } from "@/lib/data/measures";
 import {
   regenerateCandidateSynthesisAction,
   setCandidacyPublicationAction,
+  setCandidacyStatusAction,
   setProgramEditionPublicationAction,
 } from "./actions";
 
@@ -180,6 +181,7 @@ export function CandidatesListClient({ rows }: { rows: CandidateRowView[] }) {
           <tbody>
             {rows.map((row) => {
               const publicationKey = `publication:${row.candidacyId}`;
+              const statusKey = `statut:${row.candidacyId}`;
               const synthesisKey = `synthese:${row.candidacyId}`;
               const published = row.publicationStatus === "PUBLISHED";
               const locked = busy !== null || pending;
@@ -214,7 +216,31 @@ export function CandidatesListClient({ rows }: { rows: CandidateRowView[] }) {
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">{row.partyLabel ?? "Sans parti"}</td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    {STATUS_LABELS[row.status ?? ""] ?? "Statut non renseigné"}
+                    <label className="sr-only" htmlFor={statusKey}>
+                      Statut de {row.candidateName}
+                    </label>
+                    <select
+                      id={statusKey}
+                      value={row.status ?? ""}
+                      onChange={(event) => {
+                        const status = event.target.value as CandidacyStatus;
+                        if (status) {
+                          runAction(statusKey, () =>
+                            setCandidacyStatusAction({ candidacyId: row.candidacyId, status })
+                          );
+                        }
+                      }}
+                      disabled={locked}
+                      className="min-h-11 rounded border bg-background px-2 text-sm md:min-h-[36px]"
+                      aria-label={`Statut de ${row.candidateName}`}
+                    >
+                      {!row.status && <option value="">Statut non renseigné</option>}
+                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     {row.readiness.measureCount === 0 ? (

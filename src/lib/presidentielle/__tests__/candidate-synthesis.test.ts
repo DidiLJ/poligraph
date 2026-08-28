@@ -48,7 +48,7 @@ function words(n: number): string {
 
 /** Most pure-screen tests use one generated segment as the complete text. */
 function screenSynthesis(raw: string, material?: SynthesisMaterial) {
-  return screenSynthesisSegments({ text: raw, generatedText: raw, material });
+  return screenSynthesisSegments({ text: raw, generatedText: raw, sourceText: "", material });
 }
 
 describe("buildCandidateSynthesisPrompt", () => {
@@ -254,6 +254,31 @@ describe("screenCandidateSynthesis", () => {
       reason: "judiciaire",
     });
   });
+
+  it("rejects an empty career even when canonical measures satisfy the overall floor", () => {
+    const raw = `<synthese><parcours></parcours><programme><engagement ref="M1" /><engagement ref="M3" /></programme></synthese>`;
+
+    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+      ok: false,
+      reason: "parcours_vide",
+    });
+  });
+
+  it("does not charge required canonical measure wording against the flexible maximum", () => {
+    const longMeasure = Array.from(
+      { length: SYNTHESIS_MAX_WORDS + 20 },
+      (_, i) => `source${i}`
+    ).join(" ");
+    const input: CandidateSynthesisInput = {
+      ...BASE,
+      measures: [{ theme: "SANTE", text: `${longMeasure}.` }],
+    };
+
+    const result = screenCandidateSynthesis(structured(["M1"]), input);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(result.ok && result.text).toContain("source219.");
+  });
 });
 
 describe("buildSynthesisSystemPrompt", () => {
@@ -334,6 +359,16 @@ describe("screenSynthesis", () => {
   it("accepts a text of the right length", () => {
     const result = screenSynthesis(good);
     expect(result.ok).toBe(true);
+  });
+
+  it("cannot exclude source words that are absent from the final text", () => {
+    expect(
+      screenSynthesisSegments({
+        text: good,
+        generatedText: good,
+        sourceText: "formulation canonique absente",
+      })
+    ).toMatchObject({ ok: false, reason: "source_absente" });
   });
 
   it("trims before measuring", () => {

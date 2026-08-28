@@ -307,4 +307,35 @@ describe("generateCandidateSynthesis", () => {
       "Créer un tribunal spécialisé."
     );
   });
+
+  it("réessaie un parcours vide avant de persister", async () => {
+    const emptyCareer = `<synthese><parcours></parcours><programme><engagement ref="M1" /></programme></synthese>`;
+    callAnthropicMock
+      .mockResolvedValueOnce(anthropicText(emptyCareer))
+      .mockResolvedValueOnce(anthropicText(providerOutput(["M1"])));
+    const { generateCandidateSynthesis } = await service();
+
+    const result = await generateCandidateSynthesis("cand-1", { persist: true });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(callAnthropicMock).toHaveBeenCalledTimes(2);
+    expect(dbMock.candidacyPresidential.update).toHaveBeenCalledOnce();
+  });
+
+  it("persiste une mesure canonique qui dépasse à elle seule le plafond fixe", async () => {
+    const longMeasure = Array.from({ length: 220 }, (_, i) => `source${i}`).join(" ");
+    dbMock.measure.findMany.mockResolvedValue([
+      { theme: "SANTE", publishedRevision: { text: `${longMeasure}.` } },
+    ]);
+    callAnthropicMock.mockResolvedValue(anthropicText(providerOutput(["M1"])));
+    const { generateCandidateSynthesis } = await service();
+
+    const result = await generateCandidateSynthesis("cand-1", { persist: true });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(callAnthropicMock).toHaveBeenCalledTimes(1);
+    expect(dbMock.candidacyPresidential.update.mock.calls[0]![0].data.synthesis).toContain(
+      "source219."
+    );
+  });
 });

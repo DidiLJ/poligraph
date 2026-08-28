@@ -360,6 +360,13 @@ export function screenCandidateSynthesis(
 
   const career = wrapper[1]!.trim();
   const programmeOutput = wrapper[2]!.trim();
+  if (!/\p{L}{2,}/u.test(career) || !/[.!?]$/u.test(career)) {
+    return {
+      ok: false,
+      reason: "parcours_vide",
+      detail: "le parcours doit contenir une phrase non vide",
+    };
+  }
   if (/[<>]/u.test(career)) {
     return {
       ok: false,
@@ -380,6 +387,7 @@ export function screenCandidateSynthesis(
     return screenSynthesis({
       text: `${career}\n\n${EMPTY_PROGRAMME_SENTENCE}`,
       generatedText: career,
+      sourceText: "",
       material: synthesisMaterial(input),
     });
   }
@@ -455,6 +463,7 @@ export function screenCandidateSynthesis(
   return screenSynthesis({
     text: `${career}\n\n${programmeText}`,
     generatedText: career,
+    sourceText: selectedReferences.map((reference) => asSentence(reference.text)).join(" "),
     material: synthesisMaterial(input),
   });
 }
@@ -470,6 +479,7 @@ export function screenCandidateSynthesis(
 export function screenSynthesis({
   text: raw,
   generatedText,
+  sourceText,
   material = {
     mandateCount: SUBSTANTIAL_MANDATES,
     voteCount: SUBSTANTIAL_VOTES,
@@ -480,6 +490,8 @@ export function screenSynthesis({
   text: string;
   /** Provider-authored segment only. Judicial vocabulary is forbidden here, not in sources. */
   generatedText: string;
+  /** Canonical source wording inserted by the server and excluded from the flexible maximum. */
+  sourceText: string;
   /** Omitted, the strictest ordinary floor applies. */
   material?: SynthesisMaterial;
 }): SynthesisScreen {
@@ -520,11 +532,20 @@ export function screenSynthesis({
     };
   }
   const maxWords = synthesisTargetRange(material).max;
-  if (words > maxWords) {
+  if (sourceText !== "" && !text.includes(sourceText)) {
+    return {
+      ok: false,
+      reason: "source_absente",
+      detail: "le texte exclu du plafond ne figure pas dans la synthèse finale",
+    };
+  }
+  const sourceWords = sourceText.trim() === "" ? 0 : sourceText.trim().split(/\s+/).length;
+  const cappedWords = Math.max(0, words - sourceWords);
+  if (cappedWords > maxWords) {
     return {
       ok: false,
       reason: "trop_long",
-      detail: `${words} mots, maximum ${maxWords}`,
+      detail: `${cappedWords} mots non sourcés, maximum ${maxWords}`,
     };
   }
 

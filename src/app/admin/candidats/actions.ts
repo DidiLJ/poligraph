@@ -149,6 +149,7 @@ export async function setCandidacyPublicationAction(input: {
   const { candidacyId, status } = parsed.data;
 
   const outcome = await db.$transaction(async (tx) => {
+    await lockMeasureCandidacy(tx, candidacyId);
     const candidacy = await tx.candidacy.findUnique({
       where: { id: candidacyId },
       select: {

@@ -111,6 +111,10 @@ describe("actions de publication des candidatures", () => {
     });
 
     expect(result).toEqual({ ok: true });
+    expect(dbMock.$queryRaw).toHaveBeenCalledOnce();
+    expect(dbMock.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      dbMock.candidacy.findUnique.mock.invocationCallOrder[0]!
+    );
     expect(dbMock.candidacyPresidential.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { candidacyId: "cand-1" },

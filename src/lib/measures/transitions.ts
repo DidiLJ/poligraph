@@ -748,6 +748,8 @@ export async function depublishMeasure(input: {
       select: { electionId: true, candidacyId: true, updatedAt: true },
     });
 
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
+
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
 
     await tx.measure.update({
@@ -812,6 +814,8 @@ export async function withdrawMeasure(input: {
       where: { id: input.measureId },
       select: { electionId: true, candidacyId: true, updatedAt: true },
     });
+
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
 

@@ -146,21 +146,22 @@ describe("buildCandidateSynthesisPrompt", () => {
 
 describe("screenCandidateSynthesis", () => {
   const career = words(30);
+  const structured = (refs: string[]) =>
+    `<synthese><parcours>${career}.</parcours><programme>${refs
+      .map((ref) => `<engagement ref="${ref}" />`)
+      .join("")}</programme></synthese>`;
 
-  it("derives coverage from inline measure references and removes the internal markup", () => {
-    const raw = `<synthese>${career}.\n\nSon programme prévoit de <engagement ref="M1">rouvrir des maternités de proximité</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>.</synthese>`;
-
-    const result = screenCandidateSynthesis(raw, BASE);
+  it("derives coverage from references and builds the public text from source measures", () => {
+    const result = screenCandidateSynthesis(structured(["M1", "M3"]), BASE);
 
     expect(result).toMatchObject({ ok: true });
-    expect(result.ok && result.text).not.toContain("<engagement");
-    expect(result.ok && result.text).not.toContain("<synthese>");
+    expect(result.ok && result.text).toContain("Rouvrir des maternités de proximité.");
+    expect(result.ok && result.text).toContain("Rétablir des trains de nuit sur six lignes.");
+    expect(result.ok && result.text).not.toMatch(/<engagement|<synthese>/);
   });
 
   it("refuses valid-length prose that omits an expected theme", () => {
-    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M1">rouvrir des maternités de proximité</engagement>.</synthese>`;
-
-    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+    expect(screenCandidateSynthesis(structured(["M1"]), BASE)).toMatchObject({
       ok: false,
       reason: "couverture_theme",
     });
@@ -171,52 +172,66 @@ describe("screenCandidateSynthesis", () => {
       ...BASE,
       measures: [...BASE.measures, { theme: "SANTE", text: "Créer des centres de santé publics." }],
     };
-    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M1">rouvrir des maternités de proximité</engagement>, de <engagement ref="M2">rembourser à 100 % les soins prescrits</engagement>, de <engagement ref="M4">créer des centres de santé publics</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>.</synthese>`;
 
-    expect(screenCandidateSynthesis(raw, input)).toMatchObject({
+    expect(screenCandidateSynthesis(structured(["M1", "M2", "M4", "M3"]), input)).toMatchObject({
       ok: false,
       reason: "concentration_theme",
     });
   });
 
-  it("does not trust a reference whose annotated prose does not reflect its measure", () => {
-    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M1">réduire les taxes sur les entreprises</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>.</synthese>`;
+  it("cannot persist an action reversed by generated prose", () => {
+    const input: CandidateSynthesisInput = {
+      ...BASE,
+      measures: [{ theme: "ECONOMIE_BUDGET", text: "Augmenter les impôts des entreprises." }],
+    };
+    const reversed = `<synthese><parcours>${career}.</parcours><programme><engagement ref="M1">Supprimer les impôts des entreprises.</engagement></programme></synthese>`;
 
-    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+    expect(screenCandidateSynthesis(reversed, input)).toMatchObject({
       ok: false,
-      reason: "preuve_non_refletee",
+      reason: "format_structure",
     });
+    const accepted = screenCandidateSynthesis(structured(["M1"]), input);
+    expect(accepted.ok && accepted.text).toContain("Augmenter les impôts des entreprises.");
+    expect(accepted.ok && accepted.text).not.toContain("Supprimer");
   });
 
   it("refuses a theme declaration that is not tied to a known measure", () => {
-    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M99">rouvrir des maternités de proximité</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>.</synthese>`;
-
-    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+    expect(screenCandidateSynthesis(structured(["M99", "M3"]), BASE)).toMatchObject({
       ok: false,
       reason: "preuve_inconnue",
     });
   });
 
-  it("refuses substantive programme prose left outside evidence spans", () => {
-    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M1">rouvrir des maternités de proximité</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>. Il baisse aussi les impôts.</synthese>`;
+  it("refuses any free programme prose alongside references", () => {
+    const raw = `<synthese><parcours>${career}.</parcours><programme><engagement ref="M1" /><engagement ref="M3" />Il baisse aussi les impôts.</programme></synthese>`;
 
     expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
       ok: false,
-      reason: "engagement_non_reference",
+      reason: "format_structure",
     });
   });
 
-  it("accepts short and numeric measures when their distinctive terms are evidenced", () => {
-    const input: CandidateSynthesisInput = {
+  it("handles an empty programme with one bounded canonical sentence", () => {
+    const empty: CandidateSynthesisInput = {
       ...BASE,
-      measures: [
-        { theme: "ECONOMIE_BUDGET", text: "Abolir la TVA." },
-        { theme: "SOCIAL_TRAVAIL", text: "Fixer la retraite à 60 ans." },
-      ],
+      measures: [],
     };
-    const raw = `<synthese>${career}.\n\nLe programme propose d'<engagement ref="M1">abolir la TVA</engagement> et de <engagement ref="M2">fixer la retraite à 60 ans</engagement>.</synthese>`;
+    const raw = `<synthese><parcours>${career}.</parcours><programme-vide /></synthese>`;
+    const result = screenCandidateSynthesis(raw, empty);
 
-    expect(screenCandidateSynthesis(raw, input)).toMatchObject({ ok: true });
+    expect(result).toMatchObject({ ok: true });
+    expect(result.ok && result.text).toContain(
+      "Aucune mesure n'est publiée dans le cadre de son programme."
+    );
+  });
+
+  it("does not relax the empty marker for a non-empty programme", () => {
+    const raw = `<synthese><parcours>${career}.</parcours><programme-vide /></synthese>`;
+
+    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+      ok: false,
+      reason: "format_programme",
+    });
   });
 });
 

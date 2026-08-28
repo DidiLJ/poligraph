@@ -377,7 +377,11 @@ export function screenCandidateSynthesis(
         detail: "une candidature sans mesure doit utiliser uniquement <programme-vide />",
       };
     }
-    return screenSynthesis(`${career}\n\n${EMPTY_PROGRAMME_SENTENCE}`, synthesisMaterial(input));
+    return screenSynthesis({
+      text: `${career}\n\n${EMPTY_PROGRAMME_SENTENCE}`,
+      generatedText: career,
+      material: synthesisMaterial(input),
+    });
   }
 
   const programme = /^<programme>\s*([\s\S]*?)\s*<\/programme>$/u.exec(programmeOutput);
@@ -448,7 +452,11 @@ export function screenCandidateSynthesis(
   const programmeText = `Son programme comprend notamment les engagements suivants. ${selectedReferences
     .map((reference) => asSentence(reference.text))
     .join(" ")}`;
-  return screenSynthesis(`${career}\n\n${programmeText}`, synthesisMaterial(input));
+  return screenSynthesis({
+    text: `${career}\n\n${programmeText}`,
+    generatedText: career,
+    material: synthesisMaterial(input),
+  });
 }
 
 /**
@@ -459,18 +467,22 @@ export function screenCandidateSynthesis(
  * reach a length, a model that reaches for the em dash it was told not to use.
  * A rejection is not a fallback to a degraded text: the caller stores nothing.
  */
-export function screenSynthesis(
-  raw: string,
-  /**
-   * The material the text was written from. Omitted, it defaults to the richest case, which is the
-   * strictest floor: a caller that forgets to say gets the demanding answer rather than a free pass.
-   */
-  material: SynthesisMaterial = {
+export function screenSynthesis({
+  text: raw,
+  generatedText,
+  material = {
     mandateCount: SUBSTANTIAL_MANDATES,
     voteCount: SUBSTANTIAL_VOTES,
     measureCount: SUBSTANTIAL_MEASURES,
-  }
-): SynthesisScreen {
+  },
+}: {
+  /** Complete reader-facing text, including canonical source wording. */
+  text: string;
+  /** Provider-authored segment only. Judicial vocabulary is forbidden here, not in sources. */
+  generatedText: string;
+  /** Omitted, the strictest ordinary floor applies. */
+  material?: SynthesisMaterial;
+}): SynthesisScreen {
   const minWords = synthesisFloor(material);
   const text = raw.trim();
   if (text === "") return { ok: false, reason: "vide", detail: "le modèle n'a rien renvoyé" };
@@ -482,9 +494,9 @@ export function screenSynthesis(
     return { ok: false, reason: "tiret_long", detail: `caractère « ${dash[0]} » interdit` };
   }
 
-  // Judicial vocabulary. A synthesis that mentions a case is not edited down, it is
-  // thrown away: the model was told plainly, and a text that ignored that rule cannot
-  // be trusted on the rest either.
+  // Judicial vocabulary is screened only in provider-authored prose. Canonical programme measures
+  // may legitimately propose a tribunal or a parquet and are inserted after generation from a
+  // reviewed source. Passing both segments explicitly makes that trust boundary hard to erase.
   //
   // Unicode lookarounds rather than `\b`, and that is not a style choice: `\b` sits
   // between a word character and a non-word one, and JavaScript counts `é` as a
@@ -493,7 +505,7 @@ export function screenSynthesis(
   // followed by one, so the whole family was affected.
   const judicial =
     /(?<!\p{L})(mises? en examen|condamn(?:é|ée|és|ées|ation|ations)|procès|enquête judiciaire|garde à vue|instruction judiciaire|tribunal|cour d'appel|parquet|inéligibilité)(?!\p{L})/iu.exec(
-      text
+      generatedText
     );
   if (judicial) {
     return { ok: false, reason: "judiciaire", detail: `mention « ${judicial[0]} »` };

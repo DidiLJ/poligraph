@@ -283,4 +283,28 @@ describe("generateCandidateSynthesis", () => {
       "Aucune mesure n'est publiée dans le cadre de son programme."
     );
   });
+
+  it("réessaie un tribunal généré dans le parcours puis stocke le tribunal sourcé", async () => {
+    dbMock.measure.findMany.mockResolvedValue([
+      {
+        theme: "SECURITE_JUSTICE",
+        publishedRevision: { text: "Créer un tribunal spécialisé." },
+      },
+    ]);
+    const unsafeCareer = `<synthese><parcours>${CAREER}. Il a comparu devant un tribunal.</parcours><programme><engagement ref="M1" /></programme></synthese>`;
+    callAnthropicMock
+      .mockResolvedValueOnce(anthropicText(unsafeCareer))
+      .mockResolvedValueOnce(anthropicText(providerOutput(["M1"])));
+    const { generateCandidateSynthesis } = await service();
+
+    const result = await generateCandidateSynthesis("cand-1", { persist: true });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(callAnthropicMock).toHaveBeenCalledTimes(2);
+    const retryPrompt = callAnthropicMock.mock.calls[1]![0][0].content as string;
+    expect(retryPrompt).toContain("mention « tribunal »");
+    expect(dbMock.candidacyPresidential.update.mock.calls[0]![0].data.synthesis).toContain(
+      "Créer un tribunal spécialisé."
+    );
+  });
 });

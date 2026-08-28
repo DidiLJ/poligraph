@@ -4,7 +4,7 @@ import {
   buildSynthesisSystemPrompt,
   isSynthesisContradictedByMeasures,
   screenCandidateSynthesis,
-  screenSynthesis,
+  screenSynthesis as screenSynthesisSegments,
   synthesisFloor,
   synthesisMaterial,
   synthesisTargetRange,
@@ -44,6 +44,11 @@ const BASE: CandidateSynthesisInput = {
 
 function words(n: number): string {
   return Array.from({ length: n }, (_, i) => `mot${i}`).join(" ");
+}
+
+/** Most pure-screen tests use one generated segment as the complete text. */
+function screenSynthesis(raw: string, material?: SynthesisMaterial) {
+  return screenSynthesisSegments({ text: raw, generatedText: raw, material });
 }
 
 describe("buildCandidateSynthesisPrompt", () => {
@@ -231,6 +236,22 @@ describe("screenCandidateSynthesis", () => {
     expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
       ok: false,
       reason: "format_programme",
+    });
+  });
+
+  it("accepts judicial vocabulary from a canonical measure but not from the generated career", () => {
+    const input: CandidateSynthesisInput = {
+      ...BASE,
+      measures: [{ theme: "SECURITE_JUSTICE", text: "Créer un tribunal spécialisé." }],
+    };
+    const sourced = screenCandidateSynthesis(structured(["M1"]), input);
+    const generated = `<synthese><parcours>${career}. Il a comparu devant un tribunal.</parcours><programme><engagement ref="M1" /></programme></synthese>`;
+
+    expect(sourced).toMatchObject({ ok: true });
+    expect(sourced.ok && sourced.text).toContain("Créer un tribunal spécialisé.");
+    expect(screenCandidateSynthesis(generated, input)).toMatchObject({
+      ok: false,
+      reason: "judiciaire",
     });
   });
 });

@@ -24,6 +24,7 @@ function publicMeasure(over: Partial<PublicMeasure> = {}): PublicMeasure {
     id: "m-1",
     publishedRevisionId: "rev-1",
     text: "Encadrer les loyers dans les zones tendues.",
+    reviewedAt: new Date("2027-01-16T00:00:00Z"),
     precision: "OBJECTIF_SANS_CHIFFRE",
     theme: "LOGEMENT_URBANISME",
     attribution: "PERSONAL",

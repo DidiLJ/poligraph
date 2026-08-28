@@ -14,7 +14,9 @@ function data(over: Partial<ThemesIndexData> = {}): ThemesIndexData {
         slug: "logement-urbanisme",
         documentedMeasureCount: 3,
         currentlyDefendedMeasureCount: 3,
+        documentedCandidacyCount: 2,
         candidaciesWithVerifiedMeasure: 2,
+        lastReviewedAt: new Date("2026-08-21"),
         publishable: true,
       },
       {
@@ -23,7 +25,9 @@ function data(over: Partial<ThemesIndexData> = {}): ThemesIndexData {
         slug: "numerique-tech",
         documentedMeasureCount: 0,
         currentlyDefendedMeasureCount: 0,
+        documentedCandidacyCount: 0,
         candidaciesWithVerifiedMeasure: 0,
+        lastReviewedAt: null,
         publishable: false,
       },
     ],
@@ -32,25 +36,34 @@ function data(over: Partial<ThemesIndexData> = {}): ThemesIndexData {
 }
 
 describe("ThemesIndexList", () => {
-  it("lie chaque thème à sa page sujet avec son compte de mesures documentées", () => {
+  it("lie chaque thème à sa page sujet et affiche les quatre indicateurs de couverture", () => {
     render(<ThemesIndexList data={data()} />);
 
-    const logement = screen.getByRole("link", { name: /Logement & Urbanisme/ });
-    expect(logement).toHaveAttribute(
-      "href",
-      "/elections/presidentielle-2027/sujets/logement-urbanisme"
-    );
-    expect(logement).toHaveTextContent("3 mesures documentées");
+    const logements = screen.getAllByRole("link", { name: /Logement & Urbanisme/ });
+    expect(logements).toHaveLength(2);
+    for (const logement of logements) {
+      expect(logement).toHaveAttribute(
+        "href",
+        "/elections/presidentielle-2027/sujets/logement-urbanisme"
+      );
+    }
+    expect(screen.getAllByText("Candidatures documentées").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mesures documentées").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Actuellement défendues").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/21 août 2026/).length).toBeGreaterThan(0);
   });
 
   it("garde un thème à zéro mesure dans la liste, pour la navigation", () => {
     render(<ThemesIndexList data={data()} />);
 
-    const numerique = screen.getByRole("link", { name: /Numérique & Tech/ });
-    expect(numerique).toHaveAttribute(
-      "href",
-      "/elections/presidentielle-2027/sujets/numerique-tech"
-    );
-    expect(numerique).toHaveTextContent("Aucune mesure documentée");
+    const numeriques = screen.getAllByRole("link", { name: /Numérique & Tech/ });
+    expect(numeriques).toHaveLength(2);
+    for (const numerique of numeriques) {
+      expect(numerique).toHaveAttribute(
+        "href",
+        "/elections/presidentielle-2027/sujets/numerique-tech"
+      );
+    }
+    expect(screen.getAllByText("Aucune revue publiée").length).toBeGreaterThan(0);
   });
 });

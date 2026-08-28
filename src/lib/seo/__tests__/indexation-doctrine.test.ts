@@ -323,6 +323,34 @@ describe("doctrine — presidentielle-2027 hub stays out of the sitemap while un
     );
     expect(electionShard).toContain("...presidentialDirectoryPages");
   });
+
+  it("annonce la couverture et les sujets uniquement sous la porte du hub", () => {
+    expect(electionShard).toContain("const presidentialSubjectPages");
+    expect(electionShard).toContain("${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/sujets");
+    expect(electionShard).toContain("theme.publishable");
+    expect(electionShard).toContain("...presidentialSubjectPages");
+  });
+
+  it("réutilise l'autorité publique des mesures pour leurs URLs canoniques", () => {
+    expect(electionShard).toContain("PUBLIC_PRESIDENTIAL_MEASURE_WHERE");
+    expect(electionShard).toContain("const presidentialMeasurePages");
+    expect(electionShard).toContain(
+      "${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/mesures/${measure.id}"
+    );
+    expect(electionShard).toContain("...presidentialMeasurePages");
+  });
+});
+
+describe("doctrine — la recherche présidentielle reste une surface utilitaire", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/app/elections/presidentielle-2027/recherche/page.tsx"),
+    "utf8"
+  );
+
+  it("est noindex,follow avec un canonical sans requête", () => {
+    expect(src).toContain("robots: { index: false, follow: true }");
+    expect(src).toContain("alternates: { canonical: PAGE_PATH }");
+  });
 });
 
 describe("doctrine — opengraph-image assets stay noindexed", () => {

@@ -7,6 +7,7 @@ import { isAuthenticated } from "@/lib/auth";
 import { invalidateEntity } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { invalidatePresidentialCandidacyTags } from "@/lib/presidentielle/candidacy-cache";
+import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
 import { generateCandidateSynthesis } from "@/services/candidate-synthesis";
 
 /**
@@ -71,56 +72,62 @@ export async function setCandidacyPublicationAction(input: {
   }
   const { candidacyId, status } = parsed.data;
 
-  const candidacy = await db.candidacy.findUnique({
-    where: { id: candidacyId },
-    select: {
-      id: true,
-      electionId: true,
-      status: true,
-      sourceUrl: true,
-      sourceLabel: true,
-      presidentialData: { select: { id: true, publicationStatus: true } },
-    },
-  });
-  if (!candidacy) {
-    return { ok: false, message: "Candidature introuvable." };
-  }
-  if (
-    status === "PUBLISHED" &&
-    (!candidacy.status || !candidacy.sourceUrl || !candidacy.sourceLabel)
-  ) {
-    return {
-      ok: false,
-      message:
-        "La candidature doit porter un statut et une source (URL et libellé) avant publication. " +
-        "Sans eux, la fiche publique renvoie vers le profil et les mesures restent invisibles.",
-    };
-  }
-
-  const extension = await db.candidacyPresidential.upsert({
-    where: { candidacyId },
-    create: { candidacyId, publicationStatus: status },
-    update: { publicationStatus: status },
-    select: { id: true },
-  });
-
-  await db.auditLog.create({
-    data: {
-      action: candidacy.presidentialData ? "UPDATE" : "CREATE",
-      entityType: "CandidacyPresidential",
-      entityId: extension.id,
-      changes: {
-        candidacyId,
-        publicationStatus: status,
-        previousPublicationStatus: candidacy.presidentialData?.publicationStatus ?? null,
+  const outcome = await db.$transaction(async (tx) => {
+    const candidacy = await tx.candidacy.findUnique({
+      where: { id: candidacyId },
+      select: {
+        id: true,
+        electionId: true,
+        status: true,
+        sourceUrl: true,
+        sourceLabel: true,
+        presidentialData: { select: { id: true, publicationStatus: true } },
       },
-    },
+    });
+    if (!candidacy) {
+      return { ok: false as const, message: "Candidature introuvable." };
+    }
+    if (
+      status === "PUBLISHED" &&
+      (!candidacy.status || !candidacy.sourceUrl || !candidacy.sourceLabel)
+    ) {
+      return {
+        ok: false as const,
+        message:
+          "La candidature doit porter un statut et une source (URL et libellé) avant publication. " +
+          "Sans eux, la fiche publique renvoie vers le profil et les mesures restent invisibles.",
+      };
+    }
+
+    const extension = await tx.candidacyPresidential.upsert({
+      where: { candidacyId },
+      create: { candidacyId, publicationStatus: status },
+      update: { publicationStatus: status },
+      select: { id: true },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        action: candidacy.presidentialData ? "UPDATE" : "CREATE",
+        entityType: "CandidacyPresidential",
+        entityId: extension.id,
+        changes: {
+          candidacyId,
+          publicationStatus: status,
+          previousPublicationStatus: candidacy.presidentialData?.publicationStatus ?? null,
+        },
+      },
+    });
+    await syncPresidentialSearchDocumentsForCandidacy(tx, candidacyId);
+    return { ok: true as const, electionId: candidacy.electionId };
   });
+
+  if (!outcome.ok) return outcome;
 
   invalidateEntity("election");
   // The four hub reads, the candidate fiche and the politician notice all gate on this status and
   // carry this tag alone. `invalidateEntity("election")` purges `elections`, which none of them use.
-  invalidatePresidentialCandidacyTags(candidacy.electionId);
+  invalidatePresidentialCandidacyTags(outcome.electionId);
   revalidate();
 
   return { ok: true };

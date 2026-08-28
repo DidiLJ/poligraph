@@ -35,12 +35,22 @@ describe("HubSubjects", () => {
     );
   });
 
-  it("compte les sujets dans le titre plutôt que d'écrire treize en dur", () => {
-    render(<HubSubjects themes={[theme(), theme({ theme: "SANTE", slug: "sante" })]} />);
-    expect(screen.getByRole("heading", { name: "Les 2 sujets suivis" })).toBeInTheDocument();
+  it("compte les sujets comparables dans le titre plutôt que d'écrire treize en dur", () => {
+    render(
+      <HubSubjects
+        themes={[
+          theme(),
+          theme({ theme: "SANTE", slug: "sante", publishable: true }),
+          theme({ theme: "SOCIAL_TRAVAIL", slug: "social-travail", publishable: true }),
+        ]}
+      />
+    );
+    expect(
+      screen.getByRole("heading", { name: "2 sujets peuvent déjà être comparés" })
+    ).toBeInTheDocument();
   });
 
-  it("ne signale « comparaison ouverte » que sur les sujets publiables", () => {
+  it("ne répète aucun badge de comparaison dans les cartes", () => {
     render(
       <HubSubjects
         themes={[
@@ -50,15 +60,17 @@ describe("HubSubjects", () => {
       />
     );
 
-    expect(screen.getAllByText("Comparaison ouverte")).toHaveLength(1);
-    expect(screen.getByText(/1 sujet est ouvert à la comparaison/)).toBeInTheDocument();
+    expect(screen.queryByText("Comparaison ouverte")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "1 sujet peut déjà être comparé" })
+    ).toBeInTheDocument();
   });
 
-  it("dit qu'aucune comparaison n'est ouverte au lancement, sans masquer les sujets", () => {
+  it("calcule aussi le titre quand aucune comparaison n'est ouverte", () => {
     render(<HubSubjects themes={[theme(), theme({ theme: "SANTE", slug: "sante" })]} />);
 
     expect(
-      screen.getByText(/Aucun sujet n'est encore ouvert à la comparaison/)
+      screen.getByRole("heading", { name: "0 sujets peuvent déjà être comparés" })
     ).toBeInTheDocument();
     expect(screen.queryByText("Comparaison ouverte")).not.toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
@@ -68,9 +80,6 @@ describe("HubSubjects", () => {
     render(<HubSubjects themes={[theme()]} />);
 
     expect(screen.queryByText(/mesures? document/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Voir l'index des sujets/ })).toHaveAttribute(
-      "href",
-      "/elections/presidentielle-2027/sujets"
-    );
+    expect(screen.queryByRole("link", { name: /index des sujets/i })).not.toBeInTheDocument();
   });
 });

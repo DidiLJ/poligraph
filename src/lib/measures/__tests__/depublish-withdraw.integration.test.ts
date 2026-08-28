@@ -128,7 +128,7 @@ describeIfDisposableDb("withdrawMeasure", () => {
     expect(measure.withdrawnSourceLabel).toBeNull();
   });
 
-  it("keeps a withdrawn measure published and searchable", async () => {
+  it("keeps a withdrawn measure published but closes its search document", async () => {
     const { measureId, revisionId } = await publishSeededMeasure();
 
     await withdrawMeasure({
@@ -148,6 +148,6 @@ describeIfDisposableDb("withdrawMeasure", () => {
     expect(measure.withdrawnAt).not.toBeNull();
     expect(measure.publicationStatus).toBe("PUBLISHED");
     expect(measure.publishedRevisionId).toBe(revisionId);
-    expect(doc.visibility).toBe("PUBLIC");
+    expect(doc.visibility).toBe("ADMIN_ONLY");
   });
 });

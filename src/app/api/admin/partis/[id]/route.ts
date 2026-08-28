@@ -4,6 +4,8 @@ import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation, getRequestMeta } from "@/lib/security";
 import { updatePartySchema } from "@/lib/security/schemas/party";
 import { invalidateEntity } from "@/lib/cache";
+import { invalidatePresidentialCandidacyTags } from "@/lib/presidentielle/candidacy-cache";
+import { syncCandidacySearchDocumentsForParty } from "@/lib/presidentielle/search-sync";
 import type { z } from "zod/v4";
 
 type UpdateBody = z.infer<typeof updatePartySchema>;
@@ -84,25 +86,29 @@ export const PUT = withAdminAuth(
       }
     }
 
-    const updatedParty = await db.party.update({
-      where: { id },
-      data: {
-        slug: body.slug,
-        name: body.name,
-        shortName: body.shortName,
-        description: body.description || null,
-        color: body.color || null,
-        foundedDate: body.foundedDate ? new Date(body.foundedDate) : null,
-        dissolvedDate: body.dissolvedDate ? new Date(body.dissolvedDate) : null,
-        politicalPosition: body.politicalPosition || null,
-        politicalPositionSource: body.politicalPositionSource || null,
-        politicalPositionSourceUrl: body.politicalPositionSourceUrl || null,
-        politicalPositionOverride: body.politicalPositionOverride ?? false,
-        ideology: body.ideology || null,
-        headquarters: body.headquarters || null,
-        website: body.website || null,
-        predecessorId: body.predecessorId || null,
-      },
+    const { updatedParty, presidentialElectionIds } = await db.$transaction(async (tx) => {
+      const updatedParty = await tx.party.update({
+        where: { id },
+        data: {
+          slug: body.slug,
+          name: body.name,
+          shortName: body.shortName,
+          description: body.description || null,
+          color: body.color || null,
+          foundedDate: body.foundedDate ? new Date(body.foundedDate) : null,
+          dissolvedDate: body.dissolvedDate ? new Date(body.dissolvedDate) : null,
+          politicalPosition: body.politicalPosition || null,
+          politicalPositionSource: body.politicalPositionSource || null,
+          politicalPositionSourceUrl: body.politicalPositionSourceUrl || null,
+          politicalPositionOverride: body.politicalPositionOverride ?? false,
+          ideology: body.ideology || null,
+          headquarters: body.headquarters || null,
+          website: body.website || null,
+          predecessorId: body.predecessorId || null,
+        },
+      });
+      const presidentialElectionIds = await syncCandidacySearchDocumentsForParty(tx, id!);
+      return { updatedParty, presidentialElectionIds };
     });
 
     const meta = getRequestMeta(request);
@@ -119,6 +125,9 @@ export const PUT = withAdminAuth(
 
     invalidateEntity("party", updatedParty.slug ?? undefined);
     invalidateEntity("stats");
+    for (const electionId of presidentialElectionIds) {
+      invalidatePresidentialCandidacyTags(electionId);
+    }
 
     return NextResponse.json(updatedParty);
   })

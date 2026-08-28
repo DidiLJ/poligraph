@@ -1,5 +1,6 @@
 import type { DbTransactionClient } from "@/lib/db";
 import { deleteSearchDocument, upsertSearchDocument } from "@/lib/search/documents";
+import { PUBLIC_PRESIDENTIAL_MEASURE_WHERE } from "@/lib/presidentielle/publication";
 
 const MAX_TITLE_LENGTH = 200;
 
@@ -27,6 +28,8 @@ export async function syncSearchDocument(
   const measure = await tx.measure.findUniqueOrThrow({
     where: { id: measureId },
     select: {
+      electionId: true,
+      election: { select: { slug: true } },
       publicationStatus: true,
       publishedRevisionId: true,
       publishedRevision: { select: { id: true, text: true, updatedAt: true } },
@@ -34,8 +37,13 @@ export async function syncSearchDocument(
     },
   });
 
-  const isPublic =
-    measure.publicationStatus === "PUBLISHED" && measure.publishedRevisionId !== null;
+  // Re-query through the shared public authority. PublicationStatus alone is insufficient: a
+  // withdrawn measure, an invalid published revision or a closed carrier fiche must fail closed.
+  const publicMeasure = await tx.measure.findFirst({
+    where: { id: measureId, ...PUBLIC_PRESIDENTIAL_MEASURE_WHERE },
+    select: { id: true },
+  });
+  const isPublic = publicMeasure !== null;
   const reference = isPublic ? measure.publishedRevision : measure.latestRevision;
 
   // Nothing left to represent: no published revision and no active draft. Happens when
@@ -50,9 +58,10 @@ export async function syncSearchDocument(
   await upsertSearchDocument(tx, {
     entityType: "MEASURE",
     entityId: measureId,
+    electionId: measure.electionId,
     title: reference.text.slice(0, MAX_TITLE_LENGTH),
     body: reference.text,
-    url: `/elections/presidentielle-2027/mesures/${measureId}`,
+    url: `/elections/${measure.election.slug}/mesures/${measureId}`,
     visibility: isPublic ? "PUBLIC" : "ADMIN_ONLY",
     sourceRevisionId: reference.id,
     // The revision's own updatedAt, read after the transition's writes. Passing `now`

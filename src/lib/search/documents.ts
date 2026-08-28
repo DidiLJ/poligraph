@@ -4,6 +4,8 @@ import type { DbTransactionClient } from "@/lib/db";
 export type SearchDocumentInput = {
   entityType: SearchEntityType;
   entityId: string;
+  /** Structured election scope. Required here even though null is valid for global entities. */
+  electionId: string | null;
   title: string;
   body: string;
   url: string;
@@ -31,6 +33,7 @@ export async function upsertSearchDocument(
   input: SearchDocumentInput
 ): Promise<void> {
   const scalars = {
+    electionId: input.electionId,
     title: input.title,
     body: input.body,
     url: input.url,

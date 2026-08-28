@@ -8,6 +8,11 @@ import { db } from "@/lib/db";
 import { themeToSlug } from "@/lib/theme-utils";
 import { getPublicTrackedPresidentialCandidacyWhere } from "./presidential-candidacy-policy";
 import { PUBLIC_CANDIDACY_WHERE } from "./presidential-candidates-public";
+import {
+  getPublicPresidentialFicheWhere,
+  PUBLIC_MEASURE_WHERE,
+  PUBLIC_MEASURE_REVISION_WHERE,
+} from "@/lib/presidentielle/publication";
 
 /**
  * The cumulative public measure predicate.
@@ -16,19 +21,6 @@ import { PUBLIC_CANDIDACY_WHERE } from "./presidential-candidates-public";
  * publishedAt set, supersededAt, discardedAt and rejectedAt unset, and at least one source.
  * Every condition is required, so a measure pointing at an ineligible revision stays invisible.
  */
-const PUBLIC_MEASURE_WHERE = {
-  publicationStatus: "PUBLISHED",
-  publishedRevisionId: { not: null },
-  publishedRevision: {
-    reviewedAt: { not: null },
-    publishedAt: { not: null },
-    supersededAt: null,
-    discardedAt: null,
-    rejectedAt: null,
-    sources: { some: {} },
-  },
-} satisfies Prisma.MeasureWhereInput;
-
 const PUBLIC_MEASURE_INCLUDE = {
   publishedRevision: {
     include: {
@@ -61,6 +53,8 @@ export type PublicMeasure = {
   /** The published revision this measure points at. Non-null here: the where clause requires it. */
   publishedRevisionId: string;
   text: string;
+  /** Date of the human review that authorized the published formulation. */
+  reviewedAt: Date;
   precision: PublishedRevision["precision"];
   theme: MeasureRow["theme"];
   attribution: MeasureRow["attribution"];
@@ -87,6 +81,7 @@ function toPublicMeasure(row: MeasureRow): PublicMeasure | null {
     id: row.id,
     publishedRevisionId: revision.id,
     text: revision.text,
+    reviewedAt: revision.reviewedAt!,
     precision: revision.precision,
     theme: row.theme,
     attribution: row.attribution,
@@ -247,10 +242,12 @@ function toPublicPresidentialMeasure(
 export async function listPublicPresidentialMeasures(
   options: ListPublicPresidentialMeasuresOptions
 ): Promise<PublicPresidentialMeasurePage> {
-  const candidacyWhere: Prisma.CandidacyWhereInput = {
-    ...getPublicTrackedPresidentialCandidacyWhere(options.candidateSlug),
-    ...PUBLIC_CANDIDACY_WHERE,
-  };
+  const candidacyWhere: Prisma.CandidacyWhereInput = options.includeWithdrawn
+    ? {
+        ...getPublicTrackedPresidentialCandidacyWhere(options.candidateSlug),
+        ...PUBLIC_CANDIDACY_WHERE,
+      }
+    : getPublicPresidentialFicheWhere(options.candidateSlug);
   const where: Prisma.MeasureWhereInput = {
     electionId: options.electionId,
     ...(options.theme ? { theme: options.theme } : {}),
@@ -458,7 +455,7 @@ export async function getPublicMeasureStatsByCandidacy(
       where: {
         ...scope,
         publishedRevision: {
-          ...PUBLIC_MEASURE_WHERE.publishedRevision,
+          ...PUBLIC_MEASURE_REVISION_WHERE,
           sources: { some: { tier: "PRIMARY" } },
         },
       },
@@ -565,8 +562,10 @@ export async function getMeasureReadinessByCandidacies(
       where: {
         ...scope,
         publishedRevision: {
-          ...PUBLIC_MEASURE_WHERE.publishedRevision,
-          sources: { some: { tier: "PRIMARY" } },
+          is: {
+            ...PUBLIC_MEASURE_REVISION_WHERE,
+            sources: { some: { tier: "PRIMARY" } },
+          },
         },
       },
       _count: { _all: true },

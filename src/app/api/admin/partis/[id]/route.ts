@@ -4,6 +4,7 @@ import { withAdminAuth } from "@/lib/api/with-admin-auth";
 import { withValidation, getRequestMeta } from "@/lib/security";
 import { updatePartySchema } from "@/lib/security/schemas/party";
 import { invalidateEntity } from "@/lib/cache";
+import { lockMeasureCandidacy } from "@/lib/measures/lock";
 import { invalidatePresidentialCandidacyTags } from "@/lib/presidentielle/candidacy-cache";
 import { syncCandidacySearchDocumentsForParty } from "@/lib/presidentielle/search-sync";
 import type { z } from "zod/v4";
@@ -87,6 +88,15 @@ export const PUT = withAdminAuth(
     }
 
     const { updatedParty, presidentialElectionIds } = await db.$transaction(async (tx) => {
+      const candidacies = await tx.candidacy.findMany({
+        where: { partyId: id, election: { type: "PRESIDENTIELLE" } },
+        select: { id: true },
+        orderBy: { id: "asc" },
+      });
+      for (const candidacy of candidacies) {
+        await lockMeasureCandidacy(tx, candidacy.id);
+      }
+
       const updatedParty = await tx.party.update({
         where: { id },
         data: {

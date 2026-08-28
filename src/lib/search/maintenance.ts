@@ -1,5 +1,6 @@
 import type { SearchEntityType } from "@/generated/prisma";
 import { db } from "@/lib/db";
+import { lockMeasure, lockMeasureCandidacy } from "@/lib/measures/lock";
 import { syncSearchDocument } from "@/lib/measures/search-sync";
 import { syncCandidacySearchDocument } from "@/lib/presidentielle/search-sync";
 
@@ -58,7 +59,10 @@ const INDEXABLE: Record<ReindexableSearchEntityType, Indexable> = {
       return rows.map((row) => row.id);
     },
     sync: async (entityId) => {
-      await db.$transaction((tx) => syncCandidacySearchDocument(tx, entityId));
+      await db.$transaction(async (tx) => {
+        await lockMeasureCandidacy(tx, entityId);
+        await syncCandidacySearchDocument(tx, entityId);
+      });
     },
   },
   MEASURE: {
@@ -80,7 +84,17 @@ const INDEXABLE: Record<ReindexableSearchEntityType, Indexable> = {
       return rows.map((row) => row.id);
     },
     sync: async (entityId) => {
-      await db.$transaction((tx) => syncSearchDocument(tx, entityId));
+      await db.$transaction(async (tx) => {
+        // Match the transition lock order so a maintenance rebuild cannot overwrite a publication
+        // document derived from a newer measure or candidacy state.
+        await lockMeasure(tx, entityId);
+        const measure = await tx.measure.findUnique({
+          where: { id: entityId },
+          select: { candidacyId: true },
+        });
+        if (measure?.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
+        await syncSearchDocument(tx, entityId);
+      });
     },
   },
 };

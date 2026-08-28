@@ -7,6 +7,8 @@ import {
   synthesisFloor,
   synthesisMaterial,
   synthesisTargetRange,
+  LARGE_PROGRAMME_MEASURES,
+  LARGE_SYNTHESIS_MAX_WORDS,
   SYNTHESIS_MAX_WORDS,
   type CandidateSynthesisInput,
   type SynthesisMaterial,
@@ -48,8 +50,41 @@ describe("buildCandidateSynthesisPrompt", () => {
     const prompt = buildCandidateSynthesisPrompt(BASE);
     expect(prompt).toContain("Santé");
     expect(prompt).toContain("Transports");
-    // One heading per theme, not one per measure.
-    expect(prompt.match(/Santé/g)).toHaveLength(1);
+    // One measures heading per theme, not one per measure. The label also appears in the
+    // distribution and coverage instructions on purpose.
+    expect(prompt.match(/Santé \(2 mesures\) :/g)).toHaveLength(1);
+  });
+
+  it("provides theme counts and an explicit coverage target", () => {
+    const prompt = buildCandidateSynthesisPrompt(BASE);
+    expect(prompt).toContain("Santé : 2 mesures");
+    expect(prompt).toContain("Transports : 1 mesure");
+    expect(prompt).toContain(
+      "Représente au moins une mesure de chacun de ces thèmes : Santé, Transports."
+    );
+  });
+
+  it("asks a large programme to cover its eight most represented themes", () => {
+    const themes = [
+      "SANTE",
+      "TRANSPORTS",
+      "ECONOMIE_BUDGET",
+      "SOCIAL_TRAVAIL",
+      "SECURITE_JUSTICE",
+      "ENVIRONNEMENT_ENERGIE",
+      "EDUCATION_CULTURE",
+      "INSTITUTIONS",
+      "NUMERIQUE_TECH",
+    ] as const;
+    const measures = Array.from({ length: LARGE_PROGRAMME_MEASURES }, (_, index) => ({
+      theme: themes[index % themes.length]!,
+      text: `Mesure ${index}.`,
+    }));
+    const prompt = buildCandidateSynthesisPrompt({ ...BASE, measures });
+    const coverage = prompt.match(/<couverture_attendue>\n(.+)\n<\/couverture_attendue>/)?.[1];
+
+    expect(coverage?.match(/,/g)).toHaveLength(7);
+    expect(coverage).not.toContain("Numérique et technologie");
   });
 
   it("states an empty record rather than omitting the section", () => {
@@ -122,6 +157,24 @@ describe("buildSynthesisSystemPrompt", () => {
   it("garde 90 mots pour une candidature entièrement documentée", () => {
     // Rien ne change pour les candidatures qui passaient déjà : leurs textes font 124 à 169 mots.
     expect(synthesisTargetRange(FULL).min).toBe(90);
+  });
+
+  it("accorde 250 mots et une cible plus ample aux corpus volumineux", () => {
+    const large: SynthesisMaterial = {
+      mandateCount: 10,
+      voteCount: 1767,
+      measureCount: LARGE_PROGRAMME_MEASURES,
+    };
+    expect(synthesisTargetRange(large)).toEqual({ min: 180, max: LARGE_SYNTHESIS_MAX_WORDS });
+    expect(buildSynthesisSystemPrompt(large)).toContain(
+      `Entre 180 et ${LARGE_SYNTHESIS_MAX_WORDS} mots`
+    );
+  });
+
+  it("limite à deux engagements par thème et exige la couverture attendue", () => {
+    const prompt = buildSynthesisSystemPrompt(FULL);
+    expect(prompt).toContain("Représente chacun des thèmes demandés");
+    expect(prompt).toContain("pas plus de deux engagements d'un même thème");
   });
 
   it("demande moins à une candidature dont un pan est vide", () => {
@@ -211,6 +264,19 @@ describe("screenSynthesis", () => {
 
   it("rejects a text above the ceiling", () => {
     expect(screenSynthesis(words(SYNTHESIS_MAX_WORDS + 1))).toMatchObject({
+      ok: false,
+      reason: "trop_long",
+    });
+  });
+
+  it("accepts le plafond étendu uniquement pour un corpus volumineux", () => {
+    const large = { ...FULL, measureCount: LARGE_PROGRAMME_MEASURES };
+    expect(screenSynthesis(words(LARGE_SYNTHESIS_MAX_WORDS), large).ok).toBe(true);
+    expect(screenSynthesis(words(LARGE_SYNTHESIS_MAX_WORDS + 1), large)).toMatchObject({
+      ok: false,
+      reason: "trop_long",
+    });
+    expect(screenSynthesis(words(SYNTHESIS_MAX_WORDS + 1), FULL)).toMatchObject({
       ok: false,
       reason: "trop_long",
     });

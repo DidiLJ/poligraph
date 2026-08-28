@@ -37,11 +37,16 @@ const FIELD_LIMIT = 240;
  *   an empty reply, one line, a truncation. It sits far below the target on purpose, because every
  *   attempt to make it double as a quality bar has rejected honest work.
  *
- * The full-material target is still 90, so nothing changes for the candidacies that were already
- * passing. Checked against the twenty declared candidacies in production, every stored synthesis
- * clears its own floor, the tightest margin being 27 words against a floor of 25.
+ * A normally documented candidacy still targets 90 words. Only a programme large enough to make
+ * that format structurally selective gets more room. Checked against the twenty declared
+ * candidacies in production before that extension, every stored synthesis clears its own floor,
+ * the tightest margin being 27 words against a floor of 25.
  */
 export const SYNTHESIS_MAX_WORDS = 200;
+/** Eight programme themes plus a career paragraph fit without turning into a list. */
+export const LARGE_SYNTHESIS_MAX_WORDS = 250;
+/** Below one hundred measures, the existing 200-word format already carries the material. */
+export const LARGE_PROGRAMME_MEASURES = 100;
 
 /** Target terms: the identity sentence, then a paragraph per section, in two steps each. */
 export const TARGET_BASE = 25;
@@ -49,6 +54,7 @@ export const TARGET_THIN_CAREER = 15;
 export const TARGET_CAREER = 30;
 export const TARGET_FEW_MEASURES = 15;
 export const TARGET_MEASURES = 35;
+export const TARGET_LARGE_PROGRAMME = 125;
 
 /**
  * Where a section stops being a sentence and becomes a paragraph.
@@ -90,10 +96,16 @@ export function synthesisTargetRange(material: SynthesisMaterial): { min: number
   const programme =
     material.measureCount === 0
       ? 0
-      : material.measureCount >= SUBSTANTIAL_MEASURES
-        ? TARGET_MEASURES
-        : TARGET_FEW_MEASURES;
-  return { min: TARGET_BASE + career + programme, max: SYNTHESIS_MAX_WORDS };
+      : material.measureCount >= LARGE_PROGRAMME_MEASURES
+        ? TARGET_LARGE_PROGRAMME
+        : material.measureCount >= SUBSTANTIAL_MEASURES
+          ? TARGET_MEASURES
+          : TARGET_FEW_MEASURES;
+  const max =
+    material.measureCount >= LARGE_PROGRAMME_MEASURES
+      ? LARGE_SYNTHESIS_MAX_WORDS
+      : SYNTHESIS_MAX_WORDS;
+  return { min: TARGET_BASE + career + programme, max };
 }
 
 /** The length below which there is no answer to keep. Enforced; deliberately far under the target. */
@@ -179,6 +191,8 @@ Règles absolues :
 - Aucun jugement de valeur, aucun qualificatif d'appréciation. Ni « ambitieux », ni « radical », ni « crédible », ni « clivant ». Décris, ne commente pas.
 - Aucune comparaison avec un autre candidat.
 - Ne compte pas les mesures et ne dis pas combien il y en a : le chiffre est affiché à côté et il bougera.
+- Appuie-toi sur la répartition et la couverture attendue fournies avec le programme. Représente chacun des thèmes demandés par au moins un engagement concret.
+- Ne cite pas plus de deux engagements d'un même thème. Ne concentre jamais le paragraphe sur un thème tant que les thèmes attendus ne sont pas tous représentés.
 
 Forme :
 - Français, avec tous les accents.
@@ -202,15 +216,43 @@ export function buildCandidateSynthesisPrompt(input: CandidateSynthesisInput): s
     if (!byTheme.has(measure.theme)) byTheme.set(measure.theme, []);
     byTheme.get(measure.theme)!.push(safe(measure.text));
   }
+  const themes = [...byTheme.entries()].sort(
+    ([themeA, textsA], [themeB, textsB]) =>
+      textsB.length - textsA.length ||
+      THEME_CATEGORY_LABELS[themeA].localeCompare(THEME_CATEGORY_LABELS[themeB], "fr")
+  );
+  // Theme frequency is context, not an editorial ranking. It gives a stable, candidate-agnostic
+  // answer to “principal themes” while the explicit cap prevents the largest family swallowing the
+  // paragraph. Eight short examples fit the large 250-word format; five fit the standard one.
+  const coverageLimit = input.measures.length >= LARGE_PROGRAMME_MEASURES ? 8 : 5;
+  const expectedThemes = themes
+    .slice(0, coverageLimit)
+    .map(([theme]) => THEME_CATEGORY_LABELS[theme]);
   const measures =
-    byTheme.size > 0
-      ? [...byTheme.entries()]
+    themes.length > 0
+      ? themes
           .map(
             ([theme, texts]) =>
-              `${THEME_CATEGORY_LABELS[theme]} :\n${texts.map((t) => `  - ${t}`).join("\n")}`
+              `${THEME_CATEGORY_LABELS[theme]} (${texts.length} mesure${texts.length > 1 ? "s" : ""}) :\n${texts
+                .sort((a, b) => a.localeCompare(b, "fr"))
+                .map((t) => `  - ${t}`)
+                .join("\n")}`
           )
           .join("\n")
       : "Aucune mesure publiée pour cette candidature.";
+  const distribution =
+    themes.length > 0
+      ? themes
+          .map(
+            ([theme, texts]) =>
+              `- ${THEME_CATEGORY_LABELS[theme]} : ${texts.length} mesure${texts.length > 1 ? "s" : ""}`
+          )
+          .join("\n")
+      : "Aucun thème représenté.";
+  const coverage =
+    expectedThemes.length > 0
+      ? `Représente au moins une mesure de chacun de ces thèmes : ${expectedThemes.join(", ")}.`
+      : "Aucun thème à représenter.";
 
   const votes =
     input.voteCount > 0
@@ -228,7 +270,15 @@ ${votes}
 </parcours>
 
 <programme>
+<repartition_themes>
+${distribution}
+</repartition_themes>
+<couverture_attendue>
+${coverage}
+</couverture_attendue>
+<mesures_par_theme>
 ${measures}
+</mesures_par_theme>
 </programme>
 
 Rédige la synthèse.`;
@@ -294,11 +344,12 @@ export function screenSynthesis(
       detail: `${words} mots, minimum ${minWords}`,
     };
   }
-  if (words > SYNTHESIS_MAX_WORDS) {
+  const maxWords = synthesisTargetRange(material).max;
+  if (words > maxWords) {
     return {
       ok: false,
       reason: "trop_long",
-      detail: `${words} mots, maximum ${SYNTHESIS_MAX_WORDS}`,
+      detail: `${words} mots, maximum ${maxWords}`,
     };
   }
 

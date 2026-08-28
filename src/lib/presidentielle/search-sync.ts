@@ -79,6 +79,29 @@ export async function syncCandidacySearchDocument(
 }
 
 /**
+ * Refresh presidential candidacy documents whose searchable party label changed.
+ *
+ * The party write and these index writes must share a transaction: otherwise a failed refresh
+ * would leave the former party name searchable until the next explicit reconstruction.
+ */
+export async function syncCandidacySearchDocumentsForParty(
+  tx: DbTransactionClient,
+  partyId: string
+): Promise<string[]> {
+  const candidacies = await tx.candidacy.findMany({
+    where: { partyId, election: { type: "PRESIDENTIELLE" } },
+    select: { id: true, electionId: true },
+    orderBy: { id: "asc" },
+  });
+
+  for (const candidacy of candidacies) {
+    await syncCandidacySearchDocument(tx, candidacy.id);
+  }
+
+  return [...new Set(candidacies.map((candidacy) => candidacy.electionId))];
+}
+
+/**
  * Re-evaluate a candidacy and every measure whose visibility depends on its fiche gate.
  *
  * Used on publication-authority transitions. All writes share the caller's transaction, so a

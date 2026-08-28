@@ -41,6 +41,7 @@ function transaction(publicCandidate: boolean) {
     candidacy: {
       findUnique: vi.fn(async () => candidate),
       findFirst: vi.fn(async () => (publicCandidate ? { id: candidate.id } : null)),
+      findMany: vi.fn(async () => [] as Array<{ id: string; electionId: string }>),
     },
     measure: { findMany: vi.fn(async () => [{ id: "measure-1" }, { id: "measure-2" }]) },
   };
@@ -92,5 +93,25 @@ describe("synchronisation recherche des candidatures présidentielles", () => {
       [tx, "measure-1"],
       [tx, "measure-2"],
     ]);
+  });
+
+  it("réindexe les candidatures présidentielles après le renommage d'un parti", async () => {
+    const { syncCandidacySearchDocumentsForParty } = await import("../search-sync");
+    const tx = transaction(true);
+    tx.candidacy.findMany = vi.fn(async () => [
+      { id: "cand-1", electionId: "election-1" },
+      { id: "cand-2", electionId: "election-1" },
+      { id: "cand-3", electionId: "election-2" },
+    ]) as never;
+
+    const electionIds = await syncCandidacySearchDocumentsForParty(tx as never, "party-1");
+
+    expect(tx.candidacy.findMany).toHaveBeenCalledWith({
+      where: { partyId: "party-1", election: { type: "PRESIDENTIELLE" } },
+      select: { id: true, electionId: true },
+      orderBy: { id: "asc" },
+    });
+    expect(upsertSearchDocumentMock).toHaveBeenCalledTimes(3);
+    expect(electionIds).toEqual(["election-1", "election-2"]);
   });
 });

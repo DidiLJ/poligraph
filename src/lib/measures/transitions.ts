@@ -248,8 +248,15 @@ export async function draftMeasureRevision(
 
     const measure = await tx.measure.findUniqueOrThrow({
       where: { id: input.measureId },
-      select: { latestRevisionId: true, publishedRevisionId: true, updatedAt: true },
+      select: {
+        latestRevisionId: true,
+        publishedRevisionId: true,
+        candidacyId: true,
+        updatedAt: true,
+      },
     });
+
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
 
@@ -462,8 +469,9 @@ export async function discardMeasureRevision(input: {
 
     const measure = await tx.measure.findUniqueOrThrow({
       where: { id: input.measureId },
-      select: { latestRevisionId: true, publishedRevisionId: true },
+      select: { latestRevisionId: true, publishedRevisionId: true, candidacyId: true },
     });
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
     if (input.revisionId === measure.publishedRevisionId) {
       throw new MeasureValidationError(
         "Une révision publiée ne s'abandonne pas, elle se dépublie ou se remplace"
@@ -505,8 +513,9 @@ export async function rejectMeasureRevision(input: {
     await lockMeasure(tx, input.measureId);
     const measure = await tx.measure.findUniqueOrThrow({
       where: { id: input.measureId },
-      select: { latestRevisionId: true, publishedRevisionId: true },
+      select: { latestRevisionId: true, publishedRevisionId: true, candidacyId: true },
     });
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
     if (input.revisionId === measure.publishedRevisionId) {
       throw new MeasureValidationError("Une révision publiée ne peut pas être rejetée");
     }

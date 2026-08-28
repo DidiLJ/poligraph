@@ -17,7 +17,7 @@ const dbMock = {
   $transaction: vi.fn(),
   $queryRaw: vi.fn(),
   candidacy: { findUnique: vi.fn(), update: vi.fn() },
-  candidacyPresidential: { upsert: vi.fn() },
+  candidacyPresidential: { upsert: vi.fn(), updateMany: vi.fn() },
   programEdition: { findUnique: vi.fn(), update: vi.fn() },
   auditLog: { create: vi.fn() },
 };
@@ -67,6 +67,7 @@ beforeEach(() => {
   isAuthenticatedMock.mockResolvedValue(true);
   dbMock.candidacy.findUnique.mockResolvedValue(SOURCED_CANDIDACY);
   dbMock.candidacyPresidential.upsert.mockResolvedValue({ id: "pres-1" });
+  dbMock.candidacyPresidential.updateMany.mockResolvedValue({ count: 1 });
   dbMock.candidacy.update.mockResolvedValue({ id: "cand-1" });
   dbMock.programEdition.findUnique.mockResolvedValue({
     id: "ed-1",
@@ -235,6 +236,34 @@ describe("actions de publication des candidatures", () => {
 });
 
 describe("statut politique d'une candidature", () => {
+  it("efface la synthèse en quittant le statut déclaré", async () => {
+    dbMock.candidacy.findUnique.mockResolvedValue({
+      ...SOURCED_CANDIDACY,
+      presidentialData: { ...SOURCED_CANDIDACY.presidentialData, synthesis: "Synthèse existante" },
+    });
+    const a = await actions();
+
+    expect(
+      await a.setCandidacyStatusAction({
+        candidacyId: "cand-1",
+        status: "PRESSENTI",
+        sourceUrl: "https://example.org/nouveau-statut",
+        sourceLabel: "Annonce officielle",
+      })
+    ).toEqual({ ok: true });
+    expect(dbMock.candidacyPresidential.updateMany).toHaveBeenCalledWith({
+      where: { candidacyId: "cand-1" },
+      data: { synthesis: null, synthesisGeneratedAt: null },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          changes: expect.objectContaining({ synthesisCleared: true }),
+        }),
+      })
+    );
+  });
+
   it.each([
     "not a url",
     "mailto:redaction@example.org",

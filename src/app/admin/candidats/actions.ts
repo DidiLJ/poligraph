@@ -83,13 +83,23 @@ export async function setCandidacyStatusAction(input: {
     await lockMeasureCandidacy(tx, candidacyId);
     const candidacy = await tx.candidacy.findUnique({
       where: { id: candidacyId },
-      select: { id: true, electionId: true, status: true, sourceUrl: true, sourceLabel: true },
+      select: {
+        id: true,
+        electionId: true,
+        status: true,
+        sourceUrl: true,
+        sourceLabel: true,
+        presidentialData: { select: { synthesis: true } },
+      },
     });
     if (!candidacy) return { ok: false as const, message: "Candidature introuvable." };
+    const mustClearSynthesis =
+      status !== "DECLARE" && candidacy.presidentialData?.synthesis != null;
     if (
       candidacy.status === status &&
       candidacy.sourceUrl === sourceUrl &&
-      candidacy.sourceLabel === sourceLabel
+      candidacy.sourceLabel === sourceLabel &&
+      !mustClearSynthesis
     ) {
       return { ok: true as const, electionId: candidacy.electionId };
     }
@@ -98,6 +108,12 @@ export async function setCandidacyStatusAction(input: {
       where: { id: candidacyId },
       data: { status, sourceUrl, sourceLabel },
     });
+    if (mustClearSynthesis) {
+      await tx.candidacyPresidential.updateMany({
+        where: { candidacyId },
+        data: { synthesis: null, synthesisGeneratedAt: null },
+      });
+    }
     await tx.auditLog.create({
       data: {
         action: "UPDATE",
@@ -110,6 +126,7 @@ export async function setCandidacyStatusAction(input: {
           previousStatus: candidacy.status,
           previousSourceUrl: candidacy.sourceUrl,
           previousSourceLabel: candidacy.sourceLabel,
+          synthesisCleared: mustClearSynthesis,
         },
         ipAddress,
         userAgent,

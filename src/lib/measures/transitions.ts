@@ -17,7 +17,7 @@ import {
   type MeasureImportEngine,
 } from "./evidence-snapshot";
 import { MeasureConcurrencyError, MeasureValidationError } from "./errors";
-import { lockMeasure } from "./lock";
+import { lockMeasure, lockMeasureCandidacy } from "./lock";
 import { syncSearchDocument } from "./search-sync";
 import { PUBLIC_PRESIDENTIAL_FICHE_WHERE } from "@/lib/presidentielle/publication";
 import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
@@ -594,6 +594,8 @@ export async function publishMeasureRevision(input: {
         updatedAt: true,
       },
     });
+
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 import type { CandidacyStatus, PublicationStatus } from "@/generated/prisma";
 import { isAuthenticated } from "@/lib/auth";
@@ -37,6 +38,8 @@ const candidacyStatusSchema = z
   .object({
     candidacyId: z.string().min(1),
     status: z.enum(["DECLARE", "PRESSENTI", "ENVISAGE", "RETIRE"]),
+    sourceUrl: z.string().url(),
+    sourceLabel: z.string().trim().min(1),
   })
   .strict();
 
@@ -58,12 +61,19 @@ function revalidate(): void {
 export async function setCandidacyStatusAction(input: {
   candidacyId: string;
   status: CandidacyStatus;
+  sourceUrl: string;
+  sourceLabel: string;
 }): Promise<CandidacyActionResult> {
   await assertAuthenticated();
 
   const parsed = candidacyStatusSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "Requête invalide." };
-  const { candidacyId, status } = parsed.data;
+  const { candidacyId, status, sourceUrl, sourceLabel } = parsed.data;
+  const requestHeaders = await headers();
+  const forwarded = requestHeaders.get("x-forwarded-for");
+  const ipAddress =
+    forwarded?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip") || "unknown";
+  const userAgent = requestHeaders.get("user-agent") || "unknown";
 
   const outcome = await db.$transaction(async (tx) => {
     const candidacy = await tx.candidacy.findUnique({
@@ -71,21 +81,33 @@ export async function setCandidacyStatusAction(input: {
       select: { id: true, electionId: true, status: true, sourceUrl: true, sourceLabel: true },
     });
     if (!candidacy) return { ok: false as const, message: "Candidature introuvable." };
-    if (!candidacy.sourceUrl || !candidacy.sourceLabel) {
-      return {
-        ok: false as const,
-        message: "Une source et son libellé sont requis avant de modifier le statut.",
-      };
+    if (
+      candidacy.status === status &&
+      candidacy.sourceUrl === sourceUrl &&
+      candidacy.sourceLabel === sourceLabel
+    ) {
+      return { ok: true as const, electionId: candidacy.electionId };
     }
-    if (candidacy.status === status) return { ok: true as const, electionId: candidacy.electionId };
 
-    await tx.candidacy.update({ where: { id: candidacyId }, data: { status } });
+    await tx.candidacy.update({
+      where: { id: candidacyId },
+      data: { status, sourceUrl, sourceLabel },
+    });
     await tx.auditLog.create({
       data: {
         action: "UPDATE",
         entityType: "Candidacy",
         entityId: candidacyId,
-        changes: { status, previousStatus: candidacy.status },
+        changes: {
+          status,
+          sourceUrl,
+          sourceLabel,
+          previousStatus: candidacy.status,
+          previousSourceUrl: candidacy.sourceUrl,
+          previousSourceLabel: candidacy.sourceLabel,
+        },
+        ipAddress,
+        userAgent,
       },
     });
     await syncPresidentialSearchDocumentsForCandidacy(tx, candidacyId);

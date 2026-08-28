@@ -694,12 +694,19 @@ export async function publishMeasureRevision(input: {
       });
     }
 
+    const ficheIsPublic = measure.candidacyId
+      ? (await tx.candidacy.findFirst({
+          where: { id: measure.candidacyId, ...PUBLIC_PRESIDENTIAL_FICHE_WHERE },
+          select: { id: true },
+        })) !== null
+      : false;
+
     // In the same transaction: the database must never expose a new revision while the
     // index still holds the previous text. Called last, so it reads the pointers this
     // transaction has just written.
-    if (measure.candidacyId && !ficheWasPublic) {
-      // Publishing can open the carrier fiche (first primary-sourced measure), which changes the
-      // visibility of every already-published measure of that candidacy.
+    if (measure.candidacyId && ficheWasPublic !== ficheIsPublic) {
+      // Opening or closing the carrier fiche changes the visibility of every measure attached to
+      // the candidacy. A stable fiche only requires the edited measure to be refreshed.
       await syncPresidentialSearchDocumentsForCandidacy(tx, measure.candidacyId);
     } else {
       await syncSearchDocument(tx, input.measureId);

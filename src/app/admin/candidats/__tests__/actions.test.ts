@@ -23,6 +23,13 @@ const dbMock = {
 
 vi.mock("@/lib/auth", () => ({ isAuthenticated: () => isAuthenticatedMock() }));
 vi.mock("next/cache", () => ({ revalidatePath: (path: string) => revalidatePathMock(path) }));
+vi.mock("next/headers", () => ({
+  headers: async () =>
+    new Headers({
+      "x-forwarded-for": "203.0.113.10, 10.0.0.1",
+      "user-agent": "Poligraph test",
+    }),
+}));
 vi.mock("@/lib/cache", () => ({
   invalidateEntity: (...args: unknown[]) => invalidateEntityMock(...args),
 }));
@@ -226,19 +233,35 @@ describe("statut politique d'une candidature", () => {
     dbMock.candidacy.findUnique.mockResolvedValue({ ...SOURCED_CANDIDACY, status: "PRESSENTI" });
     const a = await actions();
 
-    expect(await a.setCandidacyStatusAction({ candidacyId: "cand-1", status: "DECLARE" })).toEqual({
-      ok: true,
-    });
+    expect(
+      await a.setCandidacyStatusAction({
+        candidacyId: "cand-1",
+        status: "DECLARE",
+        sourceUrl: "https://example.org/declaration",
+        sourceLabel: "Déclaration officielle",
+      })
+    ).toEqual({ ok: true });
     expect(dbMock.candidacy.update).toHaveBeenCalledWith({
       where: { id: "cand-1" },
-      data: { status: "DECLARE" },
+      data: {
+        status: "DECLARE",
+        sourceUrl: "https://example.org/declaration",
+        sourceLabel: "Déclaration officielle",
+      },
     });
     expect(dbMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           entityType: "Candidacy",
           entityId: "cand-1",
-          changes: { status: "DECLARE", previousStatus: "PRESSENTI" },
+          changes: expect.objectContaining({
+            status: "DECLARE",
+            sourceUrl: "https://example.org/declaration",
+            sourceLabel: "Déclaration officielle",
+            previousStatus: "PRESSENTI",
+          }),
+          ipAddress: "203.0.113.10",
+          userAgent: "Poligraph test",
         }),
       })
     );

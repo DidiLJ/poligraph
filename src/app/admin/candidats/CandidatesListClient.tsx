@@ -54,6 +54,8 @@ export type CandidateRowView = {
   politicianSlug: string | null;
   partyLabel: string | null;
   status: CandidacyStatus | null;
+  sourceUrl: string | null;
+  sourceLabel: string | null;
   /** Status, source URL and source label all present: the condition the public fiche imposes. */
   sourced: boolean;
   /** Null when the candidacy carries no `CandidacyPresidential` row yet. */
@@ -77,6 +79,18 @@ export function CandidatesListClient({ rows }: { rows: CandidateRowView[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [statusDrafts, setStatusDrafts] = useState(() =>
+    Object.fromEntries(
+      rows.map((row) => [
+        row.candidacyId,
+        {
+          status: row.status ?? "",
+          sourceUrl: row.sourceUrl ?? "",
+          sourceLabel: row.sourceLabel ?? "",
+        },
+      ])
+    )
+  );
 
   const held = rows.filter(isHoldingBackMeasures);
   const heldMeasureCount = held.reduce((total, row) => total + row.readiness.measureCount, 0);
@@ -185,6 +199,16 @@ export function CandidatesListClient({ rows }: { rows: CandidateRowView[] }) {
               const synthesisKey = `synthese:${row.candidacyId}`;
               const published = row.publicationStatus === "PUBLISHED";
               const locked = busy !== null || pending;
+              const statusDraft = statusDrafts[row.candidacyId] ?? {
+                status: row.status ?? "",
+                sourceUrl: row.sourceUrl ?? "",
+                sourceLabel: row.sourceLabel ?? "",
+              };
+              const updateStatusDraft = (patch: Partial<typeof statusDraft>) =>
+                setStatusDrafts((current) => ({
+                  ...current,
+                  [row.candidacyId]: { ...statusDraft, ...patch },
+                }));
               return (
                 <tr key={row.candidacyId} className="border-t align-top">
                   <td className="px-3 py-2 w-12">
@@ -219,28 +243,63 @@ export function CandidatesListClient({ rows }: { rows: CandidateRowView[] }) {
                     <label className="sr-only" htmlFor={statusKey}>
                       Statut de {row.candidateName}
                     </label>
-                    <select
-                      id={statusKey}
-                      value={row.status ?? ""}
-                      onChange={(event) => {
-                        const status = event.target.value as CandidacyStatus;
-                        if (status) {
+                    <div className="flex min-w-64 flex-col gap-2">
+                      <select
+                        id={statusKey}
+                        value={statusDraft.status}
+                        onChange={(event) => updateStatusDraft({ status: event.target.value })}
+                        disabled={locked}
+                        className="min-h-11 rounded border bg-background px-2 text-sm md:min-h-[36px]"
+                        aria-label={`Statut de ${row.candidateName}`}
+                      >
+                        {!row.status && <option value="">Statut non renseigné</option>}
+                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="url"
+                        value={statusDraft.sourceUrl}
+                        onChange={(event) => updateStatusDraft({ sourceUrl: event.target.value })}
+                        disabled={locked}
+                        className="min-h-11 rounded border bg-background px-2 text-sm md:min-h-[36px]"
+                        aria-label={`URL source du statut de ${row.candidateName}`}
+                        placeholder="https://site-officiel.fr/annonce"
+                      />
+                      <input
+                        type="text"
+                        value={statusDraft.sourceLabel}
+                        onChange={(event) => updateStatusDraft({ sourceLabel: event.target.value })}
+                        disabled={locked}
+                        className="min-h-11 rounded border bg-background px-2 text-sm md:min-h-[36px]"
+                        aria-label={`Libellé source du statut de ${row.candidateName}`}
+                        placeholder="Annonce officielle, date"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
                           runAction(statusKey, () =>
-                            setCandidacyStatusAction({ candidacyId: row.candidacyId, status })
-                          );
+                            setCandidacyStatusAction({
+                              candidacyId: row.candidacyId,
+                              status: statusDraft.status as CandidacyStatus,
+                              sourceUrl: statusDraft.sourceUrl.trim(),
+                              sourceLabel: statusDraft.sourceLabel.trim(),
+                            })
+                          )
                         }
-                      }}
-                      disabled={locked}
-                      className="min-h-11 rounded border bg-background px-2 text-sm md:min-h-[36px]"
-                      aria-label={`Statut de ${row.candidateName}`}
-                    >
-                      {!row.status && <option value="">Statut non renseigné</option>}
-                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
+                        disabled={
+                          locked ||
+                          !statusDraft.status ||
+                          !statusDraft.sourceUrl.trim() ||
+                          !statusDraft.sourceLabel.trim()
+                        }
+                        className="inline-flex min-h-11 items-center justify-center rounded border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-50 md:min-h-[36px]"
+                      >
+                        {busy === statusKey ? "Enregistrement..." : "Enregistrer le statut"}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     {row.readiness.measureCount === 0 ? (

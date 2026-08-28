@@ -33,6 +33,8 @@ function row(over: Partial<CandidateRowView> = {}): CandidateRowView {
     politicianSlug: "alix-demonstration",
     partyLabel: "PD",
     status: "DECLARE",
+    sourceUrl: "https://example.org/annonce",
+    sourceLabel: "Annonce officielle",
     sourced: true,
     presidentialId: "pres-1",
     publicationStatus: "DRAFT",
@@ -96,10 +98,27 @@ describe("CandidatesListClient", () => {
       screen.getByRole("combobox", { name: "Statut de Alix Démonstration" }),
       "DECLARE"
     );
+    await user.clear(
+      screen.getByRole("textbox", { name: "URL source du statut de Alix Démonstration" })
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "URL source du statut de Alix Démonstration" }),
+      "https://example.org/declaration"
+    );
+    await user.clear(
+      screen.getByRole("textbox", { name: "Libellé source du statut de Alix Démonstration" })
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Libellé source du statut de Alix Démonstration" }),
+      "Déclaration officielle"
+    );
+    await user.click(screen.getByRole("button", { name: "Enregistrer le statut" }));
 
     expect(setCandidacyStatusMock).toHaveBeenCalledWith({
       candidacyId: "cand-1",
       status: "DECLARE",
+      sourceUrl: "https://example.org/declaration",
+      sourceLabel: "Déclaration officielle",
     });
   });
 

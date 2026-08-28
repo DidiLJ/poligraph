@@ -26,6 +26,11 @@ const PUBLIC_MEASURE_INCLUDE = {
     include: {
       sources: { orderBy: { publishedAt: "asc" } },
       qualifications: { orderBy: { assessedAt: "desc" } },
+      subtopics: {
+        where: { status: "APPROVED", subtopic: { active: true } },
+        include: { subtopic: true },
+        orderBy: { subtopic: { sortOrder: "asc" } },
+      },
     },
   },
 } satisfies Prisma.MeasureInclude;
@@ -69,6 +74,7 @@ export type PublicMeasure = {
   withdrawal: MeasureWithdrawal | null;
   sources: PublishedRevision["sources"];
   qualifications: PublishedRevision["qualifications"];
+  subtopics: Array<{ slug: string; label: string }>;
 };
 
 function toPublicMeasure(row: MeasureRow): PublicMeasure | null {
@@ -97,6 +103,10 @@ function toPublicMeasure(row: MeasureRow): PublicMeasure | null {
       : null,
     sources: revision.sources,
     qualifications: revision.qualifications,
+    subtopics: revision.subtopics.map(({ subtopic }) => ({
+      slug: subtopic.slug,
+      label: subtopic.label,
+    })),
   };
 }
 
@@ -137,6 +147,13 @@ const PUBLIC_PRESIDENTIAL_MEASURE_SELECT = {
         },
         orderBy: [{ publishedAt: "asc" }, { id: "asc" }],
       },
+      subtopics: {
+        where: { status: "APPROVED", subtopic: { active: true } },
+        select: {
+          subtopic: { select: { slug: true, label: true, theme: true, sortOrder: true } },
+        },
+        orderBy: { subtopic: { sortOrder: "asc" } },
+      },
     },
   },
   candidacy: {
@@ -169,6 +186,7 @@ export type PublicPresidentialMeasure = {
     publicUrl: string | null;
   };
   sources: NonNullable<PublicPresidentialMeasureRow["publishedRevision"]>["sources"];
+  subtopics: Array<{ slug: string; label: string }>;
   withdrawal: MeasureWithdrawal | null;
 };
 
@@ -177,6 +195,8 @@ export type ListPublicPresidentialMeasuresOptions = {
   electionSlug: string;
   candidateSlug?: string;
   theme?: ThemeCategory;
+  subtopicSlug?: string;
+  query?: string;
   includeWithdrawn?: boolean;
   page: number;
   limit: number;
@@ -222,6 +242,10 @@ function toPublicPresidentialMeasure(
       publicUrl: politicianSlug ? `/elections/${electionSlug}/candidats/${politicianSlug}` : null,
     },
     sources: revision.sources,
+    subtopics: revision.subtopics.map(({ subtopic }) => ({
+      slug: subtopic.slug,
+      label: subtopic.label,
+    })),
     withdrawal:
       row.withdrawnAt !== null
         ? {
@@ -252,6 +276,28 @@ export async function listPublicPresidentialMeasures(
     electionId: options.electionId,
     ...(options.theme ? { theme: options.theme } : {}),
     ...PUBLIC_MEASURE_WHERE,
+    ...(options.query || options.subtopicSlug
+      ? {
+          publishedRevision: {
+            is: {
+              ...PUBLIC_MEASURE_REVISION_WHERE,
+              ...(options.query
+                ? { text: { contains: options.query, mode: "insensitive" as const } }
+                : {}),
+              ...(options.subtopicSlug
+                ? {
+                    subtopics: {
+                      some: {
+                        status: "APPROVED",
+                        subtopic: { slug: options.subtopicSlug, active: true },
+                      },
+                    },
+                  }
+                : {}),
+            },
+          },
+        }
+      : {}),
     ...withdrawalFilter(options),
     candidacy: { is: candidacyWhere },
   };
@@ -273,6 +319,50 @@ export async function listPublicPresidentialMeasures(
       .map((row) => toPublicPresidentialMeasure(row, options.electionSlug))
       .filter((measure): measure is PublicPresidentialMeasure => measure !== null),
   };
+}
+
+export type PublicMeasureSubtopicCount = {
+  slug: string;
+  label: string;
+  theme: ThemeCategory;
+  count: number;
+};
+
+/** Only human-approved assignments attached to the currently published revision. */
+export async function getPublicMeasureSubtopicCountsByCandidacy(
+  candidacyId: string,
+  theme?: ThemeCategory
+): Promise<PublicMeasureSubtopicCount[]> {
+  const rows = await db.measureRevisionSubtopic.findMany({
+    where: {
+      status: "APPROVED",
+      subtopic: { active: true, ...(theme ? { theme } : {}) },
+      revision: {
+        publishedOf: {
+          is: {
+            candidacyId,
+            ...PUBLIC_MEASURE_WHERE,
+            withdrawnAt: null,
+          },
+        },
+      },
+    },
+    select: { subtopic: { select: { slug: true, label: true, theme: true, sortOrder: true } } },
+  });
+  const counts = new Map<string, PublicMeasureSubtopicCount & { sortOrder: number }>();
+  for (const row of rows) {
+    const current = counts.get(row.subtopic.slug);
+    counts.set(row.subtopic.slug, {
+      slug: row.subtopic.slug,
+      label: row.subtopic.label,
+      theme: row.subtopic.theme,
+      sortOrder: row.subtopic.sortOrder,
+      count: (current?.count ?? 0) + 1,
+    });
+  }
+  return [...counts.values()]
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "fr"))
+    .map(({ sortOrder: _sortOrder, ...item }) => item);
 }
 
 /**
@@ -346,6 +436,10 @@ export async function getMeasureForModeration(measureId: string) {
           sources: true,
           qualifications: true,
           assessments: { include: { matches: true } },
+          subtopics: {
+            include: { subtopic: true },
+            orderBy: [{ status: "asc" }, { subtopic: { sortOrder: "asc" } }],
+          },
         },
         orderBy: { validFrom: "desc" },
       },

@@ -2898,6 +2898,54 @@ enum ProgramOwnerType {
   CANDIDACY
 }
 
+enum MeasureSubtopicAssignmentStatus {
+  SUGGESTED
+  APPROVED
+  REJECTED
+}
+
+// Closed, versioned navigation vocabulary. A subtopic belongs to one broad theme; it is not a
+// free-form tag and therefore cannot silently split into synonyms over successive imports.
+model MeasureSubtopic {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  label       String
+  description String        @db.Text
+  theme       ThemeCategory
+  aliases     String[]      @default([])
+  active      Boolean       @default(true)
+  sortOrder   Int           @default(0)
+
+  assignments MeasureRevisionSubtopic[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([theme, active, sortOrder])
+}
+
+// Attached to the revision rather than the stable measure because a rewritten formulation can
+// change subject. AI only creates SUGGESTED rows; APPROVED is a human editorial decision.
+model MeasureRevisionSubtopic {
+  revision   MeasureRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  revisionId String
+  subtopic   MeasureSubtopic  @relation(fields: [subtopicId], references: [id], onDelete: Restrict)
+  subtopicId String
+
+  status            MeasureSubtopicAssignmentStatus @default(SUGGESTED)
+  confidence        Float?
+  method            String
+  classifierVersion String
+  taxonomyVersion   String
+  proposedAt        DateTime                        @default(now())
+  reviewedAt        DateTime?
+  reviewedBy        String?
+
+  @@id([revisionId, subtopicId])
+  @@index([subtopicId, status])
+  @@index([revisionId, status])
+}
+
 // The stable object. Two publication pointers, not one: latestRevisionId carries the
 // work in progress, publishedRevisionId carries what the public sees. With a single
 // pointer, fixing a comma created an unreviewed revision that became current, which
@@ -2995,6 +3043,7 @@ model MeasureRevision {
   assessments         MeasureSimilarityAssessment[]
   equivalentOf        MeasureSimilarityMatch[]      @relation("EquivalentRevision")
   applicableVoteLinks MeasureVoteLink[]             @relation("ApplicableRevisionVoteLinks")
+  subtopics           MeasureRevisionSubtopic[]
 
   latestOf    Measure? @relation("MeasureLatest")
   publishedOf Measure? @relation("MeasurePublished")

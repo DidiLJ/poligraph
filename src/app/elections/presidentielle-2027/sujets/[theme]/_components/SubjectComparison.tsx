@@ -154,12 +154,22 @@ function MeasureQualifiers({ entry }: { entry: SubjectCandidateEntry["measures"]
  * before the metadata and a tighter one inside it lets proximity do what it is for: one statement,
  * then the apparatus that backs it.
  */
-function QuotedMeasure({ entry }: { entry: SubjectCandidateEntry["measures"][number] }) {
+function QuotedMeasure({
+  entry,
+  electionSlug,
+}: {
+  entry: SubjectCandidateEntry["measures"][number];
+  electionSlug: string;
+}) {
   return (
     <div className="max-w-[64ch]">
-      <p className="text-[0.9375rem] leading-[1.55]">
+      <Link
+        href={`/elections/${electionSlug}/mesures/${entry.measure.id}`}
+        prefetch={false}
+        className="rounded text-[0.9375rem] leading-[1.55] text-foreground underline decoration-border underline-offset-2 hover:text-primary hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
         &laquo;&nbsp;{entry.measure.text}&nbsp;&raquo;
-      </p>
+      </Link>
       <div className="mt-2.5 space-y-1">
         <MeasureQualifiers entry={entry} />
         <MeasureSources sources={entry.measure.sources} />
@@ -195,7 +205,15 @@ const QUOTED_MEASURE_LIMIT = 3;
  * The summary states both directions, because a control that keeps saying "voir les 2 autres" once
  * they are already on screen leaves the reader with no visible way back to the short form.
  */
-function ProposalCell({ entry, theme }: { entry: SubjectCandidateEntry; theme: ThemeCategory }) {
+function ProposalCell({
+  entry,
+  theme,
+  electionSlug,
+}: {
+  entry: SubjectCandidateEntry;
+  theme: ThemeCategory;
+  electionSlug: string;
+}) {
   if (entry.measures.length === 0) {
     return <QualifiedEmptyCell absence={{ kind: "no_measure_published", theme }} />;
   }
@@ -206,7 +224,7 @@ function ProposalCell({ entry, theme }: { entry: SubjectCandidateEntry; theme: T
     <div className="divide-y divide-border/70">
       {quoted.map((measure) => (
         <div key={measure.measure.id} className="py-3 first:pt-0 last:pb-0">
-          <QuotedMeasure entry={measure} />
+          <QuotedMeasure entry={measure} electionSlug={electionSlug} />
         </div>
       ))}
       {folded.length > 0 && (
@@ -230,7 +248,7 @@ function ProposalCell({ entry, theme }: { entry: SubjectCandidateEntry; theme: T
           <div className="divide-y divide-border/70">
             {folded.map((other) => (
               <div key={other.measure.id} className="py-3 last:pb-0">
-                <QuotedMeasure entry={other} />
+                <QuotedMeasure entry={other} electionSlug={electionSlug} />
               </div>
             ))}
           </div>
@@ -502,7 +520,7 @@ function ComparisonTable({ data }: { data: SubjectPageData }) {
                   <CandidateIdentity entry={entry} />
                 </th>
                 <td className="px-4 py-4">
-                  <ProposalCell entry={entry} theme={data.theme} />
+                  <ProposalCell entry={entry} theme={data.theme} electionSlug={data.electionSlug} />
                 </td>
               </tr>
             ))}
@@ -523,7 +541,7 @@ function ComparisonTable({ data }: { data: SubjectPageData }) {
           <li key={entry.candidate.id} className="rounded-xl border border-border bg-card p-4">
             <CandidateIdentity entry={entry} />
             <div className="mt-3">
-              <ProposalCell entry={entry} theme={data.theme} />
+              <ProposalCell entry={entry} theme={data.theme} electionSlug={data.electionSlug} />
             </div>
           </li>
         ))}

@@ -21,6 +21,7 @@ function measure(over: Partial<PublicMeasure> = {}): PublicMeasure {
     withdrawal: null,
     sources: [],
     qualifications: [],
+    subtopics: [],
     ...over,
   };
 }
@@ -413,6 +414,29 @@ describe("SubjectComparison", () => {
       expect(classes).not.toMatch(/font-(bold|semibold|medium|extrabold)/);
       // Le soulignement reste : la couleur ne porte jamais seule l'affordance du lien.
       expect(classes).toContain("underline");
+    }
+  });
+
+  it("relie chaque mesure citée à sa fiche Poligraph sur ordinateur et mobile", () => {
+    render(
+      <SubjectComparison
+        data={data({
+          candidates: [
+            entry("Alix", [
+              subjectMeasure(
+                measure({ id: "m-linked", text: "Construire des logements." }),
+                "SEARCH_NOT_DONE"
+              ),
+            ]),
+          ],
+        })}
+      />
+    );
+
+    const liens = screen.getAllByRole("link", { name: /Construire des logements/ });
+    expect(liens).toHaveLength(2);
+    for (const lien of liens) {
+      expect(lien).toHaveAttribute("href", "/elections/presidentielle-2027/mesures/m-linked");
     }
   });
 

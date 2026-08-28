@@ -15,6 +15,7 @@ const invalidateCandidacyTagsMock = vi.fn();
 
 const dbMock = {
   $transaction: vi.fn(),
+  $queryRaw: vi.fn(),
   candidacy: { findUnique: vi.fn(), update: vi.fn() },
   candidacyPresidential: { upsert: vi.fn() },
   programEdition: { findUnique: vi.fn(), update: vi.fn() },
@@ -62,6 +63,7 @@ async function actions() {
 beforeEach(() => {
   vi.clearAllMocks();
   dbMock.$transaction.mockImplementation(async (callback) => callback(dbMock));
+  dbMock.$queryRaw.mockResolvedValue([{ id: "cand-1" }]);
   isAuthenticatedMock.mockResolvedValue(true);
   dbMock.candidacy.findUnique.mockResolvedValue(SOURCED_CANDIDACY);
   dbMock.candidacyPresidential.upsert.mockResolvedValue({ id: "pres-1" });

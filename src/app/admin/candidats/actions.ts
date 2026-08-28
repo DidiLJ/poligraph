@@ -9,6 +9,7 @@ import { invalidateEntity } from "@/lib/cache";
 import { db } from "@/lib/db";
 import { invalidatePresidentialCandidacyTags } from "@/lib/presidentielle/candidacy-cache";
 import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
+import { lockMeasureCandidacy } from "@/lib/measures/lock";
 import { generateCandidateSynthesis } from "@/services/candidate-synthesis";
 
 /**
@@ -76,6 +77,7 @@ export async function setCandidacyStatusAction(input: {
   const userAgent = requestHeaders.get("user-agent") || "unknown";
 
   const outcome = await db.$transaction(async (tx) => {
+    await lockMeasureCandidacy(tx, candidacyId);
     const candidacy = await tx.candidacy.findUnique({
       where: { id: candidacyId },
       select: { id: true, electionId: true, status: true, sourceUrl: true, sourceLabel: true },

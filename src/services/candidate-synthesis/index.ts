@@ -19,7 +19,7 @@ import { db } from "@/lib/db";
 import {
   buildCandidateSynthesisPrompt,
   buildSynthesisSystemPrompt,
-  screenSynthesis,
+  screenCandidateSynthesis,
   synthesisMaterial,
   type CandidateSynthesisInput,
 } from "@/lib/presidentielle/candidate-synthesis";
@@ -223,7 +223,7 @@ export async function generateCandidateSynthesis(
       message: error instanceof Error ? error.message : String(error),
     };
   }
-  let screened = screenSynthesis(attempt.text, material);
+  let screened = screenCandidateSynthesis(attempt.text, input);
 
   // One retry, naming the rule that was broken. Measured on a first full run: the model obeys the
   // rules it is reminded of and slips on the ones it is only told once, the long dash above all.
@@ -242,7 +242,7 @@ export async function generateCandidateSynthesis(
         message: error instanceof Error ? error.message : String(error),
       };
     }
-    screened = screenSynthesis(attempt.text, material);
+    screened = screenCandidateSynthesis(attempt.text, input);
   }
 
   if (!screened.ok) {

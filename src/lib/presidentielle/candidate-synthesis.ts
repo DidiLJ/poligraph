@@ -139,6 +139,17 @@ export type CandidateSynthesisInput = {
   measures: Array<{ theme: ThemeCategory; text: string }>;
 };
 
+type ProgrammeReference = {
+  ref: string;
+  theme: ThemeCategory;
+  text: string;
+};
+
+type ProgrammePlan = {
+  references: ProgrammeReference[];
+  expectedThemes: ThemeCategory[];
+};
+
 /**
  * Neutralises a database value before it reaches the prompt.
  *
@@ -202,7 +213,37 @@ Forme :
 - Pas de phrase de conclusion générale du type « une candidature qui entend peser ». Termine sur un fait.
 - Si le parcours ou le programme est vide, dis-le en une phrase simple plutôt que de meubler.
 
-Réponds uniquement par le texte de la synthèse, sans titre ni préambule.`;
+Format interne obligatoire :
+- Place tout le texte dans une unique balise <synthese>...</synthese>, sans titre ni préambule.
+- Dans le paragraphe du programme, entoure chaque engagement cité avec <engagement ref="M1">...</engagement>, en remplaçant M1 par la référence fournie devant la mesure correspondante.
+- Le passage à l'intérieur de la balise engagement doit reprendre assez de mots de la mesure source pour que la référence soit vérifiable.
+- Dans le paragraphe du programme, ne laisse hors de ces balises que la ponctuation, les articles et les mots de liaison. Toute information de fond doit appartenir à un engagement référencé.
+- Ces balises sont retirées après contrôle et ne seront jamais montrées au lecteur.`;
+}
+
+function buildProgrammePlan(input: CandidateSynthesisInput): ProgrammePlan {
+  const references = input.measures.map((measure, index) => ({
+    ref: `M${index + 1}`,
+    theme: measure.theme,
+    text: safe(measure.text),
+  }));
+  const counts = new Map<ThemeCategory, number>();
+  for (const reference of references) {
+    counts.set(reference.theme, (counts.get(reference.theme) ?? 0) + 1);
+  }
+  const themes = [...counts.entries()].sort(
+    ([themeA, countA], [themeB, countB]) =>
+      countB - countA ||
+      THEME_CATEGORY_LABELS[themeA].localeCompare(THEME_CATEGORY_LABELS[themeB], "fr")
+  );
+  // Theme frequency is context, not an editorial ranking. It gives a stable, candidate-agnostic
+  // answer to “principal themes” while the explicit cap prevents the largest family swallowing the
+  // paragraph. Eight short examples fit the large 250-word format; five fit the standard one.
+  const coverageLimit = input.measures.length >= LARGE_PROGRAMME_MEASURES ? 8 : 5;
+  return {
+    references,
+    expectedThemes: themes.slice(0, coverageLimit).map(([theme]) => theme),
+  };
 }
 
 export function buildCandidateSynthesisPrompt(input: CandidateSynthesisInput): string {
@@ -211,31 +252,26 @@ export function buildCandidateSynthesisPrompt(input: CandidateSynthesisInput): s
       ? input.mandates.map(formatMandate).join("\n")
       : "Aucun mandat enregistré sur le site.";
 
-  const byTheme = new Map<ThemeCategory, string[]>();
-  for (const measure of input.measures) {
-    if (!byTheme.has(measure.theme)) byTheme.set(measure.theme, []);
-    byTheme.get(measure.theme)!.push(safe(measure.text));
+  const programmePlan = buildProgrammePlan(input);
+  const byTheme = new Map<ThemeCategory, ProgrammeReference[]>();
+  for (const reference of programmePlan.references) {
+    if (!byTheme.has(reference.theme)) byTheme.set(reference.theme, []);
+    byTheme.get(reference.theme)!.push(reference);
   }
   const themes = [...byTheme.entries()].sort(
-    ([themeA, textsA], [themeB, textsB]) =>
-      textsB.length - textsA.length ||
+    ([themeA, referencesA], [themeB, referencesB]) =>
+      referencesB.length - referencesA.length ||
       THEME_CATEGORY_LABELS[themeA].localeCompare(THEME_CATEGORY_LABELS[themeB], "fr")
   );
-  // Theme frequency is context, not an editorial ranking. It gives a stable, candidate-agnostic
-  // answer to “principal themes” while the explicit cap prevents the largest family swallowing the
-  // paragraph. Eight short examples fit the large 250-word format; five fit the standard one.
-  const coverageLimit = input.measures.length >= LARGE_PROGRAMME_MEASURES ? 8 : 5;
-  const expectedThemes = themes
-    .slice(0, coverageLimit)
-    .map(([theme]) => THEME_CATEGORY_LABELS[theme]);
+  const expectedThemes = programmePlan.expectedThemes.map((theme) => THEME_CATEGORY_LABELS[theme]);
   const measures =
     themes.length > 0
       ? themes
           .map(
-            ([theme, texts]) =>
-              `${THEME_CATEGORY_LABELS[theme]} (${texts.length} mesure${texts.length > 1 ? "s" : ""}) :\n${texts
-                .sort((a, b) => a.localeCompare(b, "fr"))
-                .map((t) => `  - ${t}`)
+            ([theme, references]) =>
+              `${THEME_CATEGORY_LABELS[theme]} (${references.length} mesure${references.length > 1 ? "s" : ""}) :\n${references
+                .sort((a, b) => a.text.localeCompare(b.text, "fr"))
+                .map((reference) => `  - [${reference.ref}] ${reference.text}`)
                 .join("\n")}`
           )
           .join("\n")
@@ -244,8 +280,8 @@ export function buildCandidateSynthesisPrompt(input: CandidateSynthesisInput): s
     themes.length > 0
       ? themes
           .map(
-            ([theme, texts]) =>
-              `- ${THEME_CATEGORY_LABELS[theme]} : ${texts.length} mesure${texts.length > 1 ? "s" : ""}`
+            ([theme, references]) =>
+              `- ${THEME_CATEGORY_LABELS[theme]} : ${references.length} mesure${references.length > 1 ? "s" : ""}`
           )
           .join("\n")
       : "Aucun thème représenté.";
@@ -287,6 +323,211 @@ Rédige la synthèse.`;
 export type SynthesisScreen =
   | { ok: true; text: string }
   | { ok: false; reason: string; detail: string };
+
+const EVIDENCE_STOP_WORDS = new Set([
+  "afin",
+  "ainsi",
+  "au",
+  "aux",
+  "avec",
+  "ce",
+  "ces",
+  "cet",
+  "cette",
+  "ceux",
+  "dans",
+  "de",
+  "des",
+  "depuis",
+  "defend",
+  "dont",
+  "du",
+  "elle",
+  "en",
+  "entre",
+  "est",
+  "et",
+  "il",
+  "ils",
+  "la",
+  "le",
+  "les",
+  "leur",
+  "leurs",
+  "lui",
+  "mais",
+  "mesure",
+  "ne",
+  "notamment",
+  "nous",
+  "on",
+  "ou",
+  "par",
+  "pas",
+  "pour",
+  "programme",
+  "propose",
+  "prevoit",
+  "que",
+  "qui",
+  "sans",
+  "se",
+  "sera",
+  "ses",
+  "son",
+  "sont",
+  "sous",
+  "sur",
+  "tous",
+  "tout",
+  "toute",
+  "toutes",
+  "un",
+  "une",
+  "vers",
+  "vos",
+  "votre",
+]);
+
+function evidenceTerms(value: string): Set<string> {
+  const words = value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase("fr")
+    .match(/[a-z]{2,}|[0-9]+(?:[.,][0-9]+)?%?/g);
+  return new Set(
+    (words ?? [])
+      .filter((word) => !EVIDENCE_STOP_WORDS.has(word))
+      .map((word) => (word.length > 6 ? word.slice(0, 6) : word))
+  );
+}
+
+function engagementMatchesMeasure(engagement: string, measure: string): boolean {
+  const sourceTerms = evidenceTerms(measure);
+  const engagementTerms = evidenceTerms(engagement);
+  const shared = [...sourceTerms].filter((term) => engagementTerms.has(term)).length;
+  return sourceTerms.size > 0 && shared >= Math.min(2, sourceTerms.size);
+}
+
+/**
+ * Validates the internal evidence markup and returns only the reader-facing prose.
+ *
+ * Theme names reported beside the prose would be unverifiable declarations by the same model that
+ * wrote it. Instead, each cited engagement carries a measure reference in the exact span rendered
+ * as prose. The screen resolves that reference itself, checks that the span shares source wording,
+ * derives its theme from the database input, and only then applies coverage and concentration.
+ */
+export function screenCandidateSynthesis(
+  raw: string,
+  input: CandidateSynthesisInput
+): SynthesisScreen {
+  const wrapper = /^<synthese>\s*([\s\S]*?)\s*<\/synthese>$/u.exec(raw.trim());
+  if (!wrapper) {
+    return {
+      ok: false,
+      reason: "format_structure",
+      detail: "la réponse doit être contenue dans une unique balise <synthese>",
+    };
+  }
+
+  const inner = wrapper[1]!;
+  const paragraphBreak = inner.search(/\n\s*\n/u);
+  if (paragraphBreak < 0) {
+    return {
+      ok: false,
+      reason: "format_paragraphes",
+      detail: "le parcours et le programme doivent former deux paragraphes",
+    };
+  }
+  const careerParagraph = inner.slice(0, paragraphBreak);
+  if (careerParagraph.includes("<engagement")) {
+    return {
+      ok: false,
+      reason: "preuve_hors_programme",
+      detail: "une référence de mesure figure dans le paragraphe du parcours",
+    };
+  }
+
+  const plan = buildProgrammePlan(input);
+  const references = new Map(plan.references.map((reference) => [reference.ref, reference]));
+  const themeCounts = new Map<ThemeCategory, number>();
+  const usedReferences = new Set<string>();
+  const engagementPattern = /<engagement ref="(M[1-9][0-9]*)">([^<>]+)<\/engagement>/gu;
+  let failure: SynthesisScreen | null = null;
+  const text = inner.replace(engagementPattern, (_match, ref: string, engagement: string) => {
+    if (failure) return engagement;
+    const source = references.get(ref);
+    if (!source) {
+      failure = {
+        ok: false,
+        reason: "preuve_inconnue",
+        detail: `la référence ${ref} ne correspond à aucune mesure fournie`,
+      };
+      return engagement;
+    }
+    if (usedReferences.has(ref)) {
+      failure = {
+        ok: false,
+        reason: "preuve_repetee",
+        detail: `la référence ${ref} est utilisée plusieurs fois`,
+      };
+      return engagement;
+    }
+    if (!engagementMatchesMeasure(engagement, source.text)) {
+      failure = {
+        ok: false,
+        reason: "preuve_non_refletee",
+        detail: `le passage associé à ${ref} ne reprend pas assez précisément la mesure source`,
+      };
+      return engagement;
+    }
+    usedReferences.add(ref);
+    themeCounts.set(source.theme, (themeCounts.get(source.theme) ?? 0) + 1);
+    return engagement;
+  });
+  if (failure) return failure;
+  if (/[<>]/u.test(text)) {
+    return {
+      ok: false,
+      reason: "format_structure",
+      detail: "une balise interne est absente, inconnue ou mal formée",
+    };
+  }
+  const unreferencedProgramme = inner
+    .slice(paragraphBreak)
+    .replace(/<engagement ref="M[1-9][0-9]*">[^<>]+<\/engagement>/gu, " ");
+  const unreferencedTerms = evidenceTerms(unreferencedProgramme);
+  if (unreferencedTerms.size > 0) {
+    return {
+      ok: false,
+      reason: "engagement_non_reference",
+      detail: `le programme contient du texte de fond sans référence : ${[...unreferencedTerms]
+        .slice(0, 3)
+        .join(", ")}`,
+    };
+  }
+
+  for (const theme of plan.expectedThemes) {
+    if (!themeCounts.has(theme)) {
+      return {
+        ok: false,
+        reason: "couverture_theme",
+        detail: `aucun engagement vérifiable ne représente le thème ${THEME_CATEGORY_LABELS[theme]}`,
+      };
+    }
+  }
+  for (const [theme, count] of themeCounts) {
+    if (count > 2) {
+      return {
+        ok: false,
+        reason: "concentration_theme",
+        detail: `${count} engagements représentent le thème ${THEME_CATEGORY_LABELS[theme]}, maximum 2`,
+      };
+    }
+  }
+
+  return screenSynthesis(text, synthesisMaterial(input));
+}
 
 /**
  * Screens a generated synthesis before anything stores or displays it.

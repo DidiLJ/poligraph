@@ -3,6 +3,7 @@ import {
   buildCandidateSynthesisPrompt,
   buildSynthesisSystemPrompt,
   isSynthesisContradictedByMeasures,
+  screenCandidateSynthesis,
   screenSynthesis,
   synthesisFloor,
   synthesisMaterial,
@@ -62,6 +63,7 @@ describe("buildCandidateSynthesisPrompt", () => {
     expect(prompt).toContain(
       "Représente au moins une mesure de chacun de ces thèmes : Santé, Transports."
     );
+    expect(prompt).toContain("[M1] Rouvrir des maternités de proximité.");
   });
 
   it("asks a large programme to cover its eight most represented themes", () => {
@@ -139,6 +141,82 @@ describe("buildCandidateSynthesisPrompt", () => {
       measures: [{ theme: "SANTE", text: "a".repeat(1000) }],
     });
     expect(prompt).not.toContain("a".repeat(300));
+  });
+});
+
+describe("screenCandidateSynthesis", () => {
+  const career = words(30);
+
+  it("derives coverage from inline measure references and removes the internal markup", () => {
+    const raw = `<synthese>${career}.\n\nSon programme prévoit de <engagement ref="M1">rouvrir des maternités de proximité</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>.</synthese>`;
+
+    const result = screenCandidateSynthesis(raw, BASE);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(result.ok && result.text).not.toContain("<engagement");
+    expect(result.ok && result.text).not.toContain("<synthese>");
+  });
+
+  it("refuses valid-length prose that omits an expected theme", () => {
+    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M1">rouvrir des maternités de proximité</engagement>.</synthese>`;
+
+    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+      ok: false,
+      reason: "couverture_theme",
+    });
+  });
+
+  it("refuses more than two evidenced engagements from one theme", () => {
+    const input: CandidateSynthesisInput = {
+      ...BASE,
+      measures: [...BASE.measures, { theme: "SANTE", text: "Créer des centres de santé publics." }],
+    };
+    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M1">rouvrir des maternités de proximité</engagement>, de <engagement ref="M2">rembourser à 100 % les soins prescrits</engagement>, de <engagement ref="M4">créer des centres de santé publics</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>.</synthese>`;
+
+    expect(screenCandidateSynthesis(raw, input)).toMatchObject({
+      ok: false,
+      reason: "concentration_theme",
+    });
+  });
+
+  it("does not trust a reference whose annotated prose does not reflect its measure", () => {
+    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M1">réduire les taxes sur les entreprises</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>.</synthese>`;
+
+    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+      ok: false,
+      reason: "preuve_non_refletee",
+    });
+  });
+
+  it("refuses a theme declaration that is not tied to a known measure", () => {
+    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M99">rouvrir des maternités de proximité</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>.</synthese>`;
+
+    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+      ok: false,
+      reason: "preuve_inconnue",
+    });
+  });
+
+  it("refuses substantive programme prose left outside evidence spans", () => {
+    const raw = `<synthese>${career}.\n\nLe programme propose de <engagement ref="M1">rouvrir des maternités de proximité</engagement> et de <engagement ref="M3">rétablir des trains de nuit</engagement>. Il baisse aussi les impôts.</synthese>`;
+
+    expect(screenCandidateSynthesis(raw, BASE)).toMatchObject({
+      ok: false,
+      reason: "engagement_non_reference",
+    });
+  });
+
+  it("accepts short and numeric measures when their distinctive terms are evidenced", () => {
+    const input: CandidateSynthesisInput = {
+      ...BASE,
+      measures: [
+        { theme: "ECONOMIE_BUDGET", text: "Abolir la TVA." },
+        { theme: "SOCIAL_TRAVAIL", text: "Fixer la retraite à 60 ans." },
+      ],
+    };
+    const raw = `<synthese>${career}.\n\nLe programme propose d'<engagement ref="M1">abolir la TVA</engagement> et de <engagement ref="M2">fixer la retraite à 60 ans</engagement>.</synthese>`;
+
+    expect(screenCandidateSynthesis(raw, input)).toMatchObject({ ok: true });
   });
 });
 

@@ -10,7 +10,7 @@ export type AuditViolation = {
 /**
  * The invariants Prisma cannot express, checked in the database.
  *
- * Twenty-two rules. Two rules of an earlier draft are deliberately absent: "orphan
+ * Twenty-three rules. Two rules of an earlier draft are deliberately absent: "orphan
  * qualification" and "orphan assessment" queried `revision: { is: null }` on a required
  * relation with cascade delete. The orphan is structurally impossible and the query is
  * meaningless.
@@ -61,7 +61,7 @@ export async function auditMeasures(): Promise<AuditViolation[]> {
 
   const documents = await db.searchDocument.findMany({
     where: { entityType: "MEASURE" },
-    select: { entityId: true, visibility: true, sourceRevisionId: true },
+    select: { entityId: true, electionId: true, visibility: true, sourceRevisionId: true },
   });
   const byEntity = new Map(documents.map((d) => [d.entityId, d]));
   const publicMeasureIds = new Set(
@@ -218,6 +218,13 @@ export async function auditMeasures(): Promise<AuditViolation[]> {
         rule: "search_document_visibility_mismatch",
         measureId: m.id,
         detail: doc.visibility,
+      });
+    }
+    if (doc && doc.electionId !== m.electionId) {
+      violations.push({
+        rule: "search_document_election_mismatch",
+        measureId: m.id,
+        detail: `${doc.electionId ?? "null"} != ${m.electionId}`,
       });
     }
     if (doc) {

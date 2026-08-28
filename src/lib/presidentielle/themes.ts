@@ -1,4 +1,6 @@
 import type { ThemeCategory } from "@/generated/prisma";
+import { THEME_CATEGORY_LABELS } from "@/config/labels";
+import { themeToSlug } from "@/lib/theme-utils";
 
 export { themeToSlug, themeFromSlug as parseThemeSlug } from "@/lib/theme-utils";
 
@@ -20,3 +22,27 @@ export const THEMES_IN_ORDER: ThemeCategory[] = [
   "AFFAIRES_ETRANGERES_DEFENSE",
   "INSTITUTIONS",
 ];
+
+function normalizeThemeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("fr")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** Search the controlled subject taxonomy without duplicating it in the full-text index. */
+export function findMatchingThemes(query: string): ThemeCategory[] {
+  const normalized = normalizeThemeSearch(query);
+  if (normalized.length < 2) return [];
+
+  const queryTerms = normalized.split(" ");
+  return THEMES_IN_ORDER.filter((theme) => {
+    const searchable = normalizeThemeSearch(
+      `${THEME_CATEGORY_LABELS[theme]} ${themeToSlug(theme)}`
+    );
+    const subjectTerms = new Set(searchable.split(" "));
+    return queryTerms.every((term) => subjectTerms.has(term));
+  });
+}

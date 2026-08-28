@@ -7,6 +7,7 @@ import { getRequestMeta } from "@/lib/security/audit";
 import { invalidateEntity } from "@/lib/cache";
 import { invalidatePresidentialCandidacyTags } from "@/lib/presidentielle/candidacy-cache";
 import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
+import { lockMeasureCandidacy } from "@/lib/measures/lock";
 
 export const PATCH = withAdminAuth(
   withValidation(updateCandidatePresidentialSchema, async (request, context, body) => {
@@ -23,6 +24,13 @@ export const PATCH = withAdminAuth(
     };
     const { ip, userAgent } = getRequestMeta(request);
     const outcome = await db.$transaction(async (tx) => {
+      const target = await tx.candidacyPresidential.findUnique({
+        where: { id },
+        select: { candidacyId: true },
+      });
+      if (!target) return null;
+      await lockMeasureCandidacy(tx, target.candidacyId);
+
       const existing = await tx.candidacyPresidential.findUnique({
         where: { id },
         select: {
@@ -88,6 +96,13 @@ export const DELETE = withAdminAuth(async (request, context) => {
   const { id } = await context.params;
   const { ip, userAgent } = getRequestMeta(request);
   const outcome = await db.$transaction(async (tx) => {
+    const target = await tx.candidacyPresidential.findUnique({
+      where: { id },
+      select: { candidacyId: true },
+    });
+    if (!target) return null;
+    await lockMeasureCandidacy(tx, target.candidacyId);
+
     const existing = await tx.candidacyPresidential.findUnique({
       where: { id },
       select: { id: true, candidacyId: true, candidacy: { select: { electionId: true } } },

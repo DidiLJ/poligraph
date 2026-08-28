@@ -22,16 +22,17 @@ describe("GET recherche présidentielle", () => {
       state: "too_short",
       query: "a",
       total: 0,
-      groups: { candidacies: [], measures: [] },
+      groups: { subjects: [], candidacies: [], measures: [] },
     });
     expect(search).not.toHaveBeenCalled();
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
 
-  it("renvoie seulement les groupes Personnalités puis Mesures du corpus scopé", async () => {
+  it("renvoie les sujets avant les personnalités et mesures du corpus scopé", async () => {
     search.mockResolvedValue({
       query: "logement",
-      total: 2,
+      total: 3,
+      subjects: [{ theme: "LOGEMENT_URBANISME", type: "subject" }],
       candidacies: [{ id: "c1", type: "candidacy" }],
       measures: [{ id: "m1", type: "measure" }],
     });
@@ -43,13 +44,19 @@ describe("GET recherche présidentielle", () => {
     );
     const body = await response.json();
     expect(search).toHaveBeenCalledWith("presidentielle-2027", "logement", 8);
-    expect(Object.keys(body.groups)).toEqual(["candidacies", "measures"]);
-    expect(body).not.toHaveProperty("subjects");
+    expect(Object.keys(body.groups)).toEqual(["subjects", "candidacies", "measures"]);
+    expect(body.groups.subjects).toHaveLength(1);
     expect(body.state).toBe("results");
   });
 
   it("renvoie un état vide prudent sans transformer l'absence en fait politique", async () => {
-    search.mockResolvedValue({ query: "inconnu", total: 0, candidacies: [], measures: [] });
+    search.mockResolvedValue({
+      query: "inconnu",
+      total: 0,
+      subjects: [],
+      candidacies: [],
+      measures: [],
+    });
     const response = await GET(
       new NextRequest("https://poligraph.fr/api/elections/presidentielle-2027/recherche?q=inconnu"),
       context

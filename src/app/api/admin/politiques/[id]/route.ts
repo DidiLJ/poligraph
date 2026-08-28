@@ -7,6 +7,7 @@ import { generateSlug } from "@/lib/utils";
 import { invalidateEntity } from "@/lib/cache";
 import { invalidatePresidentialCandidacyTags } from "@/lib/presidentielle/candidacy-cache";
 import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
+import { lockMeasureCandidacy } from "@/lib/measures/lock";
 import type { DataSource, PublicationStatus } from "@/generated/prisma";
 import type { z } from "zod/v4";
 
@@ -65,6 +66,15 @@ export const PUT = withAdminAuth(
 
     // Update politician
     const { politician, presidentialElectionIds } = await db.$transaction(async (tx) => {
+      const candidacies = await tx.candidacy.findMany({
+        where: { politicianId: id, election: { type: "PRESIDENTIELLE" } },
+        select: { id: true, electionId: true },
+        orderBy: { id: "asc" },
+      });
+      for (const candidacy of candidacies) {
+        await lockMeasureCandidacy(tx, candidacy.id);
+      }
+
       const politician = await tx.politician.update({
         where: { id },
         data: {
@@ -83,10 +93,6 @@ export const PUT = withAdminAuth(
           publicationStatus:
             (body.publicationStatus as PublicationStatus) || existing.publicationStatus,
         },
-      });
-      const candidacies = await tx.candidacy.findMany({
-        where: { politicianId: id, election: { type: "PRESIDENTIELLE" } },
-        select: { id: true, electionId: true },
       });
       for (const candidacy of candidacies) {
         // Slug/name changes rewrite canonical result URLs; a publication loss closes candidate and

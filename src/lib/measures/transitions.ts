@@ -11,10 +11,15 @@ import type {
 } from "@/generated/prisma";
 import { db, type DbTransactionClient } from "@/lib/db";
 import { invalidateMeasureTags } from "./cache";
-import { validateRevisionEvidence, type MeasureImportEngine } from "./evidence-snapshot";
+import {
+  createV6CorrectionFingerprint,
+  validateRevisionEvidence,
+  type MeasureImportEngine,
+} from "./evidence-snapshot";
 import { MeasureConcurrencyError, MeasureValidationError } from "./errors";
-import { lockMeasure } from "./lock";
+import { lockMeasure, lockMeasureCandidacy } from "./lock";
 import { syncSearchDocument } from "./search-sync";
+import { PUBLIC_PRESIDENTIAL_FICHE_WHERE } from "@/lib/presidentielle/publication";
 import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
 
 export type MeasureSourceInput = {
@@ -243,8 +248,15 @@ export async function draftMeasureRevision(
 
     const measure = await tx.measure.findUniqueOrThrow({
       where: { id: input.measureId },
-      select: { latestRevisionId: true, publishedRevisionId: true, updatedAt: true },
+      select: {
+        latestRevisionId: true,
+        publishedRevisionId: true,
+        candidacyId: true,
+        updatedAt: true,
+      },
     });
+
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
 
@@ -283,7 +295,13 @@ export async function draftMeasureRevision(
         evidenceSnapshot: previous.evidenceSnapshot,
         reviewReadiness: previous.reviewReadiness,
         reviewWarnings: previous.reviewWarnings,
-        importFingerprint: null,
+        importFingerprint:
+          input.revision.extractionMethod === "AI_ASSISTED"
+            ? createV6CorrectionFingerprint({
+                previousRevisionId: input.preserveEvidenceFromRevisionId,
+                text: input.revision.text,
+              })
+            : null,
       };
       revisionSources = previous.sources;
     }
@@ -451,8 +469,9 @@ export async function discardMeasureRevision(input: {
 
     const measure = await tx.measure.findUniqueOrThrow({
       where: { id: input.measureId },
-      select: { latestRevisionId: true, publishedRevisionId: true },
+      select: { latestRevisionId: true, publishedRevisionId: true, candidacyId: true },
     });
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
     if (input.revisionId === measure.publishedRevisionId) {
       throw new MeasureValidationError(
         "Une révision publiée ne s'abandonne pas, elle se dépublie ou se remplace"
@@ -494,8 +513,9 @@ export async function rejectMeasureRevision(input: {
     await lockMeasure(tx, input.measureId);
     const measure = await tx.measure.findUniqueOrThrow({
       where: { id: input.measureId },
-      select: { latestRevisionId: true, publishedRevisionId: true },
+      select: { latestRevisionId: true, publishedRevisionId: true, candidacyId: true },
     });
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
     if (input.revisionId === measure.publishedRevisionId) {
       throw new MeasureValidationError("Une révision publiée ne peut pas être rejetée");
     }
@@ -584,7 +604,16 @@ export async function publishMeasureRevision(input: {
       },
     });
 
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
+
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
+
+    const ficheWasPublic = measure.candidacyId
+      ? (await tx.candidacy.findFirst({
+          where: { id: measure.candidacyId, ...PUBLIC_PRESIDENTIAL_FICHE_WHERE },
+          select: { id: true },
+        })) !== null
+      : false;
 
     const revision = await tx.measureRevision.findUnique({
       where: { id: input.revisionId },
@@ -676,12 +705,19 @@ export async function publishMeasureRevision(input: {
       });
     }
 
+    const ficheIsPublic = measure.candidacyId
+      ? (await tx.candidacy.findFirst({
+          where: { id: measure.candidacyId, ...PUBLIC_PRESIDENTIAL_FICHE_WHERE },
+          select: { id: true },
+        })) !== null
+      : false;
+
     // In the same transaction: the database must never expose a new revision while the
     // index still holds the previous text. Called last, so it reads the pointers this
     // transaction has just written.
-    if (measure.candidacyId) {
-      // Publishing can open the carrier fiche (first primary-sourced measure), which changes the
-      // visibility of every already-published measure of that candidacy.
+    if (measure.candidacyId && ficheWasPublic !== ficheIsPublic) {
+      // Opening or closing the carrier fiche changes the visibility of every measure attached to
+      // the candidacy. A stable fiche only requires the edited measure to be refreshed.
       await syncPresidentialSearchDocumentsForCandidacy(tx, measure.candidacyId);
     } else {
       await syncSearchDocument(tx, input.measureId);
@@ -725,6 +761,8 @@ export async function depublishMeasure(input: {
       where: { id: input.measureId },
       select: { electionId: true, candidacyId: true, updatedAt: true },
     });
+
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
 
@@ -802,6 +840,8 @@ export async function withdrawMeasure(input: {
       where: { id: input.measureId },
       select: { electionId: true, candidacyId: true, updatedAt: true },
     });
+
+    if (measure.candidacyId) await lockMeasureCandidacy(tx, measure.candidacyId);
 
     assertVersionMatches(input.measureId, input.expectedUpdatedAt, measure.updatedAt);
 

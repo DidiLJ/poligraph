@@ -22,7 +22,7 @@ export const GET = withPublicRoute(async (request) => {
         state: "too_short" as const,
         query,
         total: 0,
-        groups: { candidacies: [], measures: [] },
+        groups: { subjects: [], candidacies: [], measures: [] },
       }),
       "none"
     );
@@ -43,6 +43,7 @@ export const GET = withPublicRoute(async (request) => {
       query: result.query,
       total: result.total,
       groups: {
+        subjects: result.subjects,
         candidacies: result.candidacies,
         measures: result.measures,
       },

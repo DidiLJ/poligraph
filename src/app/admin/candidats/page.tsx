@@ -39,6 +39,8 @@ export default async function AdminCandidatsPage() {
       politicianSlug: candidacy.politician?.slug ?? null,
       partyLabel: candidacy.party?.shortName ?? candidacy.partyLabel ?? null,
       status: candidacy.status,
+      sourceUrl: candidacy.sourceUrl,
+      sourceLabel: candidacy.sourceLabel,
       sourced: Boolean(candidacy.status && candidacy.sourceUrl && candidacy.sourceLabel),
       presidentialId: candidacy.presidentialData?.id ?? null,
       publicationStatus: candidacy.presidentialData?.publicationStatus ?? null,

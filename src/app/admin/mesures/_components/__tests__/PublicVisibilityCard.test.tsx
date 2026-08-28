@@ -45,6 +45,7 @@ function publicMeasure(over: Partial<PublicMeasure> = {}): PublicMeasure {
       },
     ],
     qualifications: [],
+    subtopics: [],
     ...over,
   };
 }

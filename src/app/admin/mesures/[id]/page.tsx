@@ -14,6 +14,7 @@ import { deriveModerationState, type ModerationMeasureRow } from "@/lib/measures
 import { AnomalyList } from "../_components/AnomalyList";
 import { MeasureActionPanel } from "../_components/MeasureActionPanel";
 import { MeasureMetadataPanel } from "../_components/MeasureMetadataPanel";
+import { MeasureSubtopicsPanel } from "../_components/MeasureSubtopicsPanel";
 import { ModerationStateBadge } from "../_components/ModerationStateBadge";
 import { PublicVisibilityCard } from "../_components/PublicVisibilityCard";
 import { RevisionTimeline } from "../_components/RevisionTimeline";
@@ -182,6 +183,30 @@ export default async function AdminMeasureDetailPage({ params }: PageProps) {
       </section>
 
       <PublicVisibilityCard state={state} publicMeasure={publicMeasure} />
+
+      <section aria-labelledby="subtopics-heading">
+        <h2 id="subtopics-heading" className="text-base font-semibold">
+          Sous-sujets
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            proposés automatiquement, publiés après validation
+          </span>
+        </h2>
+        <div className="mt-3">
+          <MeasureSubtopicsPanel
+            measureId={id}
+            revisionId={referenceRevisionId}
+            assignments={(
+              measure.revisions.find((revision) => revision.id === referenceRevisionId)
+                ?.subtopics ?? []
+            ).map((assignment) => ({
+              subtopicId: assignment.subtopicId,
+              label: assignment.subtopic.label,
+              status: assignment.status,
+              confidence: assignment.confidence,
+            }))}
+          />
+        </div>
+      </section>
 
       <section aria-labelledby="anomalies-heading">
         <h2 id="anomalies-heading" className="text-base font-semibold">

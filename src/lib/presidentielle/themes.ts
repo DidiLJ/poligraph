@@ -42,7 +42,12 @@ export function findMatchingThemes(query: string): ThemeCategory[] {
     const searchable = normalizeThemeSearch(
       `${THEME_CATEGORY_LABELS[theme]} ${themeToSlug(theme)}`
     );
-    const subjectTerms = new Set(searchable.split(" "));
-    return queryTerms.every((term) => subjectTerms.has(term));
+    const subjectTerms = searchable.split(" ");
+    return queryTerms.every((queryTerm) =>
+      subjectTerms.some(
+        (subjectTerm) =>
+          subjectTerm === queryTerm || (queryTerm.length >= 3 && subjectTerm.startsWith(queryTerm))
+      )
+    );
   });
 }

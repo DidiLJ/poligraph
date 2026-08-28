@@ -11,6 +11,7 @@ function theme(over: Partial<Theme> = {}): Theme {
     slug: "sante",
     measureCount: 1,
     measures: [{ id: "m1", text: "Rouvrir des maternités de proximité.", sourceUrl: null }],
+    subtopics: [],
     ...over,
   };
 }
@@ -33,6 +34,8 @@ describe("CandidateThemes", () => {
           }),
         ]}
         electionSlug="presidentielle-2027"
+        candidateSlug="camille-riviere"
+        measureCount={3}
         lastReviewedAt={null}
       />
     );
@@ -40,6 +43,46 @@ describe("CandidateThemes", () => {
     expect(screen.getByText("Première mesure santé.")).toBeInTheDocument();
     expect(screen.getByText("Deuxième mesure santé.")).toBeInTheDocument();
     expect(screen.getByText("Troisième mesure santé.")).toBeInTheDocument();
+  });
+
+  it("relie chaque mesure à sa fiche Poligraph", () => {
+    render(
+      <CandidateThemes
+        themes={[theme()]}
+        electionSlug="presidentielle-2027"
+        candidateSlug="camille-riviere"
+        measureCount={1}
+        lastReviewedAt={null}
+      />
+    );
+
+    expect(screen.getByRole("link", { name: /Voir la mesure : Rouvrir/ })).toHaveAttribute(
+      "href",
+      "/elections/presidentielle-2027/mesures/m1"
+    );
+  });
+
+  it("n'affiche aucun extrait arbitraire pour un grand programme", () => {
+    const measures = Array.from({ length: 16 }, (_, index) => ({
+      id: `m${index + 1}`,
+      text: `Mesure ${index + 1}.`,
+      sourceUrl: null,
+    }));
+    render(
+      <CandidateThemes
+        themes={[theme({ measureCount: measures.length, measures })]}
+        electionSlug="presidentielle-2027"
+        candidateSlug="camille-riviere"
+        measureCount={16}
+        lastReviewedAt={null}
+      />
+    );
+
+    expect(screen.queryByText("Mesure 1.")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voir les 16 mesures" })).toHaveAttribute(
+      "href",
+      "/elections/presidentielle-2027/candidats/camille-riviere/mesures?theme=sante"
+    );
   });
 
   it("ne perd aucune mesure au regroupement, sur plusieurs sujets", () => {
@@ -63,11 +106,13 @@ describe("CandidateThemes", () => {
           }),
         ]}
         electionSlug="presidentielle-2027"
+        candidateSlug="camille-riviere"
+        measureCount={3}
         lastReviewedAt={null}
       />
     );
 
-    const section = screen.getByRole("region", { name: /mesures/i });
+    const section = screen.getByRole("region", { name: /programme/i });
     // Trois textes de mesure rendus, pas deux têtes de liste.
     expect(within(section).getByText("Santé un.")).toBeInTheDocument();
     expect(within(section).getByText("Santé deux.")).toBeInTheDocument();
@@ -87,34 +132,45 @@ describe("CandidateThemes", () => {
           }),
         ]}
         electionSlug="presidentielle-2027"
+        candidateSlug="camille-riviere"
+        measureCount={2}
         lastReviewedAt={null}
       />
     );
 
-    const liens = screen.getAllByRole("link", { name: /source/i });
+    const liens = screen.getAllByRole("link", { name: /source externe/i });
     expect(liens).toHaveLength(1);
     expect(liens[0]).toHaveAttribute("href", "https://example.org/programme.pdf");
     expect(liens[0]).toHaveAttribute("rel", expect.stringContaining("noopener"));
   });
 
-  it("ne promet pas une comparaison là où le lien mène à l'index des sujets", () => {
-    // `/sujets` liste les treize sujets ; la comparaison se fait un cran plus bas, par sujet.
+  it("mène vers la page dédiée du candidat", () => {
     render(
       <CandidateThemes
         themes={[theme()]}
         electionSlug="presidentielle-2027"
+        candidateSlug="camille-riviere"
+        measureCount={1}
         lastReviewedAt={null}
       />
     );
 
-    const lien = screen.getByRole("link", { name: /Explorer les propositions par thème/ });
-    expect(lien).toHaveAttribute("href", "/elections/presidentielle-2027/sujets");
-    expect(screen.queryByText(/Comparer ces mesures/)).not.toBeInTheDocument();
+    const lien = screen.getByRole("link", { name: /Explorer la mesure/ });
+    expect(lien).toHaveAttribute(
+      "href",
+      "/elections/presidentielle-2027/candidats/camille-riviere/mesures"
+    );
   });
 
   it("n'affiche rien quand aucun sujet n'est couvert", () => {
     const { container } = render(
-      <CandidateThemes themes={[]} electionSlug="presidentielle-2027" lastReviewedAt={null} />
+      <CandidateThemes
+        themes={[]}
+        electionSlug="presidentielle-2027"
+        candidateSlug="camille-riviere"
+        measureCount={0}
+        lastReviewedAt={null}
+      />
     );
     expect(container).toBeEmptyDOMElement();
   });

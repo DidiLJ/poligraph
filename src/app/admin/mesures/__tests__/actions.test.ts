@@ -49,6 +49,16 @@ const voteLinksMock = {
 };
 vi.mock("@/lib/measures/vote-links", () => voteLinksMock);
 
+const subtopicsMock = {
+  proposeMeasureRevisionSubtopics: vi.fn(async () => ({
+    revisionId: "rev-1",
+    suggestions: [],
+    skipped: false,
+  })),
+  reviewMeasureRevisionSubtopic: vi.fn(async () => undefined),
+};
+vi.mock("@/lib/measures/subtopics", () => subtopicsMock);
+
 const REVISION = {
   text: "Encadrer les loyers dans les zones tendues.",
   precision: "OBJECTIF_SANS_CHIFFRE" as const,
@@ -100,6 +110,20 @@ async function everyAction(): Promise<{ name: string; call: () => Promise<unknow
     {
       name: "reviewRevisionAction",
       call: () => a.reviewRevisionAction({ measureId: "m-1", revisionId: "rev-1" }),
+    },
+    {
+      name: "proposeSubtopicsAction",
+      call: () => a.proposeSubtopicsAction({ measureId: "m-1", revisionId: "rev-1" }),
+    },
+    {
+      name: "reviewSubtopicAction",
+      call: () =>
+        a.reviewSubtopicAction({
+          measureId: "m-1",
+          revisionId: "rev-1",
+          subtopicId: "subtopic-1",
+          status: "APPROVED",
+        }),
     },
     {
       name: "discardRevisionAction",
@@ -162,6 +186,8 @@ describe("actions éditoriales : la session", () => {
     for (const [name, mock] of Object.entries(transitionsMock)) {
       expect(mock, name).not.toHaveBeenCalled();
     }
+    expect(subtopicsMock.proposeMeasureRevisionSubtopics).not.toHaveBeenCalled();
+    expect(subtopicsMock.reviewMeasureRevisionSubtopic).not.toHaveBeenCalled();
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
@@ -177,6 +203,8 @@ describe("actions éditoriales : la session", () => {
     for (const [name, mock] of Object.entries(transitionsMock)) {
       expect(mock, name).toHaveBeenCalledTimes(1);
     }
+    expect(subtopicsMock.proposeMeasureRevisionSubtopics).toHaveBeenCalledTimes(1);
+    expect(subtopicsMock.reviewMeasureRevisionSubtopic).toHaveBeenCalledTimes(1);
   });
 });
 

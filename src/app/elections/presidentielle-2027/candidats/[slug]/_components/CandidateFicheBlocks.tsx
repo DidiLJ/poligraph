@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { THEME_ACCENT_BAR, THEME_CATEGORY_LABELS, VOTE_POSITION_LABELS } from "@/config/labels";
 import type { CandidateFicheDetail } from "@/lib/data/politician-candidacy";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 /**
  * The blocks of the candidate fiche, below its header.
@@ -87,100 +88,171 @@ export function CandidateStats({
 }
 
 /**
- * Every documented measure, grouped under its subject.
+ * Every documented measure for a short programme, or a navigable overview for a large one.
+ * We never quote an arbitrary "first" measure: import order has no editorial meaning.
  *
- * All of them, expanded, and that is a decision rather than an oversight. A collapsed
- * subject is a subject most readers never open, and these measures are what the page is
- * for. Nineteen of them is a long section; it is also the entire substance of a
- * candidacy fiche, so length here is the content doing its job.
- *
- * The closing link acts on what was just read, so it belongs to this section rather than
- * floating between two others. Its wording names where it goes: `/sujets` is the index of
- * the thirteen subjects, and the comparison happens one level down, per subject. Promising
- * "comparer ces mesures à celles des autres candidatures" and landing on a list of subjects
- * is a promise the click does not keep.
+ * The closing link acts on what was just read, so it belongs to this section rather than floating
+ * between two others. Every candidacy gets the same stable measures URL, including short
+ * programmes whose complete contents also remain visible on the fiche.
  */
+export const INLINE_PROGRAMME_MEASURE_LIMIT = 15;
+const MEASURE_ACTION_CLASS_NAME = cn(
+  buttonVariants({ variant: "link" }),
+  "h-auto min-h-11 justify-start whitespace-normal px-0 py-2 text-left font-bold"
+);
+
+function CandidateMeasure({
+  measure,
+  electionSlug,
+}: {
+  measure: CandidateFicheDetail["themes"][number]["measures"][number];
+  electionSlug: string;
+}) {
+  const detailUrl = `/elections/${electionSlug}/mesures/${measure.id}`;
+
+  return (
+    <li className="py-3.5 first:pt-0 last:pb-0">
+      <p className="max-w-[70ch] text-[0.9375rem] leading-relaxed text-foreground">
+        {measure.text}
+      </p>
+      <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-0">
+        <Link
+          href={detailUrl}
+          prefetch={false}
+          className={MEASURE_ACTION_CLASS_NAME}
+          aria-label={`Voir la mesure : ${measure.text}`}
+        >
+          Voir la mesure
+          <ArrowRight aria-hidden="true" />
+        </Link>
+        {measure.sourceUrl !== null && (
+          <a
+            href={measure.sourceUrl}
+            target="_blank"
+            rel="nofollow noopener noreferrer"
+            className={MEASURE_ACTION_CLASS_NAME}
+            aria-label={`Consulter la source externe de la mesure : ${measure.text}`}
+          >
+            Source externe
+            <ExternalLink aria-hidden="true" />
+          </a>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export function CandidateThemes({
   themes,
   electionSlug,
+  candidateSlug,
+  measureCount,
   lastReviewedAt,
 }: {
   themes: CandidateFicheDetail["themes"];
   electionSlug: string;
+  candidateSlug: string;
+  measureCount: number;
   lastReviewedAt: Date | null;
 }) {
   if (themes.length === 0) return null;
+
+  const programmeUrl = `/elections/${electionSlug}/candidats/${candidateSlug}/mesures`;
+  const showAllMeasures = measureCount <= INLINE_PROGRAMME_MEASURE_LIMIT;
 
   return (
     <section aria-labelledby="mesures" className="space-y-4 rounded-xl border bg-card p-4 md:p-6">
       <div>
         <h2 id="mesures" className="font-display text-xl font-bold tracking-tight">
-          Ses mesures, sujet par sujet
+          Son programme, sujet par sujet
         </h2>
-        {/* No total here. The counters block a few centimetres below already states it, from
-            another read: two counts of the same thing on one screen invite the reader to spot a
-            disagreement, and eventually to find one. */}
         {/* "Sa source" and not "le document dont elle est tirée": a measure may come from a
             speech, a debate, an interview or an article, which is why `programEditionId` is
             nullable. Naming a document would be the same over-promise as the filter that
             announced a documented programme on a bare measure count. */}
-        <p className="mt-1 text-xs text-muted-foreground">
-          Chaque mesure est citée avec sa source.
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          {showAllMeasures
+            ? `${measureCount} ${measureCount === 1 ? "mesure documentée" : "mesures documentées"}, avec leurs sources.`
+            : `${measureCount} mesures documentées. Choisissez un sujet ou explorez l’ensemble du programme avec les filtres.`}
         </p>
       </div>
 
       <ul className="divide-y divide-border">
-        {themes.map((t) => (
-          <li key={t.theme} className="py-4 first:pt-0 last:pb-0">
-            <div className="flex items-center gap-2.5">
-              <span
-                aria-hidden="true"
-                className={`h-5 w-1.5 shrink-0 rounded-full ${THEME_ACCENT_BAR[t.theme]}`}
-              />
-              <Link
-                href={`/elections/${electionSlug}/sujets/${t.slug}`}
-                prefetch={false}
-                className="text-sm font-bold hover:underline"
-              >
-                {THEME_CATEGORY_LABELS[t.theme]}
-              </Link>
-              <span className="text-xs text-muted-foreground">
-                {t.measureCount} {t.measureCount === 1 ? "mesure" : "mesures"}
-              </span>
-            </div>
+        {themes.map((t) => {
+          return (
+            <li key={t.theme} className="py-5 first:pt-0 last:pb-0">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                <span
+                  aria-hidden="true"
+                  className={`h-5 w-1.5 shrink-0 rounded-full ${THEME_ACCENT_BAR[t.theme]}`}
+                />
+                <h3 className="text-base font-bold">{THEME_CATEGORY_LABELS[t.theme]}</h3>
+                <span className="text-xs text-muted-foreground">
+                  {t.measureCount} {t.measureCount === 1 ? "mesure" : "mesures"}
+                </span>
+              </div>
 
-            <ul className="mt-2 space-y-2 pl-4">
-              {t.measures.map((measure) => (
-                <li key={measure.id} className="text-sm leading-relaxed">
-                  <span className="text-foreground">{measure.text}</span>
-                  {measure.sourceUrl !== null && (
-                    <>
-                      {" "}
-                      <a
-                        href={measure.sourceUrl}
-                        target="_blank"
-                        rel="nofollow noopener"
-                        className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground underline hover:text-foreground hover:no-underline"
-                      >
-                        source
-                        <ExternalLink aria-hidden="true" className="h-3 w-3" />
-                      </a>
-                    </>
+              {showAllMeasures ? (
+                <ul className="mt-3 divide-y divide-border/70 sm:pl-4">
+                  {t.measures.map((measure) => (
+                    <CandidateMeasure
+                      key={measure.id}
+                      measure={measure}
+                      electionSlug={electionSlug}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <div className="mt-3">
+                  {t.subtopics.length > 0 && (
+                    <ul
+                      aria-label={`Sous-sujets de ${THEME_CATEGORY_LABELS[t.theme]}`}
+                      className="mb-3 flex flex-wrap gap-2"
+                    >
+                      {t.subtopics.map((subtopic) => (
+                        <li key={subtopic.slug}>
+                          <Link
+                            href={`${programmeUrl}?theme=${t.slug}&sous-sujet=${subtopic.slug}`}
+                            prefetch={false}
+                            className="inline-flex min-h-11 items-center rounded-full border border-border bg-muted/40 px-3 text-sm hover:border-primary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            {subtopic.label}
+                            <span className="ml-1 text-muted-foreground">{subtopic.count}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
+                  <Link
+                    href={`${programmeUrl}?theme=${t.slug}`}
+                    prefetch={false}
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "min-h-11 w-full justify-between whitespace-normal px-4 text-left sm:w-auto"
+                    )}
+                  >
+                    Voir les {t.measureCount} {t.measureCount === 1 ? "mesure" : "mesures"}
+                    <ArrowRight aria-hidden="true" />
+                  </Link>
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
-      <p className="border-t border-border pt-4 text-sm">
+      <div className="border-t border-border pt-4 text-sm">
         <Link
-          href={`/elections/${electionSlug}/sujets`}
+          href={programmeUrl}
           prefetch={false}
-          className="font-bold text-primary hover:underline"
+          className={cn(
+            buttonVariants({ variant: showAllMeasures ? "link" : "default" }),
+            "min-h-11 whitespace-normal px-0 text-left font-bold",
+            !showAllMeasures && "w-full px-4 sm:w-auto"
+          )}
         >
-          Explorer les propositions par thème
+          Explorer {measureCount === 1 ? "la mesure" : `les ${measureCount} mesures`}
+          <ArrowRight aria-hidden="true" />
         </Link>
         {lastReviewedAt !== null && (
           <span className="text-muted-foreground">
@@ -188,7 +260,7 @@ export function CandidateThemes({
             · dernière revue le {formatDate(lastReviewedAt)}
           </span>
         )}
-      </p>
+      </div>
     </section>
   );
 }

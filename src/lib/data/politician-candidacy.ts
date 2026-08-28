@@ -174,6 +174,7 @@ export type CandidateThemeBreakdown = {
    * their own count made the page describe work instead of showing it.
    */
   measures: CandidateThemeMeasure[];
+  subtopics: Array<{ slug: string; label: string; count: number }>;
 };
 
 export type CandidateRecentVote = {
@@ -230,16 +231,31 @@ export async function loadCandidateFicheDetail(
   }
 
   const themes: CandidateThemeBreakdown[] = [...byTheme.entries()]
-    .map(([theme, list]) => ({
-      theme,
-      slug: themeToSlug(theme),
-      measureCount: list.length,
-      measures: list.map((measure) => ({
-        id: measure.id,
-        text: measure.text,
-        sourceUrl: pickMeasureSourceUrl(measure.sources),
-      })),
-    }))
+    .map(([theme, list]) => {
+      const subtopicCounts = new Map<string, { label: string; count: number }>();
+      for (const measure of list) {
+        for (const subtopic of measure.subtopics) {
+          const current = subtopicCounts.get(subtopic.slug);
+          subtopicCounts.set(subtopic.slug, {
+            label: subtopic.label,
+            count: (current?.count ?? 0) + 1,
+          });
+        }
+      }
+      return {
+        theme,
+        slug: themeToSlug(theme),
+        measureCount: list.length,
+        measures: list.map((measure) => ({
+          id: measure.id,
+          text: measure.text,
+          sourceUrl: pickMeasureSourceUrl(measure.sources),
+        })),
+        subtopics: [...subtopicCounts.entries()]
+          .map(([slug, value]) => ({ slug, ...value }))
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "fr")),
+      };
+    })
     // Most documented first: this block answers "where does this candidacy put the accent", and
     // alphabetical order would bury the answer. It is a count of OUR extraction, not a ranking of
     // candidacies against each other, which is why it is allowed here and not on the field.

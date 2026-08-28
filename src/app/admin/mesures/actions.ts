@@ -31,6 +31,10 @@ import {
 import { MeasureConcurrencyError, MeasureValidationError } from "@/lib/measures/errors";
 import { createMeasureVoteLink } from "@/lib/measures/vote-links";
 import {
+  proposeMeasureRevisionSubtopics,
+  reviewMeasureRevisionSubtopic,
+} from "@/lib/measures/subtopics";
+import {
   createMeasure,
   depublishMeasure,
   discardMeasureRevision,
@@ -113,6 +117,17 @@ const batchReviewInputSchema = z
       )
       .min(1)
       .max(MAX_MEASURE_REVIEW_BATCH_SIZE),
+  })
+  .strict();
+
+const subtopicProposalInputSchema = z
+  .object({ measureId: z.string().min(1), revisionId: z.string().min(1) })
+  .strict();
+
+const subtopicReviewInputSchema = subtopicProposalInputSchema
+  .extend({
+    subtopicId: z.string().min(1),
+    status: z.enum(["APPROVED", "REJECTED"]),
   })
   .strict();
 
@@ -282,6 +297,48 @@ export async function reviewRevisionAction(input: {
   try {
     await reviewMeasureRevision({ ...input, reviewedBy: ACTOR });
     revalidate(input.measureId);
+    return { ok: true };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+export async function proposeSubtopicsAction(input: {
+  measureId: string;
+  revisionId: string;
+}): Promise<ActionResult> {
+  await assertAuthenticated();
+
+  try {
+    const parsed = subtopicProposalInputSchema.safeParse(input);
+    if (!parsed.success) throw new MeasureValidationError("Révision à classer invalide");
+    await proposeMeasureRevisionSubtopics(parsed.data.revisionId, { proposedBy: ACTOR });
+    revalidate(parsed.data.measureId);
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof MeasureValidationError) return toFailure(error);
+    return { ok: false, message: "La proposition automatique a échoué. Réessayez plus tard." };
+  }
+}
+
+export async function reviewSubtopicAction(input: {
+  measureId: string;
+  revisionId: string;
+  subtopicId: string;
+  status: "APPROVED" | "REJECTED";
+}): Promise<ActionResult> {
+  await assertAuthenticated();
+
+  try {
+    const parsed = subtopicReviewInputSchema.safeParse(input);
+    if (!parsed.success) throw new MeasureValidationError("Proposition de sous-sujet invalide");
+    await reviewMeasureRevisionSubtopic({
+      revisionId: parsed.data.revisionId,
+      subtopicId: parsed.data.subtopicId,
+      status: parsed.data.status,
+      reviewedBy: ACTOR,
+    });
+    revalidate(parsed.data.measureId);
     return { ok: true };
   } catch (error) {
     return toFailure(error);

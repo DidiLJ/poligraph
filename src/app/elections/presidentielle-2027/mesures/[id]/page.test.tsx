@@ -77,9 +77,13 @@ describe("page publique d'une mesure présidentielle", () => {
       "href",
       "/elections/presidentielle-2027/candidats/camille-riviere"
     );
-    expect(screen.getByRole("link", { name: /Comparer les mesures/ })).toHaveAttribute(
+    expect(
+      screen.getByRole("link", {
+        name: "Comparer cette mesure avec celles d'un autre candidat",
+      })
+    ).toHaveAttribute(
       "href",
-      "/elections/presidentielle-2027/themes/logement-urbanisme"
+      "/elections/presidentielle-2027/comparer?candidat=camille-riviere&theme=logement-urbanisme"
     );
   });
 

@@ -20,7 +20,10 @@ import { MeasureConcurrencyError, MeasureValidationError } from "./errors";
 import { lockMeasure, lockMeasureCandidacy } from "./lock";
 import { syncSearchDocument } from "./search-sync";
 import { PUBLIC_PRESIDENTIAL_FICHE_WHERE } from "@/lib/presidentielle/publication";
-import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
+import {
+  syncCandidacySearchDocument,
+  syncPresidentialSearchDocumentsForCandidacy,
+} from "@/lib/presidentielle/search-sync";
 import { isAllowedPresidentialMeasureTheme } from "@/lib/presidentielle/themes";
 import { allocateMeasureSlug } from "./slug";
 
@@ -739,9 +742,12 @@ export async function publishMeasureRevision(input: {
     // index still holds the previous text. Called last, so it reads the pointers this
     // transaction has just written.
     if (measure.candidacyId && ficheWasPublic !== ficheIsPublic) {
-      // Opening or closing the carrier fiche changes the visibility of every measure attached to
-      // the candidacy. A stable fiche only requires the edited measure to be refreshed.
-      await syncPresidentialSearchDocumentsForCandidacy(tx, measure.candidacyId);
+      // A publication can only keep the fiche stable or open it. When it opens the fiche, no
+      // other qualifying published measure existed before this one, so every other measure keeps
+      // its visibility. Enumerating the whole programme would only lengthen the transaction and
+      // can exhaust Prisma's timeout on large corpora.
+      await syncCandidacySearchDocument(tx, measure.candidacyId);
+      await syncSearchDocument(tx, input.measureId);
     } else {
       await syncSearchDocument(tx, input.measureId);
     }

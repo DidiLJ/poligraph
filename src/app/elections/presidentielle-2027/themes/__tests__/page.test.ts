@@ -21,9 +21,7 @@ describe("generateMetadata de l'index des thématiques", () => {
       publishableSubjectPageCount: 1,
     });
     const meta = await generateMetadata();
-    expect(String(meta.title)).toMatch(
-      /Couverture du corpus par thématique, présidentielle 2027 \| Poligraph/
-    );
+    expect(String(meta.title)).toBe("Programmes par thème, présidentielle 2027 | Poligraph");
   });
 
   it("noindex quand aucune page thème n'est publiable", async () => {

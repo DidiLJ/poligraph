@@ -182,7 +182,7 @@ describe("page des mesures d'une candidature", () => {
     );
   });
 
-  it("garde le thème historique Social et travail lisible pendant la transition", async () => {
+  it("garde l'ancienne URL lisible sans proposer le thème historique dans le filtre", async () => {
     const { default: Page } = await import("./page");
 
     render(
@@ -194,6 +194,8 @@ describe("page des mesures d'une candidature", () => {
     expect(mocks.listMeasures).toHaveBeenCalledWith(
       expect.objectContaining({ theme: "SOCIAL_TRAVAIL" })
     );
-    expect(screen.getByRole("option", { name: /ancienne classification/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: /ancienne classification/ })
+    ).not.toBeInTheDocument();
   });
 });

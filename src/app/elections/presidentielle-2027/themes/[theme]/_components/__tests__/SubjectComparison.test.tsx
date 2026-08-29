@@ -620,7 +620,7 @@ describe("SubjectComparison", () => {
     );
 
     // Une pastille chiffrée pour la première, une absence qualifiée pour la seconde, pas l'inverse.
-    expect(screen.getAllByText("Chiffrée")).toHaveLength(2);
+    expect(screen.getAllByText("Objectif quantifié")).toHaveLength(2);
     expect(screen.getAllByText("Précision non renseignée")).toHaveLength(2);
     // Et deux états de vote différents sur la même ligne. Portée sur la ligne du tableau : le
     // paragraphe de méthode cite les mêmes libellés en bas de page.

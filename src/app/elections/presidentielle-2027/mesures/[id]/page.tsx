@@ -11,6 +11,7 @@ import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import {
   CHAMBER_LABELS,
   MEASURE_SOURCE_KIND_LABELS,
+  MEASURE_ATTRIBUTION_LABELS,
   SOURCE_TIER_LABELS,
   THEME_CATEGORY_LABELS,
 } from "@/config/labels";
@@ -56,6 +57,13 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
   const canonical = "/elections/" + ELECTION_SLUG + "/mesures/" + measure.slug;
   const themeUrl = "/elections/" + ELECTION_SLUG + "/themes/" + themeToSlug(measure.theme);
   const candidateUrl = "/elections/" + ELECTION_SLUG + "/candidats/" + measure.candidate.slug;
+  const comparisonUrl =
+    "/elections/" +
+    ELECTION_SLUG +
+    "/comparer?candidat=" +
+    encodeURIComponent(measure.candidate.slug) +
+    "&theme=" +
+    encodeURIComponent(themeToSlug(measure.theme));
   const themeLabel = THEME_CATEGORY_LABELS[measure.theme];
   const seoDescription = buildMeasureSeoDescription({
     candidateName: measure.candidate.name,
@@ -95,7 +103,12 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
       />
       <article className="container mx-auto max-w-5xl px-4">
         <header className="border-b border-border pb-8 pt-3">
-          <p className="text-sm font-bold text-primary">Mesure publiée · {themeLabel}</p>
+          <Link
+            href={themeUrl}
+            className="inline-flex min-h-11 items-center text-sm font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            {themeLabel}
+          </Link>
           <h1
             className={`mt-3 max-w-[28ch] font-display font-extrabold leading-[1.08] tracking-tight ${titleClass}`}
           >
@@ -108,15 +121,18 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
                 <InfoTooltip
                   text={
                     measure.precision === "CHIFFREE"
-                      ? "La formulation comporte un objectif numérique explicite. Cela ne signifie pas que son coût ou sa faisabilité ont été évalués."
-                      : "La formulation fixe un objectif, sans valeur numérique explicite."
+                      ? "La formulation comporte une quantité, écrite en chiffres ou en toutes lettres. Cela ne signifie pas que son coût ou sa faisabilité ont été évalués."
+                      : "La formulation fixe un objectif sans quantité explicite."
                   }
                   className="-my-3 min-h-11 min-w-11"
                 />
               </span>
             )}
             <span className="text-sm text-muted-foreground">
-              Dernière revue éditoriale le {formatDate(measure.reviewedAt)}
+              Revue par Poligraph le {formatDate(measure.reviewedAt)}.{" "}
+              <Link href="/methodologie" className="font-bold text-primary underline">
+                Voir la méthode
+              </Link>
             </span>
           </div>
         </header>
@@ -129,6 +145,33 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
             <MarkdownText className="mt-4 max-w-[72ch] leading-relaxed text-foreground">
               {measure.details}
             </MarkdownText>
+          </section>
+        )}
+
+        {measure.programEdition !== null && (
+          <section aria-labelledby="programme-title" className="border-b border-border py-8">
+            <h2 id="programme-title" className="font-display text-2xl font-extrabold">
+              Dans le programme
+            </h2>
+            <div className="mt-4 rounded-2xl border border-border bg-card p-5">
+              <p className="text-sm font-bold text-muted-foreground">
+                {MEASURE_ATTRIBUTION_LABELS[measure.attribution]}
+              </p>
+              <p className="mt-1 text-lg font-bold">{measure.programEdition.label}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Document publié le {formatDate(measure.programEdition.publishedAt)}
+              </p>
+              <a
+                href={measure.programEdition.documentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Consulter le programme ${measure.programEdition.label}, lien externe`}
+                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                Consulter le programme complet
+                <ExternalLink aria-hidden="true" className="h-4 w-4" />
+              </a>
+            </div>
           </section>
         )}
 
@@ -157,13 +200,63 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
             <ArrowRight aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
           </Link>
           <Link
-            href={themeUrl}
+            href={comparisonUrl}
             className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           >
-            Comparer les mesures sur {themeLabel}
+            Comparer cette mesure avec celles d&apos;un autre candidat
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </Link>
         </section>
+
+        {measure.relatedMeasures.length > 0 && (
+          <section aria-labelledby="related-title" className="border-t border-border py-8">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 id="related-title" className="font-display text-2xl font-extrabold">
+                  Ce que proposent d&apos;autres candidates et candidats
+                </h2>
+                <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-muted-foreground">
+                  Mesures publiées sur {themeLabel.toLocaleLowerCase("fr")}
+                  {measure.relatedMeasures.some((related) => related.sharedSubtopics.length > 0)
+                    ? ", rapprochées par sous-thème quand cette information a été validée."
+                    : "."}{" "}
+                  Aucun classement ni jugement de faisabilité n&apos;est appliqué.
+                </p>
+              </div>
+              <Link
+                href={themeUrl}
+                className="inline-flex min-h-11 items-center gap-2 font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Voir toute la comparaison
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </div>
+            <ul className="mt-5 grid gap-3 md:grid-cols-2">
+              {measure.relatedMeasures.map((related) => (
+                <li key={related.slug}>
+                  <Link
+                    href={`/elections/${ELECTION_SLUG}/mesures/${related.slug}`}
+                    prefetch={false}
+                    className="group flex h-full min-h-32 flex-col rounded-2xl border border-border bg-card p-5 hover:border-primary/60 hover:bg-accent/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <span className="text-sm font-bold text-primary">
+                      {related.candidateName}
+                      {related.party ? ` · ${related.party}` : ""}
+                    </span>
+                    <span className="mt-2 line-clamp-3 leading-relaxed text-foreground group-hover:underline">
+                      {related.text}
+                    </span>
+                    {related.sharedSubtopics.length > 0 && (
+                      <span className="mt-3 text-xs text-muted-foreground">
+                        {related.sharedSubtopics.join(" · ")}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section aria-labelledby="sources-title" className="border-t border-border py-8">
           <h2 id="sources-title" className="font-display text-2xl font-extrabold">

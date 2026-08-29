@@ -18,6 +18,7 @@ import {
   POLITIQUES_LISTING_FILTER_KEYS,
   VOTES_LISTING_FILTER_KEYS,
   DOSSIERS_LISTING_FILTER_KEYS,
+  PRESIDENTIAL_CANDIDATES_FILTER_KEYS,
 } from "../listing-filters";
 
 // votes/page.tsx renders <ScrutinsListing>, whose data-layer import chain
@@ -28,6 +29,7 @@ import {
 vi.mock("@/lib/db", () => ({ db: {} }));
 
 import { generateMetadata as votesGenerateMetadata } from "@/app/parlement/votes/page";
+import { metadata as presidentialComparisonMetadata } from "@/app/elections/presidentielle-2027/comparer/page";
 
 // Living map of the index-bloat doctrine. If any representative surface flips, this
 // file fails: a strong page must never become noindex, a thin one must never become
@@ -133,6 +135,22 @@ describe("doctrine — thin/duplicate surfaces stay out of the index", () => {
   it("filtered /parlement/dossiers (?status)", () => {
     expect(listingRobots({ status: "ADOPTED" }, DOSSIERS_LISTING_FILTER_KEYS)).toEqual(
       NOINDEX_FOLLOW
+    );
+  });
+  it("filtered presidential candidates directory (?statut)", () => {
+    expect(listingRobots({ statut: "annoncees" }, PRESIDENTIAL_CANDIDATES_FILTER_KEYS)).toEqual(
+      NOINDEX_FOLLOW
+    );
+  });
+  it("searched presidential candidates directory (?q)", () => {
+    expect(listingRobots({ q: "dupont" }, PRESIDENTIAL_CANDIDATES_FILTER_KEYS)).toEqual(
+      NOINDEX_FOLLOW
+    );
+  });
+  it("presidential comparison combinations stay noindex,follow", () => {
+    expect(presidentialComparisonMetadata.robots).toEqual({ index: false, follow: true });
+    expect(presidentialComparisonMetadata.alternates?.canonical).toBe(
+      "/elections/presidentielle-2027/comparer"
     );
   });
   it("paginated listing (page=2)", () => {

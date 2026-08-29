@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Mail } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { AddToCalendar } from "@/components/elections/AddToCalendar";
 import { CollectionPageJsonLd, EventJsonLd } from "@/components/seo/JsonLd";
@@ -10,7 +11,9 @@ import { SITE_URL } from "@/config/site";
 import { HubCandidacyOverview } from "./_components/HubCandidacyOverview";
 import { HubClosedState } from "./_components/HubClosedState";
 import { HubCorpusState } from "./_components/HubCorpusState";
+import { HubComparisonLauncher } from "./_components/HubComparisonLauncher";
 import { HubSubjects } from "./_components/HubSubjects";
+import { PresidentialHubNav } from "./_components/PresidentialHubNav";
 import { PresidentialCorpusSearch } from "./_components/PresidentialCorpusSearch";
 
 // ISR: 24h backstop. Real changes propagate on demand: a measure write busts election-measures:<id>.
@@ -25,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Présidentielle 2027 : programmes, mesures et candidatures",
     description:
-      "Les candidatures à la présidentielle 2027, leurs mesures sourcées et relues par thème et les votes qui les éclairent.",
+      "Les candidatures à la présidentielle 2027, leurs mesures sourcées et relues par thème, et les votes parlementaires disponibles dans Poligraph.",
     robots: publishable ? undefined : { index: false, follow: true },
     alternates: { canonical: "/elections/presidentielle-2027" },
   };
@@ -67,7 +70,7 @@ export default async function PresidentialHubPage() {
       )}
       <CollectionPageJsonLd
         name="Présidentielle 2027 : programmes et mesures des candidatures"
-        description="Comparer les candidatures à l'élection présidentielle 2027, leurs mesures sourcées et leurs votes parlementaires par sujet."
+        description="Comparer les candidatures à l'élection présidentielle 2027, leurs mesures sourcées et les votes parlementaires disponibles par sujet."
         url={`${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}`}
         numberOfItems={context.verifiedMeasureCount}
       />
@@ -75,6 +78,8 @@ export default async function PresidentialHubPage() {
         <Breadcrumb
           items={[{ label: "Élections", href: "/elections" }, { label: "Présidentielle 2027" }]}
         />
+
+        <PresidentialHubNav active="overview" />
 
         <header className="max-w-3xl space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-brand-on-surface">
@@ -84,8 +89,8 @@ export default async function PresidentialHubPage() {
             Présidentielle 2027 : comparer les programmes et les mesures
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-lg">
-            Pour chaque thème : ce que les personnalités suivies proposent, ce qu&apos;elles ont
-            voté, et ce qu&apos;elles ont fait quand elles étaient au pouvoir.
+            Pour chaque thème : les mesures publiées par les personnalités suivies et,
+            lorsqu&apos;ils existent, les votes parlementaires documentés sur le même objet.
           </p>
           {context.round1Date && (
             <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground-strong">
@@ -115,6 +120,30 @@ export default async function PresidentialHubPage() {
         <HubSubjects themes={context.themes} />
 
         <HubCandidacyOverview candidacies={field} />
+
+        <HubComparisonLauncher candidacies={field} themes={context.themes} />
+
+        <section
+          aria-labelledby="campaign-contact-title"
+          className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <h2 id="campaign-contact-title" className="font-display text-lg font-bold">
+              Vous représentez une équipe de campagne ?
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              Envoyez-nous le programme officiel, une correction ou une source. Chaque ajout reste
+              soumis à la même vérification éditoriale.
+            </p>
+          </div>
+          <a
+            href="mailto:contact@poligraph.fr?subject=Présidentielle%202027%20-%20programme%20ou%20correction"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-primary px-4 font-display text-sm font-bold text-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <Mail aria-hidden="true" className="h-4 w-4" />
+            Contacter Poligraph
+          </a>
+        </section>
 
         <HubCorpusState
           electionTitle={context.electionTitle}

@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import {
   CHAMBER_SHORT_LABELS,
@@ -15,6 +15,7 @@ import type { ThemeCategory } from "@/generated/prisma";
 import type { PublicMeasure } from "@/lib/data/measures";
 import type { PublicVoteReference } from "@/lib/measures/vote-links";
 import type { SubjectCandidateEntry, SubjectPageData } from "@/lib/data/subject-page";
+import { themeToSlug } from "@/lib/presidentielle/themes";
 import { formatDate } from "@/lib/utils";
 import { SubjectGate } from "./SubjectGate";
 import { SubjectSidebar } from "./SubjectSidebar";
@@ -362,6 +363,16 @@ export function SubjectComparison({ data }: { data: SubjectPageData }) {
             thème, réparties entre {documented} {documented === 1 ? "candidature" : "candidatures"}.
             Classées par nom de famille.
           </p>
+          {data.publishable && (
+            <Link
+              href={`/elections/${data.electionSlug}/comparer?theme=${themeToSlug(data.theme)}`}
+              prefetch={false}
+              className="inline-flex min-h-11 items-center gap-2 font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              Choisir deux candidats à comparer
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+          )}
         </header>
 
         {!data.publishable ? (

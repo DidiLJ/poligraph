@@ -1,7 +1,9 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { CandidacyStatus, ThemeCategory, VotePosition } from "@/generated/prisma";
+import { getCategoriesForSuper } from "@/config/labels";
 import { db } from "@/lib/db";
+import { getConvictionOnlyWhere } from "@/lib/affairs/public-filters";
 import { isSynthesisContradictedByMeasures } from "@/lib/presidentielle/candidate-synthesis";
 import { pickMeasureSourceUrl } from "@/lib/presidentielle/measure-source";
 import { PRESIDENTIELLE_2027_SLUG, themeToSlug } from "@/lib/presidentielle/themes";
@@ -41,6 +43,7 @@ export type PoliticianCandidacy = {
   sourceLabel: string;
   partyLabel: string | null;
   partyLogoUrl: string | null;
+  partyColor: string | null;
   programmeIdentified: boolean;
   declaredAt: Date | null;
   withdrewAt: Date | null;
@@ -84,7 +87,7 @@ export async function loadPoliticianPresidentialCandidacy(
       sourceUrl: true,
       sourceLabel: true,
       partyLabel: true,
-      party: { select: { name: true, shortName: true, logoUrl: true } },
+      party: { select: { name: true, shortName: true, logoUrl: true, color: true } },
       round1Pct: true,
       round2Pct: true,
       isElected: true,
@@ -138,6 +141,7 @@ export async function loadPoliticianPresidentialCandidacy(
     sourceLabel: row.sourceLabel,
     partyLabel: row.partyLabel ?? row.party?.shortName ?? row.party?.name ?? null,
     partyLogoUrl: row.party?.logoUrl ?? null,
+    partyColor: row.party?.color ?? null,
     programmeIdentified: programme !== null,
     declaredAt: row.presidentialData?.declaredAt ?? null,
     withdrewAt: row.presidentialData?.withdrewAt ?? null,
@@ -192,6 +196,10 @@ export type CandidateFicheDetail = {
   recentVotes: CandidateRecentVote[];
   /** Every mandate ever held, for the header count. */
   mandateCount: number;
+  /** Convictions for probity offences, pronounced at least at first instance. */
+  probityConvictionCount: number;
+  /** Probity convictions that can still be challenged on appeal or cassation. */
+  probityNonDefinitiveConvictionCount: number;
 };
 
 /**
@@ -206,23 +214,45 @@ export async function loadCandidateFicheDetail(
   candidacyId: string,
   politicianId: string
 ): Promise<CandidateFicheDetail> {
-  const [measures, votes, mandateCount] = await Promise.all([
-    getPublicMeasuresByCandidacy(candidacyId),
-    // Cheap and index-backed: `votingDate` is denormalized onto Vote precisely so a
-    // "votes for politician" sort needs no join.
-    db.vote.findMany({
-      where: { politicianId },
-      orderBy: { votingDate: "desc" },
-      take: 5,
-      select: {
-        id: true,
-        position: true,
-        votingDate: true,
-        scrutin: { select: { id: true, title: true } },
-      },
-    }),
-    db.mandate.count({ where: { politicianId } }),
-  ]);
+  const [measures, mandates, probityConvictionCount, probityNonDefinitiveConvictionCount] =
+    await Promise.all([
+      getPublicMeasuresByCandidacy(candidacyId),
+      db.mandate.findMany({ where: { politicianId }, select: { type: true } }),
+      db.affair.count({
+        where: {
+          politicianId,
+          ...getConvictionOnlyWhere(),
+          category: { in: getCategoriesForSuper("PROBITE") },
+        },
+      }),
+      db.affair.count({
+        where: {
+          politicianId,
+          ...getConvictionOnlyWhere(),
+          category: { in: getCategoriesForSuper("PROBITE") },
+          status: {
+            in: ["CONDAMNATION_PREMIERE_INSTANCE", "APPEL_EN_COURS", "POURVOI_EN_CASSATION"],
+          },
+        },
+      }),
+    ]);
+
+  const hasDeputyMandate = mandates.some((mandate) => mandate.type === "DEPUTE");
+  // Votes on the presidential fiche describe work at the Assemblée nationale. A person who has
+  // never been a député does not get a generic "votes" block assembled from another institution.
+  const votes = hasDeputyMandate
+    ? await db.vote.findMany({
+        where: { politicianId, scrutin: { chamber: "AN" } },
+        orderBy: { votingDate: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          position: true,
+          votingDate: true,
+          scrutin: { select: { id: true, title: true } },
+        },
+      })
+    : [];
 
   const byTheme = new Map<ThemeCategory, PublicMeasure[]>();
   for (const measure of measures) {
@@ -272,7 +302,9 @@ export async function loadCandidateFicheDetail(
       scrutinTitle: v.scrutin.title,
       scrutinId: v.scrutin.id,
     })),
-    mandateCount,
+    mandateCount: mandates.length,
+    probityConvictionCount,
+    probityNonDefinitiveConvictionCount,
   };
 }
 
@@ -314,7 +346,8 @@ async function getPoliticianPresidentialCandidacyCached(
 /**
  * Cached companion of the read above, same tags for the same reason: the themes and their quotes
  * move on a measure publication, and the candidacy's visibility on an extension transition. The
- * `votes` tag as well, since the last-votes block is invalidated by a scrutin import.
+ * `votes` tag as well, since the last-votes block is invalidated by a scrutin import. The probity
+ * counters make `affairs` another direct dependency of this read.
  */
 export async function getCandidateFicheDetail(
   candidacyId: string,
@@ -324,7 +357,15 @@ export async function getCandidateFicheDetail(
     where: { slug: PRESIDENTIELLE_2027_SLUG },
     select: { id: true },
   });
-  if (election === null) return { themes: [], recentVotes: [], mandateCount: 0 };
+  if (election === null) {
+    return {
+      themes: [],
+      recentVotes: [],
+      mandateCount: 0,
+      probityConvictionCount: 0,
+      probityNonDefinitiveConvictionCount: 0,
+    };
+  }
   return getCandidateFicheDetailCached(candidacyId, politicianId, election.id);
 }
 
@@ -337,6 +378,7 @@ async function getCandidateFicheDetailCached(
   cacheTag(`election-measures:${electionId}`);
   cacheTag(`election-candidacies:${electionId}`);
   cacheTag("votes");
+  cacheTag("affairs");
   cacheLife("synced");
   return loadCandidateFicheDetail(candidacyId, politicianId);
 }

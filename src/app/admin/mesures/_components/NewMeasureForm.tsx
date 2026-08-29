@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   MEASURE_ATTRIBUTION_LABELS,
+  MEASURE_PRECISION_LABELS,
   MEASURE_SOURCE_KIND_LABELS,
   SOURCE_TIER_LABELS,
   THEME_CATEGORY_LABELS,
 } from "@/config/labels";
 import type {
   MeasureAttribution,
+  MeasurePrecision,
   MeasureSourceKind,
   SourceTier,
   ThemeCategory,
@@ -38,6 +40,7 @@ const THEMES: readonly ThemeCategory[] = THEMES_IN_ORDER;
 const ATTRIBUTIONS = Object.keys(MEASURE_ATTRIBUTION_LABELS) as MeasureAttribution[];
 const SOURCE_KINDS = Object.keys(MEASURE_SOURCE_KIND_LABELS) as MeasureSourceKind[];
 const TIERS = Object.keys(SOURCE_TIER_LABELS) as SourceTier[];
+const PRECISIONS = Object.keys(MEASURE_PRECISION_LABELS) as MeasurePrecision[];
 
 export function NewMeasureForm({ candidacies }: { candidacies: CandidacyOption[] }) {
   const router = useRouter();
@@ -188,8 +191,11 @@ export function NewMeasureForm({ candidacies }: { candidacies: CandidacyOption[]
           </label>
           <select id="new-precision" name="precision" className={FIELD}>
             <option value="">Non qualifiée</option>
-            <option value="CHIFFREE">Chiffrée</option>
-            <option value="OBJECTIF_SANS_CHIFFRE">Objectif sans chiffre</option>
+            {PRECISIONS.map((precision) => (
+              <option key={precision} value={precision}>
+                {MEASURE_PRECISION_LABELS[precision]}
+              </option>
+            ))}
           </select>
         </div>
       </div>

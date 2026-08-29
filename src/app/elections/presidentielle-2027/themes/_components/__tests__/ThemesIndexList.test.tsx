@@ -47,10 +47,22 @@ describe("ThemesIndexList", () => {
         "/elections/presidentielle-2027/themes/logement-urbanisme"
       );
     }
-    expect(screen.getAllByText("Candidatures documentées").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Mesures documentées").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Actuellement défendues").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Candidats avec des mesures").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mesures publiées").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Mesures retirées")).not.toBeInTheDocument();
     expect(screen.getAllByText(/21 août 2026/).length).toBeGreaterThan(0);
+  });
+
+  it("n'ajoute le compteur des mesures retirées que lorsqu'il est utile", () => {
+    const withWithdrawal = data();
+    withWithdrawal.themes[0] = {
+      ...withWithdrawal.themes[0]!,
+      documentedMeasureCount: 4,
+      currentlyDefendedMeasureCount: 3,
+    };
+    render(<ThemesIndexList data={withWithdrawal} />);
+
+    expect(screen.getAllByText("Mesures retirées").length).toBeGreaterThan(0);
   });
 
   it("garde un thème à zéro mesure dans la liste, pour la navigation", () => {

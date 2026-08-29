@@ -11,11 +11,11 @@ const CANDIDACY_STATUSES = ["DECLARE", "PRESSENTI", "ENVISAGE", "RETIRE"] as con
 const PROGRAMME_STATES = {
   aucun_programme: {
     code: "NO_PROGRAM_IDENTIFIED",
-    label: "Aucun programme identifié",
+    label: "Programme non trouvé ou pas encore traité par Poligraph",
   },
   non_depouille: {
     code: "PROGRAM_IDENTIFIED_NO_PUBLISHED_MEASURES",
-    label: "Programme identifié, aucune mesure publiée",
+    label: "Programme repéré, traitement éditorial en cours",
   },
   published: {
     code: "PUBLISHED_MEASURES",

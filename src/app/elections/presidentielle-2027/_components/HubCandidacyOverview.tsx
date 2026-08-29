@@ -97,7 +97,7 @@ export function HubCandidacyOverview({ candidacies }: { candidacies: HubCandidac
                       {candidacy.candidateName}
                     </span>
                     {candidacy.partyLabel && (
-                      <span className="block text-xs leading-snug text-muted-foreground">
+                      <span className="block text-sm font-medium leading-snug text-foreground">
                         {candidacy.partyLabel}
                       </span>
                     )}

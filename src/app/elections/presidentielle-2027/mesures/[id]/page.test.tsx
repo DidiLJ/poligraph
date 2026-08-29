@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const getDetail = vi.fn();
 const notFound = vi.fn(() => {
@@ -12,9 +13,11 @@ vi.mock("next/navigation", () => ({ notFound: () => notFound() }));
 
 const detail = {
   id: "measure-1",
+  slug: "camille-riviere-construire-davantage-de-logements-accessibles",
   electionSlug: "presidentielle-2027",
   theme: "LOGEMENT_URBANISME",
   text: "Construire davantage de logements accessibles",
+  details: "La source précise les **territoires concernés** et le calendrier annoncé.",
   precision: "CHIFFREE",
   reviewedAt: new Date("2026-08-20T00:00:00Z"),
   publishedAt: new Date("2026-08-21T00:00:00Z"),
@@ -46,11 +49,17 @@ describe("page publique d'une mesure présidentielle", () => {
 
   it("rend une mesure publique avec les labels centraux et ses liens canoniques", async () => {
     const { default: Page } = await import("./page");
-    render(await Page({ params: Promise.resolve({ id: "measure-1" }) }));
+    render(
+      <TooltipProvider>
+        {await Page({ params: Promise.resolve({ id: "measure-1" }) })}
+      </TooltipProvider>
+    );
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(detail.text);
     expect(screen.getByText("Chiffrée")).toBeInTheDocument();
     expect(screen.getByText("Source primaire")).toBeInTheDocument();
     expect(screen.getByText("Programme de candidature")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Ce que prévoit la mesure" })).toBeInTheDocument();
+    expect(screen.getByText("territoires concernés")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Camille Rivière/ })).toHaveAttribute(
       "href",
       "/elections/presidentielle-2027/candidats/camille-riviere"
@@ -63,7 +72,11 @@ describe("page publique d'une mesure présidentielle", () => {
 
   it("n'invente aucun vote quand aucun lien public n'existe", async () => {
     const { default: Page } = await import("./page");
-    render(await Page({ params: Promise.resolve({ id: "measure-1" }) }));
+    render(
+      <TooltipProvider>
+        {await Page({ params: Promise.resolve({ id: "measure-1" }) })}
+      </TooltipProvider>
+    );
     expect(
       screen.queryByRole("heading", { name: "Votes parlementaires liés" })
     ).not.toBeInTheDocument();
@@ -93,6 +106,8 @@ describe("page publique d'une mesure présidentielle", () => {
     const metadata = await generateMetadata({
       params: Promise.resolve({ id: "measure-1" }),
     });
-    expect(metadata.alternates?.canonical).toBe("/elections/presidentielle-2027/mesures/measure-1");
+    expect(metadata.alternates?.canonical).toBe(
+      "/elections/presidentielle-2027/mesures/camille-riviere-construire-davantage-de-logements-accessibles"
+    );
   });
 });

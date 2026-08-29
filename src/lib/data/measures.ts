@@ -55,6 +55,7 @@ export type MeasureWithdrawal = {
  */
 export type PublicMeasure = {
   id: string;
+  slug: string;
   /** The published revision this measure points at. Non-null here: the where clause requires it. */
   publishedRevisionId: string;
   text: string;
@@ -85,6 +86,7 @@ function toPublicMeasure(row: MeasureRow): PublicMeasure | null {
 
   return {
     id: row.id,
+    slug: row.slug,
     publishedRevisionId: revision.id,
     text: revision.text,
     reviewedAt: revision.reviewedAt!,
@@ -126,6 +128,7 @@ function withdrawalFilter(options?: MeasureListOptions): Prisma.MeasureWhereInpu
 
 const PUBLIC_PRESIDENTIAL_MEASURE_SELECT = {
   id: true,
+  slug: true,
   publishedRevisionId: true,
   theme: true,
   attribution: true,
@@ -171,6 +174,8 @@ type PublicPresidentialMeasureRow = Prisma.MeasureGetPayload<{
 
 export type PublicPresidentialMeasure = {
   measureId: string;
+  slug: string;
+  publicUrl: string;
   publishedRevisionId: string;
   text: string;
   precision: {
@@ -219,6 +224,8 @@ function toPublicPresidentialMeasure(
   const themeSlug = themeToSlug(row.theme);
   return {
     measureId: row.id,
+    slug: row.slug,
+    publicUrl: `/elections/${electionSlug}/mesures/${row.slug}`,
     publishedRevisionId: row.publishedRevisionId,
     text: revision.text,
     precision: {
@@ -282,7 +289,12 @@ export async function listPublicPresidentialMeasures(
             is: {
               ...PUBLIC_MEASURE_REVISION_WHERE,
               ...(options.query
-                ? { text: { contains: options.query, mode: "insensitive" as const } }
+                ? {
+                    OR: [
+                      { text: { contains: options.query, mode: "insensitive" as const } },
+                      { details: { contains: options.query, mode: "insensitive" as const } },
+                    ],
+                  }
                 : {}),
               ...(options.subtopicSlug
                 ? {

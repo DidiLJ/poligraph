@@ -184,7 +184,7 @@ export default async function CandidateFichePage({ params }: PageProps) {
               <CandidacyStatusBadge status={candidacy.status} />
             </p>
             {candidacy.partyLabel && (
-              <p className="text-sm text-muted-foreground-strong">{candidacy.partyLabel}</p>
+              <p className="text-base font-semibold text-foreground">{candidacy.partyLabel}</p>
             )}
           </div>
         </header>

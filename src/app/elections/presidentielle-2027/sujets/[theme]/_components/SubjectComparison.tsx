@@ -164,7 +164,7 @@ function QuotedMeasure({
   return (
     <div className="max-w-[64ch]">
       <Link
-        href={`/elections/${electionSlug}/mesures/${entry.measure.id}`}
+        href={`/elections/${electionSlug}/mesures/${entry.measure.slug}`}
         prefetch={false}
         className="rounded text-[0.9375rem] leading-[1.55] text-foreground underline decoration-border underline-offset-2 hover:text-primary hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
@@ -354,7 +354,7 @@ export function SubjectComparison({ data }: { data: SubjectPageData }) {
             {themeLabel}
           </span>
           <h1 className="font-display text-3xl font-extrabold leading-tight tracking-tight md:text-4xl">
-            Quelles solutions proposent-ils&nbsp;?
+            {themeLabel} : comparer les mesures pour 2027
           </h1>
           <p className="max-w-3xl text-sm text-muted-foreground md:text-base">
             {data.totalMeasuresOnTheme}{" "}
@@ -362,27 +362,14 @@ export function SubjectComparison({ data }: { data: SubjectPageData }) {
             sujet, réparties entre {documented} {documented === 1 ? "candidature" : "candidatures"}.
             Classées par nom de famille.
           </p>
-          {/* The candidacy's own declaration source used to sit in the first column, where six
-              labels of a hundred characters each became the tallest thing on the page and buried
-              the comparison. Here the evidence that matters is the measure's, which has its own
-              cell; the declaration belongs to the field, which lists it candidacy by candidacy. */}
-          <p className="text-xs text-muted-foreground">
-            Chaque candidature affichée a un statut sourcé.{" "}
-            <Link
-              href="/elections/presidentielle-2027#candidatures"
-              className="underline hover:text-foreground"
-            >
-              Voir les sources de candidature
-            </Link>
-          </p>
         </header>
 
         {!data.publishable ? (
           <SubjectGate data={data} />
         ) : (
           <>
-            <VoteMentionLegend />
             <ComparisonTable data={data} />
+            <MeasureMentionsGuide />
             <FooterCard
               documented={documented}
               withoutMeasure={withoutMeasure}
@@ -441,38 +428,49 @@ function PlannedSections() {
 }
 
 /**
- * What the mention under every measure is about, said once, before the reader meets it.
+ * What the mentions under every measure mean, available after the results on demand.
  *
  * The mention is the state of a rapprochement we are still building, measure by measure: which
  * scrutins of the Assemblée nationale and the Sénat bear on the same object as a proposal. Nothing
  * on the page said that work existed, so "à vérifier" under a measure had no antecedent, and a
  * reader could take it for a reservation about the candidacy rather than about our own coverage.
  *
- * Here rather than in the method card at the bottom: a key that arrives after the table it explains
- * is read, if at all, once the reader has already made sense of the labels on their own.
+ * A native disclosure keeps this long explanation keyboard-operable without pushing the comparison
+ * below the fold, especially on mobile.
  */
-function VoteMentionLegend() {
+function MeasureMentionsGuide() {
   return (
-    <aside
-      aria-labelledby="legende-votes"
-      className="rounded-xl border border-border bg-muted/40 px-5 py-4"
-    >
-      <h2
-        id="legende-votes"
-        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-      >
-        La mention sous chaque mesure
-      </h2>
-      <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-        Nous rapprochons chaque mesure des scrutins de l&apos;Assemblée nationale et du Sénat qui
-        portent sur le même objet. Ce travail se fait mesure par mesure et il est en cours&nbsp;:
-        «&nbsp;{VOTE_RELATION_BASIS_LABELS.SEARCH_NOT_DONE}&nbsp;» signale une mesure que nous
-        n&apos;avons pas encore rapprochée, «&nbsp;
-        {VOTE_RELATION_BASIS_LABELS.NO_VOTE_IN_SCOPE}&nbsp;» une mesure pour laquelle nous avons
-        cherché sans rien trouver. Dans ce second cas, les chambres et les législatures couvertes et
-        la date de la vérification suivent la mention.
-      </p>
-    </aside>
+    <details className="group rounded-xl border border-border bg-card">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-primary hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+        />
+        Comprendre les mentions sous les mesures
+      </summary>
+      <div className="space-y-3 border-t border-border px-5 py-4 text-sm text-muted-foreground">
+        <p>
+          La mention <strong className="text-foreground">«&nbsp;chiffrée&nbsp;»</strong> indique que
+          la formulation contient un objectif numérique explicite. Ce badge n&apos;évalue ni le coût
+          ni la faisabilité.
+        </p>
+        <p>
+          Nous rapprochons chaque mesure des scrutins de l&apos;Assemblée nationale et du Sénat sur
+          le même objet. «&nbsp;{VOTE_RELATION_BASIS_LABELS.SEARCH_NOT_DONE}&nbsp;» signifie que ce
+          rapprochement reste à faire. «&nbsp;{VOTE_RELATION_BASIS_LABELS.NO_VOTE_IN_SCOPE}&nbsp;»
+          signifie que la recherche a été menée sans scrutin proche dans le périmètre indiqué.
+        </p>
+        <p>
+          Les candidatures affichées ont un statut sourcé.{" "}
+          <Link
+            href="/elections/presidentielle-2027#candidatures"
+            className="underline hover:text-foreground"
+          >
+            Voir les sources de candidature
+          </Link>
+        </p>
+      </div>
+    </details>
   );
 }
 
@@ -580,8 +578,8 @@ function FooterCard({
 function MethodCard() {
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      {/* What the two search states mean is stated by `VoteMentionLegend`, above the table, where a
-          reader meets the mention for the first time. What is left here is the rule that decides
+      {/* What the two search states mean is stated by `MeasureMentionsGuide`. What is left here is
+          the rule that decides
           whether a POSITION can appear at all, which is a different fact and belongs next to the
           link to the method page. */}
       <p className="max-w-3xl text-sm text-muted-foreground">

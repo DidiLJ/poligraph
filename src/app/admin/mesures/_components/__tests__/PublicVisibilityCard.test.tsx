@@ -22,6 +22,7 @@ function state(over: Partial<ModerationState> = {}): ModerationState {
 function publicMeasure(over: Partial<PublicMeasure> = {}): PublicMeasure {
   return {
     id: "m-1",
+    slug: "camille-riviere-encadrer-les-loyers",
     publishedRevisionId: "rev-1",
     text: "Encadrer les loyers dans les zones tendues.",
     reviewedAt: new Date("2027-01-16T00:00:00Z"),

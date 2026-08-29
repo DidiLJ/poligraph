@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { MarkdownText } from "@/components/ui/markdown";
 import { MeasurePrecisionBadge } from "@/components/measures/MeasurePrecisionBadge";
 import { VoteRelationBadge } from "@/components/measures/VoteRelationBadge";
 import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
@@ -13,6 +15,9 @@ import {
   THEME_CATEGORY_LABELS,
 } from "@/config/labels";
 import { getPublicPresidentialMeasureDetail } from "@/lib/data/presidential-measure-detail";
+import { ArticleJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { SITE_URL } from "@/config/site";
+import { buildMeasureSeoDescription, truncateAtWord } from "@/lib/presidentielle/measure-seo";
 import { themeToSlug } from "@/lib/presidentielle/themes";
 import { formatDate } from "@/lib/utils";
 
@@ -29,15 +34,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       robots: { index: false, follow: true },
     };
   }
-  const canonical = "/elections/" + ELECTION_SLUG + "/mesures/" + measure.id;
+  const canonical = "/elections/" + ELECTION_SLUG + "/mesures/" + measure.slug;
+  const themeLabel = THEME_CATEGORY_LABELS[measure.theme];
   return {
-    title: measure.text + " | Présidentielle 2027 | Poligraph",
-    description:
-      "Mesure publique portée par " +
-      measure.candidate.name +
-      " sur le sujet " +
-      THEME_CATEGORY_LABELS[measure.theme] +
-      ".",
+    title: `${measure.candidate.name} : ${truncateAtWord(measure.text, 72)} | Présidentielle 2027`,
+    description: buildMeasureSeoDescription({
+      candidateName: measure.candidate.name,
+      themeLabel,
+      text: measure.text,
+      details: measure.details,
+    }),
     alternates: { canonical },
   };
 }
@@ -47,12 +53,38 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
   const measure = await getPublicPresidentialMeasureDetail(ELECTION_SLUG, id);
   if (measure === null) notFound();
 
-  const canonical = "/elections/" + ELECTION_SLUG + "/mesures/" + measure.id;
+  const canonical = "/elections/" + ELECTION_SLUG + "/mesures/" + measure.slug;
   const themeUrl = "/elections/" + ELECTION_SLUG + "/sujets/" + themeToSlug(measure.theme);
   const candidateUrl = "/elections/" + ELECTION_SLUG + "/candidats/" + measure.candidate.slug;
+  const themeLabel = THEME_CATEGORY_LABELS[measure.theme];
+  const seoDescription = buildMeasureSeoDescription({
+    candidateName: measure.candidate.name,
+    themeLabel,
+    text: measure.text,
+    details: measure.details,
+  });
+  const titleClass =
+    measure.text.length > 100
+      ? "text-2xl sm:text-3xl lg:text-4xl"
+      : "text-3xl sm:text-4xl lg:text-5xl";
 
   return (
     <main className="pb-14">
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Présidentielle 2027", url: `${SITE_URL}/elections/${ELECTION_SLUG}` },
+          { name: themeLabel, url: `${SITE_URL}${themeUrl}` },
+          { name: measure.text, url: `${SITE_URL}${canonical}` },
+        ]}
+      />
+      <ArticleJsonLd
+        headline={measure.text}
+        description={seoDescription}
+        datePublished={measure.publishedAt.toISOString()}
+        dateModified={measure.reviewedAt.toISOString()}
+        url={`${SITE_URL}${canonical}`}
+        about={{ name: measure.candidate.name, url: `${SITE_URL}${candidateUrl}` }}
+      />
       <Breadcrumb
         items={[
           { label: "Élections", href: "/elections" },
@@ -61,21 +93,44 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
           { label: "Mesure", href: canonical },
         ]}
       />
-      <article className="container mx-auto max-w-4xl px-4">
+      <article className="container mx-auto max-w-5xl px-4">
         <header className="border-b border-border pb-8 pt-3">
-          <p className="text-sm font-bold text-primary">
-            Mesure publiée · {THEME_CATEGORY_LABELS[measure.theme]}
-          </p>
-          <h1 className="mt-3 font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+          <p className="text-sm font-bold text-primary">Mesure publiée · {themeLabel}</p>
+          <h1
+            className={`mt-3 max-w-[28ch] font-display font-extrabold leading-[1.08] tracking-tight ${titleClass}`}
+          >
             {measure.text}
           </h1>
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            {measure.precision && <MeasurePrecisionBadge precision={measure.precision} />}
+            {measure.precision && (
+              <span className="inline-flex items-center gap-1">
+                <MeasurePrecisionBadge precision={measure.precision} />
+                <InfoTooltip
+                  text={
+                    measure.precision === "CHIFFREE"
+                      ? "La formulation comporte un objectif numérique explicite. Cela ne signifie pas que son coût ou sa faisabilité ont été évalués."
+                      : "La formulation fixe un objectif, sans valeur numérique explicite."
+                  }
+                  className="-my-3 min-h-11 min-w-11"
+                />
+              </span>
+            )}
             <span className="text-sm text-muted-foreground">
               Dernière revue éditoriale le {formatDate(measure.reviewedAt)}
             </span>
           </div>
         </header>
+
+        {measure.details !== null && (
+          <section aria-labelledby="details-title" className="border-b border-border py-8">
+            <h2 id="details-title" className="font-display text-2xl font-extrabold">
+              Ce que prévoit la mesure
+            </h2>
+            <MarkdownText className="mt-4 max-w-[72ch] leading-relaxed text-foreground">
+              {measure.details}
+            </MarkdownText>
+          </section>
+        )}
 
         <section aria-labelledby="carrier-title" className="py-8">
           <h2 id="carrier-title" className="font-display text-2xl font-extrabold">
@@ -105,7 +160,7 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
             href={themeUrl}
             className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           >
-            Comparer les mesures sur {THEME_CATEGORY_LABELS[measure.theme]}
+            Comparer les mesures sur {themeLabel}
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </Link>
         </section>

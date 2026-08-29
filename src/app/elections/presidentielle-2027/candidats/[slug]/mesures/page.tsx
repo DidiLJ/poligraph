@@ -284,7 +284,7 @@ export default async function CandidateMeasuresPage({ params, searchParams }: Pa
           ) : (
             <ol className="divide-y divide-border">
               {result.data.map((measure) => {
-                const detailUrl = `/elections/${ELECTION_SLUG}/mesures/${measure.measureId}`;
+                const detailUrl = measure.publicUrl;
                 const source = measure.sources[0];
                 return (
                   <li key={measure.measureId} className="py-6 first:pt-5">

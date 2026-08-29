@@ -8,6 +8,7 @@ vi.mock("@/lib/search/documents", () => ({
 }));
 
 const measure = {
+  slug: "camille-riviere-construire-des-logements-publics",
   electionId: "election-1",
   election: { slug: "election-reelle" },
   publicationStatus: "PUBLISHED" as const,
@@ -15,11 +16,13 @@ const measure = {
   publishedRevision: {
     id: "revision-pub",
     text: "Construire des logements publics.",
+    details: "Dans les zones tendues.",
     updatedAt: new Date("2026-08-27T12:00:00Z"),
   },
   latestRevision: {
     id: "revision-pub",
     text: "Construire des logements publics.",
+    details: "Dans les zones tendues.",
     updatedAt: new Date("2026-08-27T12:00:00Z"),
   },
 };
@@ -46,7 +49,8 @@ describe("synchronisation recherche des mesures", () => {
       tx,
       expect.objectContaining({
         electionId: "election-1",
-        url: "/elections/election-reelle/mesures/measure-1",
+        url: "/elections/election-reelle/mesures/camille-riviere-construire-des-logements-publics",
+        body: "Construire des logements publics.\n\nDans les zones tendues.",
         visibility: "PUBLIC",
       })
     );

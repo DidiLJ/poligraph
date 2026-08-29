@@ -157,6 +157,7 @@ export async function loadPoliticianPresidentialCandidacy(
 
 export type CandidateThemeMeasure = {
   id: string;
+  slug: string;
   text: string;
   sourceUrl: string | null;
 };
@@ -248,6 +249,7 @@ export async function loadCandidateFicheDetail(
         measureCount: list.length,
         measures: list.map((measure) => ({
           id: measure.id,
+          slug: measure.slug,
           text: measure.text,
           sourceUrl: pickMeasureSourceUrl(measure.sources),
         })),

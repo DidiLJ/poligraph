@@ -510,11 +510,11 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
               electionId: presidentielle2027.id,
               ...PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
             },
-            select: { id: true, updatedAt: true },
+            select: { slug: true, updatedAt: true },
             orderBy: { updatedAt: "desc" },
           })
         ).map((measure) => ({
-          url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/mesures/${measure.id}`,
+          url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/mesures/${measure.slug}`,
           lastModified: measure.updatedAt,
           changeFrequency: "weekly" as const,
           priority: 0.6,

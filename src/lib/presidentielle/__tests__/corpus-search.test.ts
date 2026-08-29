@@ -46,6 +46,7 @@ describe("searchPresidentialCorpus", () => {
     findMeasures.mockResolvedValue([
       {
         id: "measure-public",
+        slug: "alice-martin-construire-des-logements-publics",
         theme: "LOGEMENT_URBANISME",
         publishedRevision: {
           text: "Construire des logements publics",
@@ -77,7 +78,7 @@ describe("searchPresidentialCorpus", () => {
     });
     expect(result?.measures[0]).toMatchObject({
       text: "Construire des logements publics",
-      url: "/elections/presidentielle-test/mesures/measure-public",
+      url: "/elections/presidentielle-test/mesures/alice-martin-construire-des-logements-publics",
     });
     expect(result?.subjects).toEqual([
       {

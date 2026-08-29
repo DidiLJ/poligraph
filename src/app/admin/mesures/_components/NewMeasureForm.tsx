@@ -76,6 +76,7 @@ export function NewMeasureForm({ candidacies }: { candidacies: CandidacyOption[]
             attribution: String(data.get("attribution")) as MeasureAttribution,
             revision: {
               text: String(data.get("text") ?? ""),
+              details: String(data.get("details") ?? "").trim() || null,
               precision:
                 String(data.get("precision") ?? "") === ""
                   ? null
@@ -160,6 +161,17 @@ export function NewMeasureForm({ candidacies }: { candidacies: CandidacyOption[]
           Texte de la mesure
         </label>
         <textarea id="new-text" name="text" required rows={3} className={FIELD} />
+      </div>
+
+      <div>
+        <label htmlFor="new-details" className={LABEL}>
+          Détails documentés (facultatif)
+        </label>
+        <textarea id="new-details" name="details" rows={6} className={FIELD} />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Ajoutez uniquement du contexte factuel présent dans les sources. Le Markdown simple est
+          accepté. Ce contenu sera relu et publié avec cette révision.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

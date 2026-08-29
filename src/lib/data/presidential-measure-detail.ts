@@ -14,9 +14,11 @@ import { deriveVoteRelation, type VoteRelation } from "@/lib/measures/vote-relat
 
 export type PublicPresidentialMeasureDetail = {
   id: string;
+  slug: string;
   electionSlug: string;
   theme: ThemeCategory;
   text: string;
+  details: string | null;
   precision: MeasurePrecision | null;
   reviewedAt: Date;
   publishedAt: Date;
@@ -51,21 +53,23 @@ export type PublicPresidentialMeasureDetail = {
   }>;
 };
 
-async function loadPublicPresidentialMeasureDetail(electionSlug: string, measureId: string) {
+async function loadPublicPresidentialMeasureDetail(electionSlug: string, measureSlug: string) {
   const row = await db.measure.findFirst({
     where: {
-      id: measureId,
+      slug: measureSlug,
       election: { slug: electionSlug },
       ...PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
     },
     select: {
       id: true,
+      slug: true,
       theme: true,
       election: { select: { slug: true } },
       publishedRevisionId: true,
       publishedRevision: {
         select: {
           text: true,
+          details: true,
           precision: true,
           reviewedAt: true,
           publishedAt: true,
@@ -134,9 +138,11 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
 
   return {
     id: row.id,
+    slug: row.slug,
     electionSlug: row.election.slug,
     theme: row.theme,
     text: revision.text,
+    details: revision.details,
     precision: revision.precision,
     reviewedAt: revision.reviewedAt,
     publishedAt: revision.publishedAt,
@@ -168,3 +174,18 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
 }
 
 export const getPublicPresidentialMeasureDetail = cache(loadPublicPresidentialMeasureDetail);
+
+export async function getPublicPresidentialMeasureSlugByLegacyId(
+  electionSlug: string,
+  measureId: string
+): Promise<string | null> {
+  const row = await db.measure.findFirst({
+    where: {
+      id: measureId,
+      election: { slug: electionSlug },
+      ...PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
+    },
+    select: { slug: true },
+  });
+  return row?.slug ?? null;
+}

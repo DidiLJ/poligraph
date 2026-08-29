@@ -9,6 +9,7 @@ import { SubjectComparison } from "../SubjectComparison";
 function measure(over: Partial<PublicMeasure> = {}): PublicMeasure {
   return {
     id: "m-1",
+    slug: "camille-riviere-encadrer-les-loyers",
     publishedRevisionId: "rev-1",
     text: "Encadrer les loyers.",
     reviewedAt: new Date("2027-01-16T00:00:00Z"),
@@ -436,7 +437,10 @@ describe("SubjectComparison", () => {
     const liens = screen.getAllByRole("link", { name: /Construire des logements/ });
     expect(liens).toHaveLength(2);
     for (const lien of liens) {
-      expect(lien).toHaveAttribute("href", "/elections/presidentielle-2027/mesures/m-linked");
+      expect(lien).toHaveAttribute(
+        "href",
+        "/elections/presidentielle-2027/mesures/camille-riviere-encadrer-les-loyers"
+      );
     }
   });
 
@@ -519,7 +523,7 @@ describe("SubjectComparison", () => {
     expect(screen.getAllByText(/aucune mesure sur ce sujet/)).toHaveLength(2);
   });
 
-  it("explique la mention de vote avant que le lecteur ne la rencontre, avec les libellés réels", () => {
+  it("explique les mentions après les résultats, avec les libellés réels", () => {
     // La mention est l'état d'un rapprochement en cours ; rien sur la page ne disait que ce travail
     // existait, donc « à vérifier » sous une mesure pouvait passer pour une réserve sur la
     // candidature plutôt que sur notre couverture. La légende cite les libellés depuis la source de
@@ -532,9 +536,11 @@ describe("SubjectComparison", () => {
       />
     );
 
-    const legende = screen.getByRole("complementary", { name: /La mention sous chaque mesure/ });
+    const summary = screen.getByText("Comprendre les mentions sous les mesures");
+    const legende = summary.closest("details");
+    expect(legende).not.toBeNull();
+    if (legende === null) throw new Error("Guide des mentions introuvable");
     expect(within(legende).getByText(/rapprochons chaque mesure des scrutins/)).toBeInTheDocument();
-    expect(within(legende).getByText(/travail se fait mesure par mesure/)).toBeInTheDocument();
     for (const libelle of [
       VOTE_RELATION_BASIS_LABELS.SEARCH_NOT_DONE,
       VOTE_RELATION_BASIS_LABELS.NO_VOTE_IN_SCOPE,
@@ -542,10 +548,10 @@ describe("SubjectComparison", () => {
       expect(legende.textContent).toContain(libelle);
     }
 
-    // Et la légende précède le tableau qu'elle explique, au lieu de le suivre.
+    // Le contenu utile arrive avant la méthode, qui reste disponible à la demande.
     const tableau = screen.getByRole("table");
     expect(
-      legende.compareDocumentPosition(tableau) & Node.DOCUMENT_POSITION_FOLLOWING
+      tableau.compareDocumentPosition(legende) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
   });
 

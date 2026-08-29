@@ -17,6 +17,7 @@ const BASE = {
   measureId: "m-1",
   expectedUpdatedAt: "2027-01-16T10:00:00.000Z",
   revisionTexts: { "rev-1": "Encadrer les loyers dans les zones tendues." },
+  revisionDetails: { "rev-1": null as string | null },
   isWithdrawn: false,
   pointersAmbiguous: false,
 };
@@ -97,12 +98,17 @@ describe("MeasureActionPanel", () => {
   });
 
   it("préremplit une correction et conserve sa preuve sans redemander la source", () => {
-    panel([{ kind: "draft", preservesEvidenceFromRevisionId: "rev-1" }]);
+    panel([{ kind: "draft", preservesEvidenceFromRevisionId: "rev-1" }], {
+      revisionDetails: { "rev-1": "Contexte documenté." },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Corriger la proposition" }));
 
     expect(screen.getByLabelText("Texte de la nouvelle révision")).toHaveValue(
       BASE.revisionTexts["rev-1"]
+    );
+    expect(screen.getByLabelText("Détails documentés (facultatif)")).toHaveValue(
+      "Contexte documenté."
     );
     expect(screen.queryByLabelText("URL")).not.toBeInTheDocument();
   });

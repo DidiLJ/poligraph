@@ -28,12 +28,13 @@ export async function syncSearchDocument(
   const measure = await tx.measure.findUniqueOrThrow({
     where: { id: measureId },
     select: {
+      slug: true,
       electionId: true,
       election: { select: { slug: true } },
       publicationStatus: true,
       publishedRevisionId: true,
-      publishedRevision: { select: { id: true, text: true, updatedAt: true } },
-      latestRevision: { select: { id: true, text: true, updatedAt: true } },
+      publishedRevision: { select: { id: true, text: true, details: true, updatedAt: true } },
+      latestRevision: { select: { id: true, text: true, details: true, updatedAt: true } },
     },
   });
 
@@ -60,8 +61,8 @@ export async function syncSearchDocument(
     entityId: measureId,
     electionId: measure.electionId,
     title: reference.text.slice(0, MAX_TITLE_LENGTH),
-    body: reference.text,
-    url: `/elections/${measure.election.slug}/mesures/${measureId}`,
+    body: [reference.text, reference.details].filter(Boolean).join("\n\n"),
+    url: `/elections/${measure.election.slug}/mesures/${measure.slug}`,
     visibility: isPublic ? "PUBLIC" : "ADMIN_ONLY",
     sourceRevisionId: reference.id,
     // The revision's own updatedAt, read after the transition's writes. Passing `now`

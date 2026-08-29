@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   findMatchingThemes,
+  findThemesMentionedInQuery,
   getPresidentialThemeIndexOrder,
   themeToSlug,
   parseThemeSlug,
@@ -53,5 +54,10 @@ describe("theme route helpers", () => {
   });
   it("ne transforme pas un mot étranger à la taxonomie en thème", () => {
     expect(findMatchingThemes("introuvable")).toEqual([]);
+  });
+  it("retrouve un thème cité dans une question complète", () => {
+    expect(
+      findThemesMentionedInQuery("Que proposent les candidats pour réduire le coût du logement ?")
+    ).toEqual(["LOGEMENT_URBANISME"]);
   });
 });

@@ -134,3 +134,18 @@ export function findMatchingThemes(query: string): ThemeCategory[] {
     );
   });
 }
+
+/** Find subjects named inside a full sentence, instead of treating every word as a filter. */
+export function findThemesMentionedInQuery(query: string): ThemeCategory[] {
+  const queryTerms = new Set(normalizeThemeSearch(query).split(" ").filter(Boolean));
+  if (queryTerms.size === 0) return [];
+
+  return THEMES_IN_ORDER.filter((theme) => {
+    const labels = [THEME_CATEGORY_LABELS[theme], ...PRESIDENTIAL_THEME_SEARCH_ALIASES[theme]];
+    return labels.some((label) =>
+      normalizeThemeSearch(label)
+        .split(" ")
+        .some((term) => term.length >= 3 && queryTerms.has(term))
+    );
+  });
+}

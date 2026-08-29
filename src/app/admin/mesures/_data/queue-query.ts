@@ -30,6 +30,8 @@ const MAX_TAKE = 100;
  */
 export const QUEUE_SCAN_CAP = 500;
 
+export type EnrichmentState = "SUBTOPICS_PENDING" | "SUBTOPICS_APPROVED" | "DETAILS_MISSING";
+
 export type MeasureQueueFilters = {
   publication?: PublicationState[];
   theme?: ThemeCategory[];
@@ -38,6 +40,7 @@ export type MeasureQueueFilters = {
   politicianId?: string;
   withdrawn?: "only" | "exclude";
   anomaliesOnly?: boolean;
+  enrichment?: EnrichmentState;
   q?: string;
   take?: number;
   skip?: number;
@@ -53,7 +56,13 @@ const QUEUE_SELECT = {
   // Extends the shared selection rather than replacing it: the derivation reads the same
   // fields either way, and the queue needs the text and the date on top.
   revisions: {
-    select: { ...MODERATION_MEASURE_SELECT.revisions.select, text: true, validFrom: true },
+    select: {
+      ...MODERATION_MEASURE_SELECT.revisions.select,
+      text: true,
+      details: true,
+      validFrom: true,
+      subtopics: { select: { status: true } },
+    },
     orderBy: MODERATION_MEASURE_SELECT.revisions.orderBy,
   },
 } satisfies Prisma.MeasureSelect;
@@ -72,6 +81,9 @@ export type MeasureQueueRow = {
    * Null only when the measure has no revision at all, which the EMPTY stage names.
    */
   referenceText: string | null;
+  hasDetails: boolean;
+  suggestedSubtopicCount: number;
+  approvedSubtopicCount: number;
   state: ModerationState;
 };
 
@@ -82,6 +94,7 @@ export type MeasureQueueResult = {
   counts: Record<PublicationState, number>;
   anomalyCount: number;
   withdrawnCount: number;
+  enrichmentCounts: Record<EnrichmentState, number>;
   scanCapped: boolean;
 };
 
@@ -149,6 +162,9 @@ function referenceTextOf(row: QueueDbRow): string | null {
 }
 
 function toQueueRow(row: QueueDbRow): MeasureQueueRow {
+  const referenceId = row.publishedRevisionId ?? row.latestRevisionId;
+  const referenceRevision = row.revisions.find((revision) => revision.id === referenceId);
+
   return {
     id: row.id,
     theme: row.theme,
@@ -157,6 +173,11 @@ function toQueueRow(row: QueueDbRow): MeasureQueueRow {
     electionTitle: row.election.title,
     createdAt: row.createdAt,
     referenceText: referenceTextOf(row),
+    hasDetails: Boolean(referenceRevision?.details?.trim()),
+    suggestedSubtopicCount:
+      referenceRevision?.subtopics.filter((item) => item.status === "SUGGESTED").length ?? 0,
+    approvedSubtopicCount:
+      referenceRevision?.subtopics.filter((item) => item.status === "APPROVED").length ?? 0,
     state: deriveModerationState(toModerationMeasureRow(row)),
   };
 }
@@ -166,6 +187,9 @@ function matchesDerivedFilters(row: MeasureQueueRow, filters: MeasureQueueFilter
     if (!filters.publication.includes(row.state.publication)) return false;
   }
   if (filters.anomaliesOnly && row.state.anomalies.length === 0) return false;
+  if (filters.enrichment === "SUBTOPICS_PENDING" && row.suggestedSubtopicCount === 0) return false;
+  if (filters.enrichment === "SUBTOPICS_APPROVED" && row.approvedSubtopicCount === 0) return false;
+  if (filters.enrichment === "DETAILS_MISSING" && row.hasDetails) return false;
   return true;
 }
 
@@ -196,10 +220,18 @@ export async function queryMeasureQueue(
   const counts = emptyCounts();
   let anomalyCount = 0;
   let withdrawnCount = 0;
+  const enrichmentCounts: Record<EnrichmentState, number> = {
+    SUBTOPICS_PENDING: 0,
+    SUBTOPICS_APPROVED: 0,
+    DETAILS_MISSING: 0,
+  };
   for (const row of rows) {
     counts[row.state.publication] += 1;
     if (row.state.anomalies.length > 0) anomalyCount += 1;
     if (row.state.withdrawal !== null) withdrawnCount += 1;
+    if (row.suggestedSubtopicCount > 0) enrichmentCounts.SUBTOPICS_PENDING += 1;
+    if (row.approvedSubtopicCount > 0) enrichmentCounts.SUBTOPICS_APPROVED += 1;
+    if (!row.hasDetails) enrichmentCounts.DETAILS_MISSING += 1;
   }
 
   const matching = rows.filter((row) => matchesDerivedFilters(row, filters));
@@ -210,6 +242,7 @@ export async function queryMeasureQueue(
     counts,
     anomalyCount,
     withdrawnCount,
+    enrichmentCounts,
     scanCapped,
   };
 }

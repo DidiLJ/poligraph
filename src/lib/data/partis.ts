@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { cacheTag, cacheLife } from "next/cache";
-import type { Prisma } from "@/generated/prisma";
+import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { CONVICTION_BADGE_WHERE } from "@/config/labels";
 import { getJudicialMaturity } from "@/config/judicial-maturity";
@@ -285,7 +285,7 @@ export async function getPartiesStats() {
 
   const [counts] = await db.$queryRaw<
     [{ actifs: bigint; gauche: bigint; centre: bigint; droite: bigint; affaires: bigint }]
-  >`
+  >(Prisma.sql`
     SELECT
       COUNT(*) FILTER (
         WHERE p."dissolvedDate" IS NULL
@@ -322,7 +322,7 @@ export async function getPartiesStats() {
     FROM "Party" p
     WHERE p.slug IS NOT NULL
       AND ${getPublicPartySqlWhere()}
-  `;
+  `);
 
   return {
     actifs: Number(counts.actifs),

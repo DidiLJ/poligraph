@@ -1,7 +1,7 @@
 import type { DbTransactionClient } from "@/lib/db";
 import { CANDIDACY_STATUS_LABELS } from "@/config/labels";
 import { deleteSearchDocument, upsertSearchDocument } from "@/lib/search/documents";
-import { syncSearchDocument as syncMeasureSearchDocument } from "@/lib/measures/search-sync";
+import { syncSearchDocuments as syncMeasureSearchDocuments } from "@/lib/measures/search-sync";
 import { PUBLIC_HUB_CANDIDACY_WHERE } from "./publication";
 
 function latestDate(dates: Array<Date | null | undefined>): Date {
@@ -79,7 +79,7 @@ export async function syncCandidacySearchDocument(
 }
 
 /**
- * Refresh presidential candidacy documents whose searchable party label changed.
+ * Refresh presidential candidacy and measure documents whose searchable party label changed.
  *
  * The party write and these index writes must share a transaction: otherwise a failed refresh
  * would leave the former party name searchable until the next explicit reconstruction.
@@ -95,7 +95,7 @@ export async function syncCandidacySearchDocumentsForParty(
   });
 
   for (const candidacy of candidacies) {
-    await syncCandidacySearchDocument(tx, candidacy.id);
+    await syncPresidentialSearchDocumentsForCandidacy(tx, candidacy.id);
   }
 
   return [...new Set(candidacies.map((candidacy) => candidacy.electionId))];
@@ -117,7 +117,8 @@ export async function syncPresidentialSearchDocumentsForCandidacy(
     select: { id: true },
     orderBy: { id: "asc" },
   });
-  for (const measure of measures) {
-    await syncMeasureSearchDocument(tx, measure.id);
-  }
+  await syncMeasureSearchDocuments(
+    tx,
+    measures.map((measure) => measure.id)
+  );
 }

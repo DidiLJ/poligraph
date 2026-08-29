@@ -1,4 +1,4 @@
-import type { SearchEntityType, SearchVisibility } from "@/generated/prisma";
+import { Prisma, type SearchEntityType, type SearchVisibility } from "@/generated/prisma";
 import type { DbTransactionClient } from "@/lib/db";
 
 export type SearchDocumentInput = {
@@ -57,6 +57,86 @@ export async function upsertSearchDocument(
   `;
 }
 
+const BULK_WRITE_SIZE = 100;
+
+/**
+ * Writes search documents in bounded SQL batches.
+ *
+ * `createMany` lets PostgreSQL allocate ids for new rows. The following UPDATE applies the full
+ * payload to both new and existing rows and rebuilds their vectors in the same statement. This
+ * keeps large editorial mutations inside their transaction without two round trips per entity.
+ */
+export async function upsertSearchDocuments(
+  tx: DbTransactionClient,
+  inputs: SearchDocumentInput[]
+): Promise<void> {
+  for (let start = 0; start < inputs.length; start += BULK_WRITE_SIZE) {
+    const chunk = inputs.slice(start, start + BULK_WRITE_SIZE);
+    const indexedAt = new Date();
+
+    await tx.searchDocument.createMany({
+      data: chunk.map((input) => ({
+        entityType: input.entityType,
+        entityId: input.entityId,
+        electionId: input.electionId,
+        title: input.title,
+        body: input.body,
+        url: input.url,
+        visibility: input.visibility,
+        sourceRevisionId: input.sourceRevisionId,
+        sourceUpdatedAt: input.sourceUpdatedAt,
+        indexedAt,
+      })),
+      skipDuplicates: true,
+    });
+
+    const rows = Prisma.join(
+      chunk.map(
+        (input) => Prisma.sql`(
+          ${input.entityType}::"SearchEntityType",
+          ${input.entityId},
+          ${input.electionId},
+          ${input.title},
+          ${input.body},
+          ${input.url},
+          ${input.visibility}::"SearchVisibility",
+          ${input.sourceRevisionId},
+          ${input.sourceUpdatedAt},
+          ${indexedAt}
+        )`
+      )
+    );
+
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE "SearchDocument" AS document
+      SET
+        "electionId" = source."electionId",
+        title = source.title,
+        body = source.body,
+        url = source.url,
+        visibility = source.visibility,
+        "sourceRevisionId" = source."sourceRevisionId",
+        "sourceUpdatedAt" = source."sourceUpdatedAt",
+        "indexedAt" = source."indexedAt",
+        "searchVector" = to_tsvector('simple', unaccent(source.title || ' ' || source.body))
+      FROM (VALUES ${rows}) AS source(
+        "entityType",
+        "entityId",
+        "electionId",
+        title,
+        body,
+        url,
+        visibility,
+        "sourceRevisionId",
+        "sourceUpdatedAt",
+        "indexedAt"
+      )
+      WHERE document."entityType" = source."entityType"
+        AND document."entityId" = source."entityId"
+    `);
+  }
+}
+
 /**
  * Entity deletion path, and the only one that removes a row.
  *
@@ -72,4 +152,13 @@ export async function deleteSearchDocument(
   entityId: string
 ): Promise<void> {
   await tx.searchDocument.deleteMany({ where: { entityType, entityId } });
+}
+
+export async function deleteSearchDocuments(
+  tx: DbTransactionClient,
+  entityType: SearchEntityType,
+  entityIds: string[]
+): Promise<void> {
+  if (entityIds.length === 0) return;
+  await tx.searchDocument.deleteMany({ where: { entityType, entityId: { in: entityIds } } });
 }

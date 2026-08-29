@@ -8,12 +8,17 @@ import type {
 } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { searchPublicPage } from "@/lib/search/query";
+import { toPresidentialLexicalQuery } from "@/lib/presidentielle/natural-query";
 import {
   PUBLIC_HUB_CANDIDACY_WHERE,
   PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
 } from "@/lib/presidentielle/publication";
 import { THEME_CATEGORY_LABELS } from "@/config/labels";
-import { findMatchingThemes, themeToSlug } from "@/lib/presidentielle/themes";
+import {
+  findMatchingThemes,
+  findThemesMentionedInQuery,
+  themeToSlug,
+} from "@/lib/presidentielle/themes";
 
 const MAX_RESULTS = 50;
 
@@ -79,17 +84,31 @@ export async function searchPresidentialCorpus(
     return { query, total: 0, subjects: [], candidacies: [], measures: [] };
   }
 
-  const subjects: PresidentialSubjectSearchResult[] = findMatchingThemes(query).map((theme) => ({
+  const matchingThemes = [
+    ...new Set([...findMatchingThemes(query), ...findThemesMentionedInQuery(query)]),
+  ];
+  const subjects: PresidentialSubjectSearchResult[] = matchingThemes.map((theme) => ({
     type: "subject",
     theme,
     label: THEME_CATEGORY_LABELS[theme],
     url: `/elections/${election.slug}/themes/${themeToSlug(theme)}`,
   }));
 
-  const page = await searchPublicPage(query, {
+  const lexicalQuery = toPresidentialLexicalQuery(query);
+  let page = await searchPublicPage(lexicalQuery, {
     electionId: election.id,
     limit: clampLimit(limit),
   });
+  // A sentence may still contain a verb absent from every formulation. If it names one known
+  // theme, fall back to that controlled label. This broadens only within the public taxonomy and
+  // keeps the lexical engine available while the semantic index is being built.
+  const [singleMatchingTheme] = matchingThemes;
+  if (page.total === 0 && matchingThemes.length === 1 && singleMatchingTheme !== undefined) {
+    page = await searchPublicPage(THEME_CATEGORY_LABELS[singleMatchingTheme], {
+      electionId: election.id,
+      limit: clampLimit(limit),
+    });
+  }
   const candidacyIds = page.hits
     .filter((hit) => hit.entityType === "CANDIDACY")
     .map((hit) => hit.entityId);

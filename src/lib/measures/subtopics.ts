@@ -8,6 +8,7 @@ import { callMistral, extractMistralText, parseMistralJSON } from "@/lib/api/mis
 import { db } from "@/lib/db";
 import { invalidateMeasureTags } from "@/lib/measures/cache";
 import { MeasureValidationError } from "@/lib/measures/errors";
+import { syncSearchDocument } from "@/lib/measures/search-sync";
 
 const CLASSIFIER_MODEL = "mistral-small-latest";
 
@@ -239,6 +240,9 @@ export async function reviewMeasureRevisionSubtopic(input: {
         userId: input.reviewedBy,
       },
     });
+    if (input.status === "APPROVED") {
+      await syncSearchDocument(tx, assignment.revision.measure.id);
+    }
 
     return assignment.revision.measure;
   });

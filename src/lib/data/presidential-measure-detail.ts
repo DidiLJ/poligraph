@@ -39,6 +39,11 @@ export type PublicPresidentialMeasureDetail = {
     blobPhotoUrl: string | null;
     party: string | null;
   };
+  subtopics: Array<{
+    slug: string;
+    label: string;
+    description: string;
+  }>;
   sources: Array<{
     id: string;
     sourceKind: MeasureSourceKind;
@@ -113,7 +118,9 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
           },
           subtopics: {
             where: { status: "APPROVED", subtopic: { active: true } },
-            select: { subtopic: { select: { slug: true, label: true, sortOrder: true } } },
+            select: {
+              subtopic: { select: { slug: true, label: true, description: true, sortOrder: true } },
+            },
             orderBy: { subtopic: { sortOrder: "asc" } },
           },
         },
@@ -270,6 +277,11 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
       blobPhotoUrl: candidate.politician.blobPhotoUrl,
       party: candidate.party?.shortName ?? candidate.party?.name ?? null,
     },
+    subtopics: currentSubtopics.map(({ slug, label, description }) => ({
+      slug,
+      label,
+      description,
+    })),
     sources: revision.sources,
     votes: row.voteLinks.map((link) => ({
       id: link.id,

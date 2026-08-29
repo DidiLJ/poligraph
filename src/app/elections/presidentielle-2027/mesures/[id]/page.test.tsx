@@ -34,6 +34,13 @@ const detail = {
     blobPhotoUrl: null,
     party: null,
   },
+  subtopics: [
+    {
+      slug: "logement-social",
+      label: "Logement social",
+      description: "Construction, attribution et financement du logement social.",
+    },
+  ],
   sources: [
     {
       id: "source-1",
@@ -73,9 +80,18 @@ describe("page publique d'une mesure présidentielle", () => {
       "https://example.org/programme-complet"
     );
     expect(screen.getByText("territoires concernés")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Notions abordées" })).toBeInTheDocument();
+    expect(screen.getByText("Logement social")).toBeInTheDocument();
+    expect(
+      screen.getByText("Construction, attribution et financement du logement social.")
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Camille Rivière/ })).toHaveAttribute(
       "href",
       "/elections/presidentielle-2027/candidats/camille-riviere"
+    );
+    expect(screen.getByRole("link", { name: "Voir la méthode" })).toHaveAttribute(
+      "href",
+      "/methodologie/mesures-presidentielle-2027"
     );
     expect(
       screen.getByRole("link", {

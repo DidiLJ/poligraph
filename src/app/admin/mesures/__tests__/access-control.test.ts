@@ -23,6 +23,7 @@ const EMPTY_RESULT: MeasureQueueResult = {
   counts: { EMPTY: 0, DRAFT: 0, REVIEWED: 0, PUBLISHED: 0, DEPUBLISHED: 0 },
   anomalyCount: 0,
   withdrawnCount: 0,
+  enrichmentCounts: { SUBTOPICS_PENDING: 0, SUBTOPICS_APPROVED: 0, DETAILS_MISSING: 0 },
   scanCapped: false,
 };
 

@@ -4,10 +4,16 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   MEASURE_REJECTION_REASON_LABELS,
+  MEASURE_PRECISION_LABELS,
   MEASURE_SOURCE_KIND_LABELS,
   SOURCE_TIER_LABELS,
 } from "@/config/labels";
-import type { MeasureRejectionReason, MeasureSourceKind, SourceTier } from "@/generated/prisma";
+import type {
+  MeasurePrecision,
+  MeasureRejectionReason,
+  MeasureSourceKind,
+  SourceTier,
+} from "@/generated/prisma";
 import type { AvailableAction } from "../_data/available-actions";
 import {
   depublishMeasureAction,
@@ -46,6 +52,7 @@ const LABEL = "text-xs font-semibold uppercase tracking-wide text-muted-foregrou
 const SOURCE_KINDS = Object.keys(MEASURE_SOURCE_KIND_LABELS) as MeasureSourceKind[];
 const TIERS = Object.keys(SOURCE_TIER_LABELS) as SourceTier[];
 const REJECTION_REASONS = Object.keys(MEASURE_REJECTION_REASON_LABELS) as MeasureRejectionReason[];
+const PRECISIONS = Object.keys(MEASURE_PRECISION_LABELS) as MeasurePrecision[];
 
 function excerpt(text: string | undefined): string {
   if (text === undefined) return "révision inconnue";
@@ -451,8 +458,11 @@ export function MeasureActionPanel({
                   </label>
                   <select id="draft-precision" name="precision" className={FIELD}>
                     <option value="">Non qualifiée</option>
-                    <option value="CHIFFREE">Chiffrée</option>
-                    <option value="OBJECTIF_SANS_CHIFFRE">Objectif sans chiffre</option>
+                    {PRECISIONS.map((precision) => (
+                      <option key={precision} value={precision}>
+                        {MEASURE_PRECISION_LABELS[precision]}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

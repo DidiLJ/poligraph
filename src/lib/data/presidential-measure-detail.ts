@@ -3,13 +3,17 @@ import "server-only";
 import { cache } from "react";
 import type {
   Chamber,
+  MeasureAttribution,
   MeasurePrecision,
   MeasureSourceKind,
   SourceTier,
   ThemeCategory,
 } from "@/generated/prisma";
 import { db } from "@/lib/db";
-import { PUBLIC_PRESIDENTIAL_MEASURE_WHERE } from "@/lib/presidentielle/publication";
+import {
+  PUBLIC_MEASURE_REVISION_WHERE,
+  PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
+} from "@/lib/presidentielle/publication";
 import { deriveVoteRelation, type VoteRelation } from "@/lib/measures/vote-relation";
 
 export type PublicPresidentialMeasureDetail = {
@@ -20,8 +24,14 @@ export type PublicPresidentialMeasureDetail = {
   text: string;
   details: string | null;
   precision: MeasurePrecision | null;
+  attribution: MeasureAttribution;
   reviewedAt: Date;
   publishedAt: Date;
+  programEdition: {
+    label: string;
+    publishedAt: Date;
+    documentUrl: string;
+  } | null;
   candidate: {
     name: string;
     slug: string;
@@ -51,6 +61,14 @@ export type PublicPresidentialMeasureDetail = {
       sourceUrl: string | null;
     } | null;
   }>;
+  relatedMeasures: Array<{
+    slug: string;
+    text: string;
+    candidateName: string;
+    candidateSlug: string;
+    party: string | null;
+    sharedSubtopics: string[];
+  }>;
 };
 
 async function loadPublicPresidentialMeasureDetail(electionSlug: string, measureSlug: string) {
@@ -64,7 +82,16 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
       id: true,
       slug: true,
       theme: true,
-      election: { select: { slug: true } },
+      attribution: true,
+      election: { select: { id: true, slug: true } },
+      programEdition: {
+        select: {
+          label: true,
+          publishedAt: true,
+          documentUrl: true,
+          publicationStatus: true,
+        },
+      },
       publishedRevisionId: true,
       publishedRevision: {
         select: {
@@ -84,10 +111,16 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
               publishedAt: true,
             },
           },
+          subtopics: {
+            where: { status: "APPROVED", subtopic: { active: true } },
+            select: { subtopic: { select: { slug: true, label: true, sortOrder: true } } },
+            orderBy: { subtopic: { sortOrder: "asc" } },
+          },
         },
       },
       candidacy: {
         select: {
+          id: true,
           candidateName: true,
           party: { select: { name: true, shortName: true } },
           politician: {
@@ -135,6 +168,81 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
     return null;
   }
   const publishedRevisionId = row.publishedRevisionId;
+  const currentSubtopics = revision.subtopics.map(({ subtopic }) => subtopic);
+  const currentSubtopicSlugs = new Set(currentSubtopics.map((subtopic) => subtopic.slug));
+
+  const relatedRows = await db.measure.findMany({
+    where: {
+      id: { not: row.id },
+      electionId: row.election.id,
+      theme: row.theme,
+      ...PUBLIC_PRESIDENTIAL_MEASURE_WHERE,
+      ...(currentSubtopics.length > 0
+        ? {
+            publishedRevision: {
+              is: {
+                ...PUBLIC_MEASURE_REVISION_WHERE,
+                subtopics: {
+                  some: {
+                    status: "APPROVED" as const,
+                    subtopic: {
+                      active: true,
+                      slug: { in: currentSubtopics.map((subtopic) => subtopic.slug) },
+                    },
+                  },
+                },
+              },
+            },
+          }
+        : {}),
+    },
+    select: {
+      slug: true,
+      publishedRevision: {
+        select: {
+          text: true,
+          subtopics: {
+            where: { status: "APPROVED", subtopic: { active: true } },
+            select: { subtopic: { select: { slug: true, label: true } } },
+          },
+        },
+      },
+      candidacy: {
+        select: {
+          candidateName: true,
+          party: { select: { name: true, shortName: true } },
+          politician: { select: { slug: true } },
+        },
+      },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: 100,
+  });
+
+  // One proposal per other personality keeps this a navigation aid rather than another long list.
+  // Alphabetical sorting is explicit and carries no editorial ranking.
+  const relatedMeasures = relatedRows
+    .flatMap((related) => {
+      if (!related.publishedRevision || !related.candidacy?.politician) return [];
+      return [
+        {
+          slug: related.slug,
+          text: related.publishedRevision.text,
+          candidateName: related.candidacy.candidateName,
+          candidateSlug: related.candidacy.politician.slug,
+          party: related.candidacy.party?.shortName ?? related.candidacy.party?.name ?? null,
+          sharedSubtopics: related.publishedRevision.subtopics
+            .filter(({ subtopic }) => currentSubtopicSlugs.has(subtopic.slug))
+            .map(({ subtopic }) => subtopic.label),
+        },
+      ];
+    })
+    .sort((a, b) => a.candidateName.localeCompare(b.candidateName, "fr"))
+    .filter(
+      (related, index, all) =>
+        all.findIndex((candidate) => candidate.candidateSlug === related.candidateSlug) === index
+    )
+    .slice(0, 6);
 
   return {
     id: row.id,
@@ -144,8 +252,17 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
     text: revision.text,
     details: revision.details,
     precision: revision.precision,
+    attribution: row.attribution,
     reviewedAt: revision.reviewedAt,
     publishedAt: revision.publishedAt,
+    programEdition:
+      row.programEdition?.publicationStatus === "PUBLISHED"
+        ? {
+            label: row.programEdition.label,
+            publishedAt: row.programEdition.publishedAt,
+            documentUrl: row.programEdition.documentUrl,
+          }
+        : null,
     candidate: {
       name: candidate.candidateName,
       slug: candidate.politician.slug,
@@ -170,6 +287,7 @@ async function loadPublicPresidentialMeasureDetail(electionSlug: string, measure
       institutionScope: link.institutionScope,
       scrutin: link.scrutin,
     })),
+    relatedMeasures,
   };
 }
 

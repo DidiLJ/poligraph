@@ -19,8 +19,14 @@ const detail = {
   text: "Construire davantage de logements accessibles",
   details: "La source précise les **territoires concernés** et le calendrier annoncé.",
   precision: "CHIFFREE",
+  attribution: "PERSONAL",
   reviewedAt: new Date("2026-08-20T00:00:00Z"),
   publishedAt: new Date("2026-08-21T00:00:00Z"),
+  programEdition: {
+    label: "Programme pour 2027",
+    publishedAt: new Date("2026-08-10T00:00:00Z"),
+    documentUrl: "https://example.org/programme-complet",
+  },
   candidate: {
     name: "Camille Rivière",
     slug: "camille-riviere",
@@ -39,6 +45,7 @@ const detail = {
     },
   ],
   votes: [],
+  relatedMeasures: [],
 };
 
 describe("page publique d'une mesure présidentielle", () => {
@@ -55,10 +62,16 @@ describe("page publique d'une mesure présidentielle", () => {
       </TooltipProvider>
     );
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(detail.text);
-    expect(screen.getByText("Chiffrée")).toBeInTheDocument();
+    expect(screen.getByText("Objectif quantifié")).toBeInTheDocument();
     expect(screen.getByText("Source primaire")).toBeInTheDocument();
     expect(screen.getByText("Programme de candidature")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ce que prévoit la mesure" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Dans le programme" })).toBeInTheDocument();
+    expect(screen.getByText("Formulée personnellement")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Consulter le programme/ })).toHaveAttribute(
+      "href",
+      "https://example.org/programme-complet"
+    );
     expect(screen.getByText("territoires concernés")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Camille Rivière/ })).toHaveAttribute(
       "href",
@@ -68,6 +81,37 @@ describe("page publique d'une mesure présidentielle", () => {
       "href",
       "/elections/presidentielle-2027/themes/logement-urbanisme"
     );
+  });
+
+  it("propose des mesures factuelles d'autres personnalités quand elles existent", async () => {
+    getDetail.mockResolvedValue({
+      ...detail,
+      relatedMeasures: [
+        {
+          slug: "alex-martin-encadrer-les-loyers",
+          text: "Encadrer les loyers dans les zones tendues",
+          candidateName: "Alex Martin",
+          candidateSlug: "alex-martin",
+          party: "Parti Test",
+          sharedSubtopics: ["Encadrement des loyers"],
+        },
+      ],
+    });
+    const { default: Page } = await import("./page");
+    render(
+      <TooltipProvider>
+        {await Page({ params: Promise.resolve({ id: "measure-1" }) })}
+      </TooltipProvider>
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Ce que proposent d'autres candidates et candidats" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Alex Martin/ })).toHaveAttribute(
+      "href",
+      "/elections/presidentielle-2027/mesures/alex-martin-encadrer-les-loyers"
+    );
+    expect(screen.getByText("Encadrement des loyers")).toBeInTheDocument();
   });
 
   it("n'invente aucun vote quand aucun lien public n'existe", async () => {

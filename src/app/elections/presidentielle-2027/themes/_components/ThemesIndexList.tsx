@@ -41,6 +41,10 @@ function SubjectLink({
 }
 
 export function ThemesIndexList({ data }: ThemesIndexListProps) {
+  const hasWithdrawnMeasures = data.themes.some(
+    (entry) => entry.documentedMeasureCount > entry.currentlyDefendedMeasureCount
+  );
+
   return (
     <>
       <ul className="space-y-3 md:hidden">
@@ -49,26 +53,27 @@ export function ThemesIndexList({ data }: ThemesIndexListProps) {
             <SubjectLink slug={entry.slug} theme={entry.theme} label={entry.label} />
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-3 text-sm">
               <div>
-                <dt className="text-xs text-muted-foreground">Candidatures documentées</dt>
+                <dt className="text-xs text-muted-foreground">Candidats avec des mesures</dt>
                 <dd className="mt-0.5 font-display text-xl font-bold tabular-nums">
                   {entry.documentedCandidacyCount}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Mesures documentées</dt>
+                <dt className="text-xs text-muted-foreground">Mesures publiées</dt>
                 <dd className="mt-0.5">
                   <span className="block font-display text-xl font-bold tabular-nums">
-                    {entry.documentedMeasureCount}
+                    {entry.currentlyDefendedMeasureCount}
                   </span>
-                  <span className="block text-xs text-muted-foreground">Retraits inclus</span>
                 </dd>
               </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Actuellement défendues</dt>
-                <dd className="mt-0.5 font-display text-xl font-bold tabular-nums">
-                  {entry.currentlyDefendedMeasureCount}
-                </dd>
-              </div>
+              {hasWithdrawnMeasures && (
+                <div>
+                  <dt className="text-xs text-muted-foreground">Mesures retirées</dt>
+                  <dd className="mt-0.5 font-display text-xl font-bold tabular-nums">
+                    {entry.documentedMeasureCount - entry.currentlyDefendedMeasureCount}
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="text-xs text-muted-foreground">Dernière revue éditoriale</dt>
                 <dd className="mt-1 text-xs">
@@ -83,7 +88,7 @@ export function ThemesIndexList({ data }: ThemesIndexListProps) {
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
-            Couverture du corpus Poligraph par thématique de la présidentielle 2027
+            Mesures publiées par thème pour la présidentielle 2027
           </caption>
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground-strong">
@@ -91,17 +96,16 @@ export function ThemesIndexList({ data }: ThemesIndexListProps) {
                 Thème
               </th>
               <th scope="col" className="px-3 py-2 text-right font-bold">
-                Candidatures documentées
+                Candidats avec des mesures
               </th>
               <th scope="col" className="px-3 py-2 text-right font-bold">
-                Mesures documentées
-                <span className="block text-[11px] font-normal normal-case tracking-normal">
-                  Retraits inclus
-                </span>
+                Mesures publiées
               </th>
-              <th scope="col" className="px-3 py-2 text-right font-bold">
-                Actuellement défendues
-              </th>
+              {hasWithdrawnMeasures && (
+                <th scope="col" className="px-3 py-2 text-right font-bold">
+                  Mesures retirées
+                </th>
+              )}
               <th scope="col" className="py-2 pl-3 text-left font-bold">
                 Dernière revue
               </th>
@@ -117,11 +121,13 @@ export function ThemesIndexList({ data }: ThemesIndexListProps) {
                   {entry.documentedCandidacyCount}
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums">
-                  {entry.documentedMeasureCount}
-                </td>
-                <td className="px-3 py-3 text-right tabular-nums">
                   {entry.currentlyDefendedMeasureCount}
                 </td>
+                {hasWithdrawnMeasures && (
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    {entry.documentedMeasureCount - entry.currentlyDefendedMeasureCount}
+                  </td>
+                )}
                 <td className="py-3 pl-3 text-muted-foreground">
                   <ReviewDate value={entry.lastReviewedAt} />
                 </td>

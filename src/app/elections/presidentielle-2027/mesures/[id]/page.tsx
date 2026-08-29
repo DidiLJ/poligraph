@@ -130,7 +130,10 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
             )}
             <span className="text-sm text-muted-foreground">
               Revue par Poligraph le {formatDate(measure.reviewedAt)}.{" "}
-              <Link href="/methodologie" className="font-bold text-primary underline">
+              <Link
+                href="/methodologie/mesures-presidentielle-2027"
+                className="font-bold text-primary underline"
+              >
                 Voir la méthode
               </Link>
             </span>
@@ -145,6 +148,28 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
             <MarkdownText className="mt-4 max-w-[72ch] leading-relaxed text-foreground">
               {measure.details}
             </MarkdownText>
+          </section>
+        )}
+
+        {measure.subtopics.length > 0 && (
+          <section aria-labelledby="concepts-title" className="border-b border-border py-8">
+            <h2 id="concepts-title" className="font-display text-2xl font-extrabold">
+              Notions abordées
+            </h2>
+            <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-muted-foreground">
+              Ces repères décrivent les sujets auxquels la mesure a été rattachée après validation
+              éditoriale. Ils n&apos;évaluent ni son coût, ni sa faisabilité.
+            </p>
+            <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+              {measure.subtopics.map((subtopic) => (
+                <div key={subtopic.slug} className="rounded-xl border border-border bg-card p-4">
+                  <dt className="font-display text-lg font-bold">{subtopic.label}</dt>
+                  <dd className="mt-1 text-sm leading-relaxed text-muted-foreground-strong">
+                    {subtopic.description}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </section>
         )}
 

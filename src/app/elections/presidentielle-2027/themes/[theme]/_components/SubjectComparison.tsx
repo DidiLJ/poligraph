@@ -600,7 +600,7 @@ function MethodCard() {
         travail de notre part.
       </p>
       <Link
-        href="/methodologie"
+        href="/methodologie/mesures-presidentielle-2027"
         className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
       >
         Voir la méthode

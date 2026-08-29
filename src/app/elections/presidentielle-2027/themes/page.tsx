@@ -64,7 +64,7 @@ export default async function ThemesIndexPage() {
             distinguée des propositions toujours portées.
           </p>
           <Link
-            href="/methodologie"
+            href="/methodologie/mesures-presidentielle-2027"
             className="inline-flex min-h-11 items-center text-sm font-medium underline hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             Méthode et sources

@@ -31,6 +31,19 @@ describe("écritures groupées des documents de recherche", () => {
     expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
   });
 
+  it("type explicitement les dates du VALUES utilisé par PostgreSQL", async () => {
+    const tx = {
+      searchDocument: { createMany: vi.fn(async () => ({ count: 0 })) },
+      $executeRaw: vi.fn(async () => 0),
+    };
+
+    await upsertSearchDocuments(tx as never, [makeInput(1)]);
+
+    const calls = tx.$executeRaw.mock.calls as unknown as Array<[{ strings: string[] }]>;
+    const query = calls[0]![0];
+    expect(query.strings.join("?").match(/::timestamp/g)).toHaveLength(2);
+  });
+
   it("supprime plusieurs documents en une seule requête", async () => {
     const tx = { searchDocument: { deleteMany: vi.fn(async () => ({ count: 2 })) } };
 

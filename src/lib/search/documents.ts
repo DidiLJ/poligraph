@@ -101,8 +101,8 @@ export async function upsertSearchDocuments(
           ${input.url},
           ${input.visibility}::"SearchVisibility",
           ${input.sourceRevisionId},
-          ${input.sourceUpdatedAt},
-          ${indexedAt}
+          ${input.sourceUpdatedAt}::timestamp,
+          ${indexedAt}::timestamp
         )`
       )
     );

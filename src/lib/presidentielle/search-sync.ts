@@ -1,7 +1,7 @@
 import type { DbTransactionClient } from "@/lib/db";
 import { CANDIDACY_STATUS_LABELS } from "@/config/labels";
 import { deleteSearchDocument, upsertSearchDocument } from "@/lib/search/documents";
-import { syncSearchDocument as syncMeasureSearchDocument } from "@/lib/measures/search-sync";
+import { syncSearchDocuments as syncMeasureSearchDocuments } from "@/lib/measures/search-sync";
 import { PUBLIC_HUB_CANDIDACY_WHERE } from "./publication";
 
 function latestDate(dates: Array<Date | null | undefined>): Date {
@@ -117,7 +117,8 @@ export async function syncPresidentialSearchDocumentsForCandidacy(
     select: { id: true },
     orderBy: { id: "asc" },
   });
-  for (const measure of measures) {
-    await syncMeasureSearchDocument(tx, measure.id);
-  }
+  await syncMeasureSearchDocuments(
+    tx,
+    measures.map((measure) => measure.id)
+  );
 }

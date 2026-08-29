@@ -1,9 +1,94 @@
+import { Prisma } from "@/generated/prisma";
 import type { DbTransactionClient } from "@/lib/db";
 import { THEME_CATEGORY_LABELS } from "@/config/labels";
-import { deleteSearchDocument, upsertSearchDocument } from "@/lib/search/documents";
+import {
+  deleteSearchDocument,
+  deleteSearchDocuments,
+  upsertSearchDocument,
+  upsertSearchDocuments,
+  type SearchDocumentInput,
+} from "@/lib/search/documents";
 import { PUBLIC_PRESIDENTIAL_MEASURE_WHERE } from "@/lib/presidentielle/publication";
 
 const MAX_TITLE_LENGTH = 200;
+
+const SEARCH_MEASURE_SELECT = {
+  id: true,
+  slug: true,
+  electionId: true,
+  election: { select: { slug: true } },
+  theme: true,
+  candidacy: {
+    select: {
+      candidateName: true,
+      party: { select: { name: true, shortName: true } },
+    },
+  },
+  publicationStatus: true,
+  publishedRevisionId: true,
+  publishedRevision: {
+    select: {
+      id: true,
+      text: true,
+      details: true,
+      updatedAt: true,
+      subtopics: {
+        where: { status: "APPROVED" },
+        select: { subtopic: { select: { label: true, aliases: true } } },
+      },
+    },
+  },
+  latestRevision: {
+    select: {
+      id: true,
+      text: true,
+      details: true,
+      updatedAt: true,
+      subtopics: {
+        where: { status: "APPROVED" },
+        select: { subtopic: { select: { label: true, aliases: true } } },
+      },
+    },
+  },
+} satisfies Prisma.MeasureSelect;
+
+type SearchableMeasure = Prisma.MeasureGetPayload<{ select: typeof SEARCH_MEASURE_SELECT }>;
+
+function buildSearchDocument(
+  measure: SearchableMeasure,
+  isPublic: boolean
+): SearchDocumentInput | null {
+  const reference = isPublic ? measure.publishedRevision : measure.latestRevision;
+  if (!reference) return null;
+
+  const partyLabel = measure.candidacy?.party?.shortName ?? measure.candidacy?.party?.name;
+  const subtopicTerms = reference.subtopics.flatMap(({ subtopic }) => [
+    subtopic.label,
+    ...subtopic.aliases,
+  ]);
+  const contextualBody = [
+    reference.text,
+    reference.details,
+    measure.candidacy?.candidateName,
+    partyLabel,
+    THEME_CATEGORY_LABELS[measure.theme],
+    ...subtopicTerms,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    entityType: "MEASURE",
+    entityId: measure.id,
+    electionId: measure.electionId,
+    title: reference.text.slice(0, MAX_TITLE_LENGTH),
+    body: contextualBody,
+    url: `/elections/${measure.election.slug}/mesures/${measure.slug}`,
+    visibility: isPublic ? "PUBLIC" : "ADMIN_ONLY",
+    sourceRevisionId: reference.id,
+    sourceUpdatedAt: reference.updatedAt,
+  };
+}
 
 /**
  * Derives the SearchDocument from the measure's pointers, inside the caller's transaction.
@@ -28,44 +113,7 @@ export async function syncSearchDocument(
 ): Promise<void> {
   const measure = await tx.measure.findUniqueOrThrow({
     where: { id: measureId },
-    select: {
-      slug: true,
-      electionId: true,
-      election: { select: { slug: true } },
-      theme: true,
-      candidacy: {
-        select: {
-          candidateName: true,
-          party: { select: { name: true, shortName: true } },
-        },
-      },
-      publicationStatus: true,
-      publishedRevisionId: true,
-      publishedRevision: {
-        select: {
-          id: true,
-          text: true,
-          details: true,
-          updatedAt: true,
-          subtopics: {
-            where: { status: "APPROVED" },
-            select: { subtopic: { select: { label: true, aliases: true } } },
-          },
-        },
-      },
-      latestRevision: {
-        select: {
-          id: true,
-          text: true,
-          details: true,
-          updatedAt: true,
-          subtopics: {
-            where: { status: "APPROVED" },
-            select: { subtopic: { select: { label: true, aliases: true } } },
-          },
-        },
-      },
-    },
+    select: SEARCH_MEASURE_SELECT,
   });
 
   // Re-query through the shared public authority. PublicationStatus alone is insufficient: a
@@ -75,44 +123,48 @@ export async function syncSearchDocument(
     select: { id: true },
   });
   const isPublic = publicMeasure !== null;
-  const reference = isPublic ? measure.publishedRevision : measure.latestRevision;
+  const document = buildSearchDocument(measure, isPublic);
 
   // Nothing left to represent: no published revision and no active draft. Happens when
   // the only draft of a never-published measure is discarded. Removing the row is the
   // coherent answer, and it is why the audit only demands a document for measures that
   // do have a reference revision.
-  if (!reference) {
+  if (!document) {
     await deleteSearchDocument(tx, "MEASURE", measureId);
     return;
   }
 
-  const partyLabel = measure.candidacy?.party?.shortName ?? measure.candidacy?.party?.name;
-  const subtopicTerms = reference.subtopics.flatMap(({ subtopic }) => [
-    subtopic.label,
-    ...subtopic.aliases,
-  ]);
-  const contextualBody = [
-    reference.text,
-    reference.details,
-    measure.candidacy?.candidateName,
-    partyLabel,
-    THEME_CATEGORY_LABELS[measure.theme],
-    ...subtopicTerms,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  await upsertSearchDocument(tx, document);
+}
 
-  await upsertSearchDocument(tx, {
-    entityType: "MEASURE",
-    entityId: measureId,
-    electionId: measure.electionId,
-    title: reference.text.slice(0, MAX_TITLE_LENGTH),
-    body: contextualBody,
-    url: `/elections/${measure.election.slug}/mesures/${measure.slug}`,
-    visibility: isPublic ? "PUBLIC" : "ADMIN_ONLY",
-    sourceRevisionId: reference.id,
-    // The revision's own updatedAt, read after the transition's writes. Passing `now`
-    // would make the future search:audit report a few milliseconds of drift.
-    sourceUpdatedAt: reference.updatedAt,
-  });
+/** Rebuilds many measure documents with two reads and bounded bulk writes. */
+export async function syncSearchDocuments(
+  tx: DbTransactionClient,
+  measureIds: string[]
+): Promise<void> {
+  if (measureIds.length === 0) return;
+
+  const [measures, publicMeasures] = await Promise.all([
+    tx.measure.findMany({
+      where: { id: { in: measureIds } },
+      select: SEARCH_MEASURE_SELECT,
+      orderBy: { id: "asc" },
+    }),
+    tx.measure.findMany({
+      where: { id: { in: measureIds }, ...PUBLIC_PRESIDENTIAL_MEASURE_WHERE },
+      select: { id: true },
+    }),
+  ]);
+  const publicIds = new Set(publicMeasures.map(({ id }) => id));
+  const documents: SearchDocumentInput[] = [];
+  const deletions: string[] = [];
+
+  for (const measure of measures) {
+    const document = buildSearchDocument(measure, publicIds.has(measure.id));
+    if (document) documents.push(document);
+    else deletions.push(measure.id);
+  }
+
+  await deleteSearchDocuments(tx, "MEASURE", deletions);
+  await upsertSearchDocuments(tx, documents);
 }

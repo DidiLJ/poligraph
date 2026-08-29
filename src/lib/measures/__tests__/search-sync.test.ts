@@ -1,13 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const upsertSearchDocumentMock = vi.fn(async (_tx: unknown, _input: unknown) => undefined);
+const upsertSearchDocumentsMock = vi.fn(async (_tx: unknown, _inputs: unknown) => undefined);
+const deleteSearchDocumentsMock = vi.fn(
+  async (_tx: unknown, _type: unknown, _ids: unknown) => undefined
+);
 
 vi.mock("@/lib/search/documents", () => ({
   upsertSearchDocument: (tx: unknown, input: unknown) => upsertSearchDocumentMock(tx, input),
+  upsertSearchDocuments: (tx: unknown, inputs: unknown) => upsertSearchDocumentsMock(tx, inputs),
+  deleteSearchDocuments: (tx: unknown, type: unknown, ids: unknown) =>
+    deleteSearchDocumentsMock(tx, type, ids),
   deleteSearchDocument: vi.fn(async () => undefined),
 }));
 
 const measure = {
+  id: "measure-1",
   slug: "camille-riviere-construire-des-logements-publics",
   electionId: "election-1",
   election: { slug: "election-reelle" },
@@ -73,5 +81,25 @@ describe("synchronisation recherche des mesures", () => {
       tx,
       expect.objectContaining({ visibility: "ADMIN_ONLY" })
     );
+  });
+
+  it("regroupe la reconstruction de plusieurs mesures en une écriture bornée", async () => {
+    const { syncSearchDocuments } = await import("../search-sync");
+    const tx = {
+      measure: {
+        findMany: vi
+          .fn()
+          .mockResolvedValueOnce([measure])
+          .mockResolvedValueOnce([{ id: "measure-1" }]),
+      },
+    };
+
+    await syncSearchDocuments(tx as never, ["measure-1"]);
+
+    expect(tx.measure.findMany).toHaveBeenCalledTimes(2);
+    expect(deleteSearchDocumentsMock).toHaveBeenCalledWith(tx, "MEASURE", []);
+    expect(upsertSearchDocumentsMock).toHaveBeenCalledWith(tx, [
+      expect.objectContaining({ entityId: "measure-1", visibility: "PUBLIC" }),
+    ]);
   });
 });

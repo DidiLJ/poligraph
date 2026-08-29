@@ -30,6 +30,7 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 
 import { generateMetadata as votesGenerateMetadata } from "@/app/parlement/votes/page";
 import { metadata as presidentialComparisonMetadata } from "@/app/elections/presidentielle-2027/comparer/page";
+import { metadata as presidentialMeasuresMethodologyMetadata } from "@/app/methodologie/mesures-presidentielle-2027/page";
 
 // Living map of the index-bloat doctrine. If any representative surface flips, this
 // file fails: a strong page must never become noindex, a thin one must never become
@@ -294,6 +295,21 @@ describe("doctrine — sitemap shares the indexability thresholds (no drift)", (
 
   it("keeps an unknown scrutin type fail-open", () => {
     expect(scrutinShardQuery).toContain("IS DISTINCT FROM");
+  });
+});
+
+describe("doctrine — presidential measure methodology stays indexable and discoverable", () => {
+  const sitemapSource = readFileSync(join(process.cwd(), "src/app/sitemap.ts"), "utf8");
+
+  it("keeps a self-canonical indexable page", () => {
+    expect(presidentialMeasuresMethodologyMetadata.alternates?.canonical).toBe(
+      "/methodologie/mesures-presidentielle-2027"
+    );
+    expect(presidentialMeasuresMethodologyMetadata.robots).not.toMatchObject({ index: false });
+  });
+
+  it("keeps the page in the static sitemap", () => {
+    expect(sitemapSource).toContain("url: `${SITE_URL}/methodologie/mesures-presidentielle-2027`");
   });
 });
 

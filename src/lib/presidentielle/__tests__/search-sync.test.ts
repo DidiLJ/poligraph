@@ -4,7 +4,9 @@ const upsertSearchDocumentMock = vi.fn(async (_tx: unknown, _input: unknown) => 
 const deleteSearchDocumentMock = vi.fn(
   async (_tx: unknown, _entityType: unknown, _entityId: unknown) => undefined
 );
-const syncMeasureSearchDocumentMock = vi.fn(async (_tx: unknown, _entityId: unknown) => undefined);
+const syncMeasureSearchDocumentsMock = vi.fn(
+  async (_tx: unknown, _entityIds: unknown) => undefined
+);
 
 vi.mock("@/lib/search/documents", () => ({
   upsertSearchDocument: (tx: unknown, input: unknown) => upsertSearchDocumentMock(tx, input),
@@ -12,8 +14,8 @@ vi.mock("@/lib/search/documents", () => ({
     deleteSearchDocumentMock(tx, entityType, entityId),
 }));
 vi.mock("@/lib/measures/search-sync", () => ({
-  syncSearchDocument: (tx: unknown, entityId: unknown) =>
-    syncMeasureSearchDocumentMock(tx, entityId),
+  syncSearchDocuments: (tx: unknown, entityIds: unknown) =>
+    syncMeasureSearchDocumentsMock(tx, entityIds),
 }));
 
 const now = new Date("2026-08-27T12:00:00Z");
@@ -89,10 +91,7 @@ describe("synchronisation recherche des candidatures présidentielles", () => {
 
     await syncPresidentialSearchDocumentsForCandidacy(tx as never, candidate.id);
 
-    expect(syncMeasureSearchDocumentMock.mock.calls).toEqual([
-      [tx, "measure-1"],
-      [tx, "measure-2"],
-    ]);
+    expect(syncMeasureSearchDocumentsMock).toHaveBeenCalledWith(tx, ["measure-1", "measure-2"]);
   });
 
   it("réindexe les candidatures présidentielles après le renommage d'un parti", async () => {
@@ -112,7 +111,7 @@ describe("synchronisation recherche des candidatures présidentielles", () => {
       orderBy: { id: "asc" },
     });
     expect(upsertSearchDocumentMock).toHaveBeenCalledTimes(3);
-    expect(syncMeasureSearchDocumentMock).toHaveBeenCalledTimes(6);
+    expect(syncMeasureSearchDocumentsMock).toHaveBeenCalledTimes(3);
     expect(electionIds).toEqual(["election-1", "election-2"]);
   });
 });

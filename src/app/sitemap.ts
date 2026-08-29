@@ -213,6 +213,8 @@ async function buildStaticAndPoliticiansSitemap(): Promise<MetadataRoute.Sitemap
       changeFrequency: "monthly",
       priority: 0.8,
     },
+    // Rich, self-canonical methodology supporting every presidential measure page. It is stable
+    // public content, not a utility view, so it belongs in the index and in the sitemap together.
     {
       url: `${SITE_URL}/methodologie/mesures-presidentielle-2027`,
       lastModified: new Date(),

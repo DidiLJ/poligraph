@@ -94,12 +94,12 @@ describe("SubjectGate", () => {
     expect(screen.getByText(/jamais relu/i)).toBeInTheDocument();
   });
 
-  it("propose un renvoi vers un sujet comparable quand fallbackPublishableTheme est fourni", () => {
+  it("propose un renvoi vers un thème comparable quand fallbackPublishableTheme est fourni", () => {
     render(
       <SubjectGate data={data({ fallbackPublishableTheme: { slug: "sante", label: "Santé" } })} />
     );
     const link = screen.getByRole("link", { name: "Santé" });
-    expect(link).toHaveAttribute("href", "/elections/presidentielle-2027/sujets/sante");
+    expect(link).toHaveAttribute("href", "/elections/presidentielle-2027/themes/sante");
   });
 
   it("n'affiche aucun lien de renvoi quand fallbackPublishableTheme est nul", () => {

@@ -13,7 +13,7 @@ beforeEach(() => {
   mockGet.mockReset();
 });
 
-describe("generateMetadata de l'index des sujets", () => {
+describe("generateMetadata de l'index des thématiques", () => {
   it("titre correct", async () => {
     mockGet.mockResolvedValue({
       electionSlug: "presidentielle-2027",
@@ -22,11 +22,11 @@ describe("generateMetadata de l'index des sujets", () => {
     });
     const meta = await generateMetadata();
     expect(String(meta.title)).toMatch(
-      /Couverture du corpus par sujet, présidentielle 2027 \| Poligraph/
+      /Couverture du corpus par thématique, présidentielle 2027 \| Poligraph/
     );
   });
 
-  it("noindex quand aucune page sujet n'est publiable", async () => {
+  it("noindex quand aucune page thème n'est publiable", async () => {
     mockGet.mockResolvedValue({
       electionSlug: "presidentielle-2027",
       themes: [],
@@ -36,7 +36,7 @@ describe("generateMetadata de l'index des sujets", () => {
     expect(meta.robots).toEqual({ index: false, follow: true });
   });
 
-  it("indexable une fois au moins une page sujet publiable", async () => {
+  it("indexable une fois au moins une page thème publiable", async () => {
     mockGet.mockResolvedValue({
       electionSlug: "presidentielle-2027",
       themes: [],
@@ -59,6 +59,6 @@ describe("generateMetadata de l'index des sujets", () => {
       publishableSubjectPageCount: 1,
     });
     const meta = await generateMetadata();
-    expect(meta.alternates?.canonical).toBe("/elections/presidentielle-2027/sujets");
+    expect(meta.alternates?.canonical).toBe("/elections/presidentielle-2027/themes");
   });
 });

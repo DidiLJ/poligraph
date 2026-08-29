@@ -1577,8 +1577,8 @@ export const MEASURE_ATTRIBUTION_LABELS: Record<MeasureAttribution, string> = {
 };
 
 export const MEASURE_PRECISION_LABELS: Record<MeasurePrecision, string> = {
-  CHIFFREE: "Chiffrée",
-  OBJECTIF_SANS_CHIFFRE: "Objectif sans chiffre",
+  CHIFFREE: "Objectif quantifié",
+  OBJECTIF_SANS_CHIFFRE: "Objectif non quantifié",
 };
 
 // Deliberately NOT a green/amber pair. A traffic light reads as a verdict, and a measure carrying a

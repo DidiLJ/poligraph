@@ -32,10 +32,11 @@ const field = [
 ];
 
 describe("HubCandidacyOverview", () => {
-  it("montre chaque personnalité et compte les filtres avec les mêmes prédicats que la liste", () => {
+  it("montre seulement les personnalités ayant des propositions et compte tous les filtres", () => {
     render(<HubCandidacyOverview candidacies={field} />);
 
-    expect(screen.getAllByRole("link", { name: /Alix Dupont/ })).toHaveLength(4);
+    expect(screen.getAllByRole("link", { name: /Alix Dupont/ })).toHaveLength(1);
+    expect(screen.getByText(/1 personnalité a déjà des propositions publiées/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Candidatures annoncées · 2/ })).toHaveAttribute(
       "href",
       "/elections/presidentielle-2027/candidats?statut=annoncees"
@@ -64,30 +65,26 @@ describe("HubCandidacyOverview", () => {
   it("mène au champ complet, avec son effectif dans le libellé du lien", () => {
     render(<HubCandidacyOverview candidacies={field} />);
 
-    expect(screen.getByRole("link", { name: /Les 4 fiches/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Explorer les 4 personnalités/ })).toHaveAttribute(
       "href",
       "/elections/presidentielle-2027/candidats"
     );
   });
 
-  it("qualifie l'état du programme sans inventer de mesure", () => {
+  it("qualifie les propositions publiées sans inventer de thème", () => {
     render(
       <HubCandidacyOverview
-        candidacies={[
-          candidacy({ programmeAbsence: "non_depouille" }),
-          candidacy({ id: "c2", measureCount: 1, programmeAbsence: null }),
-        ]}
+        candidacies={[candidacy({ id: "c2", measureCount: 1, programmeAbsence: null })]}
       />
     );
 
-    expect(screen.getByText("Programme non dépouillé")).toBeInTheDocument();
-    expect(screen.getByText("1 mesure publiée")).toBeInTheDocument();
+    expect(screen.getByText("1 mesure · 0 thèmes")).toBeInTheDocument();
   });
 
   it("reste lisible sur un champ vide, sans compteurs à zéro", () => {
     render(<HubCandidacyOverview candidacies={[]} />);
 
-    expect(screen.getByText("Aucune candidature sourcée à ce jour.")).toBeInTheDocument();
+    expect(screen.getByText("Aucune proposition publiée à ce jour.")).toBeInTheDocument();
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });
 });

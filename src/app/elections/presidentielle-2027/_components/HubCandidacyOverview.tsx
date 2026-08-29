@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { PoliticianAvatar } from "@/components/politicians/PoliticianAvatar";
 import type { HubCandidacy } from "@/lib/data/hub";
 import {
   CANDIDACY_FILTERS,
@@ -8,18 +7,7 @@ import {
   matchesCandidacyFilter,
   matchesPublishedProposals,
 } from "@/lib/presidentielle/candidacy-filters";
-import { CandidacyStatusBadge } from "./CandidacyStatusBadge";
-
-function publishedContentLabel(candidacy: HubCandidacy): string {
-  if (candidacy.measureCount > 0) {
-    return `${candidacy.measureCount} ${
-      candidacy.measureCount === 1 ? "mesure publiée" : "mesures publiées"
-    }`;
-  }
-  return candidacy.programmeAbsence === "non_depouille"
-    ? "Programme non dépouillé"
-    : "Aucun programme identifié";
-}
+import { CandidacyDirectoryLink } from "./CandidacyDirectoryLink";
 
 /**
  * The people followed by Poligraph, directly on the hub rather than reduced to four counters.
@@ -27,6 +15,10 @@ function publishedContentLabel(candidacy: HubCandidacy): string {
  */
 export function HubCandidacyOverview({ candidacies }: { candidacies: HubCandidacy[] }) {
   const total = candidacies.length;
+  const candidaciesWithPublishedProposals = candidacies.filter((candidacy) =>
+    matchesPublishedProposals(candidacy, true)
+  );
+  const publishedTotal = candidaciesWithPublishedProposals.length;
   const filters = [
     ...CANDIDACY_FILTERS.filter((key) => key !== "toutes").map((key) => ({
       key,
@@ -50,11 +42,13 @@ export function HubCandidacyOverview({ candidacies }: { candidacies: HubCandidac
             id="hub-candidatures"
             className="font-display text-xl font-bold tracking-tight md:text-2xl"
           >
-            {total} {total === 1 ? "personnalité suivie" : "personnalités suivies"}
+            {publishedTotal} {publishedTotal === 1 ? "personnalité a" : "personnalités ont"} déjà
+            des propositions publiées
           </h2>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Poligraph documente des candidatures, ce n&apos;est pas la liste officielle des
-            candidats. L&apos;ordre est alphabétique, sans classement.
+            L&apos;accueil montre les personnalités pour lesquelles des mesures sont déjà
+            documentées. L&apos;annuaire rassemble les {total} personnalités suivies, y compris
+            celles dont les propositions restent à documenter.
           </p>
         </div>
         {total > 0 && (
@@ -63,59 +57,29 @@ export function HubCandidacyOverview({ candidacies }: { candidacies: HubCandidac
             prefetch={false}
             className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            {total === 1 ? "La fiche" : `Les ${total} fiches`}
+            Explorer {total === 1 ? "la personnalité suivie" : `les ${total} personnalités`}
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </Link>
         )}
       </div>
 
-      {total === 0 ? (
+      {publishedTotal === 0 ? (
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Aucune candidature sourcée à ce jour.
+          Aucune proposition publiée à ce jour.
         </p>
       ) : (
         <>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {candidacies.map((candidacy) => (
+            {candidaciesWithPublishedProposals.map((candidacy) => (
               <li key={candidacy.id}>
-                <Link
-                  href={`/elections/presidentielle-2027/candidats/${candidacy.politicianSlug}`}
-                  prefetch={false}
-                  className="flex h-full min-h-11 items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2.5 transition-colors hover:border-primary hover:bg-muted/40 active:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
-                >
-                  <span aria-hidden="true" className="shrink-0">
-                    <PoliticianAvatar
-                      photoUrl={candidacy.photoUrl}
-                      blobPhotoUrl={candidacy.blobPhotoUrl}
-                      fullName={candidacy.candidateName}
-                      size="sm"
-                      className="h-9 w-9"
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1 space-y-1">
-                    <span className="block break-words text-sm font-bold leading-tight">
-                      {candidacy.candidateName}
-                    </span>
-                    {candidacy.partyLabel && (
-                      <span className="block text-sm font-medium leading-snug text-foreground">
-                        {candidacy.partyLabel}
-                      </span>
-                    )}
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <CandidacyStatusBadge status={candidacy.status} />
-                      <span className="text-xs leading-snug text-muted-foreground-strong">
-                        {publishedContentLabel(candidacy)}
-                      </span>
-                    </span>
-                  </span>
-                </Link>
+                <CandidacyDirectoryLink candidacy={candidacy} />
               </li>
             ))}
           </ul>
 
-          <nav aria-label="Filtrer les personnalités suivies" className="flex flex-wrap gap-2">
+          <nav aria-label="Explorer l'annuaire des personnalités" className="flex flex-wrap gap-2">
             <span className="self-center text-xs text-muted-foreground-strong">
-              Filtrer la liste :
+              Explorer l&apos;annuaire :
             </span>
             {filters
               .filter((filter) => filter.count > 0)

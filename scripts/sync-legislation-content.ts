@@ -17,7 +17,10 @@
 import "dotenv/config";
 import { createCLI, type SyncHandler, type SyncResult } from "../src/lib/sync";
 import { db } from "../src/lib/db";
-import { syncLegislationContent } from "../src/services/sync/legislation-content";
+import {
+  syncLegislationContent,
+  LegislationContentBatchError,
+} from "../src/services/sync/legislation-content";
 
 const handler: SyncHandler = {
   name: "Politic Tracker - Legislative Content Sync",
@@ -47,7 +50,9 @@ Features:
   - Falls back to first 5000 chars if no section found
   - Rate-limited (300ms between requests)
   - Skips 404s silently (document not available)
-  - Stops early when the source host no longer resolves
+  - Ignores pages served with HTTP 200 that are not parliamentary texts
+  - Fails the run when the whole batch fails the same way (dead host,
+    every document 404, every page a maintenance screen)
     `);
   },
 
@@ -101,25 +106,33 @@ Features:
       force?: boolean;
     };
 
-    const { errors, ...stats } = await syncLegislationContent({
-      limit,
-      force,
-      dryRun,
-      onProgress: (done, total, documentId) => {
-        process.stdout.write(
-          `\r[${done}/${total}] Downloading ${documentId}...                    `
-        );
-      },
-    });
+    try {
+      const { errors, ...stats } = await syncLegislationContent({
+        limit,
+        force,
+        dryRun,
+        onProgress: (done, total, documentId) => {
+          process.stdout.write(
+            `\r[${done}/${total}] Downloading ${documentId}...                    `
+          );
+        },
+      });
 
-    console.log(""); // New line after progress
+      console.log(""); // New line after progress
 
-    return {
-      success: errors.length === 0,
-      duration: 0,
-      stats,
-      errors,
-    };
+      return { success: errors.length === 0, duration: 0, stats, errors };
+    } catch (err) {
+      console.log(""); // New line after progress
+
+      // A batch failure carries the counts reached before it aborted; report
+      // them rather than letting the CLI print a bare stack.
+      if (err instanceof LegislationContentBatchError) {
+        const { errors, ...stats } = err.stats;
+        return { success: false, duration: 0, stats, errors: [...errors, err.message] };
+      }
+
+      throw err;
+    }
   },
 };
 

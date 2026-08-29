@@ -33,13 +33,46 @@ const EXPOSE_REGEX =
 const MAX_FALLBACK_LENGTH = 5000;
 
 /**
- * A whole batch answering 404 means the endpoint moved, not that the AN
- * published nothing: one missing document is routine, a run where every single
- * one is missing is a broken URL scheme. Reported as an error so a silent no-op
+ * A whole batch failing the same way means the endpoint moved or broke, not that
+ * the AN published nothing: one missing document is routine, a run where every
+ * single one fails is a source problem. Raised as an exception so a silent no-op
  * cannot pass for a successful sync, which is how the docparl breakage would
  * have looked had the host kept resolving.
  */
 const ALL_MISSING_ALERT_THRESHOLD = 5;
+
+/**
+ * A parliamentary text carries at least one of these.
+ *
+ * The AN can answer 200 with a maintenance page, a WAF challenge or a redirect
+ * landing page. Its body is readable text longer than the fallback threshold
+ * below, so without this check the sync would store it as an exposé des motifs
+ * under the trusted "an-opendata" source, where `generate-dossier-summaries` and
+ * the policy-title substance resolver read it as official evidence. The .docx
+ * source ruled that out by format alone (a maintenance page is not a valid
+ * archive); HTML gives no such guarantee, so the marker is checked explicitly.
+ */
+const DOCUMENT_MARKER_REGEX =
+  /EXPOS[ÉEeé]\s+DES\s+MOTIFS|PROPOSITION\s+DE\s+(?:LOI|R[ÉEeé]SOLUTION)|PROJET\s+DE\s+LOI|RAPPORT\s+FAIT\s+AU\s+NOM|ARTICLE\s+(?:1ER|PREMIER|UNIQUE)/i;
+
+/** Raised when the whole run failed the same way: the source, not the dossiers. */
+export class LegislationContentBatchError extends Error {
+  constructor(
+    message: string,
+    readonly stats: LegislationContentSyncResult
+  ) {
+    super(message);
+    this.name = "LegislationContentBatchError";
+  }
+}
+
+/**
+ * Whether a downloaded page is an AN parliamentary text rather than an error,
+ * maintenance or challenge page served with HTTP 200.
+ */
+export function looksLikeParliamentaryDocument(text: string): boolean {
+  return DOCUMENT_MARKER_REGEX.test(text);
+}
 
 export interface LegislationContentSyncResult {
   processed: number;
@@ -156,6 +189,7 @@ export async function syncLegislationContent(
   }
 
   const client = createClient();
+  let batchFailure: string | null = null;
 
   for (let i = 0; i < dossiers.length; i++) {
     const dossier = dossiers[i]!;
@@ -181,6 +215,12 @@ export async function syncLegislationContent(
 
       stats.downloaded++;
 
+      if (!looksLikeParliamentaryDocument(fullText)) {
+        stats.skipped++;
+        stats.processed++;
+        continue;
+      }
+
       const expose = extractExposeDesMotifs(fullText);
 
       if (expose) {
@@ -205,17 +245,27 @@ export async function syncLegislationContent(
       // dossier. Stop here so the run reports the dead source once instead of
       // one line per dossier, which is how the docparl removal surfaced.
       if (isUnresolvableHostError(err)) {
-        stats.errors.push(
-          `Aborting: ${DOCUMENT_HOST} does not resolve, ${total - stats.processed} dossiers left unprocessed`
-        );
+        batchFailure = `${DOCUMENT_HOST} does not resolve, ${total - stats.processed} dossiers left unprocessed`;
         break;
       }
     }
   }
 
-  if (stats.downloaded === 0 && stats.notFound >= ALL_MISSING_ALERT_THRESHOLD) {
-    stats.errors.push(
-      `All ${stats.notFound} documents answered 404 on ${DOCUMENT_HOST}: the open data URL scheme has most likely changed`
+  if (!batchFailure && stats.downloaded === 0 && stats.notFound >= ALL_MISSING_ALERT_THRESHOLD) {
+    batchFailure = `all ${stats.notFound} documents answered 404 on ${DOCUMENT_HOST}, the open data URL scheme has most likely changed`;
+  }
+
+  if (!batchFailure && stats.extracted === 0 && stats.downloaded >= ALL_MISSING_ALERT_THRESHOLD) {
+    batchFailure = `none of the ${stats.downloaded} pages fetched from ${DOCUMENT_HOST} carried a parliamentary text, the endpoint is probably serving an error or maintenance page`;
+  }
+
+  // Thrown rather than returned: the callers that retry (both Inngest jobs) only
+  // look at whether the step settled, so a batch failure reported in `errors`
+  // would be recorded as a completed sync that imported nothing.
+  if (batchFailure) {
+    throw new LegislationContentBatchError(
+      `Legislative content sync aborted: ${batchFailure} (processed ${stats.processed}/${total}, extracted ${stats.extracted})`,
+      stats
     );
   }
 

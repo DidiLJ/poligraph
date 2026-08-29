@@ -15,7 +15,9 @@ import {
   buildDocumentUrl,
   downloadDocumentText,
   extractExposeDesMotifs,
+  looksLikeParliamentaryDocument,
   syncLegislationContent,
+  LegislationContentBatchError,
   DOCUMENT_HOST,
 } from "@/services/sync/legislation-content";
 import { extractBlockText } from "@/lib/parsing/html-block-text";
@@ -80,6 +82,22 @@ describe("extractExposeDesMotifs on open data HTML", () => {
     expect(extractExposeDesMotifs(text)).toMatch(/^Texte sans section identifiable\./);
   });
 
+  it("recognises a parliamentary text but not a maintenance page", () => {
+    const maintenance = extractBlockText(
+      `<html><body><h1>Assemblée nationale</h1><p>Le site est momentanément
+       indisponible pour cause de maintenance technique. Nos équipes travaillent au
+       rétablissement du service, merci de renouveler votre visite ultérieurement.</p>
+       </body></html>`
+    );
+
+    // Long enough to clear the 100-char fallback threshold, so only the marker
+    // keeps it out of exposeDesMotifs.
+    expect(maintenance.length).toBeGreaterThan(100);
+    expect(looksLikeParliamentaryDocument(maintenance)).toBe(false);
+    expect(looksLikeParliamentaryDocument("PROPOSITION DE LOI visant à ...")).toBe(true);
+    expect(looksLikeParliamentaryDocument("EXPOSÉ DES MOTIFS")).toBe(true);
+  });
+
   it("returns null on a document too short to carry anything useful", () => {
     expect(extractExposeDesMotifs(extractBlockText("<p>Vide</p>"))).toBeNull();
   });
@@ -111,92 +129,115 @@ describe("downloadDocumentText", () => {
   });
 });
 
-describe("syncLegislationContent when the source host is gone", () => {
+function maintenancePage(): Response {
+  return new Response(
+    "<html><body><p>Le site est momentanément indisponible pour cause de " +
+      "maintenance technique, merci de renouveler votre visite plus tard.</p></body></html>",
+    { status: 200 }
+  );
+}
+
+function dossierRows(count: number) {
+  return Array.from({ length: count }, (_, i) => ({
+    id: `id-${i}`,
+    externalId: `DLR5L17N548${String(i).padStart(2, "0")}`,
+    documentExternalId: `PIONANR5L17B310${i}`,
+    title: `Dossier ${i}`,
+  }));
+}
+
+describe("syncLegislationContent batch failures", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     dbMock.legislativeDossier.findMany.mockResolvedValue([]);
     dbMock.legislativeDossier.update.mockReset();
   });
 
-  it("stops after the first dossier instead of repeating the same DNS error", async () => {
-    const dossiers = ["DLR5L17N54818", "DLR5L17N54819", "DLR5L17N54817"].map((externalId, i) => ({
-      id: `id-${i}`,
-      externalId,
-      documentExternalId: `PIONANR5L17B31${i}`,
-      title: externalId,
-    }));
-    dbMock.legislativeDossier.findMany.mockResolvedValue(dossiers);
+  function silenceLogs() {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  }
 
+  it("stops at the first DNS failure instead of repeating it on every dossier", async () => {
+    dbMock.legislativeDossier.findMany.mockResolvedValue(dossierRows(3));
     const cause = Object.assign(new Error("getaddrinfo ENOTFOUND gone.example.fr"), {
       code: "ENOTFOUND",
     });
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockRejectedValue(new Error("fetch failed", { cause }));
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    silenceLogs();
 
-    const result = await syncLegislationContent();
+    const error = await syncLegislationContent().catch((caught: unknown) => caught);
 
     // One dossier attempted, one request (no retry on a name that does not resolve).
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(result.processed).toBe(1);
-    expect(result.downloaded).toBe(0);
+    expect(error).toBeInstanceOf(LegislationContentBatchError);
+    expect((error as Error).message).toContain(`${DOCUMENT_HOST} does not resolve`);
+    expect((error as LegislationContentBatchError).stats.processed).toBe(1);
     expect(dbMock.legislativeDossier.update).not.toHaveBeenCalled();
-    expect(result.errors).toEqual([
-      "DLR5L17N54818: fetch failed <- getaddrinfo ENOTFOUND gone.example.fr [ENOTFOUND] " +
-        `(${buildDocumentUrl("PIONANR5L17B310")}) ` +
-        "<- fetch failed <- getaddrinfo ENOTFOUND gone.example.fr [ENOTFOUND]",
-      `Aborting: ${DOCUMENT_HOST} does not resolve, 2 dossiers left unprocessed`,
-    ]);
-  });
-});
-
-describe("syncLegislationContent when every document is missing", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    dbMock.legislativeDossier.findMany.mockResolvedValue([]);
-    dbMock.legislativeDossier.update.mockReset();
   });
 
-  it("reports a whole batch of 404s as a broken URL scheme", async () => {
-    dbMock.legislativeDossier.findMany.mockResolvedValue(
-      Array.from({ length: 6 }, (_, i) => ({
-        id: `id-${i}`,
-        externalId: `DLR5L17N5480${i}`,
-        documentExternalId: `PIONANR5L17B310${i}`,
-        title: `Dossier ${i}`,
-      }))
-    );
+  it("raises a whole batch of 404s as a broken URL scheme", async () => {
+    dbMock.legislativeDossier.findMany.mockResolvedValue(dossierRows(6));
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response("", { status: 404, statusText: "Not Found" })
     );
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    silenceLogs();
 
-    const result = await syncLegislationContent();
+    const error = await syncLegislationContent().catch((caught: unknown) => caught);
 
-    expect(result.notFound).toBe(6);
-    expect(result.errors).toEqual([
-      `All 6 documents answered 404 on ${DOCUMENT_HOST}: the open data URL scheme has most likely changed`,
-    ]);
+    expect(error).toBeInstanceOf(LegislationContentBatchError);
+    expect((error as Error).message).toContain("the open data URL scheme has most likely changed");
+    expect((error as LegislationContentBatchError).stats.notFound).toBe(6);
+  });
+
+  it("raises a whole batch of non-document pages served with HTTP 200", async () => {
+    dbMock.legislativeDossier.findMany.mockResolvedValue(dossierRows(6));
+    // A fresh Response per call: a body can only be consumed once.
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => maintenancePage());
+    silenceLogs();
+
+    const error = await syncLegislationContent().catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(LegislationContentBatchError);
+    expect((error as Error).message).toContain("carried a parliamentary text");
+    // The maintenance page must never reach the column read as official evidence.
+    expect(dbMock.legislativeDossier.update).not.toHaveBeenCalled();
   });
 
   it("stays silent when a single document is missing among successful ones", async () => {
-    dbMock.legislativeDossier.findMany.mockResolvedValue([
-      {
-        id: "id-0",
-        externalId: "DLR5L17N54800",
-        documentExternalId: "PIONANR5L17B3100",
-        title: "Dossier",
-      },
-    ]);
+    dbMock.legislativeDossier.findMany.mockResolvedValue(dossierRows(1));
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response("", { status: 404, statusText: "Not Found" })
     );
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    silenceLogs();
 
     const result = await syncLegislationContent();
 
     expect(result.notFound).toBe(1);
     expect(result.errors).toEqual([]);
+  });
+
+  it("stores the exposé of a real document", async () => {
+    dbMock.legislativeDossier.findMany.mockResolvedValue(dossierRows(1));
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(
+          "<h1>PROPOSITION DE LOI</h1><h2>EXPOSÉ DES MOTIFS</h2><p>Mesdames, Messieurs, " +
+            "la présente proposition de loi vise à renforcer l'information des citoyens.</p>" +
+            "<h2>Article 1er</h2><p>Le code électoral est ainsi modifié.</p>",
+          { status: 200 }
+        )
+    );
+    silenceLogs();
+
+    const result = await syncLegislationContent();
+
+    expect(result.extracted).toBe(1);
+    expect(dbMock.legislativeDossier.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ exposeSource: "an-opendata" }),
+      })
+    );
   });
 });

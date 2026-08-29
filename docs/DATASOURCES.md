@@ -421,7 +421,8 @@ Un second script télécharge le texte intégral des documents depuis l'open dat
 - **URL** : `https://www.assemblee-nationale.fr/dyn/opendata/{id}.html`
 - **Rate limit** : 300 ms (`ASSEMBLEE_OPENDATA_RATE_LIMIT_MS`)
 - **Valeur écrite dans `exposeSource`** : `an-opendata`
-- Le script s'arrête dès que l'hôte ne résout plus en DNS, au lieu de répéter la même erreur sur chaque dossier restant.
+- Une page servie en HTTP 200 qui ne porte aucun marqueur de texte parlementaire (maintenance, WAF, page d'accueil) est ignorée : sans ce contrôle elle serait stockée comme exposé des motifs sous une source réputée officielle, puis relue comme telle par les résumés de dossier et le résolveur de substance.
+- Trois pannes de lot lèvent une exception au lieu d'être consignées : hôte qui ne résout plus, lot entier en 404, lot entier sans texte parlementaire. Les deux jobs Inngest ne regardent que si l'étape s'est terminée, donc une panne signalée en simple message aurait été enregistrée comme un sync réussi ayant importé zéro exposé.
 
 Source précédente, retirée : `docparl.assemblee-nationale.fr` servait les mêmes documents en `.docx`. L'hôte a disparu du DNS en 2026 et chaque requête échouait avec `getaddrinfo ENOTFOUND`. Les lignes importées avant la bascule gardent `exposeSource = "docparl"`.
 

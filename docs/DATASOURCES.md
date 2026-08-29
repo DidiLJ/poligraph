@@ -416,10 +416,15 @@ npm run sync:scrutins-senat --stats
 
 ### Exposés des motifs
 
-Un second script télécharge les documents `.docx` depuis `docparl.assemblee-nationale.fr` et en extrait la section "exposé des motifs" :
+Un second script télécharge le texte intégral des documents depuis l'open data de l'Assemblée nationale et en extrait la section "exposé des motifs" :
 
-- **URL** : `https://docparl.assemblee-nationale.fr/base/{id}?format=application/vnd.openxmlformats-officedocument.wordprocessingml.document`
-- **Rate limit** : 300 ms (`ASSEMBLEE_DOCPARL_RATE_LIMIT_MS`)
+- **URL** : `https://www.assemblee-nationale.fr/dyn/opendata/{id}.html`
+- **Rate limit** : 300 ms (`ASSEMBLEE_OPENDATA_RATE_LIMIT_MS`)
+- **Valeur écrite dans `exposeSource`** : `an-opendata`
+- Une page servie en HTTP 200 qui ne porte aucun marqueur de texte parlementaire (maintenance, WAF, page d'accueil) est ignorée : sans ce contrôle elle serait stockée comme exposé des motifs sous une source réputée officielle, puis relue comme telle par les résumés de dossier et le résolveur de substance.
+- Trois pannes de lot lèvent une exception au lieu d'être consignées : hôte qui ne résout plus, lot entier en 404, lot entier sans texte parlementaire. Les deux jobs Inngest ne regardent que si l'étape s'est terminée, donc une panne signalée en simple message aurait été enregistrée comme un sync réussi ayant importé zéro exposé.
+
+Source précédente, retirée : `docparl.assemblee-nationale.fr` servait les mêmes documents en `.docx`. L'hôte a disparu du DNS en 2026 et chaque requête échouait avec `getaddrinfo ENOTFOUND`. Les lignes importées avant la bascule gardent `exposeSource = "docparl"`.
 
 ### Réconciliation scrutins/dossiers
 
@@ -854,21 +859,21 @@ JUDILIBRE_OAUTH_URL="https://oauth.piste.gouv.fr/api/oauth/token"
 
 Tous les rate limits sont centralisés dans `src/config/rate-limits.ts`.
 
-| Constante                         | Valeur    | Source             | Notes                         |
-| --------------------------------- | --------- | ------------------ | ----------------------------- |
-| `DATA_GOUV_RATE_LIMIT_MS`         | 200 ms    | data.gouv.fr       | Politesse                     |
-| `ASSEMBLEE_DOCPARL_RATE_LIMIT_MS` | 300 ms    | docparl AN         | Documents .docx               |
-| `SENAT_RATE_LIMIT_MS`             | 200 ms    | senat.fr           | Non documenté, politesse      |
-| `EUROPARL_RATE_LIMIT_MS`          | 200 ms    | europarl.europa.eu | Politesse                     |
-| `HATVP_RATE_LIMIT_MS`             | 200 ms    | hatvp.fr           | Politesse                     |
-| `WIKIDATA_RATE_LIMIT_MS`          | 200 ms    | Wikidata REST      | Politique officielle          |
-| `WIKIDATA_SPARQL_RATE_LIMIT_MS`   | 300 ms    | Wikidata SPARQL    | Empirique (timeout fréquents) |
-| `LEGISLATION_RATE_LIMIT_MS`       | 300 ms    | Légifrance         | Non documenté                 |
-| `RSS_RATE_LIMIT_MS`               | 1000 ms   | Flux RSS           | Politesse standard            |
-| `FACTCHECK_RATE_LIMIT_MS`         | 200 ms    | Google Fact Check  | Politesse                     |
-| `JUDILIBRE_RATE_LIMIT_MS`         | 500 ms    | PISTE/Judilibre    | Politesse                     |
-| `AI_RATE_LIMIT_MS`                | 500 ms    | API IA             | Entre appels IA               |
-| `AI_429_BACKOFF_MS`               | 30 000 ms | API IA             | Backoff sur rate limit 429    |
+| Constante                          | Valeur    | Source             | Notes                         |
+| ---------------------------------- | --------- | ------------------ | ----------------------------- |
+| `DATA_GOUV_RATE_LIMIT_MS`          | 200 ms    | data.gouv.fr       | Politesse                     |
+| `ASSEMBLEE_OPENDATA_RATE_LIMIT_MS` | 300 ms    | opendata AN        | Textes des documents (HTML)   |
+| `SENAT_RATE_LIMIT_MS`              | 200 ms    | senat.fr           | Non documenté, politesse      |
+| `EUROPARL_RATE_LIMIT_MS`           | 200 ms    | europarl.europa.eu | Politesse                     |
+| `HATVP_RATE_LIMIT_MS`              | 200 ms    | hatvp.fr           | Politesse                     |
+| `WIKIDATA_RATE_LIMIT_MS`           | 200 ms    | Wikidata REST      | Politique officielle          |
+| `WIKIDATA_SPARQL_RATE_LIMIT_MS`    | 300 ms    | Wikidata SPARQL    | Empirique (timeout fréquents) |
+| `LEGISLATION_RATE_LIMIT_MS`        | 300 ms    | Légifrance         | Non documenté                 |
+| `RSS_RATE_LIMIT_MS`                | 1000 ms   | Flux RSS           | Politesse standard            |
+| `FACTCHECK_RATE_LIMIT_MS`          | 200 ms    | Google Fact Check  | Politesse                     |
+| `JUDILIBRE_RATE_LIMIT_MS`          | 500 ms    | PISTE/Judilibre    | Politesse                     |
+| `AI_RATE_LIMIT_MS`                 | 500 ms    | API IA             | Entre appels IA               |
+| `AI_429_BACKOFF_MS`                | 30 000 ms | API IA             | Backoff sur rate limit 429    |
 
 ### HTTPClient
 

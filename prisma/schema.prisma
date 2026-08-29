@@ -1237,7 +1237,7 @@ model LegislativeDossier {
   senatUrl  String? // URL du dossier cote Senat (from AN senatChemin)
 
   exposeDesMotifs    String? @db.Text
-  exposeSource       String? // "docparl" | "legifrance" | "manual"
+  exposeSource       String? // "an-opendata" | "docparl" (retired source) | "legifrance" | "manual"
   documentExternalId String? // ex: PRJLANR5L17B1906
   timeline           Json? // Structured legislative acts (DossierTimelineEntry[])
 

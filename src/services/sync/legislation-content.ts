@@ -1,20 +1,78 @@
 /**
- * Service to download .docx documents and extract exposé des motifs.
- * Extracted from scripts/sync-legislation-content.ts for Inngest compatibility.
+ * Service to download parliamentary documents and extract their exposé des motifs.
+ *
+ * Source: the Assemblée nationale open data document endpoint,
+ * `https://www.assemblee-nationale.fr/dyn/opendata/{uid}.html`, which serves the
+ * full text of a bill or report keyed by the same uid as `documentExternalId`.
+ *
+ * It replaces docparl.assemblee-nationale.fr, which served the same documents as
+ * .docx until the host was removed from DNS: every request then failed with
+ * `getaddrinfo ENOTFOUND`, and the daily sync stopped importing exposés.
  */
 
 import { db } from "@/lib/db";
-import mammoth from "mammoth";
-import { ASSEMBLEE_DOCPARL_RATE_LIMIT_MS } from "@/config/rate-limits";
-import { HTTPClient, HTTPError, describeError } from "@/lib/api/http-client";
+import { extractBlockText } from "@/lib/parsing/html-block-text";
+import { ASSEMBLEE_OPENDATA_RATE_LIMIT_MS } from "@/config/rate-limits";
+import {
+  HTTPClient,
+  HTTPError,
+  describeError,
+  isUnresolvableHostError,
+} from "@/lib/api/http-client";
 
-const DOCPARL_URL_TEMPLATE =
-  "https://docparl.assemblee-nationale.fr/base/{id}?format=application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+export const DOCUMENT_HOST = "www.assemblee-nationale.fr";
+
+const DOCUMENT_URL_TEMPLATE = `https://${DOCUMENT_HOST}/dyn/opendata/{id}.html`;
+
+/** Value written to `LegislativeDossier.exposeSource` for this pipeline. */
+export const EXPOSE_SOURCE = "an-opendata";
 
 const EXPOSE_REGEX =
-  /EXPOS[\u00c9Ee\u00e9]\s+DES\s+MOTIFS\s*([\s\S]*?)(?=TITRE\s+[IVX]|Article\s+(?:1er|premier|unique)|CHAPITRE|$)/i;
+  /EXPOS[ÉEeé]\s+DES\s+MOTIFS\s*([\s\S]*?)(?=TITRE\s+[IVX]|Article\s+(?:1er|premier|unique)|CHAPITRE|$)/i;
 
 const MAX_FALLBACK_LENGTH = 5000;
+
+/**
+ * A whole batch failing the same way means the endpoint moved or broke, not that
+ * the AN published nothing: one missing document is routine, a run where every
+ * single one fails is a source problem. Raised as an exception so a silent no-op
+ * cannot pass for a successful sync, which is how the docparl breakage would
+ * have looked had the host kept resolving.
+ */
+const ALL_MISSING_ALERT_THRESHOLD = 5;
+
+/**
+ * A parliamentary text carries at least one of these.
+ *
+ * The AN can answer 200 with a maintenance page, a WAF challenge or a redirect
+ * landing page. Its body is readable text longer than the fallback threshold
+ * below, so without this check the sync would store it as an exposé des motifs
+ * under the trusted "an-opendata" source, where `generate-dossier-summaries` and
+ * the policy-title substance resolver read it as official evidence. The .docx
+ * source ruled that out by format alone (a maintenance page is not a valid
+ * archive); HTML gives no such guarantee, so the marker is checked explicitly.
+ */
+const DOCUMENT_MARKER_REGEX =
+  /EXPOS[ÉEeé]\s+DES\s+MOTIFS|PROPOSITION\s+DE\s+(?:LOI|R[ÉEeé]SOLUTION)|PROJET\s+DE\s+LOI|RAPPORT\s+FAIT\s+AU\s+NOM|ARTICLE\s+(?:1ER|PREMIER|UNIQUE)/i;
+
+/** Raised when the whole run failed the same way: the source, not the dossiers. */
+export class LegislationContentBatchError extends Error {
+  constructor(
+    message: string,
+    readonly stats: LegislationContentSyncResult
+  ) {
+    super(message);
+    this.name = "LegislationContentBatchError";
+  }
+}
+
+/**
+ * Whether a downloaded page is an AN parliamentary text rather than an error,
+ * maintenance or challenge page served with HTTP 200.
+ */
+export function looksLikeParliamentaryDocument(text: string): boolean {
+  return DOCUMENT_MARKER_REGEX.test(text);
+}
 
 export interface LegislationContentSyncResult {
   processed: number;
@@ -25,23 +83,32 @@ export interface LegislationContentSyncResult {
   errors: string[];
 }
 
-async function downloadDocx(documentId: string): Promise<Buffer | null> {
-  const docparlClient = new HTTPClient({
-    rateLimitMs: ASSEMBLEE_DOCPARL_RATE_LIMIT_MS,
+export function buildDocumentUrl(documentId: string): string {
+  return DOCUMENT_URL_TEMPLATE.replace("{id}", encodeURIComponent(documentId));
+}
+
+function createClient(): HTTPClient {
+  return new HTTPClient({
+    rateLimitMs: ASSEMBLEE_OPENDATA_RATE_LIMIT_MS,
     retries: 3,
     timeout: 60_000,
-    sourceName: "docparl AN",
+    sourceName: "opendata AN",
   });
+}
 
-  const url = DOCPARL_URL_TEMPLATE.replace("{id}", documentId);
-
+/**
+ * Download a document and return its text, or null when the AN has no such
+ * document (404 — a dossier whose text was never published in open data).
+ */
+export async function downloadDocumentText(
+  documentId: string,
+  client: HTTPClient = createClient()
+): Promise<string | null> {
   try {
-    const { data } = await docparlClient.getBuffer(url, {
-      headers: {
-        Accept: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      },
+    const { data } = await client.getText(buildDocumentUrl(documentId), {
+      headers: { Accept: "text/html" },
     });
-    return data;
+    return extractBlockText(data);
   } catch (err) {
     if (err instanceof HTTPError && err.status === 404) {
       return null;
@@ -50,12 +117,7 @@ async function downloadDocx(documentId: string): Promise<Buffer | null> {
   }
 }
 
-async function extractText(buffer: Buffer): Promise<string> {
-  const result = await mammoth.extractRawText({ buffer });
-  return result.value;
-}
-
-function extractExposeDesMotifs(fullText: string): string | null {
+export function extractExposeDesMotifs(fullText: string): string | null {
   const match = fullText.match(EXPOSE_REGEX);
 
   if (match && match[1]) {
@@ -73,11 +135,19 @@ function extractExposeDesMotifs(fullText: string): string | null {
   return null;
 }
 
-export async function syncLegislationContent(options?: {
+export interface LegislationContentSyncOptions {
   limit?: number;
   force?: boolean;
-}): Promise<LegislationContentSyncResult> {
-  const { limit, force = false } = options ?? {};
+  /** Count the dossiers that would be processed without fetching or writing. */
+  dryRun?: boolean;
+  /** Called before each download, for CLI progress display. */
+  onProgress?: (done: number, total: number, documentId: string) => void;
+}
+
+export async function syncLegislationContent(
+  options?: LegislationContentSyncOptions
+): Promise<LegislationContentSyncResult> {
+  const { limit, force = false, dryRun = false, onProgress } = options ?? {};
 
   const stats: LegislationContentSyncResult = {
     processed: 0,
@@ -111,19 +181,33 @@ export async function syncLegislationContent(options?: {
     dossiers = dossiers.slice(0, limit);
   }
 
-  console.log(`Found ${dossiers.length} dossiers to process`);
+  const total = dossiers.length;
+  console.log(`Found ${total} dossiers to process`);
 
-  if (dossiers.length === 0) {
+  if (total === 0) {
     return stats;
   }
 
-  for (const dossier of dossiers) {
+  const client = createClient();
+  let batchFailure: string | null = null;
+
+  for (let i = 0; i < dossiers.length; i++) {
+    const dossier = dossiers[i]!;
     const docId = dossier.documentExternalId!;
 
-    try {
-      const buffer = await downloadDocx(docId);
+    onProgress?.(i + 1, total, docId);
 
-      if (!buffer) {
+    try {
+      if (dryRun) {
+        stats.downloaded++;
+        stats.extracted++;
+        stats.processed++;
+        continue;
+      }
+
+      const fullText = await downloadDocumentText(docId, client);
+
+      if (fullText === null) {
         stats.notFound++;
         stats.processed++;
         continue;
@@ -131,7 +215,12 @@ export async function syncLegislationContent(options?: {
 
       stats.downloaded++;
 
-      const fullText = await extractText(buffer);
+      if (!looksLikeParliamentaryDocument(fullText)) {
+        stats.skipped++;
+        stats.processed++;
+        continue;
+      }
+
       const expose = extractExposeDesMotifs(fullText);
 
       if (expose) {
@@ -139,7 +228,7 @@ export async function syncLegislationContent(options?: {
           where: { id: dossier.id },
           data: {
             exposeDesMotifs: expose,
-            exposeSource: "docparl",
+            exposeSource: EXPOSE_SOURCE,
           },
         });
         stats.extracted++;
@@ -151,7 +240,33 @@ export async function syncLegislationContent(options?: {
     } catch (err) {
       stats.errors.push(`${dossier.externalId}: ${describeError(err)}`);
       stats.processed++;
+
+      // A host that no longer resolves fails identically on every remaining
+      // dossier. Stop here so the run reports the dead source once instead of
+      // one line per dossier, which is how the docparl removal surfaced.
+      if (isUnresolvableHostError(err)) {
+        batchFailure = `${DOCUMENT_HOST} does not resolve, ${total - stats.processed} dossiers left unprocessed`;
+        break;
+      }
     }
+  }
+
+  if (!batchFailure && stats.downloaded === 0 && stats.notFound >= ALL_MISSING_ALERT_THRESHOLD) {
+    batchFailure = `all ${stats.notFound} documents answered 404 on ${DOCUMENT_HOST}, the open data URL scheme has most likely changed`;
+  }
+
+  if (!batchFailure && stats.extracted === 0 && stats.downloaded >= ALL_MISSING_ALERT_THRESHOLD) {
+    batchFailure = `none of the ${stats.downloaded} pages fetched from ${DOCUMENT_HOST} carried a parliamentary text, the endpoint is probably serving an error or maintenance page`;
+  }
+
+  // Thrown rather than returned: the callers that retry (both Inngest jobs) only
+  // look at whether the step settled, so a batch failure reported in `errors`
+  // would be recorded as a completed sync that imported nothing.
+  if (batchFailure) {
+    throw new LegislationContentBatchError(
+      `Legislative content sync aborted: ${batchFailure} (processed ${stats.processed}/${total}, extracted ${stats.extracted})`,
+      stats
+    );
   }
 
   return stats;

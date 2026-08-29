@@ -4,12 +4,12 @@ import {
   MEASURE_SUBTOPIC_TAXONOMY_VERSION,
   MEASURE_SUBTOPICS,
 } from "@/config/measure-subtopics";
-import { callAnthropic, extractToolUse } from "@/lib/api/anthropic";
+import { callMistral, extractMistralText, parseMistralJSON } from "@/lib/api/mistral";
 import { db } from "@/lib/db";
 import { invalidateMeasureTags } from "@/lib/measures/cache";
 import { MeasureValidationError } from "@/lib/measures/errors";
 
-const CLASSIFIER_MODEL = "claude-haiku-4-5-20251001";
+const CLASSIFIER_MODEL = "mistral-small-latest";
 export const MEASURE_SUBTOPIC_CLASSIFIER_VERSION = `${CLASSIFIER_MODEL}:v1`;
 
 function sanitizeMeasureText(value: string): string {
@@ -50,30 +50,6 @@ async function classifySubtopics(text: string, theme: ThemeCategory): Promise<Su
   const allowed = getMeasureSubtopicsForTheme(theme);
   if (allowed.length === 0) return [];
 
-  const tools = [
-    {
-      name: "classify_measure_subtopics",
-      description: "Propose de zéro à trois sous-sujets dans la taxonomie imposée.",
-      input_schema: {
-        type: "object" as const,
-        properties: {
-          subtopics: {
-            type: "array",
-            maxItems: 3,
-            items: {
-              type: "object",
-              properties: {
-                slug: { type: "string", enum: allowed.map((item) => item.slug) },
-                confidence: { type: "number", minimum: 0, maximum: 1 },
-              },
-              required: ["slug", "confidence"],
-            },
-          },
-        },
-        required: ["subtopics"],
-      },
-    },
-  ];
   const vocabulary = allowed
     .map((item) => `${item.slug}: ${item.label}. ${item.description}`)
     .join("\n");
@@ -85,18 +61,22 @@ ${vocabulary}
 
 <mesure>
 ${sanitizeMeasureText(text)}
-</mesure>`;
+</mesure>
 
-  const response = await callAnthropic([{ role: "user", content: prompt }], {
+Réponds uniquement avec un objet JSON de cette forme :
+{"subtopics":[{"slug":"slug-autorisé","confidence":0.95}]}`;
+
+  const response = await callMistral([{ role: "user", content: prompt }], {
     model: CLASSIFIER_MODEL,
     maxTokens: 300,
-    tools,
-    toolChoice: { type: "tool", name: "classify_measure_subtopics" },
+    temperature: 0,
+    responseFormat: { type: "json_object" },
   });
-  const input = extractToolUse(response) as { subtopics?: SuggestedSubtopic[] } | null;
+  const input = parseMistralJSON<{ subtopics?: SuggestedSubtopic[] }>(extractMistralText(response));
   const allowedSlugs = new Set(allowed.map((item) => item.slug));
+  const candidates = Array.isArray(input.subtopics) ? input.subtopics : [];
 
-  return (input?.subtopics ?? [])
+  return candidates
     .filter(
       (item) =>
         allowedSlugs.has(item.slug) &&

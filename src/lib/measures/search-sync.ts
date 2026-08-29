@@ -1,4 +1,5 @@
 import type { DbTransactionClient } from "@/lib/db";
+import { THEME_CATEGORY_LABELS } from "@/config/labels";
 import { deleteSearchDocument, upsertSearchDocument } from "@/lib/search/documents";
 import { PUBLIC_PRESIDENTIAL_MEASURE_WHERE } from "@/lib/presidentielle/publication";
 
@@ -31,10 +32,39 @@ export async function syncSearchDocument(
       slug: true,
       electionId: true,
       election: { select: { slug: true } },
+      theme: true,
+      candidacy: {
+        select: {
+          candidateName: true,
+          party: { select: { name: true, shortName: true } },
+        },
+      },
       publicationStatus: true,
       publishedRevisionId: true,
-      publishedRevision: { select: { id: true, text: true, details: true, updatedAt: true } },
-      latestRevision: { select: { id: true, text: true, details: true, updatedAt: true } },
+      publishedRevision: {
+        select: {
+          id: true,
+          text: true,
+          details: true,
+          updatedAt: true,
+          subtopics: {
+            where: { status: "APPROVED" },
+            select: { subtopic: { select: { label: true, aliases: true } } },
+          },
+        },
+      },
+      latestRevision: {
+        select: {
+          id: true,
+          text: true,
+          details: true,
+          updatedAt: true,
+          subtopics: {
+            where: { status: "APPROVED" },
+            select: { subtopic: { select: { label: true, aliases: true } } },
+          },
+        },
+      },
     },
   });
 
@@ -56,12 +86,28 @@ export async function syncSearchDocument(
     return;
   }
 
+  const partyLabel = measure.candidacy?.party?.shortName ?? measure.candidacy?.party?.name;
+  const subtopicTerms = reference.subtopics.flatMap(({ subtopic }) => [
+    subtopic.label,
+    ...subtopic.aliases,
+  ]);
+  const contextualBody = [
+    reference.text,
+    reference.details,
+    measure.candidacy?.candidateName,
+    partyLabel,
+    THEME_CATEGORY_LABELS[measure.theme],
+    ...subtopicTerms,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
   await upsertSearchDocument(tx, {
     entityType: "MEASURE",
     entityId: measureId,
     electionId: measure.electionId,
     title: reference.text.slice(0, MAX_TITLE_LENGTH),
-    body: [reference.text, reference.details].filter(Boolean).join("\n\n"),
+    body: contextualBody,
     url: `/elections/${measure.election.slug}/mesures/${measure.slug}`,
     visibility: isPublic ? "PUBLIC" : "ADMIN_ONLY",
     sourceRevisionId: reference.id,

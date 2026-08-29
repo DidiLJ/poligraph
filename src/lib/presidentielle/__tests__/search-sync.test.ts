@@ -112,6 +112,7 @@ describe("synchronisation recherche des candidatures présidentielles", () => {
       orderBy: { id: "asc" },
     });
     expect(upsertSearchDocumentMock).toHaveBeenCalledTimes(3);
+    expect(syncMeasureSearchDocumentMock).toHaveBeenCalledTimes(6);
     expect(electionIds).toEqual(["election-1", "election-2"]);
   });
 });

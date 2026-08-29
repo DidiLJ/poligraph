@@ -11,18 +11,25 @@ const measure = {
   slug: "camille-riviere-construire-des-logements-publics",
   electionId: "election-1",
   election: { slug: "election-reelle" },
+  theme: "LOGEMENT_URBANISME" as const,
+  candidacy: {
+    candidateName: "Camille Rivière",
+    party: { name: "Parti du logement", shortName: "PL" },
+  },
   publicationStatus: "PUBLISHED" as const,
   publishedRevisionId: "revision-pub",
   publishedRevision: {
     id: "revision-pub",
     text: "Construire des logements publics.",
     details: "Dans les zones tendues.",
+    subtopics: [{ subtopic: { label: "Logement social", aliases: ["HLM", "habitat social"] } }],
     updatedAt: new Date("2026-08-27T12:00:00Z"),
   },
   latestRevision: {
     id: "revision-pub",
     text: "Construire des logements publics.",
     details: "Dans les zones tendues.",
+    subtopics: [{ subtopic: { label: "Logement social", aliases: ["HLM", "habitat social"] } }],
     updatedAt: new Date("2026-08-27T12:00:00Z"),
   },
 };
@@ -50,7 +57,7 @@ describe("synchronisation recherche des mesures", () => {
       expect.objectContaining({
         electionId: "election-1",
         url: "/elections/election-reelle/mesures/camille-riviere-construire-des-logements-publics",
-        body: "Construire des logements publics.\n\nDans les zones tendues.",
+        body: "Construire des logements publics.\n\nDans les zones tendues.\n\nCamille Rivière\n\nPL\n\nLogement et urbanisme\n\nLogement social\n\nHLM\n\nhabitat social",
         visibility: "PUBLIC",
       })
     );

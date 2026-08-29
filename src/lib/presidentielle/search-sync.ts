@@ -79,7 +79,7 @@ export async function syncCandidacySearchDocument(
 }
 
 /**
- * Refresh presidential candidacy documents whose searchable party label changed.
+ * Refresh presidential candidacy and measure documents whose searchable party label changed.
  *
  * The party write and these index writes must share a transaction: otherwise a failed refresh
  * would leave the former party name searchable until the next explicit reconstruction.
@@ -95,7 +95,7 @@ export async function syncCandidacySearchDocumentsForParty(
   });
 
   for (const candidacy of candidacies) {
-    await syncCandidacySearchDocument(tx, candidacy.id);
+    await syncPresidentialSearchDocumentsForCandidacy(tx, candidacy.id);
   }
 
   return [...new Set(candidacies.map((candidacy) => candidacy.electionId))];

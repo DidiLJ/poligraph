@@ -9,9 +9,15 @@ import { BatchPublishPanel } from "./_components/BatchPublishPanel";
 import { BatchReviewPanel } from "./_components/BatchReviewPanel";
 import { QueueFilters, type QueueFilterState } from "./_components/QueueFilters";
 import { QueueTable } from "./_components/QueueTable";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { queryBatchPublishGroups } from "./_data/batch-publish-query";
 import { queryBatchReviewGroups } from "./_data/batch-review-query";
-import { listMeasureQueueCandidates, queryMeasureQueue } from "./_data/queue-query";
+import {
+  listMeasureQueueCandidates,
+  queryMeasureQueue,
+  type EnrichmentState,
+} from "./_data/queue-query";
 
 export const metadata = {
   title: "Mesures : relecture (admin) | Poligraph",
@@ -22,6 +28,11 @@ const PAGE_SIZE = 25;
 
 const PUBLICATION_KEYS = Object.keys(PUBLICATION_STATE_LABELS) as PublicationState[];
 const THEME_KEYS: readonly ThemeCategory[] = THEMES_IN_ORDER;
+const ENRICHMENT_KEYS: readonly EnrichmentState[] = [
+  "SUBTOPICS_PENDING",
+  "SUBTOPICS_APPROVED",
+  "DETAILS_MISSING",
+];
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -55,6 +66,10 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
   const retrait = asString(params.retrait);
   const withdrawn = retrait === "only" || retrait === "exclude" ? retrait : undefined;
   const anomaliesOnly = asString(params.anomalies) === "1";
+  const enrichmentParam = asString(params.enrichissement);
+  const enrichment = ENRICHMENT_KEYS.includes(enrichmentParam as EnrichmentState)
+    ? (enrichmentParam as EnrichmentState)
+    : undefined;
   const candidacyId = asString(params.candidat);
   const q = asString(params.q);
 
@@ -68,6 +83,7 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
       candidacyId,
       withdrawn,
       anomaliesOnly,
+      enrichment,
       q,
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
@@ -82,10 +98,38 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
     theme,
     candidacyId,
     anomaliesOnly,
+    enrichment,
     withdrawn,
     q,
   };
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+  const firstMeasure = result.rows[0];
+  const enrichmentWorkflow =
+    enrichment === "SUBTOPICS_PENDING"
+      ? {
+          title: "Sous-thèmes à valider",
+          description:
+            "Examinez les propositions une mesure après l’autre. Rien ne devient public sans validation humaine.",
+          action: "Valider les sous-thèmes de la première mesure",
+          hash: "#subtopics-heading",
+        }
+      : enrichment === "DETAILS_MISSING"
+        ? {
+            title: "Contextes à compléter",
+            description:
+              "Ajoutez uniquement les éléments factuels présents dans les sources de la mesure.",
+            action: "Compléter le contexte de la première mesure",
+            hash: "#actions-heading",
+          }
+        : enrichment === "SUBTOPICS_APPROVED"
+          ? {
+              title: "Sous-thèmes validés",
+              description:
+                "Consultez les rattachements déjà validés et leur révision de référence.",
+              action: "Consulter la première mesure",
+              hash: "#subtopics-heading",
+            }
+          : null;
 
   return (
     <div className="space-y-6">
@@ -121,11 +165,37 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
 
       <QueueFilters current={current} result={result} candidates={candidates} />
 
+      {enrichmentWorkflow !== null && firstMeasure !== undefined ? (
+        <section
+          aria-labelledby="enrichment-workflow-title"
+          className="flex flex-col gap-4 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <h2 id="enrichment-workflow-title" className="font-display text-lg font-bold">
+              {enrichmentWorkflow.title}
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground-strong">
+              {enrichmentWorkflow.description}
+            </p>
+          </div>
+          <Link
+            href={`/admin/mesures/${firstMeasure.id}${enrichmentWorkflow.hash}`}
+            prefetch={false}
+            className={cn(
+              buttonVariants({ variant: "default" }),
+              "min-h-11 shrink-0 whitespace-normal text-center"
+            )}
+          >
+            {enrichmentWorkflow.action}
+          </Link>
+        </section>
+      ) : null}
+
       <BatchReviewPanel groups={batchReviewGroups} />
 
       <BatchPublishPanel groups={batchPublishGroups} />
 
-      <QueueTable rows={result.rows} />
+      <QueueTable rows={result.rows} activeEnrichment={enrichment} />
 
       {totalPages > 1 && (
         <nav className="flex flex-wrap justify-center gap-2" aria-label="Pagination">
@@ -135,6 +205,7 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
             for (const key of theme) query.append("theme", key);
             if (candidacyId) query.set("candidat", candidacyId);
             if (anomaliesOnly) query.set("anomalies", "1");
+            if (enrichment) query.set("enrichissement", enrichment);
             if (withdrawn) query.set("retrait", withdrawn);
             if (q) query.set("q", q);
             query.set("page", String(number));

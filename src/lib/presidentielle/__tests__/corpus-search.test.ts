@@ -101,4 +101,23 @@ describe("searchPresidentialCorpus", () => {
     expect(result).toMatchObject({ total: 0, subjects: [], candidacies: [], measures: [] });
     expect(searchPublicPage).not.toHaveBeenCalled();
   });
+
+  it("retire la formulation d’une question avant la recherche lexicale", async () => {
+    searchPublicPage.mockResolvedValue({ total: 0, hits: [] });
+
+    await searchPresidentialCorpus(
+      "presidentielle-test",
+      "Que proposent les candidats pour réduire le coût du logement ?",
+      8
+    );
+
+    expect(searchPublicPage).toHaveBeenNthCalledWith(1, "réduire coût logement", {
+      electionId: "election-1",
+      limit: 8,
+    });
+    expect(searchPublicPage).toHaveBeenNthCalledWith(2, "Logement et urbanisme", {
+      electionId: "election-1",
+      limit: 8,
+    });
+  });
 });

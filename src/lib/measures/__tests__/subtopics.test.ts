@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   createAssignments: vi.fn(),
   createAudit: vi.fn(),
   invalidateMeasureTags: vi.fn(),
+  syncSearchDocument: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -35,6 +36,9 @@ vi.mock("@/lib/api/mistral", () => ({
 }));
 vi.mock("@/lib/measures/cache", () => ({
   invalidateMeasureTags: mocks.invalidateMeasureTags,
+}));
+vi.mock("@/lib/measures/search-sync", () => ({
+  syncSearchDocument: mocks.syncSearchDocument,
 }));
 
 const transactionClient = {
@@ -190,5 +194,24 @@ describe("classification des sous-sujets de mesure", () => {
     });
 
     expect(mocks.invalidateMeasureTags).toHaveBeenCalledWith("measure-1", "election-1");
+    expect(mocks.syncSearchDocument).toHaveBeenCalledWith(transactionClient, "measure-1");
+  });
+
+  it("ne réindexe pas une proposition refusée qui n’était pas publique", async () => {
+    mocks.findAssignment.mockResolvedValue({
+      status: "SUGGESTED",
+      revision: { measure: { id: "measure-1", electionId: "election-1" } },
+    });
+    mocks.updateAssignments.mockResolvedValue({ count: 1 });
+    const { reviewMeasureRevisionSubtopic } = await import("../subtopics");
+
+    await reviewMeasureRevisionSubtopic({
+      revisionId: "revision-1",
+      subtopicId: "subtopic-1",
+      status: "REJECTED",
+      reviewedBy: "admin",
+    });
+
+    expect(mocks.syncSearchDocument).not.toHaveBeenCalled();
   });
 });

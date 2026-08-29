@@ -3,7 +3,11 @@ import { PUBLICATION_STATE_LABELS, THEME_CATEGORY_LABELS } from "@/config/labels
 import type { ThemeCategory } from "@/generated/prisma";
 import type { PublicationState } from "@/lib/measures/moderation-state";
 import { THEMES_IN_ORDER } from "@/lib/presidentielle/themes";
-import type { MeasureQueueCandidateOption, MeasureQueueResult } from "../_data/queue-query";
+import type {
+  EnrichmentState,
+  MeasureQueueCandidateOption,
+  MeasureQueueResult,
+} from "../_data/queue-query";
 
 /**
  * Filters as plain links, server-rendered.
@@ -18,6 +22,7 @@ export type QueueFilterState = {
   theme: ThemeCategory[];
   candidacyId: string | undefined;
   anomaliesOnly: boolean;
+  enrichment: EnrichmentState | undefined;
   withdrawn: "only" | "exclude" | undefined;
   q: string | undefined;
 };
@@ -45,6 +50,7 @@ function hrefWith(current: QueueFilterState, patch: Partial<QueueFilterState>): 
   for (const theme of next.theme) params.append("theme", theme);
   if (next.candidacyId) params.set("candidat", next.candidacyId);
   if (next.anomaliesOnly) params.set("anomalies", "1");
+  if (next.enrichment) params.set("enrichissement", next.enrichment);
   if (next.withdrawn) params.set("retrait", next.withdrawn);
   if (next.q) params.set("q", next.q);
 
@@ -129,6 +135,45 @@ export function QueueFilters({
 
       <fieldset>
         <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Enrichissement éditorial
+        </legend>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Ces boutons filtrent la file. Les actions de traitement apparaissent ensuite dans le
+          tableau.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Link
+            href={hrefWith(current, { enrichment: undefined })}
+            prefetch={false}
+            className={`${TAB} ${current.enrichment === undefined ? TAB_ACTIVE : ""}`}
+          >
+            Toutes
+          </Link>
+          {(
+            [
+              ["SUBTOPICS_PENDING", "Sous-thèmes à valider"],
+              ["SUBTOPICS_APPROVED", "Sous-thèmes validés"],
+              ["DETAILS_MISSING", "Contexte à compléter"],
+            ] as const
+          ).map(([state, label]) => (
+            <Link
+              key={state}
+              href={hrefWith(current, {
+                enrichment: current.enrichment === state ? undefined : state,
+              })}
+              prefetch={false}
+              className={`${TAB} ${current.enrichment === state ? TAB_ACTIVE : ""}`}
+              aria-current={current.enrichment === state ? "true" : undefined}
+            >
+              {label}
+              <span className="ml-1.5 text-muted-foreground">{result.enrichmentCounts[state]}</span>
+            </Link>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Signalements
         </legend>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -195,6 +240,9 @@ export function QueueFilters({
         ))}
         {current.candidacyId && <input type="hidden" name="candidat" value={current.candidacyId} />}
         {current.anomaliesOnly && <input type="hidden" name="anomalies" value="1" />}
+        {current.enrichment && (
+          <input type="hidden" name="enrichissement" value={current.enrichment} />
+        )}
         {current.withdrawn && <input type="hidden" name="retrait" value={current.withdrawn} />}
 
         <div className="flex-1">

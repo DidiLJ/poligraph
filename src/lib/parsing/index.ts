@@ -20,7 +20,8 @@ export {
   stripHtml,
   normalizeWhitespace,
   extractText,
-  extractBlockText,
   extractAttribute,
   containsHtml,
 } from "./html-utils";
+
+export { extractBlockText } from "./html-block-text";

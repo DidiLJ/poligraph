@@ -18,7 +18,7 @@ import {
   syncLegislationContent,
   DOCUMENT_HOST,
 } from "@/services/sync/legislation-content";
-import { extractBlockText } from "@/lib/parsing/html-utils";
+import { extractBlockText } from "@/lib/parsing/html-block-text";
 
 describe("buildDocumentUrl", () => {
   it("targets the AN open data endpoint, not the retired docparl host", () => {
@@ -64,7 +64,8 @@ describe("extractExposeDesMotifs on open data HTML", () => {
   it("decodes entities coming from the HTML source", () => {
     const html = documentHtml("L&rsquo;acc&egrave;s aux d&eacute;bats " + exposeBody);
 
-    expect(extractExposeDesMotifs(extractBlockText(html))).toContain("L'accès aux débats");
+    // &rsquo; is U+2019, the typographic apostrophe the AN actually uses.
+    expect(extractExposeDesMotifs(extractBlockText(html))).toContain("L\u2019accès aux débats");
   });
 
   it("keeps paragraph breaks so the stored text stays readable", () => {

@@ -152,39 +152,6 @@ export function extractText(html: string): string {
 }
 
 /**
- * Extract text from HTML while keeping block boundaries as line breaks.
- *
- * `extractText` collapses a whole document onto a single line, which is fine for
- * a name or a title and destructive for a long document: the exposé des motifs
- * of a bill loses every paragraph break and becomes an unreadable wall of text.
- * This variant turns block-level closing tags into newlines, then collapses runs
- * of blank lines so the result keeps its paragraphs without the source's
- * indentation noise.
- *
- * @example
- * extractBlockText("<p>Mesdames,</p><p>Messieurs,</p>") // "Mesdames,\nMessieurs,"
- */
-export function extractBlockText(html: string): string {
-  if (!html) return "";
-
-  const withBreaks = html
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<(script|style|head)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|li|tr|h[1-6]|ul|ol|table|blockquote|section|article)\s*>/gi, "\n")
-    .replace(/<[^>]+>/g, "");
-
-  return decodeHtmlEntities(withBreaks)
-    .replace(/\r\n?/g, "\n")
-    .replace(/[^\S\n]+/g, " ")
-    .split("\n")
-    .map((line) => line.trim())
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-/**
  * Extract a specific attribute value from an HTML element
  *
  * @example

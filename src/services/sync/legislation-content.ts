@@ -11,7 +11,7 @@
  */
 
 import { db } from "@/lib/db";
-import { extractBlockText } from "@/lib/parsing/html-utils";
+import { extractBlockText } from "@/lib/parsing/html-block-text";
 import { ASSEMBLEE_OPENDATA_RATE_LIMIT_MS } from "@/config/rate-limits";
 import {
   HTTPClient,

@@ -4,6 +4,7 @@ import {
   stripHtml,
   normalizeWhitespace,
   extractText,
+  extractBlockText,
   extractAttribute,
   containsHtml,
 } from "./html-utils";
@@ -159,6 +160,37 @@ describe("extractText", () => {
   it("should handle empty input", () => {
     expect(extractText("")).toBe("");
     expect(extractText(null as unknown as string)).toBe("");
+  });
+});
+
+describe("extractBlockText", () => {
+  it("should turn block boundaries into line breaks", () => {
+    expect(extractBlockText("<p>Mesdames,</p><p>Messieurs,</p>")).toBe("Mesdames,\nMessieurs,");
+    expect(extractBlockText("Ligne 1<br>Ligne 2")).toBe("Ligne 1\nLigne 2");
+  });
+
+  it("should keep inline markup on the same line", () => {
+    expect(extractBlockText("<p>Le <b>projet</b> de loi</p>")).toBe("Le projet de loi");
+  });
+
+  it("should decode entities", () => {
+    expect(extractBlockText("<p>d&eacute;put&eacute;s &amp; s&eacute;nateurs</p>")).toBe(
+      "députés & sénateurs"
+    );
+  });
+
+  it("should collapse blank runs left by the source indentation", () => {
+    expect(extractBlockText("<div>\n  <p>A</p>\n\n\n  <p>B</p>\n</div>")).toBe("A\n\nB");
+  });
+
+  it("should drop scripts, styles and comments", () => {
+    const html = "<head><style>p{color:red}</style></head><body><!-- note --><p>Texte</p></body>";
+    expect(extractBlockText(html)).toBe("Texte");
+  });
+
+  it("should handle empty inputs", () => {
+    expect(extractBlockText("")).toBe("");
+    expect(extractBlockText(null as unknown as string)).toBe("");
   });
 });
 

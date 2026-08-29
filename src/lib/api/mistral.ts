@@ -22,6 +22,7 @@ export interface MistralMessage {
 }
 
 export interface MistralResponse {
+  model?: string;
   choices: Array<{
     message: { role: string; content: string };
     finish_reason: string;

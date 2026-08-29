@@ -43,10 +43,12 @@ WITH raw_rows AS (
 UPDATE "Measure" m
 SET "slug" = CASE
   WHEN ranked.ordinal = 1 THEN ranked.base_slug
+  -- The normalized base can never contain "--". Reserve that separator and append the unique
+  -- measure id so a generated duplicate cannot collide with a natural slug or another prefix.
   ELSE LEFT(
     ranked.base_slug,
-    140 - LENGTH(ranked.ordinal::TEXT) - 1
-  ) || '-' || ranked.ordinal::TEXT
+    140 - LENGTH(ranked.id) - 2
+  ) || '--' || ranked.id
 END
 FROM ranked
 WHERE ranked.id = m.id;

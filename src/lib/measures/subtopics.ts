@@ -10,7 +10,6 @@ import { invalidateMeasureTags } from "@/lib/measures/cache";
 import { MeasureValidationError } from "@/lib/measures/errors";
 
 const CLASSIFIER_MODEL = "mistral-small-latest";
-export const MEASURE_SUBTOPIC_CLASSIFIER_VERSION = `${CLASSIFIER_MODEL}:v1`;
 
 function sanitizeMeasureText(value: string): string {
   return value
@@ -45,10 +44,19 @@ export async function syncMeasureSubtopicTaxonomy(): Promise<void> {
 }
 
 type SuggestedSubtopic = { slug: string; confidence: number };
+type ClassificationResult = {
+  suggestions: SuggestedSubtopic[];
+  classifierVersion: string;
+};
 
-async function classifySubtopics(text: string, theme: ThemeCategory): Promise<SuggestedSubtopic[]> {
+async function classifySubtopics(
+  text: string,
+  theme: ThemeCategory
+): Promise<ClassificationResult> {
   const allowed = getMeasureSubtopicsForTheme(theme);
-  if (allowed.length === 0) return [];
+  if (allowed.length === 0) {
+    return { suggestions: [], classifierVersion: `${CLASSIFIER_MODEL}:v1` };
+  }
 
   const vocabulary = allowed
     .map((item) => `${item.slug}: ${item.label}. ${item.description}`)
@@ -75,17 +83,21 @@ Réponds uniquement avec un objet JSON de cette forme :
   const input = parseMistralJSON<{ subtopics?: SuggestedSubtopic[] }>(extractMistralText(response));
   const allowedSlugs = new Set(allowed.map((item) => item.slug));
   const candidates = Array.isArray(input.subtopics) ? input.subtopics : [];
+  const resolvedModel = response.model?.trim() || CLASSIFIER_MODEL;
 
-  return candidates
-    .filter(
-      (item) =>
-        allowedSlugs.has(item.slug) &&
-        Number.isFinite(item.confidence) &&
-        item.confidence >= 0 &&
-        item.confidence <= 1
-    )
-    .filter((item, index, all) => all.findIndex((other) => other.slug === item.slug) === index)
-    .slice(0, 3);
+  return {
+    suggestions: candidates
+      .filter(
+        (item) =>
+          allowedSlugs.has(item.slug) &&
+          Number.isFinite(item.confidence) &&
+          item.confidence >= 0 &&
+          item.confidence <= 1
+      )
+      .filter((item, index, all) => all.findIndex((other) => other.slug === item.slug) === index)
+      .slice(0, 3),
+    classifierVersion: `${resolvedModel}:v1`,
+  };
 }
 
 export type ProposeSubtopicsResult = {
@@ -126,9 +138,8 @@ export async function proposeMeasureRevisionSubtopics(
   const hasApproved = revision.subtopics.some((item) => item.status === "APPROVED");
   if (hasApproved) return { revisionId, suggestions: [], skipped: true };
 
-  const suggestions = (await classifySubtopics(revision.text, revision.measure.theme)).filter(
-    (item) => !fixedSlugs.has(item.slug)
-  );
+  const classification = await classifySubtopics(revision.text, revision.measure.theme);
+  const suggestions = classification.suggestions.filter((item) => !fixedSlugs.has(item.slug));
   if (options.dryRun) return { revisionId, suggestions, skipped: false };
 
   if (!options.skipTaxonomySync) await syncMeasureSubtopicTaxonomy();
@@ -154,7 +165,7 @@ export async function proposeMeasureRevisionSubtopics(
                   status: "SUGGESTED" as const,
                   confidence: suggestion.confidence,
                   method: "AI_ASSISTED",
-                  classifierVersion: MEASURE_SUBTOPIC_CLASSIFIER_VERSION,
+                  classifierVersion: classification.classifierVersion,
                   taxonomyVersion: MEASURE_SUBTOPIC_TAXONOMY_VERSION,
                 },
               ]
@@ -170,7 +181,7 @@ export async function proposeMeasureRevisionSubtopics(
         entityId: revisionId,
         changes: {
           slugs: suggestions.map((suggestion) => suggestion.slug),
-          classifierVersion: MEASURE_SUBTOPIC_CLASSIFIER_VERSION,
+          classifierVersion: classification.classifierVersion,
           taxonomyVersion: MEASURE_SUBTOPIC_TAXONOMY_VERSION,
         },
         userId: options.proposedBy ?? "system",

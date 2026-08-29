@@ -56,7 +56,7 @@ describe("classification des sous-sujets de mesure", () => {
       measure: { theme: "LOGEMENT_URBANISME" },
       subtopics: [],
     });
-    mocks.callMistral.mockResolvedValue({ choices: [] });
+    mocks.callMistral.mockResolvedValue({ model: "mistral-small-2506", choices: [] });
     mocks.extractMistralText.mockReturnValue("{}");
     mocks.parseMistralJSON.mockReturnValue({
       subtopics: [
@@ -118,6 +118,23 @@ describe("classification des sous-sujets de mesure", () => {
         action: "PROPOSE_SUBTOPICS",
         entityId: "revision-1",
         changes: expect.objectContaining({ slugs: [] }),
+      }),
+    });
+  });
+
+  it("mémorise le modèle résolu renvoyé par Mistral", async () => {
+    mocks.findSubtopics.mockResolvedValue([{ id: "subtopic-1", slug: "loyers" }]);
+    const { proposeMeasureRevisionSubtopics } = await import("../subtopics");
+
+    await proposeMeasureRevisionSubtopics("revision-1", { skipTaxonomySync: true });
+
+    expect(mocks.createAssignments).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ classifierVersion: "mistral-small-2506:v1" })],
+      skipDuplicates: true,
+    });
+    expect(mocks.createAudit).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        changes: expect.objectContaining({ classifierVersion: "mistral-small-2506:v1" }),
       }),
     });
   });

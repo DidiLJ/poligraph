@@ -306,15 +306,6 @@ export function hasValidAdminSession(request: NextRequest): boolean {
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const pathname = request.nextUrl.pathname;
 
-  // Resolve legacy CUID measure URLs in a Node route handler. The rewrite stays internal; that
-  // handler performs the database lookup and returns a crawler-visible HTTP 308.
-  const legacyMeasureId = getLegacyMeasureId(pathname);
-  if (legacyMeasureId !== null) {
-    const target = request.nextUrl.clone();
-    target.pathname = `/elections/presidentielle-2027/mesures/par-id/${legacyMeasureId}`;
-    return NextResponse.rewrite(target);
-  }
-
   // Canonicalize the legacy /parlement?<filters> listing to /parlement/votes (HTTP 308).
   if (pathname === "/parlement") {
     const target = buildVotesListingRedirect(request.nextUrl.searchParams);
@@ -351,6 +342,15 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
         });
       }
     }
+  }
+
+  // Resolve legacy CUID measure URLs in a Node route handler after preview authentication. The
+  // rewrite stays internal; that handler performs the lookup and returns a visible HTTP 308.
+  const legacyMeasureId = getLegacyMeasureId(pathname);
+  if (legacyMeasureId !== null) {
+    const target = request.nextUrl.clone();
+    target.pathname = `/elections/presidentielle-2027/mesures/par-id/${legacyMeasureId}`;
+    return NextResponse.rewrite(target);
   }
 
   // Protect admin API routes (except auth endpoint).

@@ -16,7 +16,7 @@ const makeInput = (index: number) => ({
 describe("écritures groupées des documents de recherche", () => {
   it("borne chaque lot à cent documents", async () => {
     const tx = {
-      searchDocument: { createMany: vi.fn(async () => ({ count: 0 })) },
+      searchDocument: { createMany: vi.fn(async (_args: { data: unknown[] }) => ({ count: 0 })) },
       $executeRaw: vi.fn(async () => 0),
     };
 
@@ -26,8 +26,8 @@ describe("écritures groupées des documents de recherche", () => {
     );
 
     expect(tx.searchDocument.createMany).toHaveBeenCalledTimes(2);
-    expect(tx.searchDocument.createMany.mock.calls[0]?.[0].data).toHaveLength(100);
-    expect(tx.searchDocument.createMany.mock.calls[1]?.[0].data).toHaveLength(1);
+    expect(tx.searchDocument.createMany.mock.calls[0]?.[0]?.data).toHaveLength(100);
+    expect(tx.searchDocument.createMany.mock.calls[1]?.[0]?.data).toHaveLength(1);
     expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
   });
 

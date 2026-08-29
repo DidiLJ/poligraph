@@ -28,7 +28,7 @@ import { getISOWeekString, getWeeklyRecap, parseISOWeekString } from "../recap";
 
 function rawSqlText(call: unknown[]): string {
   const query = call[0] as { sql?: string } | readonly string[];
-  if (!Array.isArray(query)) return query.sql ?? "";
+  if (!Array.isArray(query)) return (query as { sql?: string }).sql ?? "";
   const strings = query;
   const values = call.slice(1);
   return strings

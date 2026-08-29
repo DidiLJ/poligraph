@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowRight, ExternalLink, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+  ExternalLink,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +30,7 @@ const ELECTION_SLUG = "presidentielle-2027";
 const PAGE_SIZE = 20;
 const MAX_PAGE = 10_000;
 const MAX_QUERY_LENGTH = 120;
-const THEME_ENTRIES = [...THEMES_IN_ORDER, "SOCIAL_TRAVAIL" as const].map(
+const THEME_ENTRIES = THEMES_IN_ORDER.map(
   (theme) => [theme, THEME_CATEGORY_LABELS[theme]] as const
 );
 
@@ -173,14 +180,24 @@ export default async function CandidateMeasuresPage({ params, searchParams }: Pa
           </p>
         </header>
 
-        <section aria-labelledby="filters-title" className="rounded-2xl border bg-card p-4 sm:p-6">
-          <h2 id="filters-title" className="font-display text-lg font-bold">
-            Rechercher dans ce programme
-          </h2>
+        <details className="group rounded-2xl border bg-card">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden sm:px-5">
+            <SlidersHorizontal aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
+            <span className="font-display text-base font-bold">Filtrer et rechercher</span>
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground-strong">
+                {activeFilterCount} {activeFilterCount === 1 ? "filtre actif" : "filtres actifs"}
+              </span>
+            )}
+            <ChevronDown
+              aria-hidden="true"
+              className="ml-auto h-5 w-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
+            />
+          </summary>
           <form
             action={basePath}
             method="get"
-            className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_14rem_14rem_auto]"
+            className="grid gap-4 border-t border-border px-4 py-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_12rem_12rem_auto] sm:px-5"
           >
             <div>
               <label htmlFor="measure-query" className="mb-1.5 block text-sm font-bold">
@@ -214,7 +231,7 @@ export default async function CandidateMeasuresPage({ params, searchParams }: Pa
                 <option value="">Toutes les thématiques</option>
                 {THEME_ENTRIES.map(([code, label]) => (
                   <option key={code} value={themeToSlug(code)}>
-                    {code === "SOCIAL_TRAVAIL" ? `${label} (ancienne classification)` : label}
+                    {label}
                   </option>
                 ))}
               </Select>
@@ -246,22 +263,19 @@ export default async function CandidateMeasuresPage({ params, searchParams }: Pa
             >
               Filtrer
             </button>
+            {activeFilterCount > 0 && (
+              <div className="flex items-center md:col-span-2 lg:col-span-4">
+                <Link
+                  href={basePath}
+                  prefetch={false}
+                  className={cn(buttonVariants({ variant: "link" }), "min-h-11 px-0")}
+                >
+                  Effacer les filtres
+                </Link>
+              </div>
+            )}
           </form>
-          {activeFilterCount > 0 && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-              <p role="status" className="text-sm text-muted-foreground-strong">
-                {result.total} {result.total === 1 ? "mesure trouvée" : "mesures trouvées"}
-              </p>
-              <Link
-                href={basePath}
-                prefetch={false}
-                className={cn(buttonVariants({ variant: "outline" }), "min-h-11")}
-              >
-                Effacer les filtres
-              </Link>
-            </div>
-          )}
-        </section>
+        </details>
 
         <section aria-labelledby="results-title">
           <div className="flex flex-wrap items-end justify-between gap-2 border-b pb-4">

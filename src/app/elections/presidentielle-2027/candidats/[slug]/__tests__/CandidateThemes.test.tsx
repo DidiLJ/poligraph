@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { CandidateFicheDetail } from "@/lib/data/politician-candidacy";
-import { CandidateThemes } from "../_components/CandidateFicheBlocks";
+import { CandidateThemes, CandidateTransparency } from "../_components/CandidateFicheBlocks";
 
 type Theme = CandidateFicheDetail["themes"][number];
 
@@ -108,6 +108,23 @@ describe("CandidateThemes", () => {
     );
   });
 
+  it("ouvre directement la mesure quand un thème d'un grand programme n'en contient qu'une", () => {
+    render(
+      <CandidateThemes
+        themes={[theme()]}
+        electionSlug="presidentielle-2027"
+        candidateSlug="camille-riviere"
+        measureCount={16}
+        lastReviewedAt={null}
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "Voir cette mesure" })).toHaveAttribute(
+      "href",
+      "/elections/presidentielle-2027/mesures/rouvrir-des-maternites"
+    );
+  });
+
   it("ne perd aucune mesure au regroupement, sur plusieurs sujets", () => {
     render(
       <CandidateThemes
@@ -203,5 +220,28 @@ describe("CandidateThemes", () => {
       />
     );
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("CandidateTransparency", () => {
+  it("ne présente pas toutes les procédures comme un compteur à charge", () => {
+    render(
+      <CandidateTransparency
+        declarationCount={2}
+        probityConvictionCount={1}
+        probityNonDefinitiveConvictionCount={1}
+        politicianSlug="camille-riviere"
+      />
+    );
+
+    expect(screen.getByText("1 condamnation documentée")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Transparence et probité" })).toBeInTheDocument();
+    expect(screen.getByText(/au moins en première instance/)).toBeInTheDocument();
+    expect(screen.getByText(/Présomption d'innocence/)).toBeInTheDocument();
+    expect(screen.queryByText(/procédures documentées/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voir le détail sur sa fiche" })).toHaveAttribute(
+      "href",
+      "/politiques/camille-riviere"
+    );
   });
 });

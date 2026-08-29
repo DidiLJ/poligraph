@@ -183,6 +183,10 @@ export function CandidateThemes({
 
       <ul className="divide-y divide-border">
         {themes.map((t) => {
+          const singleMeasureUrl =
+            t.measureCount === 1 && t.measures[0]
+              ? `/elections/${electionSlug}/mesures/${t.measures[0].slug}`
+              : null;
           return (
             <li key={t.theme} className="py-5 first:pt-0 last:pb-0">
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -228,7 +232,7 @@ export function CandidateThemes({
                     </ul>
                   )}
                   <Link
-                    href={`${programmeUrl}?theme=${t.slug}`}
+                    href={singleMeasureUrl ?? `${programmeUrl}?theme=${t.slug}`}
                     prefetch={false}
                     className={cn(
                       buttonVariants({ variant: "outline" }),
@@ -246,18 +250,28 @@ export function CandidateThemes({
       </ul>
 
       <div className="border-t border-border pt-4 text-sm">
-        <Link
-          href={programmeUrl}
-          prefetch={false}
-          className={cn(
-            buttonVariants({ variant: showAllMeasures ? "link" : "default" }),
-            "min-h-11 whitespace-normal px-0 text-left font-bold",
-            !showAllMeasures && "w-full px-4 sm:w-auto"
-          )}
-        >
-          Explorer {measureCount === 1 ? "la mesure" : `les ${measureCount} mesures`}
-          <ArrowRight aria-hidden="true" />
-        </Link>
+        <div className="flex flex-wrap items-center gap-x-5">
+          <Link
+            href={programmeUrl}
+            prefetch={false}
+            className={cn(
+              buttonVariants({ variant: showAllMeasures ? "link" : "default" }),
+              "min-h-11 whitespace-normal px-0 text-left font-bold",
+              !showAllMeasures && "w-full px-4 sm:w-auto"
+            )}
+          >
+            Explorer {measureCount === 1 ? "la mesure" : `les ${measureCount} mesures`}
+            <ArrowRight aria-hidden="true" />
+          </Link>
+          <Link
+            href={`/elections/${electionSlug}/comparer?candidat=${candidateSlug}`}
+            prefetch={false}
+            className={MEASURE_ACTION_CLASS_NAME}
+          >
+            Comparer avec une autre candidature
+            <ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
         {lastReviewedAt !== null && (
           <span className="text-muted-foreground">
             {" "}
@@ -361,19 +375,24 @@ export function CandidateRecentVotes({
  * The caveat is required, not editorial politeness: an ongoing procedure is not a conviction, and
  * a bare number next to a candidate's name invites exactly that reading.
  */
-export function CandidateIntegrity({
+export function CandidateTransparency({
   declarationCount,
-  affairCount,
+  probityConvictionCount,
+  probityNonDefinitiveConvictionCount,
   politicianSlug,
 }: {
   declarationCount: number;
-  affairCount: number;
+  probityConvictionCount: number;
+  probityNonDefinitiveConvictionCount: number;
   politicianSlug: string;
 }) {
   return (
-    <section aria-labelledby="integrite" className="space-y-3 rounded-xl border bg-card p-4 md:p-6">
-      <h2 id="integrite" className="font-display text-xl font-bold tracking-tight">
-        Intégrité
+    <section
+      aria-labelledby="transparence-probite"
+      className="space-y-3 rounded-xl border bg-card p-4 md:p-6"
+    >
+      <h2 id="transparence-probite" className="font-display text-xl font-bold tracking-tight">
+        Transparence et probité
       </h2>
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-border px-4 py-3">
@@ -385,18 +404,27 @@ export function CandidateIntegrity({
           </dd>
         </div>
         <div className="rounded-lg border border-border px-4 py-3">
-          <dt className="text-xs text-muted-foreground">Procédures judiciaires</dt>
+          <dt className="text-xs text-muted-foreground">Atteintes à la probité</dt>
           <dd className="text-sm font-bold">
-            {affairCount === 0
-              ? "Aucune procédure documentée"
-              : `${affairCount} ${affairCount === 1 ? "procédure documentée" : "procédures documentées"}`}
+            {probityConvictionCount === 0
+              ? "Aucune condamnation documentée"
+              : `${probityConvictionCount} ${probityConvictionCount === 1 ? "condamnation documentée" : "condamnations documentées"}`}
           </dd>
         </div>
       </dl>
       <p className="text-xs text-muted-foreground">
-        Quand une procédure existe, son statut exact figure sur sa fiche. Une mise en cause ne vaut
-        pas condamnation.
+        Ce compteur ne retient que les condamnations prononcées au moins en première instance pour
+        atteinte à la probité. Les autres procédures et leur statut exact figurent sur la fiche.
       </p>
+      {probityNonDefinitiveConvictionCount > 0 && (
+        <p className="text-xs text-muted-foreground-strong">
+          Présomption d{"'"}innocence :{" "}
+          {probityNonDefinitiveConvictionCount === 1
+            ? "une condamnation comptée n'est pas définitive"
+            : `${probityNonDefinitiveConvictionCount} condamnations comptées ne sont pas définitives`}
+          .
+        </p>
+      )}
       <Link
         href={`/politiques/${politicianSlug}`}
         prefetch={false}

@@ -45,7 +45,7 @@ describe("page complète de recherche présidentielle", () => {
     expect(search).toHaveBeenCalledWith("presidentielle-2027", "logement", 50);
   });
 
-  it("présente un sujet comme un résultat sans message vide ni promesse de comparabilité", async () => {
+  it("présente un thème comme un résultat sans message vide ni promesse de comparabilité", async () => {
     search.mockResolvedValue({
       query: "Logement",
       total: 1,
@@ -54,7 +54,7 @@ describe("page complète de recherche présidentielle", () => {
           type: "subject",
           theme: "LOGEMENT_URBANISME",
           label: "Logement & Urbanisme",
-          url: "/elections/presidentielle-2027/sujets/logement-urbanisme",
+          url: "/elections/presidentielle-2027/themes/logement-urbanisme",
         },
       ],
       candidacies: [],
@@ -67,13 +67,13 @@ describe("page complète de recherche présidentielle", () => {
       })
     );
 
-    expect(screen.getByRole("heading", { level: 2, name: "Sujets" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Thématiques" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Logement & Urbanisme/ })).toHaveAttribute(
       "href",
-      "/elections/presidentielle-2027/sujets/logement-urbanisme"
+      "/elections/presidentielle-2027/themes/logement-urbanisme"
     );
     expect(screen.queryByText(/Aucun résultat/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/sujet comparable/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/thème comparable/)).not.toBeInTheDocument();
   });
 
   it("reprend l'état vide prudent du handoff", async () => {

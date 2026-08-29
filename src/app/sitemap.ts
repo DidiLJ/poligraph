@@ -5,7 +5,7 @@ import { Prisma } from "@/generated/prisma";
 import { SITEMAP_SHARD_TAGS } from "@/lib/seo/sitemap-tags";
 import { db } from "@/lib/db";
 import { DEPARTMENTS, getDepartmentSlug } from "@/config/departments";
-import { getAllThemeSlugs } from "@/lib/theme-utils";
+import { getAllLegacyThemeSlugs } from "@/lib/theme-utils";
 import { SITE_URL } from "@/config/site";
 import { getWeekStart, getISOWeekString } from "@/lib/data/recap";
 import { loadThemesIndex } from "@/lib/data/themes-index";
@@ -455,7 +455,7 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
     presidentielleHubPublishable && presidentialThemesIndex !== null
       ? [
           {
-            url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/sujets`,
+            url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/themes`,
             lastModified: presidentielle2027?.updatedAt ?? new Date(),
             changeFrequency: "weekly" as const,
             priority: 0.5,
@@ -463,7 +463,7 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
           ...presidentialThemesIndex.themes
             .filter((theme) => theme.publishable)
             .map((theme) => ({
-              url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/sujets/${theme.slug}`,
+              url: `${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/themes/${theme.slug}`,
               lastModified: theme.lastReviewedAt ?? presidentielle2027?.updatedAt ?? new Date(),
               changeFrequency: "weekly" as const,
               priority: 0.6,
@@ -534,7 +534,7 @@ async function buildAffairsPartiesElectionsDepartmentsSitemap(): Promise<Metadat
       changeFrequency: "weekly",
       priority: 0.7,
     },
-    ...getAllThemeSlugs().map((slug) => ({
+    ...getAllLegacyThemeSlugs().map((slug) => ({
       url: `${SITE_URL}/parlement/votes/themes/${slug}`,
       lastModified: new Date(),
       changeFrequency: "weekly" as const,

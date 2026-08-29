@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PUBLICATION_STATE_LABELS, THEME_CATEGORY_LABELS } from "@/config/labels";
+import { PUBLICATION_STATE_LABELS } from "@/config/labels";
 import type { ThemeCategory } from "@/generated/prisma";
 import { isAuthenticated } from "@/lib/auth";
 import type { PublicationState } from "@/lib/measures/moderation-state";
+import { THEMES_IN_ORDER } from "@/lib/presidentielle/themes";
 import { BatchPublishPanel } from "./_components/BatchPublishPanel";
 import { BatchReviewPanel } from "./_components/BatchReviewPanel";
 import { QueueFilters, type QueueFilterState } from "./_components/QueueFilters";
@@ -20,7 +21,7 @@ export const metadata = {
 const PAGE_SIZE = 25;
 
 const PUBLICATION_KEYS = Object.keys(PUBLICATION_STATE_LABELS) as PublicationState[];
-const THEME_KEYS = Object.keys(THEME_CATEGORY_LABELS) as ThemeCategory[];
+const THEME_KEYS: readonly ThemeCategory[] = THEMES_IN_ORDER;
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -113,7 +114,7 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
           className="rounded border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40"
         >
           Les compteurs et les filtres d&apos;étape portent sur les 500 premières mesures de la
-          sélection, pas sur la totalité. Restreindre par sujet ou par candidature pour retrouver
+          sélection, pas sur la totalité. Restreindre par thème ou par candidature pour retrouver
           des chiffres complets.
         </p>
       )}

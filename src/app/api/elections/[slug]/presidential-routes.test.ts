@@ -194,7 +194,7 @@ describe("GET /api/elections/[slug]/measures", () => {
             code: "SANTE",
             label: "Santé",
             slug: "sante",
-            publicUrl: "/elections/presidentielle-2027/sujets/sante",
+            publicUrl: "/elections/presidentielle-2027/themes/sante",
           },
           attribution: { code: "PERSONAL", label: "Formulée personnellement" },
           candidacy: {
@@ -271,7 +271,7 @@ describe("GET /api/elections/[slug]/measures", () => {
             code: "SANTE",
             label: "Santé",
             slug: "sante",
-            publicUrl: "/elections/presidentielle-2027/sujets/sante",
+            publicUrl: "/elections/presidentielle-2027/themes/sante",
           },
           attribution: { code: "PERSONAL", label: "Formulée personnellement" },
           candidacy: {
@@ -325,6 +325,21 @@ describe("GET /api/elections/[slug]/measures", () => {
     expect(await response.json()).toEqual({ error });
     expect(mocks.getPublicElectionIdentity).not.toHaveBeenCalled();
     expect(mocks.listPublicPresidentialMeasures).not.toHaveBeenCalled();
+  });
+
+  it("garde le thème historique lisible pendant la requalification présidentielle", async () => {
+    const response = await getMeasures(
+      new NextRequest(
+        "https://poligraph.fr/api/elections/presidentielle-2027/measures?theme=social-travail"
+      ),
+      context
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.getPublicElectionIdentity).toHaveBeenCalledWith("presidentielle-2027");
+    expect(mocks.listPublicPresidentialMeasures).toHaveBeenCalledWith(
+      expect.objectContaining({ theme: "SOCIAL_TRAVAIL" })
+    );
   });
 
   it("retourne 404 pour une élection ou une candidature absente", async () => {

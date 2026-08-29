@@ -54,7 +54,7 @@ export default async function PresidentialMeasurePage({ params }: PageProps) {
   if (measure === null) notFound();
 
   const canonical = "/elections/" + ELECTION_SLUG + "/mesures/" + measure.slug;
-  const themeUrl = "/elections/" + ELECTION_SLUG + "/sujets/" + themeToSlug(measure.theme);
+  const themeUrl = "/elections/" + ELECTION_SLUG + "/themes/" + themeToSlug(measure.theme);
   const candidateUrl = "/elections/" + ELECTION_SLUG + "/candidats/" + measure.candidate.slug;
   const themeLabel = THEME_CATEGORY_LABELS[measure.theme];
   const seoDescription = buildMeasureSeoDescription({

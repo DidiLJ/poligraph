@@ -326,10 +326,10 @@ describe("SubjectComparison", () => {
     );
 
     // Une seule candidature porte encore une mesure, pas deux.
-    expect(screen.getByText(/1 candidature porte une mesure sur ce sujet/)).toBeInTheDocument();
+    expect(screen.getByText(/1 candidature porte une mesure sur ce thème/)).toBeInTheDocument();
     expect(screen.getByText(/réparties entre 1 candidature/)).toBeInTheDocument();
     // Et sous le nom de celle dont la mesure est retirée, le compte tombe à zéro.
-    expect(screen.getAllByText(/aucune mesure sur ce sujet/).length).toBe(2);
+    expect(screen.getAllByText(/aucune mesure sur ce thème/).length).toBe(2);
   });
 
   it("cite jusqu'à trois mesures et ne replie que les suivantes", () => {
@@ -347,7 +347,7 @@ describe("SubjectComparison", () => {
     }
     // La quatrième est repliée : présente dans le DOM (le `<details>` reste indexable et
     // opérable au clavier), annoncée pour ce qu'elle est.
-    expect(screen.getAllByText("Lire la dernière mesure sur ce sujet")).toHaveLength(2);
+    expect(screen.getAllByText("Lire la dernière mesure sur ce thème")).toHaveLength(2);
     expect(screen.getAllByText(/Mesure 4\./)).toHaveLength(2);
   });
 
@@ -495,9 +495,9 @@ describe("SubjectComparison", () => {
       />
     );
 
-    expect(screen.queryByText(/aucune mesure sur ce sujet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/aucune mesure sur ce thème/)).not.toBeInTheDocument();
     // La phrase qui reste est celle qui nomme le thème, donc la plus informative des deux.
-    expect(screen.getAllByText(/Aucune mesure publiée sur Logement & Urbanisme/)).toHaveLength(2);
+    expect(screen.getAllByText(/Aucune mesure publiée sur Logement/)).toHaveLength(2);
   });
 
   it("garde la distinction entre une mesure retirée et aucune mesure", () => {
@@ -520,7 +520,7 @@ describe("SubjectComparison", () => {
       />
     );
 
-    expect(screen.getAllByText(/aucune mesure sur ce sujet/)).toHaveLength(2);
+    expect(screen.getAllByText(/aucune mesure sur ce thème/)).toHaveLength(2);
   });
 
   it("explique les mentions après les résultats, avec les libellés réels", () => {
@@ -577,7 +577,7 @@ describe("SubjectComparison", () => {
     }
     // Et le repli propose les deux sens : sans « Replier », les mesures ouvertes n'ont plus de
     // chemin de retour visible vers la forme courte.
-    expect(screen.getAllByText("Lire les 2 autres mesures sur ce sujet")).toHaveLength(2);
+    expect(screen.getAllByText("Lire les 2 autres mesures sur ce thème")).toHaveLength(2);
     expect(screen.getAllByText("Replier ces 2 mesures")).toHaveLength(2);
   });
 
@@ -587,8 +587,8 @@ describe("SubjectComparison", () => {
     );
     render(<SubjectComparison data={data({ candidates: [entry("Alix", trois)] })} />);
 
-    expect(screen.queryByText(/Lire la dernière mesure sur ce sujet/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/autres mesures sur ce sujet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lire la dernière mesure sur ce thème/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/autres mesures sur ce thème/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Replier/)).not.toBeInTheDocument();
   });
 

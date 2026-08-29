@@ -306,14 +306,14 @@ type PreparedMeasureCandidateBase = {
   draftContext: {
     candidacyId: string;
     programEditionId: string;
-    attribution: "PERSONAL";
+    attribution: "PERSONAL" | "PARTY_PROGRAM";
     validFrom: string;
     precision: "OBJECTIF_SANS_CHIFFRE" | null;
     extractionMethod: "AI_ASSISTED";
     extractorVersion: string;
   };
   source: {
-    sourceKind: "PROGRAMME_CANDIDAT" | "PROPOSITIONS_CANDIDAT";
+    sourceKind: "PROGRAMME_CANDIDAT" | "PROPOSITIONS_CANDIDAT" | "PROGRAMME_PARTI";
     tier: "PRIMARY";
     url: string;
     pages: number[];
@@ -793,6 +793,7 @@ export function prepareMeasureCandidate(
     candidacyId: string;
     documentType: ProgramDocumentType;
     publishedAt: Date;
+    attribution?: "PERSONAL" | "PARTY_PROGRAM";
     possibleDuplicate?: boolean;
   }
 ): PreparedMeasureCandidate {
@@ -806,10 +807,13 @@ export function prepareMeasureCandidate(
   const blockers: TechnicalBlocker[] = [];
   const reviewableInvalidAnchor = invalidAnchorCanReachReview(proposal);
   if (context.candidacyId.trim() === "") blockers.push("DOCUMENT_NOT_ATTRIBUTABLE");
-  if (
-    context.documentType !== "CANDIDATE_PROGRAM_2027" &&
-    context.documentType !== "CANDIDATE_PROPOSALS_2027"
-  ) {
+  const attribution = context.attribution ?? "PERSONAL";
+  const admissibleDocument =
+    (attribution === "PERSONAL" &&
+      (context.documentType === "CANDIDATE_PROGRAM_2027" ||
+        context.documentType === "CANDIDATE_PROPOSALS_2027")) ||
+    (attribution === "PARTY_PROGRAM" && context.documentType === "PARTY_PLATFORM_CURRENT");
+  if (!admissibleDocument) {
     blockers.push("DOCUMENT_TYPE_NOT_ADMISSIBLE");
   }
   if (!proposal.evidence) blockers.push("MISSING_EVIDENCE");
@@ -861,7 +865,7 @@ export function prepareMeasureCandidate(
     draftContext: {
       candidacyId: context.candidacyId,
       programEditionId: proposal.evidence?.programEditionId ?? "",
-      attribution: "PERSONAL" as const,
+      attribution,
       validFrom: context.publishedAt.toISOString(),
       precision: classification === "OBJECTIVE" ? ("OBJECTIF_SANS_CHIFFRE" as const) : null,
       extractionMethod: "AI_ASSISTED" as const,
@@ -869,9 +873,11 @@ export function prepareMeasureCandidate(
     },
     source: {
       sourceKind:
-        context.documentType === "CANDIDATE_PROGRAM_2027"
-          ? ("PROGRAMME_CANDIDAT" as const)
-          : ("PROPOSITIONS_CANDIDAT" as const),
+        attribution === "PARTY_PROGRAM"
+          ? ("PROGRAMME_PARTI" as const)
+          : context.documentType === "CANDIDATE_PROGRAM_2027"
+            ? ("PROGRAMME_CANDIDAT" as const)
+            : ("PROPOSITIONS_CANDIDAT" as const),
       tier: "PRIMARY" as const,
       url: proposal.evidence?.documentUrl ?? "",
       pages: proposal.evidence ? [...proposal.evidence.pages] : [],

@@ -215,6 +215,31 @@ describe("frontière de préparation éditoriale V6", () => {
     expect(candidate.importFingerprint).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it("prépare un programme de parti actuel avec une attribution explicite", () => {
+    const source = unit("p1-b01-party", 0, "Nous créerons une caisse publique de formation.");
+    const evaluated = evaluate(
+      [source],
+      extraction([source.id], "Créer une caisse publique de formation.", {
+        theme: "EMPLOI_TRAVAIL",
+      }),
+      { ...CONTEXT, documentType: "PARTY_PLATFORM_CURRENT" }
+    );
+
+    const candidate = prepareMeasureCandidate(evaluated, "a".repeat(64), {
+      candidacyId: "candidacy-party",
+      documentType: "PARTY_PLATFORM_CURRENT",
+      publishedAt: new Date("2025-09-07T00:00:00.000Z"),
+      attribution: "PARTY_PROGRAM",
+    });
+
+    expect(candidate).toMatchObject({
+      reviewReadiness: "READY_FOR_REVIEW",
+      blockers: [],
+      draftContext: { attribution: "PARTY_PROGRAM" },
+      source: { sourceKind: "PROGRAMME_PARTI", tier: "PRIMARY" },
+    });
+  });
+
   it("prépare WARNING quand l'attribution ressemble à un diagnostic", () => {
     const source = unit("p2-b01", 0, "Nous devons réduire les inégalités territoriales.");
     const candidate = prepare(

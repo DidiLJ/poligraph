@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { AddToCalendar } from "@/components/elections/AddToCalendar";
-import { EventJsonLd } from "@/components/seo/JsonLd";
+import { CollectionPageJsonLd, EventJsonLd } from "@/components/seo/JsonLd";
 import { getHubCandidacyField, getHubMeasureContext } from "@/lib/data/hub";
 import { PRESIDENTIELLE_2027_SLUG, THEMES_IN_ORDER } from "@/lib/presidentielle/themes";
 import { formatDate } from "@/lib/utils";
@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const publishable = context !== null && context.hubPublishable;
 
   return {
-    title: "Présidentielle 2027 : programmes, votes, bilans | Poligraph",
+    title: "Présidentielle 2027 : programmes, mesures et candidatures",
     description:
       "Les candidatures à la présidentielle 2027, leurs mesures sourcées et relues par thème et les votes qui les éclairent.",
     robots: publishable ? undefined : { index: false, follow: true },
@@ -65,6 +65,12 @@ export default async function PresidentialHubPage() {
           url={`${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}`}
         />
       )}
+      <CollectionPageJsonLd
+        name="Présidentielle 2027 : programmes et mesures des candidatures"
+        description="Comparer les candidatures à l'élection présidentielle 2027, leurs mesures sourcées et leurs votes parlementaires par sujet."
+        url={`${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}`}
+        numberOfItems={context.verifiedMeasureCount}
+      />
       <div className="container mx-auto space-y-10 px-4 pt-4 pb-8">
         <Breadcrumb
           items={[{ label: "Élections", href: "/elections" }, { label: "Présidentielle 2027" }]}
@@ -75,7 +81,7 @@ export default async function PresidentialHubPage() {
             Présidentielle 2027
           </p>
           <h1 className="font-display text-3xl font-extrabold leading-tight tracking-tight md:text-5xl">
-            Qu&apos;est-ce qui changerait pour vous ?
+            Présidentielle 2027 : comparer les programmes et les mesures
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-lg">
             Pour chaque thème : ce que les personnalités suivies proposent, ce qu&apos;elles ont

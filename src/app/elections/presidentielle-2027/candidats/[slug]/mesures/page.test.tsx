@@ -58,6 +58,8 @@ describe("page des mesures d'une candidature", () => {
       data: [
         {
           measureId: "measure-1",
+          slug: "camille-riviere-encadrer-les-loyers",
+          publicUrl: "/elections/presidentielle-2027/mesures/camille-riviere-encadrer-les-loyers",
           text: "Encadrer les loyers dans les zones tendues.",
           theme: {
             code: "LOGEMENT_URBANISME",
@@ -77,6 +79,8 @@ describe("page des mesures d'une candidature", () => {
       data: [
         {
           measureId: "measure-1",
+          slug: "camille-riviere-encadrer-les-loyers",
+          publicUrl: "/elections/presidentielle-2027/mesures/camille-riviere-encadrer-les-loyers",
           text: "Encadrer les loyers dans les zones tendues.",
           theme: { code: "LOGEMENT_URBANISME", label: "Logement & Urbanisme" },
           sources: [],
@@ -155,7 +159,7 @@ describe("page des mesures d'une candidature", () => {
     );
     expect(screen.getByRole("link", { name: /Voir la mesure : Encadrer/ })).toHaveAttribute(
       "href",
-      "/elections/presidentielle-2027/mesures/measure-1"
+      "/elections/presidentielle-2027/mesures/camille-riviere-encadrer-les-loyers"
     );
     expect(screen.getByRole("link", { name: /source externe de la mesure/i })).toHaveAttribute(
       "rel",

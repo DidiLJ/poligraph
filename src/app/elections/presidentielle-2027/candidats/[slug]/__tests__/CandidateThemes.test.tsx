@@ -10,7 +10,14 @@ function theme(over: Partial<Theme> = {}): Theme {
     theme: "SANTE",
     slug: "sante",
     measureCount: 1,
-    measures: [{ id: "m1", text: "Rouvrir des maternités de proximité.", sourceUrl: null }],
+    measures: [
+      {
+        id: "m1",
+        slug: "rouvrir-des-maternites",
+        text: "Rouvrir des maternités de proximité.",
+        sourceUrl: null,
+      },
+    ],
     subtopics: [],
     ...over,
   };
@@ -27,9 +34,24 @@ describe("CandidateThemes", () => {
           theme({
             measureCount: 3,
             measures: [
-              { id: "m1", text: "Première mesure santé.", sourceUrl: null },
-              { id: "m2", text: "Deuxième mesure santé.", sourceUrl: null },
-              { id: "m3", text: "Troisième mesure santé.", sourceUrl: null },
+              {
+                id: "m1",
+                slug: "premiere-mesure",
+                text: "Première mesure santé.",
+                sourceUrl: null,
+              },
+              {
+                id: "m2",
+                slug: "deuxieme-mesure",
+                text: "Deuxième mesure santé.",
+                sourceUrl: null,
+              },
+              {
+                id: "m3",
+                slug: "troisieme-mesure",
+                text: "Troisième mesure santé.",
+                sourceUrl: null,
+              },
             ],
           }),
         ]}
@@ -58,13 +80,14 @@ describe("CandidateThemes", () => {
 
     expect(screen.getByRole("link", { name: /Voir la mesure : Rouvrir/ })).toHaveAttribute(
       "href",
-      "/elections/presidentielle-2027/mesures/m1"
+      "/elections/presidentielle-2027/mesures/rouvrir-des-maternites"
     );
   });
 
   it("n'affiche aucun extrait arbitraire pour un grand programme", () => {
     const measures = Array.from({ length: 16 }, (_, index) => ({
       id: `m${index + 1}`,
+      slug: `mesure-${index + 1}`,
       text: `Mesure ${index + 1}.`,
       sourceUrl: null,
     }));
@@ -94,15 +117,17 @@ describe("CandidateThemes", () => {
             slug: "sante",
             measureCount: 2,
             measures: [
-              { id: "s1", text: "Santé un.", sourceUrl: null },
-              { id: "s2", text: "Santé deux.", sourceUrl: null },
+              { id: "s1", slug: "sante-un", text: "Santé un.", sourceUrl: null },
+              { id: "s2", slug: "sante-deux", text: "Santé deux.", sourceUrl: null },
             ],
           }),
           theme({
             theme: "TRANSPORTS",
             slug: "transports",
             measureCount: 1,
-            measures: [{ id: "t1", text: "Transports un.", sourceUrl: null }],
+            measures: [
+              { id: "t1", slug: "transports-un", text: "Transports un.", sourceUrl: null },
+            ],
           }),
         ]}
         electionSlug="presidentielle-2027"
@@ -126,8 +151,13 @@ describe("CandidateThemes", () => {
           theme({
             measureCount: 2,
             measures: [
-              { id: "m1", text: "Avec source.", sourceUrl: "https://example.org/programme.pdf" },
-              { id: "m2", text: "Sans source.", sourceUrl: null },
+              {
+                id: "m1",
+                slug: "avec-source",
+                text: "Avec source.",
+                sourceUrl: "https://example.org/programme.pdf",
+              },
+              { id: "m2", slug: "sans-source", text: "Sans source.", sourceUrl: null },
             ],
           }),
         ]}

@@ -126,6 +126,7 @@ export async function searchPresidentialCorpus(
           },
           select: {
             id: true,
+            slug: true,
             theme: true,
             publishedRevision: {
               select: {
@@ -170,7 +171,7 @@ export async function searchPresidentialCorpus(
         type: "measure",
         id: row.id,
         text: row.publishedRevision.text,
-        url: `/elections/${election.slug}/mesures/${row.id}`,
+        url: `/elections/${election.slug}/mesures/${row.slug}`,
         candidateName: row.candidacy.candidateName,
         theme: row.theme,
         precision: row.publishedRevision.precision,

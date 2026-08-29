@@ -178,6 +178,7 @@ export type SourceInput = {
 
 export type RevisionInput = {
   text: string;
+  details?: string | null;
   precision: MeasurePrecision | null;
   validFrom: string;
   extractionMethod: MeasureExtractionMethod;
@@ -186,6 +187,7 @@ export type RevisionInput = {
 function toRevision(input: RevisionInput) {
   return {
     text: input.text,
+    details: input.details?.trim() || null,
     precision: input.precision,
     validFrom: parseDate(input.validFrom, "La date d'entrée en vigueur"),
     extractionMethod: input.extractionMethod,

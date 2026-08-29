@@ -2957,6 +2957,9 @@ model MeasureRevisionSubtopic {
 // threshold. An internal editorial action would depublish valid public content.
 model Measure {
   id String @id @default(cuid())
+  // Stable public URL segment. It is derived once from the carrier and the first formulation,
+  // then kept when later revisions change the wording.
+  slug String @unique
 
   politician   Politician @relation(fields: [politicianId], references: [id], onDelete: Cascade)
   politicianId String
@@ -3020,6 +3023,8 @@ model MeasureRevision {
   measureId String
 
   text      String            @db.Text
+  // Optional source-backed context edited and reviewed with this exact formulation.
+  details   String?           @db.Text
   precision MeasurePrecision?
 
   validFrom    DateTime

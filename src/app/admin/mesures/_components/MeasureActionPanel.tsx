@@ -57,6 +57,7 @@ export function MeasureActionPanel({
   expectedUpdatedAt,
   actions,
   revisionTexts,
+  revisionDetails,
   isWithdrawn,
   pointersAmbiguous,
 }: {
@@ -64,6 +65,7 @@ export function MeasureActionPanel({
   expectedUpdatedAt: string;
   actions: AvailableAction[];
   revisionTexts: Record<string, string>;
+  revisionDetails: Record<string, string | null>;
   isWithdrawn: boolean;
   pointersAmbiguous: boolean;
 }) {
@@ -372,6 +374,7 @@ export function MeasureActionPanel({
                     preserveEvidenceFromRevisionId: action.preservesEvidenceFromRevisionId,
                     revision: {
                       text: String(data.get("text") ?? ""),
+                      details: String(data.get("details") ?? "").trim() || null,
                       precision:
                         String(data.get("precision") ?? "") === ""
                           ? null
@@ -409,6 +412,25 @@ export function MeasureActionPanel({
                     : undefined
                 }
               />
+
+              <label htmlFor="draft-details" className={`${LABEL} mt-3 block`}>
+                Détails documentés (facultatif)
+              </label>
+              <textarea
+                id="draft-details"
+                name="details"
+                rows={6}
+                className={FIELD}
+                defaultValue={
+                  action.preservesEvidenceFromRevisionId
+                    ? (revisionDetails[action.preservesEvidenceFromRevisionId] ?? undefined)
+                    : undefined
+                }
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Contexte factuel présent dans les sources, sans analyse ni appréciation. Le Markdown
+                simple est accepté.
+              </p>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div>

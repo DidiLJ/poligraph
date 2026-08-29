@@ -335,7 +335,7 @@ describe("doctrine — presidentielle-2027 hub stays out of the sitemap while un
     expect(electionShard).toContain("PUBLIC_PRESIDENTIAL_MEASURE_WHERE");
     expect(electionShard).toContain("const presidentialMeasurePages");
     expect(electionShard).toContain(
-      "${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/mesures/${measure.id}"
+      "${SITE_URL}/elections/${PRESIDENTIELLE_2027_SLUG}/mesures/${measure.slug}"
     );
     expect(electionShard).toContain("...presidentialMeasurePages");
   });

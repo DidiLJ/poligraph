@@ -37,9 +37,7 @@ describe("generateMetadata du hub présidentielle", () => {
   it("titre correct", async () => {
     mockGetContext.mockResolvedValue(context({ hubPublishable: true }));
     const meta = await generateMetadata();
-    expect(String(meta.title)).toMatch(
-      /Présidentielle 2027 : programmes, votes, bilans \| Poligraph/
-    );
+    expect(String(meta.title)).toMatch(/Présidentielle 2027 : programmes, mesures et candidatures/);
   });
 
   it("noindex quand le hub n'est pas encore publiable", async () => {

@@ -112,7 +112,7 @@ function CandidateMeasure({
   measure: CandidateFicheDetail["themes"][number]["measures"][number];
   electionSlug: string;
 }) {
-  const detailUrl = `/elections/${electionSlug}/mesures/${measure.id}`;
+  const detailUrl = `/elections/${electionSlug}/mesures/${measure.slug}`;
 
   return (
     <li className="py-3.5 first:pt-0 last:pb-0">

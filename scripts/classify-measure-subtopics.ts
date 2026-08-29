@@ -4,6 +4,7 @@ import {
   proposeMeasureRevisionSubtopics,
   syncMeasureSubtopicTaxonomy,
 } from "../src/lib/measures/subtopics";
+import { getMistralTokensUsed } from "../src/lib/api/mistral";
 
 type Options = {
   electionSlug: string;
@@ -34,6 +35,9 @@ function parseOptions(args: string[]): Options {
 
 async function main(): Promise<void> {
   const options = parseOptions(process.argv.slice(2));
+  if (!process.env.MISTRAL_API_KEY) {
+    throw new Error("MISTRAL_API_KEY doit être définie dans .env");
+  }
   const processedRevisionIds = options.force
     ? []
     : await getPreviouslyClassifiedMeasureRevisionIds();
@@ -88,7 +92,9 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(`${proposed} propositions, ${skipped} ignorées, ${failed} erreurs.`);
+  console.log(
+    `${proposed} propositions, ${skipped} ignorées, ${failed} erreurs, ${getMistralTokensUsed()} tokens Mistral.`
+  );
   if (failed > 0) process.exitCode = 1;
 }
 

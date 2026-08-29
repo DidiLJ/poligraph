@@ -100,6 +100,9 @@ export default async function AdminMeasureDetailPage({ params }: PageProps) {
   const revisionTexts = Object.fromEntries(
     measure.revisions.map((revision) => [revision.id, revision.text])
   );
+  const revisionDetails = Object.fromEntries(
+    measure.revisions.map((revision) => [revision.id, revision.details])
+  );
 
   return (
     <div className="space-y-6">
@@ -352,6 +355,7 @@ export default async function AdminMeasureDetailPage({ params }: PageProps) {
             expectedUpdatedAt={expectedUpdatedAt}
             actions={actions}
             revisionTexts={revisionTexts}
+            revisionDetails={revisionDetails}
             isWithdrawn={state.withdrawal !== null}
             pointersAmbiguous={hasAmbiguousPointers(state)}
           />

@@ -22,6 +22,7 @@ import { syncSearchDocument } from "./search-sync";
 import { PUBLIC_PRESIDENTIAL_FICHE_WHERE } from "@/lib/presidentielle/publication";
 import { syncPresidentialSearchDocumentsForCandidacy } from "@/lib/presidentielle/search-sync";
 import { isAllowedPresidentialMeasureTheme } from "@/lib/presidentielle/themes";
+import { allocateMeasureSlug } from "./slug";
 
 export type MeasureSourceInput = {
   sourceKind: MeasureSourceKind;
@@ -33,6 +34,7 @@ export type MeasureSourceInput = {
 
 export type MeasureRevisionInput = {
   text: string;
+  details?: string | null;
   precision: MeasurePrecision | null;
   validFrom: Date;
   extractionMethod: MeasureExtractionMethod;
@@ -139,6 +141,9 @@ function assertRevisionIsUsable(
   if (revision.text.trim() === "") {
     throw new MeasureValidationError("Le texte de la révision est vide");
   }
+  if ((revision.details?.length ?? 0) > 20_000) {
+    throw new MeasureValidationError("Les détails de la révision dépassent 20 000 caractères");
+  }
   // A revision with no source can never be published (audit rule of spec 12.1), so
   // accepting one here would create something structurally unpublishable.
   if (sources.length === 0) {
@@ -181,9 +186,11 @@ export async function createMeasure(
 
   return db.$transaction(async (tx) => {
     await assertContextIsCoherent(tx, input);
+    const slug = await allocateMeasureSlug(tx, input.politicianId, input.revision.text);
 
     const measure = await tx.measure.create({
       data: {
+        slug,
         politicianId: input.politicianId,
         electionId: input.electionId,
         candidacyId: input.candidacyId,
@@ -198,6 +205,7 @@ export async function createMeasure(
       data: {
         measureId: measure.id,
         text: input.revision.text,
+        details: input.revision.details?.trim() || null,
         precision: input.revision.precision,
         validFrom: input.revision.validFrom,
         extractionMethod: input.revision.extractionMethod,
@@ -334,6 +342,7 @@ export async function draftMeasureRevision(
       data: {
         measureId: input.measureId,
         text: revisionInput.text,
+        details: revisionInput.details?.trim() || null,
         precision: revisionInput.precision,
         validFrom: revisionInput.validFrom,
         extractionMethod: revisionInput.extractionMethod,

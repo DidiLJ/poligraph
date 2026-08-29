@@ -57,9 +57,7 @@ describe("périmètre de recherche lors d'une publication", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     tx.candidacy.findFirst.mockReset();
-    tx.candidacy.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: "candidacy-1" });
+    tx.candidacy.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "candidacy-1" });
   });
 
   it("n'indexe que la candidature et la mesure qui ouvre la fiche", async () => {

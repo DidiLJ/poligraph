@@ -92,6 +92,7 @@ describe("getPresidentialComparison", () => {
         { candidate: bruno, measures: [] },
       ],
       siblingThemes: [{ theme: "SANTE", slug: "sante", label: "Santé", publishable: true }],
+      publishable: true,
       lastReviewedAt: new Date("2026-08-29T00:00:00Z"),
     });
 
@@ -139,6 +140,7 @@ describe("getPresidentialComparison", () => {
         { candidate: bruno, measures: [] },
       ],
       siblingThemes: [{ theme: "SANTE", slug: "sante", label: "Santé", publishable: true }],
+      publishable: true,
       lastReviewedAt: null,
     });
 
@@ -163,5 +165,23 @@ describe("getPresidentialComparison", () => {
       "mesure-11",
       "mesure-12",
     ]);
+  });
+
+  it("ne compare pas un thème qui ne franchit pas le seuil de publication", async () => {
+    mocks.getSubject.mockResolvedValue({
+      candidates: [],
+      siblingThemes: [],
+      publishable: false,
+      lastReviewedAt: null,
+    });
+
+    const { getPresidentialComparison } = await import("../presidential-comparison");
+    const result = await getPresidentialComparison({
+      electionSlug: "presidentielle-2027",
+      candidateSlugs: ["alice-martin", "bruno-zola"],
+      themeSlug: "sante",
+    });
+
+    expect(result).toBeNull();
   });
 });

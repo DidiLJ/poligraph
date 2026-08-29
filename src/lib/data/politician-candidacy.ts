@@ -346,7 +346,8 @@ async function getPoliticianPresidentialCandidacyCached(
 /**
  * Cached companion of the read above, same tags for the same reason: the themes and their quotes
  * move on a measure publication, and the candidacy's visibility on an extension transition. The
- * `votes` tag as well, since the last-votes block is invalidated by a scrutin import.
+ * `votes` tag as well, since the last-votes block is invalidated by a scrutin import. The probity
+ * counters make `affairs` another direct dependency of this read.
  */
 export async function getCandidateFicheDetail(
   candidacyId: string,
@@ -377,6 +378,7 @@ async function getCandidateFicheDetailCached(
   cacheTag(`election-measures:${electionId}`);
   cacheTag(`election-candidacies:${electionId}`);
   cacheTag("votes");
+  cacheTag("affairs");
   cacheLife("synced");
   return loadCandidateFicheDetail(candidacyId, politicianId);
 }

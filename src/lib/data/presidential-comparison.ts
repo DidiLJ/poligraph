@@ -91,7 +91,7 @@ export async function getPresidentialComparison({
 
   if (theme !== null) {
     const subject = await getSubjectPageData(electionSlug, theme);
-    if (subject === null) return null;
+    if (subject === null || !subject.publishable) return null;
 
     const candidateOptions = subject.candidates
       .map(({ candidate }) => toOption(candidate))

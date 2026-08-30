@@ -29,6 +29,10 @@ import {
   type MeasurePublicationBatchFailure,
 } from "@/lib/measures/batch-publication";
 import { MeasureConcurrencyError, MeasureValidationError } from "@/lib/measures/errors";
+import {
+  generateMeasureContextDraft,
+  type ContextGenerationSkipReason,
+} from "@/lib/measures/context-generation";
 import { createMeasureVoteLink } from "@/lib/measures/vote-links";
 import {
   proposeMeasureRevisionSubtopics,
@@ -131,6 +135,14 @@ const subtopicReviewInputSchema = subtopicProposalInputSchema
   })
   .strict();
 
+const contextGenerationInputSchema = z
+  .object({ measureId: z.string().min(1), expectedUpdatedAt: z.string().min(1).optional() })
+  .strict();
+
+const contextGenerationBatchInputSchema = z
+  .object({ measureIds: z.array(z.string().min(1)).min(1).max(10) })
+  .strict();
+
 async function assertAuthenticated(): Promise<void> {
   if (!(await isAuthenticated())) throw new Error("Non autorisé");
 }
@@ -146,6 +158,23 @@ function parseDate(value: string, label: string): Date {
     throw new MeasureValidationError(`${label} n'est pas une date valide`);
   }
   return parsed;
+}
+
+function contextSkipMessage(reason: ContextGenerationSkipReason): string {
+  switch (reason) {
+    case "ACTIVE_DRAFT":
+      return "Un brouillon est déjà en cours : il n'a pas été remplacé.";
+    case "ALREADY_HAS_DETAILS":
+      return "Cette mesure possède déjà un contexte documenté.";
+    case "NO_PUBLISHED_REVISION":
+      return "La mesure doit être publiée avant de proposer un contexte.";
+    case "NO_VALID_EVIDENCE":
+      return "Cette mesure ne possède pas de preuve V6 valide.";
+    case "NO_SUPPORTING_CONTEXT":
+      return "La preuve ne contient pas de contexte distinct de la formulation.";
+    case "NO_USEFUL_CONTEXT":
+      return "Mistral n'a trouvé aucun contexte utile distinct de la formulation.";
+  }
 }
 
 /**
@@ -345,6 +374,71 @@ export async function reviewSubtopicAction(input: {
   } catch (error) {
     return toFailure(error);
   }
+}
+
+export async function generateContextDraftAction(input: {
+  measureId: string;
+  expectedUpdatedAt?: string;
+}): Promise<ActionResult> {
+  await assertAuthenticated();
+
+  try {
+    const parsed = contextGenerationInputSchema.safeParse(input);
+    if (!parsed.success) throw new MeasureValidationError("Mesure à enrichir invalide");
+    const result = await generateMeasureContextDraft(parsed.data.measureId, {
+      expectedUpdatedAt: parsed.data.expectedUpdatedAt
+        ? parseDate(parsed.data.expectedUpdatedAt, "La version attendue")
+        : undefined,
+      generatedBy: ACTOR,
+    });
+    if (result.status === "SKIPPED") {
+      return { ok: false, message: contextSkipMessage(result.reason) };
+    }
+    revalidate(parsed.data.measureId);
+    return { ok: true, measureId: parsed.data.measureId };
+  } catch (error) {
+    if (error instanceof MeasureConcurrencyError || error instanceof MeasureValidationError) {
+      return toFailure(error);
+    }
+    return {
+      ok: false,
+      message: "La génération du contexte a échoué. Réessayez plus tard.",
+    };
+  }
+}
+
+export type ContextGenerationBatchActionResult = {
+  ok: true;
+  created: number;
+  skipped: number;
+  failed: number;
+};
+
+export async function generateContextDraftBatchAction(
+  input: unknown
+): Promise<ContextGenerationBatchActionResult> {
+  await assertAuthenticated();
+
+  const parsed = contextGenerationBatchInputSchema.safeParse(input);
+  if (!parsed.success) throw new MeasureValidationError("Le lot doit contenir de 1 à 10 mesures");
+  const measureIds = [...new Set(parsed.data.measureIds)];
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+  for (const measureId of measureIds) {
+    try {
+      const result = await generateMeasureContextDraft(measureId, { generatedBy: ACTOR });
+      if (result.status === "CREATED") {
+        created += 1;
+        revalidate(measureId);
+      } else {
+        skipped += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+  }
+  return { ok: true, created, skipped, failed };
 }
 
 export async function reviewDraftBatchAction(input: unknown): Promise<BatchReviewActionResult> {

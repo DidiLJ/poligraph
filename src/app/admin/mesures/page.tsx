@@ -9,6 +9,7 @@ import { BatchPublishPanel } from "./_components/BatchPublishPanel";
 import { BatchReviewPanel } from "./_components/BatchReviewPanel";
 import { QueueFilters, type QueueFilterState } from "./_components/QueueFilters";
 import { QueueTable } from "./_components/QueueTable";
+import { ContextGenerationBatchPanel } from "./_components/ContextGenerationBatchPanel";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { queryBatchPublishGroups } from "./_data/batch-publish-query";
@@ -190,6 +191,14 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
           </Link>
         </section>
       ) : null}
+
+      {enrichment === "DETAILS_MISSING" && (
+        <ContextGenerationBatchPanel
+          measureIds={result.rows
+            .filter((row) => row.state.activeDraft === null)
+            .map((row) => row.id)}
+        />
+      )}
 
       <BatchReviewPanel groups={batchReviewGroups} />
 

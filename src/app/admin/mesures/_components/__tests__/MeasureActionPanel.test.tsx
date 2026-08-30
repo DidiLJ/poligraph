@@ -11,6 +11,7 @@ vi.mock("../../actions", () => ({
   draftRevisionAction: vi.fn(async () => ({ ok: true })),
   depublishMeasureAction: vi.fn(async () => ({ ok: true })),
   withdrawMeasureAction: vi.fn(async () => ({ ok: true })),
+  generateContextDraftAction: vi.fn(async () => ({ ok: true })),
 }));
 
 const BASE = {
@@ -18,6 +19,7 @@ const BASE = {
   expectedUpdatedAt: "2027-01-16T10:00:00.000Z",
   revisionTexts: { "rev-1": "Encadrer les loyers dans les zones tendues." },
   revisionDetails: { "rev-1": null as string | null },
+  canGenerateContext: false,
   isWithdrawn: false,
   pointersAmbiguous: false,
 };
@@ -126,5 +128,14 @@ describe("MeasureActionPanel", () => {
     expect(
       screen.getByText("Aucune action éditoriale disponible dans cet état.")
     ).toBeInTheDocument();
+  });
+
+  it("propose un brouillon sourcé sans le présenter comme une publication", () => {
+    panel([], { canGenerateContext: true });
+
+    expect(
+      screen.getByRole("button", { name: "Générer un brouillon de contexte" })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/brouillon invisible du public/)).toBeInTheDocument();
   });
 });

@@ -30,6 +30,7 @@ export type EvidenceSnapshotReadResult =
 export function createV6CorrectionFingerprint(input: {
   previousRevisionId: string;
   text: string;
+  details?: string | null;
 }): string {
   return createHash("sha256")
     .update(
@@ -37,6 +38,7 @@ export function createV6CorrectionFingerprint(input: {
         kind: "V6_CORRECTION",
         previousRevisionId: input.previousRevisionId,
         text: input.text.trim(),
+        details: input.details?.trim() || null,
       })
     )
     .digest("hex");

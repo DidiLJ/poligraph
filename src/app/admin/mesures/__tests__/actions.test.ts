@@ -59,6 +59,17 @@ const subtopicsMock = {
 };
 vi.mock("@/lib/measures/subtopics", () => subtopicsMock);
 
+const contextGenerationMock = {
+  generateMeasureContextDraft: vi.fn(async () => ({
+    status: "CREATED" as const,
+    revisionId: "rev-context",
+    details: "Contexte documenté.",
+    model: "mistral-small-2506",
+    evidenceUnitIds: ["unit-1"],
+  })),
+};
+vi.mock("@/lib/measures/context-generation", () => contextGenerationMock);
+
 const REVISION = {
   text: "Encadrer les loyers dans les zones tendues.",
   precision: "OBJECTIF_SANS_CHIFFRE" as const,
@@ -126,6 +137,14 @@ async function everyAction(): Promise<{ name: string; call: () => Promise<unknow
         }),
     },
     {
+      name: "generateContextDraftAction",
+      call: () =>
+        a.generateContextDraftAction({
+          measureId: "m-1",
+          expectedUpdatedAt: "2027-01-16T10:00:00.000Z",
+        }),
+    },
+    {
       name: "discardRevisionAction",
       call: () => a.discardRevisionAction({ measureId: "m-1", revisionId: "rev-1" }),
     },
@@ -188,6 +207,7 @@ describe("actions éditoriales : la session", () => {
     }
     expect(subtopicsMock.proposeMeasureRevisionSubtopics).not.toHaveBeenCalled();
     expect(subtopicsMock.reviewMeasureRevisionSubtopic).not.toHaveBeenCalled();
+    expect(contextGenerationMock.generateMeasureContextDraft).not.toHaveBeenCalled();
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
@@ -205,6 +225,46 @@ describe("actions éditoriales : la session", () => {
     }
     expect(subtopicsMock.proposeMeasureRevisionSubtopics).toHaveBeenCalledTimes(1);
     expect(subtopicsMock.reviewMeasureRevisionSubtopic).toHaveBeenCalledTimes(1);
+    expect(contextGenerationMock.generateMeasureContextDraft).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("génération assistée du contexte", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isAuthenticatedMock.mockResolvedValue(true);
+    contextGenerationMock.generateMeasureContextDraft.mockResolvedValue({
+      status: "CREATED",
+      revisionId: "rev-context",
+      details: "Contexte documenté.",
+      model: "mistral-small-2506",
+      evidenceUnitIds: ["unit-1"],
+    });
+  });
+
+  it("transmet la version affichée et attribue le brouillon à l'admin", async () => {
+    const result = await (
+      await actions()
+    ).generateContextDraftAction({
+      measureId: "m-1",
+      expectedUpdatedAt: "2027-01-16T10:00:00.000Z",
+    });
+
+    expect(result).toEqual({ ok: true, measureId: "m-1" });
+    expect(contextGenerationMock.generateMeasureContextDraft).toHaveBeenCalledWith("m-1", {
+      expectedUpdatedAt: new Date("2027-01-16T10:00:00.000Z"),
+      generatedBy: "admin",
+    });
+  });
+
+  it("limite strictement un lot à dix mesures", async () => {
+    const action = await actions();
+    await expect(
+      action.generateContextDraftBatchAction({
+        measureIds: Array.from({ length: 11 }, (_, index) => `m-${index}`),
+      })
+    ).rejects.toThrow("1 à 10 mesures");
+    expect(contextGenerationMock.generateMeasureContextDraft).not.toHaveBeenCalled();
   });
 });
 

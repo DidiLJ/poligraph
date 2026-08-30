@@ -18,6 +18,7 @@ import type { AvailableAction } from "../_data/available-actions";
 import {
   depublishMeasureAction,
   draftRevisionAction,
+  generateContextDraftAction,
   publishRevisionAction,
   reviewRevisionAction,
   rejectRevisionAction,
@@ -65,6 +66,7 @@ export function MeasureActionPanel({
   actions,
   revisionTexts,
   revisionDetails,
+  canGenerateContext,
   isWithdrawn,
   pointersAmbiguous,
 }: {
@@ -73,6 +75,7 @@ export function MeasureActionPanel({
   actions: AvailableAction[];
   revisionTexts: Record<string, string>;
   revisionDetails: Record<string, string | null>;
+  canGenerateContext: boolean;
   isWithdrawn: boolean;
   pointersAmbiguous: boolean;
 }) {
@@ -110,7 +113,7 @@ export function MeasureActionPanel({
     );
   }
 
-  if (actions.length === 0) {
+  if (actions.length === 0 && !canGenerateContext) {
     return (
       <p className="text-sm text-muted-foreground">
         Aucune action éditoriale disponible dans cet état.
@@ -147,6 +150,16 @@ export function MeasureActionPanel({
       )}
 
       <div className="flex flex-wrap gap-2">
+        {canGenerateContext && (
+          <button
+            type="button"
+            className={BUTTON}
+            disabled={pending}
+            onClick={() => run(() => generateContextDraftAction({ measureId, expectedUpdatedAt }))}
+          >
+            {pending ? "Génération en cours…" : "Générer un brouillon de contexte"}
+          </button>
+        )}
         {actions.map((action) => {
           if (action.kind === "review") {
             return (
@@ -209,6 +222,13 @@ export function MeasureActionPanel({
           );
         })}
       </div>
+
+      {canGenerateContext && (
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Mistral utilise uniquement les unités de preuve enregistrées. Le résultat crée un
+          brouillon invisible du public, à relire avant publication.
+        </p>
+      )}
 
       {actions.map((action) => {
         if (action.kind === "reject" && open === `reject-${action.revisionId}`) {

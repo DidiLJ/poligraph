@@ -197,6 +197,17 @@ describe("génération de contexte sourcé", () => {
     expect(mocks.callMistral).not.toHaveBeenCalled();
   });
 
+  it("refuse une version déjà obsolète avant tout appel Mistral", async () => {
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(
+      generateMeasureContextDraft("measure-1", {
+        expectedUpdatedAt: new Date("2026-08-29T23:59:00Z"),
+      })
+    ).rejects.toBeInstanceOf(MeasureConcurrencyError);
+    expect(mocks.callMistral).not.toHaveBeenCalled();
+  });
+
   it("refuse de générer sans contexte explicite dans la preuve", async () => {
     const snapshot = validEvidenceSnapshot();
     snapshot.supportingIds = [];
@@ -490,6 +501,9 @@ describe("génération de contexte sourcé", () => {
     "Le programme vise un bénéficiaire dans chaque territoire concerné par la mesure.",
     "Le programme vise une personne dans chaque territoire concerné par la mesure.",
     "Le programme présente la moitié des Français comme concernés par cette mesure.",
+    "Le programme prévoit une première phase consacrée à ce dispositif.",
+    "Le programme prévoit un deuxième pilier consacré à ce dispositif.",
+    "Le programme prévoit un troisième trimestre consacré à ce dispositif.",
   ])("refuse la quantité singulière ou accentuée dans « %s »", async (details) => {
     mocks.parseMistralJSON.mockReturnValue({
       details: `${details} Il rattache cette proposition au contexte décrit dans le document source.`,

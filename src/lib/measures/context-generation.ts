@@ -201,6 +201,9 @@ function sanitizeSourceText(value: string): string {
 const SPELLED_OUT_NUMBER_PATTERN =
   /(?<![\p{L}\p{N}_])(?:zéro|aucun|aucune|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|mille|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|quarts?|doubles?|triples?|quadruples?|pour[\s\u00a0\u202f]+cent)(?![\p{L}\p{N}_])/iu;
 
+const SPELLED_OUT_ORDINAL_PATTERN =
+  /(?<![\p{L}\p{N}_])(?:premi(?:er|ère|ers|ères)|seconds?|secondes?|deuxièmes?|troisièmes?|quatrièmes?|cinquièmes?|sixièmes?|septièmes?|huitièmes?|neuvièmes?|dixièmes?|onzièmes?|douzièmes?|treizièmes?|quatorzièmes?|quinzièmes?|seizièmes?|vingtièmes?|centièmes?|millièmes?)(?![\p{L}\p{N}_])/iu;
+
 const FRACTIONAL_TIER_PATTERN =
   /(?<![\p{L}\p{N}_])(?:un|deux|le)[\s\u00a0\u202f]+tiers?(?:[\s\u00a0\u202f]+)(?:des|du|de[\s\u00a0\u202f]+la|de[\s\u00a0\u202f]+l[’'])(?![\p{L}\p{N}_])/iu;
 
@@ -211,6 +214,7 @@ function assertNoGeneratedQuantities(details: string): void {
   if (
     /\d/u.test(details) ||
     SPELLED_OUT_NUMBER_PATTERN.test(details) ||
+    SPELLED_OUT_ORDINAL_PATTERN.test(details) ||
     FRACTIONAL_TIER_PATTERN.test(details) ||
     CONTEXTUAL_SINGULAR_QUANTITY_PATTERN.test(details)
   ) {
@@ -318,6 +322,12 @@ export async function generateMeasureContextDraft(
     },
   });
   if (!measure) throw new MeasureValidationError("Mesure introuvable");
+  if (
+    options.expectedUpdatedAt &&
+    measure.updatedAt.getTime() !== options.expectedUpdatedAt.getTime()
+  ) {
+    throw new MeasureConcurrencyError(measureId, options.expectedUpdatedAt, measure.updatedAt);
+  }
   const revision = measure.publishedRevision;
   if (!revision || !measure.publishedRevisionId) {
     return { status: "SKIPPED", reason: "NO_PUBLISHED_REVISION" };

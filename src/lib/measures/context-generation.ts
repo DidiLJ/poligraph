@@ -6,7 +6,7 @@ import { MeasureValidationError } from "@/lib/measures/errors";
 import { draftMeasureRevision } from "@/lib/measures/transitions";
 
 const MODEL = "mistral-small-latest";
-const PROMPT_VERSION = "measure-context-v3";
+const PROMPT_VERSION = "measure-context-v4";
 const MIN_DETAILS_LENGTH = 80;
 const MAX_DETAILS_LENGTH = 1_000;
 
@@ -120,11 +120,27 @@ function sanitizeSourceText(value: string): string {
 
 function numericTokens(value: string): Set<string> {
   const tokens = value.match(
-    /\b\d+(?:[.,]\d+)?(?:[\s\u00a0]*(?:%|millions?|milliards?|euros?))?/giu
+    /\b(?:\d{1,3}(?:[\s\u00a0\u202f]\d{3})+|\d+)(?:[.,]\d+)?(?:[\s\u00a0\u202f]*(?:%|millions?|milliards?|euros?))?/giu
   );
   return new Set(
-    (tokens ?? []).map((token) => token.toLocaleLowerCase("fr").replace(/[\s\u00a0]+/g, " "))
+    (tokens ?? []).map((token) =>
+      token
+        .toLocaleLowerCase("fr")
+        .replace(/(?<=\d)[\s\u00a0\u202f](?=\d)/g, "")
+        .replace(/[\s\u00a0\u202f]+/g, " ")
+    )
   );
+}
+
+const SPELLED_OUT_NUMBER_PATTERN =
+  /\b(?:(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|mille)|(?:un|une)\s+(?:milliers?|millions?|milliards?))\b/iu;
+
+function assertNoSpelledOutNumbers(details: string): void {
+  if (SPELLED_OUT_NUMBER_PATTERN.test(details)) {
+    throw new MeasureValidationError(
+      "Le contexte généré contient une quantité écrite en lettres, impossible à vérifier"
+    );
+  }
 }
 
 function assertGroundedNumbers(
@@ -207,6 +223,7 @@ Règles :
 - respecte le locuteur de chaque unité : une parole de QUOTED_THIRD_PARTY, LEGAL_OR_INSTITUTIONAL_SOURCE ou HISTORICAL_ACTOR ne doit jamais être attribuée au programme ;
 - si tu utilises une telle unité, indique explicitement qu'elle rapporte les propos ou la position d'un tiers, d'une source juridique ou institutionnelle, ou d'un acteur historique, sans inventer son identité ;
 - n'utilise pas une unité dont le locuteur est UNRESOLVED pour attribuer une affirmation au programme ;
+- écris toute quantité avec des chiffres et conserve sa valeur exacte ; n'écris aucun nombre en lettres ;
 - ne présente jamais l'argumentaire du programme comme un fait établi ;
 - ne répète pas simplement la formulation de la mesure ;
 - écris entre 40 et 120 mots, en français clair ;
@@ -246,6 +263,7 @@ Réponds uniquement en JSON :
     const unit = unitsById.get(id);
     return unit ? [unit] : [];
   });
+  assertNoSpelledOutNumbers(parsed.details);
   assertGroundedNumbers(parsed.details, citedUnits);
 
   const resolvedModel = response.model?.trim() || MODEL;

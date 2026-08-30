@@ -66,12 +66,12 @@ describe("génération de contexte sourcé", () => {
         preserveEvidenceFromRevisionId: "revision-1",
         revision: expect.objectContaining({
           extractionMethod: "AI_ASSISTED",
-          extractorVersion: "mistral-small-2506:measure-context-v3",
+          extractorVersion: "mistral-small-2506:measure-context-v4",
           details: expect.stringContaining("67 millions"),
         }),
         generatedContext: expect.objectContaining({
           evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
-          promptVersion: "measure-context-v3",
+          promptVersion: "measure-context-v4",
         }),
       })
     );
@@ -193,6 +193,44 @@ describe("génération de contexte sourcé", () => {
       "nombre absent de la preuve"
     );
     expect(mocks.draftMeasureRevision).not.toHaveBeenCalled();
+  });
+
+  it("conserve les nombres groupés comme une quantité atomique", async () => {
+    const snapshot = validEvidenceSnapshot();
+    const anchor = snapshot.units.find((unit) => unit.unitId === "pdf-12-2-u001");
+    if (!anchor) throw new Error("Unité d'engagement de test introuvable");
+    anchor.numbers = [{ raw: "1 500", normalized: "1500", role: "CONTENT" }];
+    mocks.findMeasure.mockResolvedValue(
+      measure({
+        publishedRevision: {
+          ...measure().publishedRevision,
+          evidenceSnapshot: snapshot,
+        },
+      })
+    );
+    mocks.parseMistralJSON.mockReturnValue({
+      details:
+        "Le programme présente cette proposition comme un droit destiné à 500 bénéficiaires, sans fournir d'autre élément chiffré dans les preuves citées.",
+      evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
+    });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(generateMeasureContextDraft("measure-1")).rejects.toThrow(
+      "nombre absent de la preuve"
+    );
+  });
+
+  it("refuse les quantités écrites en lettres", async () => {
+    mocks.parseMistralJSON.mockReturnValue({
+      details:
+        "Le programme présente cette proposition comme un droit destiné à quatre-vingts millions de personnes, sans apporter d'autre précision.",
+      evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
+    });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(generateMeasureContextDraft("measure-1")).rejects.toThrow(
+      "quantité écrite en lettres"
+    );
   });
 
   it("ne propose à l'admin que les mesures réellement éligibles", async () => {

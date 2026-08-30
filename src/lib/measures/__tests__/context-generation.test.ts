@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   findAuditLog: vi.fn(),
   createAuditLog: vi.fn(),
   findMeasureForUpdate: vi.fn(),
+  updateMeasure: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -26,7 +27,10 @@ vi.mock("@/lib/db", () => ({
     },
     $transaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
       callback({
-        measure: { findUniqueOrThrow: mocks.findMeasureForUpdate },
+        measure: {
+          findUniqueOrThrow: mocks.findMeasureForUpdate,
+          update: mocks.updateMeasure,
+        },
         auditLog: { create: mocks.createAuditLog },
       })
     ),
@@ -73,6 +77,7 @@ describe("génération de contexte sourcé", () => {
     mocks.findAuditLogs.mockResolvedValue([]);
     mocks.findAuditLog.mockResolvedValue(null);
     mocks.createAuditLog.mockResolvedValue({ id: "audit-1" });
+    mocks.updateMeasure.mockResolvedValue({ id: "measure-1" });
     mocks.callMistral.mockResolvedValue({ model: "mistral-small-2506", choices: [] });
     mocks.extractMistralText.mockReturnValue("{}");
     mocks.parseMistralJSON.mockReturnValue({
@@ -480,6 +485,7 @@ describe("génération de contexte sourcé", () => {
 
   it.each([
     "Le programme ne prévoit zéro bénéficiaire dans les territoires concernés.",
+    "Le programme vise mille bénéficiaires dans les territoires concernés.",
     "Le programme ne prévoit aucun bénéficiaire dans les territoires concernés.",
     "Le programme vise un bénéficiaire dans chaque territoire concerné par la mesure.",
     "Le programme vise une personne dans chaque territoire concerné par la mesure.",
@@ -509,6 +515,18 @@ describe("génération de contexte sourcé", () => {
 
     await expect(generateMeasureContextDraft("measure-1")).resolves.toMatchObject({
       status: "CREATED",
+    });
+  });
+
+  it("invalide le jeton de version avec l'issue terminale", async () => {
+    mocks.parseMistralJSON.mockReturnValue({ details: null, evidenceUnitIds: [] });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await generateMeasureContextDraft("measure-1");
+
+    expect(mocks.updateMeasure).toHaveBeenCalledWith({
+      where: { id: "measure-1" },
+      data: { updatedAt: expect.any(Date) },
     });
   });
 });

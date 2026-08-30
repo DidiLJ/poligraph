@@ -199,7 +199,7 @@ function sanitizeSourceText(value: string): string {
 }
 
 const SPELLED_OUT_NUMBER_PATTERN =
-  /(?<![\p{L}\p{N}_])(?:zéro|aucun|aucune|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|quarts?|doubles?|triples?|quadruples?|pour[\s\u00a0\u202f]+cent)(?![\p{L}\p{N}_])/iu;
+  /(?<![\p{L}\p{N}_])(?:zéro|aucun|aucune|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|mille|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|quarts?|doubles?|triples?|quadruples?|pour[\s\u00a0\u202f]+cent)(?![\p{L}\p{N}_])/iu;
 
 const FRACTIONAL_TIER_PATTERN =
   /(?<![\p{L}\p{N}_])(?:un|deux|le)[\s\u00a0\u202f]+tiers?(?:[\s\u00a0\u202f]+)(?:des|du|de[\s\u00a0\u202f]+la|de[\s\u00a0\u202f]+l[’'])(?![\p{L}\p{N}_])/iu;
@@ -267,6 +267,15 @@ async function recordTerminalContextResult(input: {
         userId: input.generatedBy,
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
+      },
+    });
+    // An outcome is terminal for this published revision. Move the optimistic version token in
+    // the same transaction so another generation that started from the previous version cannot
+    // create a contradictory draft after this lock is released.
+    await tx.measure.update({
+      where: { id: input.measureId },
+      data: {
+        updatedAt: new Date(Math.max(Date.now(), currentMeasure.updatedAt.getTime() + 1)),
       },
     });
   });

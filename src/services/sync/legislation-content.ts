@@ -186,9 +186,10 @@ export async function syncLegislationContent(
     // this cursor a dossier the AN will never publish (a Senate-originated text
     // requested against the AN endpoint, or one filed but not yet released)
     // stays permanently null and, sorted by filingDate alone, permanently
-    // outranks everything filed earlier — the backlog stops advancing. filingDate
-    // only breaks ties among dossiers at the same rotation stage (in practice,
-    // every not-yet-checked one).
+    // outranks everything filed earlier — the backlog stops advancing. The
+    // migration backfills exposeCheckedAt for every dossier that existed at
+    // deploy time, so "never checked" only ever means "created since"; filingDate
+    // breaks ties among dossiers at the same rotation stage.
     orderBy: [{ exposeCheckedAt: { sort: "asc", nulls: "first" } }, { filingDate: "desc" }],
   });
 

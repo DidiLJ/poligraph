@@ -46,8 +46,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/measures/context-generation", () => ({
   filterMeasureContextCandidateIds: (ids: string[]) => filterMeasureContextCandidateIdsMock(ids),
-  hasGeneratedContextHistory: vi.fn(() => false),
-  hasTerminalContextResult: vi.fn(async () => false),
+  hasContextAttemptForRevision: vi.fn(async () => false),
 }));
 
 // Mocked so the pages load without DATABASE_URL, and so a page that queried before checking

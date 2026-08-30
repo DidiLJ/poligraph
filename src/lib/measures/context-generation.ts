@@ -9,6 +9,7 @@ import { draftMeasureRevision } from "@/lib/measures/transitions";
 const MODEL = "mistral-small-latest";
 const PROMPT_VERSION = "measure-context-v6";
 const TERMINAL_CONTEXT_RESULT_ACTION = "GENERATE_CONTEXT_TERMINAL_RESULT";
+const GENERATED_CONTEXT_DRAFT_ACTION = "GENERATE_CONTEXT_DRAFT";
 const MIN_DETAILS_LENGTH = 80;
 const MAX_DETAILS_LENGTH = 1_000;
 
@@ -25,7 +26,6 @@ export type ContextGenerationSkipReason =
   | "NO_PUBLISHED_REVISION"
   | "NO_VALID_EVIDENCE"
   | "NO_SUPPORTING_CONTEXT"
-  | "PREVIOUS_CONTEXT_REJECTED"
   | "PREVIOUS_CONTEXT_ATTEMPT"
   | "NO_USEFUL_CONTEXT";
 
@@ -44,26 +44,26 @@ type ContextCandidate = {
   latestRevisionId: string | null;
   publishedRevisionId: string | null;
   publishedRevision: { evidenceSnapshot: unknown } | null;
-  revisions?: Array<{ id: string }>;
 };
 
-export function hasGeneratedContextHistory(
-  revisions: Array<{ extractionMethod: string; extractorVersion: string | null }>
-): boolean {
-  return revisions.some(
-    (revision) =>
-      revision.extractionMethod === "AI_ASSISTED" &&
-      revision.extractorVersion?.includes(":measure-context-v") === true
-  );
+function getGeneratedContextSourceRevisionId(changes: unknown): string | null {
+  if (!changes || typeof changes !== "object" || Array.isArray(changes)) return null;
+  const previousRevisionId = (changes as Record<string, unknown>).previousRevisionId;
+  return typeof previousRevisionId === "string" ? previousRevisionId : null;
 }
 
-export async function hasTerminalContextResult(revisionId: string | null): Promise<boolean> {
+export async function hasContextAttemptForRevision(revisionId: string | null): Promise<boolean> {
   if (!revisionId) return false;
   const result = await db.auditLog.findFirst({
     where: {
-      action: TERMINAL_CONTEXT_RESULT_ACTION,
       entityType: "MeasureRevision",
-      entityId: revisionId,
+      OR: [
+        { action: TERMINAL_CONTEXT_RESULT_ACTION, entityId: revisionId },
+        {
+          action: GENERATED_CONTEXT_DRAFT_ACTION,
+          changes: { path: ["previousRevisionId"], equals: revisionId },
+        },
+      ],
     },
     select: { id: true },
   });
@@ -72,29 +72,38 @@ export async function hasTerminalContextResult(revisionId: string | null): Promi
 
 function isEligibleContextCandidate(
   measure: ContextCandidate,
-  terminalContextRevisionIds: ReadonlySet<string>
+  attemptedContextRevisionIds: ReadonlySet<string>
 ): boolean {
   if (measure.latestRevisionId !== measure.publishedRevisionId) return false;
-  if (measure.publishedRevisionId && terminalContextRevisionIds.has(measure.publishedRevisionId)) {
+  if (measure.publishedRevisionId && attemptedContextRevisionIds.has(measure.publishedRevisionId)) {
     return false;
   }
-  if ((measure.revisions?.length ?? 0) > 0) return false;
   const evidence = readEvidenceSnapshot(measure.publishedRevision?.evidenceSnapshot);
   return evidence.status === "VALID" && evidence.snapshot.supportingIds.length > 0;
 }
 
-async function getTerminalContextRevisionIds(revisionIds: string[]): Promise<Set<string>> {
+async function getAttemptedContextRevisionIds(revisionIds: string[]): Promise<Set<string>> {
   if (revisionIds.length === 0) return new Set();
   const attempts = await db.auditLog.findMany({
     where: {
-      action: TERMINAL_CONTEXT_RESULT_ACTION,
       entityType: "MeasureRevision",
-      entityId: { in: revisionIds },
+      OR: [
+        { action: TERMINAL_CONTEXT_RESULT_ACTION, entityId: { in: revisionIds } },
+        ...revisionIds.map((revisionId) => ({
+          action: GENERATED_CONTEXT_DRAFT_ACTION,
+          changes: { path: ["previousRevisionId"], equals: revisionId },
+        })),
+      ],
     },
-    select: { entityId: true },
-    distinct: ["entityId"],
+    select: { action: true, changes: true, entityId: true },
   });
-  return new Set(attempts.map(({ entityId }) => entityId));
+  return new Set(
+    attempts.flatMap((attempt) => {
+      if (attempt.action === TERMINAL_CONTEXT_RESULT_ACTION) return [attempt.entityId];
+      const sourceRevisionId = getGeneratedContextSourceRevisionId(attempt.changes);
+      return sourceRevisionId ? [sourceRevisionId] : [];
+    })
+  );
 }
 
 export async function filterMeasureContextCandidateIds(
@@ -113,24 +122,16 @@ export async function filterMeasureContextCandidateIds(
       latestRevisionId: true,
       publishedRevisionId: true,
       publishedRevision: { select: { evidenceSnapshot: true } },
-      revisions: {
-        where: {
-          extractionMethod: "AI_ASSISTED",
-          extractorVersion: { contains: ":measure-context-v" },
-        },
-        select: { id: true },
-        take: 1,
-      },
     },
   });
-  const terminalContextRevisionIds = await getTerminalContextRevisionIds(
+  const attemptedContextRevisionIds = await getAttemptedContextRevisionIds(
     candidates.flatMap(({ publishedRevisionId }) =>
       publishedRevisionId ? [publishedRevisionId] : []
     )
   );
   const eligibleIds = new Set(
     candidates
-      .filter((measure) => isEligibleContextCandidate(measure, terminalContextRevisionIds))
+      .filter((measure) => isEligibleContextCandidate(measure, attemptedContextRevisionIds))
       .map(({ id }) => id)
   );
   return measureIds.filter((id) => eligibleIds.has(id)).slice(0, limit);
@@ -156,28 +157,20 @@ export async function findMeasureContextCandidateIds(
         latestRevisionId: true,
         publishedRevisionId: true,
         publishedRevision: { select: { evidenceSnapshot: true } },
-        revisions: {
-          where: {
-            extractionMethod: "AI_ASSISTED",
-            extractorVersion: { contains: ":measure-context-v" },
-          },
-          select: { id: true },
-          take: 1,
-        },
       },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       take: pageSize,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
-    const terminalContextRevisionIds = await getTerminalContextRevisionIds(
+    const attemptedContextRevisionIds = await getAttemptedContextRevisionIds(
       candidates.flatMap(({ publishedRevisionId }) =>
         publishedRevisionId ? [publishedRevisionId] : []
       )
     );
 
     for (const measure of candidates) {
-      if (!isEligibleContextCandidate(measure, terminalContextRevisionIds)) continue;
+      if (!isEligibleContextCandidate(measure, attemptedContextRevisionIds)) continue;
       eligibleIds.push(measure.id);
       if (eligibleIds.length === limit) break;
     }
@@ -211,10 +204,14 @@ const CONTEXTUAL_SINGULAR_QUANTITY_PATTERN =
   /(?<![\p{L}\p{N}_])(?:un|une)[\s\u00a0\u202f]+(?:bénéficiaire|personne|emploi|poste|euro|logement|place|année|mois|jour|heure|établissement|entreprise|agent|salarié|fonctionnaire|famille|ménage|enfant|élève|étudiant|enseignant|médecin|lit)(?:e|s|es)?(?![\p{L}\p{N}_])/iu;
 
 function assertNoGeneratedQuantities(details: string): void {
+  const detailsWithoutMinisterialTitle = details.replace(
+    /(?<![\p{L}\p{N}_])premi(?:er|ère)[\s\u00a0\u202f]+ministre(?![\p{L}\p{N}_])/giu,
+    ""
+  );
   if (
     /\d/u.test(details) ||
     SPELLED_OUT_NUMBER_PATTERN.test(details) ||
-    SPELLED_OUT_ORDINAL_PATTERN.test(details) ||
+    SPELLED_OUT_ORDINAL_PATTERN.test(detailsWithoutMinisterialTitle) ||
     FRACTIONAL_TIER_PATTERN.test(details) ||
     CONTEXTUAL_SINGULAR_QUANTITY_PATTERN.test(details)
   ) {
@@ -311,14 +308,6 @@ export async function generateMeasureContextDraft(
           evidenceSnapshot: true,
         },
       },
-      revisions: {
-        where: {
-          extractionMethod: "AI_ASSISTED",
-          extractorVersion: { contains: ":measure-context-v" },
-        },
-        select: { id: true },
-        take: 1,
-      },
     },
   });
   if (!measure) throw new MeasureValidationError("Mesure introuvable");
@@ -336,10 +325,7 @@ export async function generateMeasureContextDraft(
   if (measure.latestRevisionId !== measure.publishedRevisionId) {
     return { status: "SKIPPED", reason: "ACTIVE_DRAFT" };
   }
-  if (measure.revisions.length > 0) {
-    return { status: "SKIPPED", reason: "PREVIOUS_CONTEXT_REJECTED" };
-  }
-  if (await hasTerminalContextResult(revision.id)) {
+  if (await hasContextAttemptForRevision(revision.id)) {
     return { status: "SKIPPED", reason: "PREVIOUS_CONTEXT_ATTEMPT" };
   }
 

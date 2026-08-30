@@ -66,12 +66,12 @@ describe("génération de contexte sourcé", () => {
         preserveEvidenceFromRevisionId: "revision-1",
         revision: expect.objectContaining({
           extractionMethod: "AI_ASSISTED",
-          extractorVersion: "mistral-small-2506:measure-context-v2",
+          extractorVersion: "mistral-small-2506:measure-context-v3",
           details: expect.stringContaining("67 millions"),
         }),
         generatedContext: expect.objectContaining({
           evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
-          promptVersion: "measure-context-v2",
+          promptVersion: "measure-context-v3",
         }),
       })
     );
@@ -84,6 +84,39 @@ describe("génération de contexte sourcé", () => {
         }),
       ],
       expect.any(Object)
+    );
+  });
+
+  it("transmet au modèle le locuteur et le rôle discursif de chaque preuve", async () => {
+    const snapshot = validEvidenceSnapshot();
+    const supportingUnit = snapshot.units.find((unit) => unit.unitId === "pdf-13-1-u001");
+    if (!supportingUnit) throw new Error("Unité de contexte de test introuvable");
+    supportingUnit.speaker = "QUOTED_THIRD_PARTY";
+    supportingUnit.discourseRole = "TESTIMONY";
+    mocks.findMeasure.mockResolvedValue(
+      measure({
+        publishedRevision: {
+          ...measure().publishedRevision,
+          evidenceSnapshot: snapshot,
+        },
+      })
+    );
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await generateMeasureContextDraft("measure-1");
+
+    expect(mocks.callMistral).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          content: expect.stringMatching(
+            /locuteur="QUOTED_THIRD_PARTY" role-discursif="TESTIMONY"/
+          ),
+        }),
+      ],
+      expect.any(Object)
+    );
+    expect(mocks.callMistral.mock.calls[0]?.[0]?.[0]?.content).toContain(
+      "ne doit jamais être attribuée au programme"
     );
   });
 

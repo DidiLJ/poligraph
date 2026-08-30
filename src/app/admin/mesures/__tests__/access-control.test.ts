@@ -31,6 +31,7 @@ const queryMeasureQueueMock = vi.fn(async (_filters?: unknown) => EMPTY_RESULT);
 const listMeasureQueueCandidatesMock = vi.fn(async () => []);
 const queryBatchReviewGroupsMock = vi.fn(async (_filters?: unknown) => []);
 const queryBatchPublishGroupsMock = vi.fn(async (_filters?: unknown) => []);
+const filterMeasureContextCandidateIdsMock = vi.fn(async (_ids?: string[]) => []);
 
 vi.mock("next/navigation", () => ({
   redirect: (path: string) => redirectMock(path),
@@ -41,6 +42,11 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/auth", () => ({
   isAuthenticated: () => isAuthenticatedMock(),
+}));
+
+vi.mock("@/lib/measures/context-generation", () => ({
+  filterMeasureContextCandidateIds: (ids: string[]) => filterMeasureContextCandidateIdsMock(ids),
+  hasContextAttemptForRevision: vi.fn(async () => false),
 }));
 
 // Mocked so the pages load without DATABASE_URL, and so a page that queried before checking
@@ -107,6 +113,7 @@ describe("accès aux écrans de modération des mesures", () => {
     expect(listMeasureQueueCandidatesMock).not.toHaveBeenCalled();
     expect(queryBatchReviewGroupsMock).not.toHaveBeenCalled();
     expect(queryBatchPublishGroupsMock).not.toHaveBeenCalled();
+    expect(filterMeasureContextCandidateIdsMock).not.toHaveBeenCalled();
   });
 
   it("redirige le détail vers la connexion en l'absence de session", async () => {

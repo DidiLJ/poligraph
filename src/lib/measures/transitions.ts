@@ -250,6 +250,14 @@ export type DraftMeasureRevisionInput = {
   /** Preserves immutable V6 proof when a human corrects the active imported formulation. */
   preserveEvidenceFromRevisionId?: string;
   correctedBy?: string;
+  generatedContext?: {
+    evidenceUnitIds: string[];
+    generatedBy: string;
+    ipAddress: string;
+    model: string;
+    promptVersion: string;
+    userAgent: string;
+  };
 };
 
 // No `discardedBy` and no `supersedesDraftBy`. A first version of this plan took a
@@ -325,6 +333,7 @@ export async function draftMeasureRevision(
             ? createV6CorrectionFingerprint({
                 previousRevisionId: input.preserveEvidenceFromRevisionId,
                 text: input.revision.text,
+                details: input.revision.details,
               })
             : null,
       };
@@ -362,14 +371,24 @@ export async function draftMeasureRevision(
     if (input.preserveEvidenceFromRevisionId) {
       await tx.auditLog.create({
         data: {
-          action: "CORRECT_DRAFT",
+          action: input.generatedContext ? "GENERATE_CONTEXT_DRAFT" : "CORRECT_DRAFT",
           entityType: "MeasureRevision",
           entityId: revision.id,
           changes: {
             previousRevisionId: input.preserveEvidenceFromRevisionId,
             evidenceSnapshotPreserved: true,
+            ...(input.generatedContext
+              ? {
+                  evidenceUnitIds: input.generatedContext.evidenceUnitIds,
+                  generatedBy: input.generatedContext.generatedBy,
+                  model: input.generatedContext.model,
+                  promptVersion: input.generatedContext.promptVersion,
+                }
+              : {}),
           },
-          userId: input.correctedBy,
+          userId: input.generatedContext?.generatedBy ?? input.correctedBy,
+          ipAddress: input.generatedContext?.ipAddress,
+          userAgent: input.generatedContext?.userAgent,
         },
       });
     }

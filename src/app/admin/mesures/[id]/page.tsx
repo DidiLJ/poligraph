@@ -11,6 +11,8 @@ import {
 import { isAuthenticated } from "@/lib/auth";
 import { getMeasureForModeration, getPublicMeasure } from "@/lib/data/measures";
 import { deriveModerationState, type ModerationMeasureRow } from "@/lib/measures/moderation-state";
+import { readEvidenceSnapshot } from "@/lib/measures/evidence-snapshot";
+import { hasContextAttemptForRevision } from "@/lib/measures/context-generation";
 import { AnomalyList } from "../_components/AnomalyList";
 import { MeasureActionPanel } from "../_components/MeasureActionPanel";
 import { MeasureMetadataPanel } from "../_components/MeasureMetadataPanel";
@@ -103,6 +105,18 @@ export default async function AdminMeasureDetailPage({ params }: PageProps) {
   const revisionDetails = Object.fromEntries(
     measure.revisions.map((revision) => [revision.id, revision.details])
   );
+  const publishedRevision = measure.revisions.find(
+    (revision) => revision.id === measure.publishedRevisionId
+  );
+  const publishedEvidence = readEvidenceSnapshot(publishedRevision?.evidenceSnapshot);
+  const hasContextAttempt = await hasContextAttemptForRevision(measure.publishedRevisionId);
+  const canGenerateContext =
+    publishedRevision !== undefined &&
+    !publishedRevision.details?.trim() &&
+    measure.latestRevisionId === measure.publishedRevisionId &&
+    !hasContextAttempt &&
+    publishedEvidence.status === "VALID" &&
+    publishedEvidence.snapshot.supportingIds.length > 0;
 
   return (
     <div className="space-y-6">
@@ -356,6 +370,7 @@ export default async function AdminMeasureDetailPage({ params }: PageProps) {
             actions={actions}
             revisionTexts={revisionTexts}
             revisionDetails={revisionDetails}
+            canGenerateContext={canGenerateContext}
             isWithdrawn={state.withdrawal !== null}
             pointersAmbiguous={hasAmbiguousPointers(state)}
           />

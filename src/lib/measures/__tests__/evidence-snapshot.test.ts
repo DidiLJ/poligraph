@@ -127,5 +127,12 @@ describe("createV6CorrectionFingerprint", () => {
         text: "Plafonner les loyers.",
       })
     ).not.toBe(first);
+    expect(
+      createV6CorrectionFingerprint({
+        previousRevisionId: "revision-source",
+        text: "Encadrer les loyers.",
+        details: "Le document précise le périmètre de la mesure.",
+      })
+    ).not.toBe(first);
   });
 });

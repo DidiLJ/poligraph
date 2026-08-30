@@ -9,7 +9,9 @@ import { BatchPublishPanel } from "./_components/BatchPublishPanel";
 import { BatchReviewPanel } from "./_components/BatchReviewPanel";
 import { QueueFilters, type QueueFilterState } from "./_components/QueueFilters";
 import { QueueTable } from "./_components/QueueTable";
+import { ContextGenerationBatchPanel } from "./_components/ContextGenerationBatchPanel";
 import { buttonVariants } from "@/components/ui/button";
+import { filterMeasureContextCandidateIds } from "@/lib/measures/context-generation";
 import { cn } from "@/lib/utils";
 import { queryBatchPublishGroups } from "./_data/batch-publish-query";
 import { queryBatchReviewGroups } from "./_data/batch-review-query";
@@ -103,6 +105,13 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
     q,
   };
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+  const contextCandidateIds =
+    enrichment === "DETAILS_MISSING"
+      ? await filterMeasureContextCandidateIds(
+          result.rows.map((row) => row.id),
+          10
+        )
+      : [];
   const firstMeasure = result.rows[0];
   const enrichmentWorkflow =
     enrichment === "SUBTOPICS_PENDING"
@@ -190,6 +199,10 @@ export default async function AdminMeasuresPage({ searchParams }: PageProps) {
           </Link>
         </section>
       ) : null}
+
+      {enrichment === "DETAILS_MISSING" && (
+        <ContextGenerationBatchPanel measureIds={contextCandidateIds} />
+      )}
 
       <BatchReviewPanel groups={batchReviewGroups} />
 

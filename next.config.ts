@@ -52,6 +52,8 @@ const nextConfig: NextConfig = {
       // NosDéputés / NosSénateurs
       { protocol: "https", hostname: "www.nosdeputes.fr" },
       { protocol: "https", hostname: "www.nossenateurs.fr" },
+      // The senators photo sync uses the archived API host as its official fallback.
+      { protocol: "https", hostname: "archive.nossenateurs.fr" },
       // data.gouv.fr (election photos)
       { protocol: "https", hostname: "www.data.gouv.fr" },
       { protocol: "https", hostname: "static.data.gouv.fr" },

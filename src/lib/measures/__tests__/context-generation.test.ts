@@ -8,10 +8,20 @@ const mocks = vi.hoisted(() => ({
   extractMistralText: vi.fn(),
   parseMistralJSON: vi.fn(),
   draftMeasureRevision: vi.fn(),
+  findAuditLogs: vi.fn(),
+  findAuditLog: vi.fn(),
+  createAuditLog: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
-  db: { measure: { findUnique: mocks.findMeasure, findMany: mocks.findMeasures } },
+  db: {
+    measure: { findUnique: mocks.findMeasure, findMany: mocks.findMeasures },
+    auditLog: {
+      findMany: mocks.findAuditLogs,
+      findFirst: mocks.findAuditLog,
+      create: mocks.createAuditLog,
+    },
+  },
 }));
 vi.mock("@/lib/api/mistral", () => ({
   callMistral: mocks.callMistral,
@@ -45,6 +55,9 @@ describe("génération de contexte sourcé", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.findMeasure.mockResolvedValue(measure());
+    mocks.findAuditLogs.mockResolvedValue([]);
+    mocks.findAuditLog.mockResolvedValue(null);
+    mocks.createAuditLog.mockResolvedValue({ id: "audit-1" });
     mocks.callMistral.mockResolvedValue({ model: "mistral-small-2506", choices: [] });
     mocks.extractMistralText.mockReturnValue("{}");
     mocks.parseMistralJSON.mockReturnValue({
@@ -67,12 +80,12 @@ describe("génération de contexte sourcé", () => {
         preserveEvidenceFromRevisionId: "revision-1",
         revision: expect.objectContaining({
           extractionMethod: "AI_ASSISTED",
-          extractorVersion: "mistral-small-2506:measure-context-v5",
+          extractorVersion: "mistral-small-2506:measure-context-v6",
           details: expect.stringContaining("droit aux vacances"),
         }),
         generatedContext: expect.objectContaining({
           evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
-          promptVersion: "measure-context-v5",
+          promptVersion: "measure-context-v6",
         }),
       })
     );
@@ -170,7 +183,7 @@ describe("génération de contexte sourcé", () => {
     mocks.parseMistralJSON.mockReturnValue({
       details:
         "Le programme présente cette proposition comme un droit destiné à 67 millions de personnes et décrit une partie de la population qui ne part pas en vacances.",
-      evidenceUnitIds: ["pdf-13-1-u001"],
+      evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
     });
     const { generateMeasureContextDraft } = await import("../context-generation");
 
@@ -329,6 +342,53 @@ describe("génération de contexte sourcé", () => {
       status: "SKIPPED",
       reason: "NO_USEFUL_CONTEXT",
     });
+    expect(mocks.draftMeasureRevision).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "GENERATE_CONTEXT_NO_USEFUL_RESULT",
+        entityType: "MeasureRevision",
+        entityId: "revision-1",
+      }),
+    });
+  });
+
+  it("ne relance pas Mistral après un résultat sans contexte utile sur la même révision", async () => {
+    mocks.findAuditLog.mockResolvedValue({ id: "audit-previous-attempt" });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(generateMeasureContextDraft("measure-1")).resolves.toEqual({
+      status: "SKIPPED",
+      reason: "NO_USEFUL_CONTEXT",
+    });
+    expect(mocks.callMistral).not.toHaveBeenCalled();
+  });
+
+  it("exclut des lots une révision déjà jugée sans contexte utile", async () => {
+    const candidate = {
+      id: "measure-terminal",
+      latestRevisionId: "revision-terminal",
+      publishedRevisionId: "revision-terminal",
+      publishedRevision: { evidenceSnapshot: validEvidenceSnapshot() },
+      revisions: [],
+    };
+    mocks.findMeasures.mockResolvedValue([candidate]);
+    mocks.findAuditLogs.mockResolvedValue([{ entityId: "revision-terminal" }]);
+    const { filterMeasureContextCandidateIds } = await import("../context-generation");
+
+    await expect(filterMeasureContextCandidateIds(["measure-terminal"])).resolves.toEqual([]);
+  });
+
+  it("refuse une trace qui omet une unité fournie au modèle", async () => {
+    mocks.parseMistralJSON.mockReturnValue({
+      details:
+        "Le programme présente cette proposition comme un droit aux vacances et la rattache au constat qu'une partie de la population ne part pas.",
+      evidenceUnitIds: ["pdf-13-1-u001"],
+    });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(generateMeasureContextDraft("measure-1")).rejects.toThrow(
+      "l'ensemble exact des preuves"
+    );
     expect(mocks.draftMeasureRevision).not.toHaveBeenCalled();
   });
 });

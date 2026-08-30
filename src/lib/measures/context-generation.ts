@@ -6,7 +6,8 @@ import { MeasureValidationError } from "@/lib/measures/errors";
 import { draftMeasureRevision } from "@/lib/measures/transitions";
 
 const MODEL = "mistral-small-latest";
-const PROMPT_VERSION = "measure-context-v5";
+const PROMPT_VERSION = "measure-context-v6";
+const NO_USEFUL_CONTEXT_ACTION = "GENERATE_CONTEXT_NO_USEFUL_RESULT";
 const MIN_DETAILS_LENGTH = 80;
 const MAX_DETAILS_LENGTH = 1_000;
 
@@ -54,11 +55,31 @@ export function hasGeneratedContextHistory(
   );
 }
 
-function isEligibleContextCandidate(measure: ContextCandidate): boolean {
+function isEligibleContextCandidate(
+  measure: ContextCandidate,
+  noUsefulContextRevisionIds: ReadonlySet<string>
+): boolean {
   if (measure.latestRevisionId !== measure.publishedRevisionId) return false;
+  if (measure.publishedRevisionId && noUsefulContextRevisionIds.has(measure.publishedRevisionId)) {
+    return false;
+  }
   if ((measure.revisions?.length ?? 0) > 0) return false;
   const evidence = readEvidenceSnapshot(measure.publishedRevision?.evidenceSnapshot);
   return evidence.status === "VALID" && evidence.snapshot.supportingIds.length > 0;
+}
+
+async function getNoUsefulContextRevisionIds(revisionIds: string[]): Promise<Set<string>> {
+  if (revisionIds.length === 0) return new Set();
+  const attempts = await db.auditLog.findMany({
+    where: {
+      action: NO_USEFUL_CONTEXT_ACTION,
+      entityType: "MeasureRevision",
+      entityId: { in: revisionIds },
+    },
+    select: { entityId: true },
+    distinct: ["entityId"],
+  });
+  return new Set(attempts.map(({ entityId }) => entityId));
 }
 
 export async function filterMeasureContextCandidateIds(
@@ -87,7 +108,16 @@ export async function filterMeasureContextCandidateIds(
       },
     },
   });
-  const eligibleIds = new Set(candidates.filter(isEligibleContextCandidate).map(({ id }) => id));
+  const noUsefulContextRevisionIds = await getNoUsefulContextRevisionIds(
+    candidates.flatMap(({ publishedRevisionId }) =>
+      publishedRevisionId ? [publishedRevisionId] : []
+    )
+  );
+  const eligibleIds = new Set(
+    candidates
+      .filter((measure) => isEligibleContextCandidate(measure, noUsefulContextRevisionIds))
+      .map(({ id }) => id)
+  );
   return measureIds.filter((id) => eligibleIds.has(id)).slice(0, limit);
 }
 
@@ -125,8 +155,14 @@ export async function findMeasureContextCandidateIds(
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
+    const noUsefulContextRevisionIds = await getNoUsefulContextRevisionIds(
+      candidates.flatMap(({ publishedRevisionId }) =>
+        publishedRevisionId ? [publishedRevisionId] : []
+      )
+    );
+
     for (const measure of candidates) {
-      if (!isEligibleContextCandidate(measure)) continue;
+      if (!isEligibleContextCandidate(measure, noUsefulContextRevisionIds)) continue;
       eligibleIds.push(measure.id);
       if (eligibleIds.length === limit) break;
     }
@@ -201,6 +237,17 @@ export async function generateMeasureContextDraft(
   if (measure.revisions.length > 0) {
     return { status: "SKIPPED", reason: "PREVIOUS_CONTEXT_REJECTED" };
   }
+  const previousNoUsefulResult = await db.auditLog.findFirst({
+    where: {
+      action: NO_USEFUL_CONTEXT_ACTION,
+      entityType: "MeasureRevision",
+      entityId: revision.id,
+    },
+    select: { id: true },
+  });
+  if (previousNoUsefulResult) {
+    return { status: "SKIPPED", reason: "NO_USEFUL_CONTEXT" };
+  }
 
   const evidence = readEvidenceSnapshot(revision.evidenceSnapshot);
   if (evidence.status !== "VALID") {
@@ -233,7 +280,7 @@ Règles :
 - ne présente jamais l'argumentaire du programme comme un fait établi ;
 - ne répète pas simplement la formulation de la mesure ;
 - écris entre 40 et 120 mots, en français clair ;
-- cite les identifiants de toutes les unités utilisées ;
+- renvoie exactement les identifiants de toutes les unités fournies, sans en omettre ni en ajouter ;
 - si les unités n'apportent aucun contexte distinct, renvoie details à null.
 
 <formulation>${sanitizeSourceText(revision.text)}</formulation>
@@ -253,21 +300,39 @@ Réponds uniquement en JSON :
   const parsed = generatedContextSchema.parse(
     parseMistralJSON<unknown>(extractMistralText(response))
   );
-  if (parsed.details === null) return { status: "SKIPPED", reason: "NO_USEFUL_CONTEXT" };
+  const resolvedModel = response.model?.trim() || MODEL;
+  if (parsed.details === null) {
+    await db.auditLog.create({
+      data: {
+        action: NO_USEFUL_CONTEXT_ACTION,
+        entityType: "MeasureRevision",
+        entityId: revision.id,
+        changes: {
+          measureId,
+          model: resolvedModel,
+          promptVersion: PROMPT_VERSION,
+          outcome: "NO_USEFUL_CONTEXT",
+        },
+        userId: options.generatedBy ?? "system",
+      },
+    });
+    return { status: "SKIPPED", reason: "NO_USEFUL_CONTEXT" };
+  }
 
   const unitsById = new Map(units.map((unit) => [unit.unitId, unit]));
+  const citedUnitIds = new Set(parsed.evidenceUnitIds);
   if (
-    parsed.evidenceUnitIds.length === 0 ||
+    parsed.evidenceUnitIds.length !== unitsById.size ||
+    citedUnitIds.size !== unitsById.size ||
     parsed.evidenceUnitIds.some((id) => !unitsById.has(id)) ||
     !parsed.evidenceUnitIds.some((id) => supportingIds.has(id))
   ) {
     throw new MeasureValidationError(
-      "Le contexte généré ne cite pas une preuve de contexte autorisée"
+      "Le contexte généré ne cite pas l'ensemble exact des preuves fournies"
     );
   }
   assertNoGeneratedQuantities(parsed.details);
 
-  const resolvedModel = response.model?.trim() || MODEL;
   const { revisionId } = await draftMeasureRevision({
     measureId,
     expectedUpdatedAt: options.expectedUpdatedAt ?? measure.updatedAt,

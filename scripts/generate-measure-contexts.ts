@@ -1,7 +1,9 @@
 import { getMistralTokensUsed } from "../src/lib/api/mistral";
 import { db } from "../src/lib/db";
-import { readEvidenceSnapshot } from "../src/lib/measures/evidence-snapshot";
-import { generateMeasureContextDraft } from "../src/lib/measures/context-generation";
+import {
+  findMeasureContextCandidateIds,
+  generateMeasureContextDraft,
+} from "../src/lib/measures/context-generation";
 
 type Options = { apply: boolean; electionSlug: string; limit: number };
 
@@ -24,30 +26,9 @@ function parseOptions(args: string[]): Options {
 
 async function main(): Promise<void> {
   const options = parseOptions(process.argv.slice(2));
-  const candidates = await db.measure.findMany({
-    where: {
-      election: { slug: options.electionSlug },
-      publicationStatus: "PUBLISHED",
-      publishedRevision: { is: { details: null } },
-    },
-    select: {
-      id: true,
-      latestRevisionId: true,
-      publishedRevisionId: true,
-      publishedRevision: { select: { evidenceSnapshot: true } },
-    },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    take: 5_000,
-  });
-  const eligible = candidates
-    .filter((measure) => measure.latestRevisionId === measure.publishedRevisionId)
-    .filter((measure) => {
-      const evidence = readEvidenceSnapshot(measure.publishedRevision?.evidenceSnapshot);
-      return evidence.status === "VALID" && evidence.snapshot.supportingIds.length > 0;
-    })
-    .slice(0, options.limit);
+  const eligibleIds = await findMeasureContextCandidateIds(options.electionSlug, options.limit);
 
-  console.log(`${eligible.length} mesure(s) éligible(s) dans ce lot.`);
+  console.log(`${eligibleIds.length} mesure(s) éligible(s) dans ce lot.`);
   if (!options.apply) {
     console.log("Simulation uniquement. Ajouter --apply pour créer les brouillons.");
     return;
@@ -57,19 +38,19 @@ async function main(): Promise<void> {
   let created = 0;
   let skipped = 0;
   let failed = 0;
-  for (const measure of eligible) {
+  for (const measureId of eligibleIds) {
     try {
-      const result = await generateMeasureContextDraft(measure.id, { generatedBy: "cli" });
+      const result = await generateMeasureContextDraft(measureId, { generatedBy: "cli" });
       if (result.status === "CREATED") {
         created += 1;
-        console.log(`${measure.id}: brouillon ${result.revisionId} créé`);
+        console.log(`${measureId}: brouillon ${result.revisionId} créé`);
       } else {
         skipped += 1;
-        console.log(`${measure.id}: ignorée (${result.reason})`);
+        console.log(`${measureId}: ignorée (${result.reason})`);
       }
     } catch (error) {
       failed += 1;
-      console.error(`${measure.id}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`${measureId}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   console.log(

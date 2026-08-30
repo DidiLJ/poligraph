@@ -3,6 +3,7 @@ import { validEvidenceSnapshot } from "./evidence-snapshot-fixture";
 
 const mocks = vi.hoisted(() => ({
   findMeasure: vi.fn(),
+  findMeasures: vi.fn(),
   callMistral: vi.fn(),
   extractMistralText: vi.fn(),
   parseMistralJSON: vi.fn(),
@@ -10,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/db", () => ({
-  db: { measure: { findUnique: mocks.findMeasure } },
+  db: { measure: { findUnique: mocks.findMeasure, findMany: mocks.findMeasures } },
 }));
 vi.mock("@/lib/api/mistral", () => ({
   callMistral: mocks.callMistral,
@@ -131,6 +132,47 @@ describe("génération de contexte sourcé", () => {
       "nombre absent de la preuve"
     );
     expect(mocks.draftMeasureRevision).not.toHaveBeenCalled();
+  });
+
+  it("refuse un nombre présent seulement dans une unité non citée", async () => {
+    mocks.parseMistralJSON.mockReturnValue({
+      details:
+        "Le programme présente cette proposition comme un droit destiné à 67 millions de personnes et décrit une partie de la population qui ne part pas en vacances.",
+      evidenceUnitIds: ["pdf-13-1-u001"],
+    });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(generateMeasureContextDraft("measure-1")).rejects.toThrow(
+      "nombre absent de la preuve"
+    );
+    expect(mocks.draftMeasureRevision).not.toHaveBeenCalled();
+  });
+
+  it("pagine au-delà des premières mesures inéligibles", async () => {
+    const ineligible = (id: string) => ({
+      id,
+      latestRevisionId: `${id}-draft`,
+      publishedRevisionId: `${id}-published`,
+      publishedRevision: { evidenceSnapshot: validEvidenceSnapshot() },
+    });
+    const eligible = (id: string) => ({
+      id,
+      latestRevisionId: `${id}-published`,
+      publishedRevisionId: `${id}-published`,
+      publishedRevision: { evidenceSnapshot: validEvidenceSnapshot() },
+    });
+    mocks.findMeasures
+      .mockResolvedValueOnce([ineligible("measure-1"), ineligible("measure-2")])
+      .mockResolvedValueOnce([eligible("measure-3")]);
+    const { findMeasureContextCandidateIds } = await import("../context-generation");
+
+    await expect(findMeasureContextCandidateIds("presidentielle-2027", 1, 2)).resolves.toEqual([
+      "measure-3",
+    ]);
+    expect(mocks.findMeasures).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ cursor: { id: "measure-2" }, skip: 1 })
+    );
   });
 
   it("accepte que le modèle juge le contexte insuffisant sans créer de brouillon", async () => {

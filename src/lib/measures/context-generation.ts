@@ -35,6 +35,48 @@ export type ContextGenerationResult =
     }
   | { status: "SKIPPED"; reason: ContextGenerationSkipReason };
 
+export async function findMeasureContextCandidateIds(
+  electionSlug: string,
+  limit: number,
+  pageSize = 250
+): Promise<string[]> {
+  const eligibleIds: string[] = [];
+  let cursor: string | undefined;
+
+  while (eligibleIds.length < limit) {
+    const candidates = await db.measure.findMany({
+      where: {
+        election: { slug: electionSlug },
+        publicationStatus: "PUBLISHED",
+        publishedRevision: { is: { details: null } },
+      },
+      select: {
+        id: true,
+        latestRevisionId: true,
+        publishedRevisionId: true,
+        publishedRevision: { select: { evidenceSnapshot: true } },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: pageSize,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+
+    for (const measure of candidates) {
+      if (measure.latestRevisionId !== measure.publishedRevisionId) continue;
+      const evidence = readEvidenceSnapshot(measure.publishedRevision?.evidenceSnapshot);
+      if (evidence.status !== "VALID" || evidence.snapshot.supportingIds.length === 0) continue;
+      eligibleIds.push(measure.id);
+      if (eligibleIds.length === limit) break;
+    }
+
+    if (candidates.length < pageSize) break;
+    cursor = candidates.at(-1)?.id;
+    if (!cursor) break;
+  }
+
+  return eligibleIds;
+}
+
 function sanitizeSourceText(value: string): string {
   return value
     .replace(/[<>&"\n\r]/g, " ")
@@ -106,7 +148,6 @@ export async function generateMeasureContextDraft(
     return { status: "SKIPPED", reason: "NO_SUPPORTING_CONTEXT" };
   }
 
-  const evidenceText = units.map((unit) => unit.rawExactText).join("\n");
   const sourceUnits = units
     .map(
       (unit) =>
@@ -144,17 +185,20 @@ Réponds uniquement en JSON :
   );
   if (parsed.details === null) return { status: "SKIPPED", reason: "NO_USEFUL_CONTEXT" };
 
-  const allowedIds = new Set(units.map((unit) => unit.unitId));
+  const unitsById = new Map(units.map((unit) => [unit.unitId, unit]));
   if (
     parsed.evidenceUnitIds.length === 0 ||
-    parsed.evidenceUnitIds.some((id) => !allowedIds.has(id)) ||
+    parsed.evidenceUnitIds.some((id) => !unitsById.has(id)) ||
     !parsed.evidenceUnitIds.some((id) => supportingIds.has(id))
   ) {
     throw new MeasureValidationError(
       "Le contexte généré ne cite pas une preuve de contexte autorisée"
     );
   }
-  assertGroundedNumbers(parsed.details, evidenceText);
+  const citedEvidenceText = parsed.evidenceUnitIds
+    .map((id) => unitsById.get(id)?.rawExactText ?? "")
+    .join("\n");
+  assertGroundedNumbers(parsed.details, citedEvidenceText);
 
   const resolvedModel = response.model?.trim() || MODEL;
   const { revisionId } = await draftMeasureRevision({

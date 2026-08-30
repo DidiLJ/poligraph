@@ -87,6 +87,13 @@ export function buildDocumentUrl(documentId: string): string {
   return DOCUMENT_URL_TEMPLATE.replace("{id}", encodeURIComponent(documentId));
 }
 
+async function touchExposeCheckedAt(id: string): Promise<void> {
+  await db.legislativeDossier.update({
+    where: { id },
+    data: { exposeCheckedAt: new Date() },
+  });
+}
+
 function createClient(): HTTPClient {
   return new HTTPClient({
     rateLimitMs: ASSEMBLEE_OPENDATA_RATE_LIMIT_MS,
@@ -173,8 +180,17 @@ export async function syncLegislationContent(
       externalId: true,
       documentExternalId: true,
       title: true,
+      exposeCheckedAt: true,
     },
-    orderBy: { filingDate: "desc" },
+    // Never-checked dossiers first, then the ones checked longest ago. Without
+    // this cursor a dossier the AN will never publish (a Senate-originated text
+    // requested against the AN endpoint, or one filed but not yet released)
+    // stays permanently null and, sorted by filingDate alone, permanently
+    // outranks everything filed earlier — the backlog stops advancing. The
+    // migration backfills exposeCheckedAt for every dossier that existed at
+    // deploy time, so "never checked" only ever means "created since"; filingDate
+    // breaks ties among dossiers at the same rotation stage.
+    orderBy: [{ exposeCheckedAt: { sort: "asc", nulls: "first" } }, { filingDate: "desc" }],
   });
 
   if (limit) {
@@ -191,9 +207,20 @@ export async function syncLegislationContent(
   const client = createClient();
   let batchFailure: string | null = null;
 
+  // Scoped to dossiers with no prior exposeCheckedAt: the rotation cursor above
+  // means a normal run increasingly draws from the pool of documents already
+  // known to 404 forever (Senate-originated texts requested against the AN
+  // endpoint), which would otherwise trip the "all missing" guard below on any
+  // ordinary day. Only a first attempt failing signals the endpoint itself is
+  // broken; a known-dead document 404ing again is the rotation working as
+  // designed.
+  let firstAttempts = 0;
+  let firstAttemptsNotFound = 0;
+
   for (let i = 0; i < dossiers.length; i++) {
     const dossier = dossiers[i]!;
     const docId = dossier.documentExternalId!;
+    const isFirstAttempt = dossier.exposeCheckedAt === null;
 
     onProgress?.(i + 1, total, docId);
 
@@ -208,6 +235,14 @@ export async function syncLegislationContent(
       const fullText = await downloadDocumentText(docId, client);
 
       if (fullText === null) {
+        // A definitive "no such document" answer, not a network hiccup: record
+        // it so this dossier moves to the back of the rotation instead of
+        // occupying the top slot on every future run.
+        await touchExposeCheckedAt(dossier.id);
+        if (isFirstAttempt) {
+          firstAttempts++;
+          firstAttemptsNotFound++;
+        }
         stats.notFound++;
         stats.processed++;
         continue;
@@ -216,6 +251,8 @@ export async function syncLegislationContent(
       stats.downloaded++;
 
       if (!looksLikeParliamentaryDocument(fullText)) {
+        await touchExposeCheckedAt(dossier.id);
+        if (isFirstAttempt) firstAttempts++;
         stats.skipped++;
         stats.processed++;
         continue;
@@ -229,17 +266,25 @@ export async function syncLegislationContent(
           data: {
             exposeDesMotifs: expose,
             exposeSource: EXPOSE_SOURCE,
+            exposeCheckedAt: new Date(),
           },
         });
         stats.extracted++;
       } else {
+        await touchExposeCheckedAt(dossier.id);
         stats.skipped++;
       }
 
+      if (isFirstAttempt) firstAttempts++;
       stats.processed++;
     } catch (err) {
       stats.errors.push(`${dossier.externalId}: ${describeError(err)}`);
       stats.processed++;
+
+      // Left unstamped on purpose: a network error or timeout says nothing
+      // about the document itself, so the dossier stays at the front of the
+      // rotation and is retried on the next run rather than waiting a full
+      // cycle through the backlog.
 
       // A host that no longer resolves fails identically on every remaining
       // dossier. Stop here so the run reports the dead source once instead of
@@ -251,8 +296,12 @@ export async function syncLegislationContent(
     }
   }
 
-  if (!batchFailure && stats.downloaded === 0 && stats.notFound >= ALL_MISSING_ALERT_THRESHOLD) {
-    batchFailure = `all ${stats.notFound} documents answered 404 on ${DOCUMENT_HOST}, the open data URL scheme has most likely changed`;
+  if (
+    !batchFailure &&
+    firstAttempts >= ALL_MISSING_ALERT_THRESHOLD &&
+    firstAttemptsNotFound === firstAttempts
+  ) {
+    batchFailure = `all ${firstAttempts} never-checked-before documents answered 404 on ${DOCUMENT_HOST} (${stats.notFound} 404s in this run overall, including known-missing ones back for their scheduled recheck), the open data URL scheme has most likely changed`;
   }
 
   if (!batchFailure && stats.extracted === 0 && stats.downloaded >= ALL_MISSING_ALERT_THRESHOLD) {

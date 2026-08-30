@@ -70,6 +70,13 @@ Features:
         exposeDesMotifs: null,
       },
     });
+    const pendingNeverChecked = await db.legislativeDossier.count({
+      where: {
+        documentExternalId: { not: null },
+        exposeDesMotifs: null,
+        exposeCheckedAt: null,
+      },
+    });
 
     const bySource = await db.legislativeDossier.groupBy({
       by: ["exposeSource"],
@@ -86,6 +93,9 @@ Features:
       `With exposé des motifs: ${withExpose} (${total > 0 ? ((withExpose / total) * 100).toFixed(1) : 0}%)`
     );
     console.log(`Pending download: ${pendingDownload}`);
+    console.log(
+      `  Never checked: ${pendingNeverChecked} · previously checked (recurring failure): ${pendingDownload - pendingNeverChecked}`
+    );
 
     if (bySource.length > 0) {
       console.log("\nBy source:");

@@ -7,7 +7,7 @@ import { draftMeasureRevision } from "@/lib/measures/transitions";
 
 const MODEL = "mistral-small-latest";
 const PROMPT_VERSION = "measure-context-v6";
-const NO_USEFUL_CONTEXT_ACTION = "GENERATE_CONTEXT_NO_USEFUL_RESULT";
+const TERMINAL_CONTEXT_RESULT_ACTION = "GENERATE_CONTEXT_TERMINAL_RESULT";
 const MIN_DETAILS_LENGTH = 80;
 const MAX_DETAILS_LENGTH = 1_000;
 
@@ -25,6 +25,7 @@ export type ContextGenerationSkipReason =
   | "NO_VALID_EVIDENCE"
   | "NO_SUPPORTING_CONTEXT"
   | "PREVIOUS_CONTEXT_REJECTED"
+  | "PREVIOUS_CONTEXT_ATTEMPT"
   | "NO_USEFUL_CONTEXT";
 
 export type ContextGenerationResult =
@@ -57,10 +58,10 @@ export function hasGeneratedContextHistory(
 
 function isEligibleContextCandidate(
   measure: ContextCandidate,
-  noUsefulContextRevisionIds: ReadonlySet<string>
+  terminalContextRevisionIds: ReadonlySet<string>
 ): boolean {
   if (measure.latestRevisionId !== measure.publishedRevisionId) return false;
-  if (measure.publishedRevisionId && noUsefulContextRevisionIds.has(measure.publishedRevisionId)) {
+  if (measure.publishedRevisionId && terminalContextRevisionIds.has(measure.publishedRevisionId)) {
     return false;
   }
   if ((measure.revisions?.length ?? 0) > 0) return false;
@@ -68,11 +69,11 @@ function isEligibleContextCandidate(
   return evidence.status === "VALID" && evidence.snapshot.supportingIds.length > 0;
 }
 
-async function getNoUsefulContextRevisionIds(revisionIds: string[]): Promise<Set<string>> {
+async function getTerminalContextRevisionIds(revisionIds: string[]): Promise<Set<string>> {
   if (revisionIds.length === 0) return new Set();
   const attempts = await db.auditLog.findMany({
     where: {
-      action: NO_USEFUL_CONTEXT_ACTION,
+      action: TERMINAL_CONTEXT_RESULT_ACTION,
       entityType: "MeasureRevision",
       entityId: { in: revisionIds },
     },
@@ -108,14 +109,14 @@ export async function filterMeasureContextCandidateIds(
       },
     },
   });
-  const noUsefulContextRevisionIds = await getNoUsefulContextRevisionIds(
+  const terminalContextRevisionIds = await getTerminalContextRevisionIds(
     candidates.flatMap(({ publishedRevisionId }) =>
       publishedRevisionId ? [publishedRevisionId] : []
     )
   );
   const eligibleIds = new Set(
     candidates
-      .filter((measure) => isEligibleContextCandidate(measure, noUsefulContextRevisionIds))
+      .filter((measure) => isEligibleContextCandidate(measure, terminalContextRevisionIds))
       .map(({ id }) => id)
   );
   return measureIds.filter((id) => eligibleIds.has(id)).slice(0, limit);
@@ -155,14 +156,14 @@ export async function findMeasureContextCandidateIds(
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
-    const noUsefulContextRevisionIds = await getNoUsefulContextRevisionIds(
+    const terminalContextRevisionIds = await getTerminalContextRevisionIds(
       candidates.flatMap(({ publishedRevisionId }) =>
         publishedRevisionId ? [publishedRevisionId] : []
       )
     );
 
     for (const measure of candidates) {
-      if (!isEligibleContextCandidate(measure, noUsefulContextRevisionIds)) continue;
+      if (!isEligibleContextCandidate(measure, terminalContextRevisionIds)) continue;
       eligibleIds.push(measure.id);
       if (eligibleIds.length === limit) break;
     }
@@ -184,14 +185,46 @@ function sanitizeSourceText(value: string): string {
 }
 
 const SPELLED_OUT_NUMBER_PATTERN =
-  /\b(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|tiers|quarts?|doubles?|triples?|quadruples?)\b|\bpour[\s\u00a0\u202f]+cent\b/iu;
+  /(?<![\p{L}\p{N}_])(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|tiers|quarts?|doubles?|triples?|quadruples?|pour[\s\u00a0\u202f]+cent)(?![\p{L}\p{N}_])/iu;
+
+const CONTEXTUAL_SINGULAR_QUANTITY_PATTERN =
+  /(?<![\p{L}\p{N}_])(?:un|une)[\s\u00a0\u202f]+(?:bénéficiaire|personne|emploi|poste|euro|logement|place|année|mois|jour|heure|établissement|entreprise|agent|salarié|fonctionnaire|famille|ménage|enfant|élève|étudiant|enseignant|médecin|lit)(?:e|s|es)?(?![\p{L}\p{N}_])/iu;
 
 function assertNoGeneratedQuantities(details: string): void {
-  if (/\d/u.test(details) || SPELLED_OUT_NUMBER_PATTERN.test(details)) {
+  if (
+    /\d/u.test(details) ||
+    SPELLED_OUT_NUMBER_PATTERN.test(details) ||
+    CONTEXTUAL_SINGULAR_QUANTITY_PATTERN.test(details)
+  ) {
     throw new MeasureValidationError(
       "Le contexte généré contient une quantité, interdite dans un brouillon automatique"
     );
   }
+}
+
+async function recordTerminalContextResult(input: {
+  generatedBy: string;
+  measureId: string;
+  model: string;
+  outcome: "INVALID_GENERATED_CONTEXT" | "NO_USEFUL_CONTEXT";
+  revisionId: string;
+  validationError?: string;
+}): Promise<void> {
+  await db.auditLog.create({
+    data: {
+      action: TERMINAL_CONTEXT_RESULT_ACTION,
+      entityType: "MeasureRevision",
+      entityId: input.revisionId,
+      changes: {
+        measureId: input.measureId,
+        model: input.model,
+        promptVersion: PROMPT_VERSION,
+        outcome: input.outcome,
+        ...(input.validationError ? { validationError: input.validationError.slice(0, 300) } : {}),
+      },
+      userId: input.generatedBy,
+    },
+  });
 }
 
 export async function generateMeasureContextDraft(
@@ -237,16 +270,16 @@ export async function generateMeasureContextDraft(
   if (measure.revisions.length > 0) {
     return { status: "SKIPPED", reason: "PREVIOUS_CONTEXT_REJECTED" };
   }
-  const previousNoUsefulResult = await db.auditLog.findFirst({
+  const previousTerminalResult = await db.auditLog.findFirst({
     where: {
-      action: NO_USEFUL_CONTEXT_ACTION,
+      action: TERMINAL_CONTEXT_RESULT_ACTION,
       entityType: "MeasureRevision",
       entityId: revision.id,
     },
     select: { id: true },
   });
-  if (previousNoUsefulResult) {
-    return { status: "SKIPPED", reason: "NO_USEFUL_CONTEXT" };
+  if (previousTerminalResult) {
+    return { status: "SKIPPED", reason: "PREVIOUS_CONTEXT_ATTEMPT" };
   }
 
   const evidence = readEvidenceSnapshot(revision.evidenceSnapshot);
@@ -297,41 +330,60 @@ Réponds uniquement en JSON :
     temperature: 0,
     responseFormat: { type: "json_object" },
   });
-  const parsed = generatedContextSchema.parse(
-    parseMistralJSON<unknown>(extractMistralText(response))
-  );
   const resolvedModel = response.model?.trim() || MODEL;
+  let parsed: z.infer<typeof generatedContextSchema>;
+  try {
+    parsed = generatedContextSchema.parse(parseMistralJSON<unknown>(extractMistralText(response)));
+  } catch (error) {
+    if (!(error instanceof SyntaxError || error instanceof z.ZodError)) throw error;
+    const validationError = "La réponse de génération ne respecte pas le format attendu";
+    await recordTerminalContextResult({
+      generatedBy: options.generatedBy ?? "system",
+      measureId,
+      model: resolvedModel,
+      outcome: "INVALID_GENERATED_CONTEXT",
+      revisionId: revision.id,
+      validationError,
+    });
+    throw new MeasureValidationError(validationError);
+  }
   if (parsed.details === null) {
-    await db.auditLog.create({
-      data: {
-        action: NO_USEFUL_CONTEXT_ACTION,
-        entityType: "MeasureRevision",
-        entityId: revision.id,
-        changes: {
-          measureId,
-          model: resolvedModel,
-          promptVersion: PROMPT_VERSION,
-          outcome: "NO_USEFUL_CONTEXT",
-        },
-        userId: options.generatedBy ?? "system",
-      },
+    await recordTerminalContextResult({
+      generatedBy: options.generatedBy ?? "system",
+      measureId,
+      model: resolvedModel,
+      outcome: "NO_USEFUL_CONTEXT",
+      revisionId: revision.id,
     });
     return { status: "SKIPPED", reason: "NO_USEFUL_CONTEXT" };
   }
 
-  const unitsById = new Map(units.map((unit) => [unit.unitId, unit]));
-  const citedUnitIds = new Set(parsed.evidenceUnitIds);
-  if (
-    parsed.evidenceUnitIds.length !== unitsById.size ||
-    citedUnitIds.size !== unitsById.size ||
-    parsed.evidenceUnitIds.some((id) => !unitsById.has(id)) ||
-    !parsed.evidenceUnitIds.some((id) => supportingIds.has(id))
-  ) {
-    throw new MeasureValidationError(
-      "Le contexte généré ne cite pas l'ensemble exact des preuves fournies"
-    );
+  try {
+    const unitsById = new Map(units.map((unit) => [unit.unitId, unit]));
+    const citedUnitIds = new Set(parsed.evidenceUnitIds);
+    if (
+      parsed.evidenceUnitIds.length !== unitsById.size ||
+      citedUnitIds.size !== unitsById.size ||
+      parsed.evidenceUnitIds.some((id) => !unitsById.has(id)) ||
+      !parsed.evidenceUnitIds.some((id) => supportingIds.has(id))
+    ) {
+      throw new MeasureValidationError(
+        "Le contexte généré ne cite pas l'ensemble exact des preuves fournies"
+      );
+    }
+    assertNoGeneratedQuantities(parsed.details);
+  } catch (error) {
+    if (!(error instanceof MeasureValidationError)) throw error;
+    await recordTerminalContextResult({
+      generatedBy: options.generatedBy ?? "system",
+      measureId,
+      model: resolvedModel,
+      outcome: "INVALID_GENERATED_CONTEXT",
+      revisionId: revision.id,
+      validationError: error.message,
+    });
+    throw error;
   }
-  assertNoGeneratedQuantities(parsed.details);
 
   const { revisionId } = await draftMeasureRevision({
     measureId,

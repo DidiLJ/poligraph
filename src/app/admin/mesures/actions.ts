@@ -174,6 +174,8 @@ function contextSkipMessage(reason: ContextGenerationSkipReason): string {
       return "La preuve ne contient pas de contexte distinct de la formulation.";
     case "PREVIOUS_CONTEXT_REJECTED":
       return "Un contexte automatique a déjà été écarté pour cette mesure : aucune nouvelle génération n'a été lancée.";
+    case "PREVIOUS_CONTEXT_ATTEMPT":
+      return "Une génération a déjà conclu que cette révision ne pouvait pas produire de contexte exploitable.";
     case "NO_USEFUL_CONTEXT":
       return "Mistral n'a trouvé aucun contexte utile distinct de la formulation.";
   }

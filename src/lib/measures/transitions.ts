@@ -253,8 +253,10 @@ export type DraftMeasureRevisionInput = {
   generatedContext?: {
     evidenceUnitIds: string[];
     generatedBy: string;
+    ipAddress: string;
     model: string;
     promptVersion: string;
+    userAgent: string;
   };
 };
 
@@ -375,9 +377,18 @@ export async function draftMeasureRevision(
           changes: {
             previousRevisionId: input.preserveEvidenceFromRevisionId,
             evidenceSnapshotPreserved: true,
-            ...(input.generatedContext ?? {}),
+            ...(input.generatedContext
+              ? {
+                  evidenceUnitIds: input.generatedContext.evidenceUnitIds,
+                  generatedBy: input.generatedContext.generatedBy,
+                  model: input.generatedContext.model,
+                  promptVersion: input.generatedContext.promptVersion,
+                }
+              : {}),
           },
           userId: input.generatedContext?.generatedBy ?? input.correctedBy,
+          ipAddress: input.generatedContext?.ipAddress,
+          userAgent: input.generatedContext?.userAgent,
         },
       });
     }

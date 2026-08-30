@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { QUALIFICATION_KIND_LABELS } from "@/config/labels";
 import type {
   Chamber,
@@ -145,6 +146,18 @@ const contextGenerationBatchInputSchema = z
 
 async function assertAuthenticated(): Promise<void> {
   if (!(await isAuthenticated())) throw new Error("Non autorisé");
+}
+
+async function getAuditRequestMetadata(): Promise<{
+  ipAddress: string;
+  userAgent: string;
+}> {
+  const requestHeaders = await headers();
+  const forwarded = requestHeaders.get("x-forwarded-for");
+  return {
+    ipAddress: forwarded?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip") || "unknown",
+    userAgent: requestHeaders.get("user-agent") || "unknown",
+  };
 }
 
 function revalidate(measureId: string): void {
@@ -389,11 +402,13 @@ export async function generateContextDraftAction(input: {
   try {
     const parsed = contextGenerationInputSchema.safeParse(input);
     if (!parsed.success) throw new MeasureValidationError("Mesure à enrichir invalide");
+    const requestMetadata = await getAuditRequestMetadata();
     const result = await generateMeasureContextDraft(parsed.data.measureId, {
       expectedUpdatedAt: parsed.data.expectedUpdatedAt
         ? parseDate(parsed.data.expectedUpdatedAt, "La version attendue")
         : undefined,
       generatedBy: ACTOR,
+      ...requestMetadata,
     });
     if (result.status === "SKIPPED") {
       return { ok: false, message: contextSkipMessage(result.reason) };
@@ -426,12 +441,16 @@ export async function generateContextDraftBatchAction(
   const parsed = contextGenerationBatchInputSchema.safeParse(input);
   if (!parsed.success) throw new MeasureValidationError("Le lot doit contenir de 1 à 10 mesures");
   const measureIds = [...new Set(parsed.data.measureIds)];
+  const requestMetadata = await getAuditRequestMetadata();
   let created = 0;
   let skipped = 0;
   let failed = 0;
   for (const measureId of measureIds) {
     try {
-      const result = await generateMeasureContextDraft(measureId, { generatedBy: ACTOR });
+      const result = await generateMeasureContextDraft(measureId, {
+        generatedBy: ACTOR,
+        ...requestMetadata,
+      });
       if (result.status === "CREATED") {
         created += 1;
         revalidate(measureId);

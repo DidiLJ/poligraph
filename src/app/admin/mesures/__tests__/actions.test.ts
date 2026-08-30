@@ -14,6 +14,13 @@ import { MeasureConcurrencyError, MeasureValidationError } from "@/lib/measures/
 
 const isAuthenticatedMock = vi.fn<() => Promise<boolean>>();
 const revalidatePathMock = vi.fn();
+const headersMock = vi.fn(
+  async () =>
+    new Headers({
+      "user-agent": "vitest-agent",
+      "x-forwarded-for": "203.0.113.8, 10.0.0.1",
+    })
+);
 
 const transitionsMock = {
   createMeasure: vi.fn(async () => ({ measureId: "m-1", revisionId: "rev-1" })),
@@ -28,6 +35,7 @@ const transitionsMock = {
 
 vi.mock("@/lib/auth", () => ({ isAuthenticated: () => isAuthenticatedMock() }));
 vi.mock("next/cache", () => ({ revalidatePath: (path: string) => revalidatePathMock(path) }));
+vi.mock("next/headers", () => ({ headers: () => headersMock() }));
 vi.mock("@/lib/measures/transitions", () => transitionsMock);
 
 const assessmentsMock = {
@@ -254,6 +262,8 @@ describe("génération assistée du contexte", () => {
     expect(contextGenerationMock.generateMeasureContextDraft).toHaveBeenCalledWith("m-1", {
       expectedUpdatedAt: new Date("2027-01-16T10:00:00.000Z"),
       generatedBy: "admin",
+      ipAddress: "203.0.113.8",
+      userAgent: "vitest-agent",
     });
   });
 

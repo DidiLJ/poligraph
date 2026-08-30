@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MeasureConcurrencyError } from "@/lib/measures/errors";
 import { validEvidenceSnapshot } from "./evidence-snapshot-fixture";
 
 const mocks = vi.hoisted(() => ({
@@ -11,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   findAuditLogs: vi.fn(),
   findAuditLog: vi.fn(),
   createAuditLog: vi.fn(),
+  findMeasureForUpdate: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -21,8 +24,15 @@ vi.mock("@/lib/db", () => ({
       findFirst: mocks.findAuditLog,
       create: mocks.createAuditLog,
     },
+    $transaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
+      callback({
+        measure: { findUniqueOrThrow: mocks.findMeasureForUpdate },
+        auditLog: { create: mocks.createAuditLog },
+      })
+    ),
   },
 }));
+vi.mock("@/lib/measures/lock", () => ({ lockMeasure: vi.fn(async () => undefined) }));
 vi.mock("@/lib/api/mistral", () => ({
   callMistral: mocks.callMistral,
   extractMistralText: mocks.extractMistralText,
@@ -55,6 +65,11 @@ describe("génération de contexte sourcé", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.findMeasure.mockResolvedValue(measure());
+    mocks.findMeasureForUpdate.mockResolvedValue({
+      latestRevisionId: "revision-1",
+      publishedRevisionId: "revision-1",
+      updatedAt: new Date("2026-08-30T00:00:00Z"),
+    });
     mocks.findAuditLogs.mockResolvedValue([]);
     mocks.findAuditLog.mockResolvedValue(null);
     mocks.createAuditLog.mockResolvedValue({ id: "audit-1" });
@@ -71,7 +86,11 @@ describe("génération de contexte sourcé", () => {
   it("crée un brouillon IA en conservant la preuve et une trace des unités citées", async () => {
     const { generateMeasureContextDraft } = await import("../context-generation");
 
-    const result = await generateMeasureContextDraft("measure-1", { generatedBy: "admin" });
+    const result = await generateMeasureContextDraft("measure-1", {
+      generatedBy: "admin",
+      ipAddress: "203.0.113.8",
+      userAgent: "vitest-agent",
+    });
 
     expect(result.status).toBe("CREATED");
     expect(mocks.draftMeasureRevision).toHaveBeenCalledWith(
@@ -85,7 +104,9 @@ describe("génération de contexte sourcé", () => {
         }),
         generatedContext: expect.objectContaining({
           evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
+          ipAddress: "203.0.113.8",
           promptVersion: "measure-context-v6",
+          userAgent: "vitest-agent",
         }),
       })
     );
@@ -132,6 +153,32 @@ describe("génération de contexte sourcé", () => {
     expect(mocks.callMistral.mock.calls[0]?.[0]?.[0]?.content).toContain(
       "ne doit jamais être attribuée au programme"
     );
+  });
+
+  it("borne chaque extrait de preuve avant son interpolation dans le prompt", async () => {
+    const snapshot = validEvidenceSnapshot();
+    const supportingUnit = snapshot.units.find((unit) => unit.unitId === "pdf-13-1-u001");
+    if (!supportingUnit) throw new Error("Unité de contexte de test introuvable");
+    supportingUnit.rawExactText = `${"A".repeat(220)}INSTRUCTION_A_IGNORER`;
+    supportingUnit.rawTextHash = createHash("sha256")
+      .update(supportingUnit.rawExactText, "utf8")
+      .digest("hex");
+    mocks.findMeasure.mockResolvedValue(
+      measure({
+        publishedRevision: {
+          ...measure().publishedRevision,
+          evidenceSnapshot: snapshot,
+        },
+      })
+    );
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await generateMeasureContextDraft("measure-1");
+
+    expect(mocks.callMistral).toHaveBeenCalledOnce();
+    const prompt = mocks.callMistral.mock.calls[0]?.[0]?.[0]?.content;
+    expect(prompt).toContain("A".repeat(200));
+    expect(prompt).not.toContain("INSTRUCTION_A_IGNORER");
   });
 
   it("ne remplace jamais un brouillon éditorial déjà actif", async () => {
@@ -352,6 +399,23 @@ describe("génération de contexte sourcé", () => {
     });
   });
 
+  it("refuse de tracer une issue terminale à partir d'une version devenue obsolète", async () => {
+    mocks.parseMistralJSON.mockReturnValue({ details: null, evidenceUnitIds: [] });
+    mocks.findMeasureForUpdate.mockResolvedValue({
+      latestRevisionId: "revision-1",
+      publishedRevisionId: "revision-1",
+      updatedAt: new Date("2026-08-30T00:01:00Z"),
+    });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(
+      generateMeasureContextDraft("measure-1", {
+        expectedUpdatedAt: new Date("2026-08-30T00:00:00Z"),
+      })
+    ).rejects.toBeInstanceOf(MeasureConcurrencyError);
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+  });
+
   it("ne relance pas Mistral après un résultat sans contexte utile sur la même révision", async () => {
     mocks.findAuditLog.mockResolvedValue({ id: "audit-previous-attempt" });
     const { generateMeasureContextDraft } = await import("../context-generation");
@@ -432,6 +496,19 @@ describe("génération de contexte sourcé", () => {
       data: expect.objectContaining({
         changes: expect.objectContaining({ outcome: "INVALID_GENERATED_CONTEXT" }),
       }),
+    });
+  });
+
+  it("accepte l'attribution des propos à un tiers sans la confondre avec une fraction", async () => {
+    mocks.parseMistralJSON.mockReturnValue({
+      details:
+        "Le document rapporte les propos d'un tiers et les distingue de la position défendue par le programme dans cette proposition.",
+      evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
+    });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(generateMeasureContextDraft("measure-1")).resolves.toMatchObject({
+      status: "CREATED",
     });
   });
 });

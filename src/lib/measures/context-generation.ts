@@ -2,7 +2,8 @@ import { z } from "zod";
 import { callMistral, extractMistralText, parseMistralJSON } from "@/lib/api/mistral";
 import { db } from "@/lib/db";
 import { readEvidenceSnapshot } from "@/lib/measures/evidence-snapshot";
-import { MeasureValidationError } from "@/lib/measures/errors";
+import { MeasureConcurrencyError, MeasureValidationError } from "@/lib/measures/errors";
+import { lockMeasure } from "@/lib/measures/lock";
 import { draftMeasureRevision } from "@/lib/measures/transitions";
 
 const MODEL = "mistral-small-latest";
@@ -194,11 +195,14 @@ function sanitizeSourceText(value: string): string {
     .replace(/[<>&"\n\r]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 3_000);
+    .slice(0, 200);
 }
 
 const SPELLED_OUT_NUMBER_PATTERN =
-  /(?<![\p{L}\p{N}_])(?:zéro|aucun|aucune|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|tiers|quarts?|doubles?|triples?|quadruples?|pour[\s\u00a0\u202f]+cent)(?![\p{L}\p{N}_])/iu;
+  /(?<![\p{L}\p{N}_])(?:zéro|aucun|aucune|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|quarts?|doubles?|triples?|quadruples?|pour[\s\u00a0\u202f]+cent)(?![\p{L}\p{N}_])/iu;
+
+const FRACTIONAL_TIER_PATTERN =
+  /(?<![\p{L}\p{N}_])(?:un|deux|le)[\s\u00a0\u202f]+tiers?(?:[\s\u00a0\u202f]+)(?:des|du|de[\s\u00a0\u202f]+la|de[\s\u00a0\u202f]+l[’'])(?![\p{L}\p{N}_])/iu;
 
 const CONTEXTUAL_SINGULAR_QUANTITY_PATTERN =
   /(?<![\p{L}\p{N}_])(?:un|une)[\s\u00a0\u202f]+(?:bénéficiaire|personne|emploi|poste|euro|logement|place|année|mois|jour|heure|établissement|entreprise|agent|salarié|fonctionnaire|famille|ménage|enfant|élève|étudiant|enseignant|médecin|lit)(?:e|s|es)?(?![\p{L}\p{N}_])/iu;
@@ -207,6 +211,7 @@ function assertNoGeneratedQuantities(details: string): void {
   if (
     /\d/u.test(details) ||
     SPELLED_OUT_NUMBER_PATTERN.test(details) ||
+    FRACTIONAL_TIER_PATTERN.test(details) ||
     CONTEXTUAL_SINGULAR_QUANTITY_PATTERN.test(details)
   ) {
     throw new MeasureValidationError(
@@ -220,29 +225,61 @@ async function recordTerminalContextResult(input: {
   measureId: string;
   model: string;
   outcome: "INVALID_GENERATED_CONTEXT" | "NO_USEFUL_CONTEXT";
+  expectedUpdatedAt: Date;
+  ipAddress: string;
   revisionId: string;
+  userAgent: string;
   validationError?: string;
 }): Promise<void> {
-  await db.auditLog.create({
-    data: {
-      action: TERMINAL_CONTEXT_RESULT_ACTION,
-      entityType: "MeasureRevision",
-      entityId: input.revisionId,
-      changes: {
-        measureId: input.measureId,
-        model: input.model,
-        promptVersion: PROMPT_VERSION,
-        outcome: input.outcome,
-        ...(input.validationError ? { validationError: input.validationError.slice(0, 300) } : {}),
+  await db.$transaction(async (tx) => {
+    await lockMeasure(tx, input.measureId);
+    const currentMeasure = await tx.measure.findUniqueOrThrow({
+      where: { id: input.measureId },
+      select: { latestRevisionId: true, publishedRevisionId: true, updatedAt: true },
+    });
+    if (currentMeasure.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()) {
+      throw new MeasureConcurrencyError(
+        input.measureId,
+        input.expectedUpdatedAt,
+        currentMeasure.updatedAt
+      );
+    }
+    if (
+      currentMeasure.latestRevisionId !== input.revisionId ||
+      currentMeasure.publishedRevisionId !== input.revisionId
+    ) {
+      throw new MeasureValidationError("La révision publiée a changé pendant la génération");
+    }
+    await tx.auditLog.create({
+      data: {
+        action: TERMINAL_CONTEXT_RESULT_ACTION,
+        entityType: "MeasureRevision",
+        entityId: input.revisionId,
+        changes: {
+          measureId: input.measureId,
+          model: input.model,
+          promptVersion: PROMPT_VERSION,
+          outcome: input.outcome,
+          ...(input.validationError
+            ? { validationError: input.validationError.slice(0, 300) }
+            : {}),
+        },
+        userId: input.generatedBy,
+        ipAddress: input.ipAddress,
+        userAgent: input.userAgent,
       },
-      userId: input.generatedBy,
-    },
+    });
   });
 }
 
 export async function generateMeasureContextDraft(
   measureId: string,
-  options: { expectedUpdatedAt?: Date; generatedBy?: string } = {}
+  options: {
+    expectedUpdatedAt?: Date;
+    generatedBy?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  } = {}
 ): Promise<ContextGenerationResult> {
   const measure = await db.measure.findUnique({
     where: { id: measureId },
@@ -344,10 +381,13 @@ Réponds uniquement en JSON :
     const validationError = "La réponse de génération ne respecte pas le format attendu";
     await recordTerminalContextResult({
       generatedBy: options.generatedBy ?? "system",
+      expectedUpdatedAt: options.expectedUpdatedAt ?? measure.updatedAt,
+      ipAddress: options.ipAddress ?? "unknown",
       measureId,
       model: resolvedModel,
       outcome: "INVALID_GENERATED_CONTEXT",
       revisionId: revision.id,
+      userAgent: options.userAgent ?? "unknown",
       validationError,
     });
     throw new MeasureValidationError(validationError);
@@ -355,10 +395,13 @@ Réponds uniquement en JSON :
   if (parsed.details === null) {
     await recordTerminalContextResult({
       generatedBy: options.generatedBy ?? "system",
+      expectedUpdatedAt: options.expectedUpdatedAt ?? measure.updatedAt,
+      ipAddress: options.ipAddress ?? "unknown",
       measureId,
       model: resolvedModel,
       outcome: "NO_USEFUL_CONTEXT",
       revisionId: revision.id,
+      userAgent: options.userAgent ?? "unknown",
     });
     return { status: "SKIPPED", reason: "NO_USEFUL_CONTEXT" };
   }
@@ -381,10 +424,13 @@ Réponds uniquement en JSON :
     if (!(error instanceof MeasureValidationError)) throw error;
     await recordTerminalContextResult({
       generatedBy: options.generatedBy ?? "system",
+      expectedUpdatedAt: options.expectedUpdatedAt ?? measure.updatedAt,
+      ipAddress: options.ipAddress ?? "unknown",
       measureId,
       model: resolvedModel,
       outcome: "INVALID_GENERATED_CONTEXT",
       revisionId: revision.id,
+      userAgent: options.userAgent ?? "unknown",
       validationError: error.message,
     });
     throw error;
@@ -398,8 +444,10 @@ Réponds uniquement en JSON :
     generatedContext: {
       evidenceUnitIds: parsed.evidenceUnitIds,
       generatedBy: options.generatedBy ?? "system",
+      ipAddress: options.ipAddress ?? "unknown",
       model: resolvedModel,
       promptVersion: PROMPT_VERSION,
+      userAgent: options.userAgent ?? "unknown",
     },
     revision: {
       text: revision.text,

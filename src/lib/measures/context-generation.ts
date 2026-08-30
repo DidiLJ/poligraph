@@ -35,6 +35,41 @@ export type ContextGenerationResult =
     }
   | { status: "SKIPPED"; reason: ContextGenerationSkipReason };
 
+type ContextCandidate = {
+  id: string;
+  latestRevisionId: string | null;
+  publishedRevisionId: string | null;
+  publishedRevision: { evidenceSnapshot: unknown } | null;
+};
+
+function isEligibleContextCandidate(measure: ContextCandidate): boolean {
+  if (measure.latestRevisionId !== measure.publishedRevisionId) return false;
+  const evidence = readEvidenceSnapshot(measure.publishedRevision?.evidenceSnapshot);
+  return evidence.status === "VALID" && evidence.snapshot.supportingIds.length > 0;
+}
+
+export async function filterMeasureContextCandidateIds(
+  measureIds: string[],
+  limit = 10
+): Promise<string[]> {
+  if (measureIds.length === 0 || limit <= 0) return [];
+  const candidates = await db.measure.findMany({
+    where: {
+      id: { in: measureIds },
+      publicationStatus: "PUBLISHED",
+      publishedRevision: { is: { details: null } },
+    },
+    select: {
+      id: true,
+      latestRevisionId: true,
+      publishedRevisionId: true,
+      publishedRevision: { select: { evidenceSnapshot: true } },
+    },
+  });
+  const eligibleIds = new Set(candidates.filter(isEligibleContextCandidate).map(({ id }) => id));
+  return measureIds.filter((id) => eligibleIds.has(id)).slice(0, limit);
+}
+
 export async function findMeasureContextCandidateIds(
   electionSlug: string,
   limit: number,
@@ -62,9 +97,7 @@ export async function findMeasureContextCandidateIds(
     });
 
     for (const measure of candidates) {
-      if (measure.latestRevisionId !== measure.publishedRevisionId) continue;
-      const evidence = readEvidenceSnapshot(measure.publishedRevision?.evidenceSnapshot);
-      if (evidence.status !== "VALID" || evidence.snapshot.supportingIds.length === 0) continue;
+      if (!isEligibleContextCandidate(measure)) continue;
       eligibleIds.push(measure.id);
       if (eligibleIds.length === limit) break;
     }
@@ -94,8 +127,19 @@ function numericTokens(value: string): Set<string> {
   );
 }
 
-function assertGroundedNumbers(details: string, evidenceText: string): void {
-  const evidenceNumbers = numericTokens(evidenceText);
+function assertGroundedNumbers(
+  details: string,
+  citedUnits: Array<{ numbers: Array<{ raw: string; normalized: string; role: string }> }>
+): void {
+  const evidenceNumbers = new Set<string>();
+  for (const unit of citedUnits) {
+    for (const number of unit.numbers) {
+      if (number.role !== "CONTENT") continue;
+      for (const token of numericTokens(`${number.raw} ${number.normalized}`)) {
+        evidenceNumbers.add(token);
+      }
+    }
+  }
   for (const token of numericTokens(details)) {
     if (!evidenceNumbers.has(token)) {
       throw new MeasureValidationError(`Le contexte généré contient un nombre absent de la preuve`);
@@ -198,10 +242,11 @@ Réponds uniquement en JSON :
       "Le contexte généré ne cite pas une preuve de contexte autorisée"
     );
   }
-  const citedEvidenceText = parsed.evidenceUnitIds
-    .map((id) => unitsById.get(id)?.rawExactText ?? "")
-    .join("\n");
-  assertGroundedNumbers(parsed.details, citedEvidenceText);
+  const citedUnits = parsed.evidenceUnitIds.flatMap((id) => {
+    const unit = unitsById.get(id);
+    return unit ? [unit] : [];
+  });
+  assertGroundedNumbers(parsed.details, citedUnits);
 
   const resolvedModel = response.model?.trim() || MODEL;
   const { revisionId } = await draftMeasureRevision({

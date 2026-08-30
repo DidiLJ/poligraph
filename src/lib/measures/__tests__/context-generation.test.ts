@@ -181,6 +181,49 @@ describe("génération de contexte sourcé", () => {
     expect(mocks.draftMeasureRevision).not.toHaveBeenCalled();
   });
 
+  it("refuse qu'un numéro de proposition justifie une quantité inventée", async () => {
+    mocks.parseMistralJSON.mockReturnValue({
+      details:
+        "Le programme présente cette proposition comme un droit aux vacances de 2 heures pour toute la population, sans apporter davantage de précisions.",
+      evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
+    });
+    const { generateMeasureContextDraft } = await import("../context-generation");
+
+    await expect(generateMeasureContextDraft("measure-1")).rejects.toThrow(
+      "nombre absent de la preuve"
+    );
+    expect(mocks.draftMeasureRevision).not.toHaveBeenCalled();
+  });
+
+  it("ne propose à l'admin que les mesures réellement éligibles", async () => {
+    const validEvidence = measure().publishedRevision.evidenceSnapshot;
+    mocks.findMeasures.mockResolvedValue([
+      {
+        id: "measure-invalid",
+        latestRevisionId: "revision-1",
+        publishedRevisionId: "revision-1",
+        publishedRevision: { evidenceSnapshot: null },
+      },
+      {
+        id: "measure-draft",
+        latestRevisionId: "revision-2",
+        publishedRevisionId: "revision-1",
+        publishedRevision: { evidenceSnapshot: validEvidence },
+      },
+      {
+        id: "measure-eligible",
+        latestRevisionId: "revision-1",
+        publishedRevisionId: "revision-1",
+        publishedRevision: { evidenceSnapshot: validEvidence },
+      },
+    ]);
+    const { filterMeasureContextCandidateIds } = await import("../context-generation");
+
+    await expect(
+      filterMeasureContextCandidateIds(["measure-invalid", "measure-draft", "measure-eligible"], 10)
+    ).resolves.toEqual(["measure-eligible"]);
+  });
+
   it("pagine au-delà des premières mesures inéligibles", async () => {
     const ineligible = (id: string) => ({
       id,

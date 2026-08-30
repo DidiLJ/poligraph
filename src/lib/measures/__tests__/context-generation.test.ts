@@ -212,6 +212,36 @@ describe("génération de contexte sourcé", () => {
     await expect(generateMeasureContextDraft("measure-1")).rejects.toThrow("contient une quantité");
   });
 
+  it.each(["plusieurs milliers d’emplois", "une centaine de bénéficiaires"])(
+    "refuse aussi la quantité approximative « %s »",
+    async (quantity) => {
+      mocks.parseMistralJSON.mockReturnValue({
+        details: `Le programme rattache cette proposition à un objectif qui concernerait ${quantity}, sans apporter davantage d'éléments de contexte.`,
+        evidenceUnitIds: ["pdf-12-2-u001", "pdf-13-1-u001"],
+      });
+      const { generateMeasureContextDraft } = await import("../context-generation");
+
+      await expect(generateMeasureContextDraft("measure-1")).rejects.toThrow(
+        "contient une quantité"
+      );
+    }
+  );
+
+  it("identifie l'historique des contextes avec le même prédicat que la fiche admin", async () => {
+    const { hasGeneratedContextHistory } = await import("../context-generation");
+
+    expect(
+      hasGeneratedContextHistory([
+        { extractionMethod: "AI_ASSISTED", extractorVersion: "mistral:measure-context-v5" },
+      ])
+    ).toBe(true);
+    expect(
+      hasGeneratedContextHistory([
+        { extractionMethod: "AI_ASSISTED", extractorVersion: "mistral:programme-import-v6" },
+      ])
+    ).toBe(false);
+  });
+
   it("ne régénère pas un contexte automatique déjà rejeté", async () => {
     mocks.findMeasure.mockResolvedValue(measure({ revisions: [{ id: "revision-rejected" }] }));
     const { generateMeasureContextDraft } = await import("../context-generation");

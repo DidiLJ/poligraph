@@ -12,6 +12,7 @@ import { isAuthenticated } from "@/lib/auth";
 import { getMeasureForModeration, getPublicMeasure } from "@/lib/data/measures";
 import { deriveModerationState, type ModerationMeasureRow } from "@/lib/measures/moderation-state";
 import { readEvidenceSnapshot } from "@/lib/measures/evidence-snapshot";
+import { hasGeneratedContextHistory } from "@/lib/measures/context-generation";
 import { AnomalyList } from "../_components/AnomalyList";
 import { MeasureActionPanel } from "../_components/MeasureActionPanel";
 import { MeasureMetadataPanel } from "../_components/MeasureMetadataPanel";
@@ -112,6 +113,7 @@ export default async function AdminMeasureDetailPage({ params }: PageProps) {
     publishedRevision !== undefined &&
     !publishedRevision.details?.trim() &&
     measure.latestRevisionId === measure.publishedRevisionId &&
+    !hasGeneratedContextHistory(measure.revisions) &&
     publishedEvidence.status === "VALID" &&
     publishedEvidence.snapshot.supportingIds.length > 0;
 

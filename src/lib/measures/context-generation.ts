@@ -44,6 +44,16 @@ type ContextCandidate = {
   revisions?: Array<{ id: string }>;
 };
 
+export function hasGeneratedContextHistory(
+  revisions: Array<{ extractionMethod: string; extractorVersion: string | null }>
+): boolean {
+  return revisions.some(
+    (revision) =>
+      revision.extractionMethod === "AI_ASSISTED" &&
+      revision.extractorVersion?.includes(":measure-context-v") === true
+  );
+}
+
 function isEligibleContextCandidate(measure: ContextCandidate): boolean {
   if (measure.latestRevisionId !== measure.publishedRevisionId) return false;
   if ((measure.revisions?.length ?? 0) > 0) return false;
@@ -138,7 +148,7 @@ function sanitizeSourceText(value: string): string {
 }
 
 const SPELLED_OUT_NUMBER_PATTERN =
-  /\b(?:(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|mille)|(?:un|une)\s+(?:milliers?|millions?|milliards?))\b/iu;
+  /\b(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|tiers|quarts?|doubles?|triples?|quadruples?)\b|\bpour[\s\u00a0\u202f]+cent\b/iu;
 
 function assertNoGeneratedQuantities(details: string): void {
   if (/\d/u.test(details) || SPELLED_OUT_NUMBER_PATTERN.test(details)) {

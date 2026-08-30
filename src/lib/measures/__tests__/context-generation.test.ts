@@ -415,6 +415,8 @@ describe("génération de contexte sourcé", () => {
   });
 
   it.each([
+    "Le programme ne prévoit zéro bénéficiaire dans les territoires concernés.",
+    "Le programme ne prévoit aucun bénéficiaire dans les territoires concernés.",
     "Le programme vise un bénéficiaire dans chaque territoire concerné par la mesure.",
     "Le programme vise une personne dans chaque territoire concerné par la mesure.",
     "Le programme présente la moitié des Français comme concernés par cette mesure.",

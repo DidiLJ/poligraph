@@ -56,6 +56,19 @@ export function hasGeneratedContextHistory(
   );
 }
 
+export async function hasTerminalContextResult(revisionId: string | null): Promise<boolean> {
+  if (!revisionId) return false;
+  const result = await db.auditLog.findFirst({
+    where: {
+      action: TERMINAL_CONTEXT_RESULT_ACTION,
+      entityType: "MeasureRevision",
+      entityId: revisionId,
+    },
+    select: { id: true },
+  });
+  return result !== null;
+}
+
 function isEligibleContextCandidate(
   measure: ContextCandidate,
   terminalContextRevisionIds: ReadonlySet<string>
@@ -185,7 +198,7 @@ function sanitizeSourceText(value: string): string {
 }
 
 const SPELLED_OUT_NUMBER_PATTERN =
-  /(?<![\p{L}\p{N}_])(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|tiers|quarts?|doubles?|triples?|quadruples?|pour[\s\u00a0\u202f]+cent)(?![\p{L}\p{N}_])/iu;
+  /(?<![\p{L}\p{N}_])(?:zéro|aucun|aucune|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|milliers?|millions?|milliards?|dizaines?|douzaines?|quinzaines?|vingtaines?|trentaines?|quarantaines?|cinquantaines?|soixantaines?|centaines?|plusieurs|quelques|nombre|nombreux|nombreuses|majorité|minorité|moitié|tiers|quarts?|doubles?|triples?|quadruples?|pour[\s\u00a0\u202f]+cent)(?![\p{L}\p{N}_])/iu;
 
 const CONTEXTUAL_SINGULAR_QUANTITY_PATTERN =
   /(?<![\p{L}\p{N}_])(?:un|une)[\s\u00a0\u202f]+(?:bénéficiaire|personne|emploi|poste|euro|logement|place|année|mois|jour|heure|établissement|entreprise|agent|salarié|fonctionnaire|famille|ménage|enfant|élève|étudiant|enseignant|médecin|lit)(?:e|s|es)?(?![\p{L}\p{N}_])/iu;
@@ -270,15 +283,7 @@ export async function generateMeasureContextDraft(
   if (measure.revisions.length > 0) {
     return { status: "SKIPPED", reason: "PREVIOUS_CONTEXT_REJECTED" };
   }
-  const previousTerminalResult = await db.auditLog.findFirst({
-    where: {
-      action: TERMINAL_CONTEXT_RESULT_ACTION,
-      entityType: "MeasureRevision",
-      entityId: revision.id,
-    },
-    select: { id: true },
-  });
-  if (previousTerminalResult) {
+  if (await hasTerminalContextResult(revision.id)) {
     return { status: "SKIPPED", reason: "PREVIOUS_CONTEXT_ATTEMPT" };
   }
 

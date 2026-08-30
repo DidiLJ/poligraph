@@ -6,7 +6,7 @@ import { MeasureValidationError } from "@/lib/measures/errors";
 import { draftMeasureRevision } from "@/lib/measures/transitions";
 
 const MODEL = "mistral-small-latest";
-const PROMPT_VERSION = "measure-context-v4";
+const PROMPT_VERSION = "measure-context-v5";
 const MIN_DETAILS_LENGTH = 80;
 const MAX_DETAILS_LENGTH = 1_000;
 
@@ -23,6 +23,7 @@ export type ContextGenerationSkipReason =
   | "NO_PUBLISHED_REVISION"
   | "NO_VALID_EVIDENCE"
   | "NO_SUPPORTING_CONTEXT"
+  | "PREVIOUS_CONTEXT_REJECTED"
   | "NO_USEFUL_CONTEXT";
 
 export type ContextGenerationResult =
@@ -40,10 +41,12 @@ type ContextCandidate = {
   latestRevisionId: string | null;
   publishedRevisionId: string | null;
   publishedRevision: { evidenceSnapshot: unknown } | null;
+  revisions?: Array<{ id: string }>;
 };
 
 function isEligibleContextCandidate(measure: ContextCandidate): boolean {
   if (measure.latestRevisionId !== measure.publishedRevisionId) return false;
+  if ((measure.revisions?.length ?? 0) > 0) return false;
   const evidence = readEvidenceSnapshot(measure.publishedRevision?.evidenceSnapshot);
   return evidence.status === "VALID" && evidence.snapshot.supportingIds.length > 0;
 }
@@ -64,6 +67,14 @@ export async function filterMeasureContextCandidateIds(
       latestRevisionId: true,
       publishedRevisionId: true,
       publishedRevision: { select: { evidenceSnapshot: true } },
+      revisions: {
+        where: {
+          extractionMethod: "AI_ASSISTED",
+          extractorVersion: { contains: ":measure-context-v" },
+        },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
   const eligibleIds = new Set(candidates.filter(isEligibleContextCandidate).map(({ id }) => id));
@@ -90,6 +101,14 @@ export async function findMeasureContextCandidateIds(
         latestRevisionId: true,
         publishedRevisionId: true,
         publishedRevision: { select: { evidenceSnapshot: true } },
+        revisions: {
+          where: {
+            extractionMethod: "AI_ASSISTED",
+            extractorVersion: { contains: ":measure-context-v" },
+          },
+          select: { id: true },
+          take: 1,
+        },
       },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       take: pageSize,
@@ -118,48 +137,14 @@ function sanitizeSourceText(value: string): string {
     .slice(0, 3_000);
 }
 
-function numericTokens(value: string): Set<string> {
-  const tokens = value.match(
-    /\b(?:\d{1,3}(?:[\s\u00a0\u202f]\d{3})+|\d+)(?:[.,]\d+)?(?:[\s\u00a0\u202f]*(?:%|millions?|milliards?|euros?))?/giu
-  );
-  return new Set(
-    (tokens ?? []).map((token) =>
-      token
-        .toLocaleLowerCase("fr")
-        .replace(/(?<=\d)[\s\u00a0\u202f](?=\d)/g, "")
-        .replace(/[\s\u00a0\u202f]+/g, " ")
-    )
-  );
-}
-
 const SPELLED_OUT_NUMBER_PATTERN =
   /\b(?:(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|mille)|(?:un|une)\s+(?:milliers?|millions?|milliards?))\b/iu;
 
-function assertNoSpelledOutNumbers(details: string): void {
-  if (SPELLED_OUT_NUMBER_PATTERN.test(details)) {
+function assertNoGeneratedQuantities(details: string): void {
+  if (/\d/u.test(details) || SPELLED_OUT_NUMBER_PATTERN.test(details)) {
     throw new MeasureValidationError(
-      "Le contexte généré contient une quantité écrite en lettres, impossible à vérifier"
+      "Le contexte généré contient une quantité, interdite dans un brouillon automatique"
     );
-  }
-}
-
-function assertGroundedNumbers(
-  details: string,
-  citedUnits: Array<{ numbers: Array<{ raw: string; normalized: string; role: string }> }>
-): void {
-  const evidenceNumbers = new Set<string>();
-  for (const unit of citedUnits) {
-    for (const number of unit.numbers) {
-      if (number.role !== "CONTENT") continue;
-      for (const token of numericTokens(`${number.raw} ${number.normalized}`)) {
-        evidenceNumbers.add(token);
-      }
-    }
-  }
-  for (const token of numericTokens(details)) {
-    if (!evidenceNumbers.has(token)) {
-      throw new MeasureValidationError(`Le contexte généré contient un nombre absent de la preuve`);
-    }
   }
 }
 
@@ -184,6 +169,14 @@ export async function generateMeasureContextDraft(
           evidenceSnapshot: true,
         },
       },
+      revisions: {
+        where: {
+          extractionMethod: "AI_ASSISTED",
+          extractorVersion: { contains: ":measure-context-v" },
+        },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
   if (!measure) throw new MeasureValidationError("Mesure introuvable");
@@ -194,6 +187,9 @@ export async function generateMeasureContextDraft(
   if (revision.details?.trim()) return { status: "SKIPPED", reason: "ALREADY_HAS_DETAILS" };
   if (measure.latestRevisionId !== measure.publishedRevisionId) {
     return { status: "SKIPPED", reason: "ACTIVE_DRAFT" };
+  }
+  if (measure.revisions.length > 0) {
+    return { status: "SKIPPED", reason: "PREVIOUS_CONTEXT_REJECTED" };
   }
 
   const evidence = readEvidenceSnapshot(revision.evidenceSnapshot);
@@ -223,7 +219,7 @@ Règles :
 - respecte le locuteur de chaque unité : une parole de QUOTED_THIRD_PARTY, LEGAL_OR_INSTITUTIONAL_SOURCE ou HISTORICAL_ACTOR ne doit jamais être attribuée au programme ;
 - si tu utilises une telle unité, indique explicitement qu'elle rapporte les propos ou la position d'un tiers, d'une source juridique ou institutionnelle, ou d'un acteur historique, sans inventer son identité ;
 - n'utilise pas une unité dont le locuteur est UNRESOLVED pour attribuer une affirmation au programme ;
-- écris toute quantité avec des chiffres et conserve sa valeur exacte ; n'écris aucun nombre en lettres ;
+- n'inclus aucune quantité, aucun chiffre et aucun nombre écrit en lettres ; la formulation de la mesure porte déjà ces informations ;
 - ne présente jamais l'argumentaire du programme comme un fait établi ;
 - ne répète pas simplement la formulation de la mesure ;
 - écris entre 40 et 120 mots, en français clair ;
@@ -259,12 +255,7 @@ Réponds uniquement en JSON :
       "Le contexte généré ne cite pas une preuve de contexte autorisée"
     );
   }
-  const citedUnits = parsed.evidenceUnitIds.flatMap((id) => {
-    const unit = unitsById.get(id);
-    return unit ? [unit] : [];
-  });
-  assertNoSpelledOutNumbers(parsed.details);
-  assertGroundedNumbers(parsed.details, citedUnits);
+  assertNoGeneratedQuantities(parsed.details);
 
   const resolvedModel = response.model?.trim() || MODEL;
   const { revisionId } = await draftMeasureRevision({

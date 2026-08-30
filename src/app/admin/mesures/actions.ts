@@ -172,6 +172,8 @@ function contextSkipMessage(reason: ContextGenerationSkipReason): string {
       return "Cette mesure ne possède pas de preuve V6 valide.";
     case "NO_SUPPORTING_CONTEXT":
       return "La preuve ne contient pas de contexte distinct de la formulation.";
+    case "PREVIOUS_CONTEXT_REJECTED":
+      return "Un contexte automatique a déjà été écarté pour cette mesure : aucune nouvelle génération n'a été lancée.";
     case "NO_USEFUL_CONTEXT":
       return "Mistral n'a trouvé aucun contexte utile distinct de la formulation.";
   }
